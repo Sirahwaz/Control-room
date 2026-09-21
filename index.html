@@ -7,7 +7,7 @@
 <meta name="telegram-web-app-capable" content="yes">
 <title>MIDAD Intelligence Control Room</title>
 <link rel="stylesheet" href="./styles.css">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js?63"></script>
 </head>
 <body>
 <div class="app">
@@ -18,17 +18,16 @@
       <div class="subline">الرادار → التحقق → الفرص → رأس المال → التنفيذ المراقب</div>
     </div>
     <div class="top-actions">
-      <span id="status" class="pill offline">غير متصل</span>
+      <span id="status" class="pill offline">جارِ التحقق…</span>
       <button id="refresh" class="icon-btn" title="تحديث">↻</button>
     </div>
   </header>
 
   <main>
     <section id="loginCard" class="card login-card">
-      <div class="section-head"><h3>🔐 دخول غرفة التحكم</h3><span>جلسة مؤقتة</span></div>
-      <p>مفتاح الدخول لا يُخزّن كنص صريح في GitHub. الجلسة تحفظ رمزًا مؤقتًا فقط.</p>
-      <input id="controlKey" type="password" autocomplete="off" placeholder="Control Room Key">
-      <button id="loginBtn" class="primary wide">دخول آمن</button>
+      <div class="section-head"><h3>🔐 دخول آمن عبر Telegram</h3><span>بدون مفتاح</span></div>
+      <p id="authMessage">جارِ التحقق من هوية Telegram وفتح جلسة غرفة التحكم تلقائيًا…</p>
+      <button id="openTelegramBtn" class="primary wide" style="display:none">فتح البوت في Telegram</button>
     </section>
 
     <section class="hero card">
