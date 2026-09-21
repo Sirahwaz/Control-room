@@ -8,16 +8,37 @@ const $=id=>document.getElementById(id);
 function storageGet(k){try{return localStorage.getItem(k)||""}catch(e){console.warn("MIDAD storage read blocked",e);return ""}}
 function storageSet(k,v){try{localStorage.setItem(k,v)}catch(e){console.warn("MIDAD storage write blocked",e)}}
 function storageRemove(k){try{localStorage.removeItem(k)}catch(e){console.warn("MIDAD storage remove blocked",e)}}
-let session=storageGet("midad_cr_session");let state=null;
+let session=storageGet("midad_cr_session");let state=null;let authMode=session?"unknown":"";let loginOverlay=null;
 function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
-function showLogin(show=true){}
+function showLogin(show=true){
+  if(!show){if(loginOverlay){loginOverlay.remove();loginOverlay=null;}return;}
+  if(loginOverlay)return;
+  const wrap=document.createElement("div");
+  wrap.id="midad-web-login";
+  wrap.style.cssText="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:rgba(3,10,20,.88);backdrop-filter:blur(8px)";
+  wrap.innerHTML='<div style="width:min(460px,100%);box-sizing:border-box;background:#0b1728;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.35)"><div style="font-size:12px;opacity:.7;margin-bottom:8px">MIDAD CONTROL ROOM</div><h2 style="margin:0 0 8px">دخول غرفة التحكم</h2><p style="margin:0 0 16px;opacity:.78">وضع الويب يحتاج مفتاح وصول مخصصًا. لا تضع هنا أي Telegram token أو Supabase key.</p><input id="midadWebKey" type="password" autocomplete="off" placeholder="مفتاح غرفة التحكم" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:#07111f;color:#fff;outline:none"><div id="midadWebMsg" style="min-height:20px;margin:10px 0;color:#ffcf66;font-size:13px"></div><button id="midadWebLoginBtn" style="width:100%;padding:13px 14px;border:0;border-radius:12px;background:#1f8fff;color:#fff;font-weight:700;cursor:pointer">دخول آمن</button></div>';
+  document.body.appendChild(wrap);loginOverlay=wrap;
+  const input=$("midadWebKey"),btn=$("midadWebLoginBtn"),msg=$("midadWebMsg");
+  const submit=async()=>{
+    const key=String(input?.value||"").trim();
+    if(!key){if(msg)msg.textContent="أدخل مفتاح الوصول.";return;}
+    btn.disabled=true;if(msg)msg.textContent="جارِ التحقق…";
+    try{
+      const j=await apiWithoutSession({access_key:key});
+      session=j.token;authMode="web";storageSet("midad_cr_session",session);showLogin(false);setStatus(true,"Web متصل");await load();await loadMining();
+    }catch(e){if(msg)msg.textContent=e?.message||"مفتاح غير صالح";btn.disabled=false;}
+  };
+  btn.addEventListener("click",submit);
+  input.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+  setTimeout(()=>input?.focus(),0);
+}
 function isTelegramMiniApp(){return !!(tg&&typeof tg.initData==="string"&&tg.initData.trim())}
 function isTelegramContext(){return !!tg}
-function setAuthMessage(t,showButton=false){}
+function setAuthMessage(t){const m=$("midadWebMsg");if(m)m.textContent=t||"";}
 function setBootFailure(message){
   setStatus(false,message||"تعذر تشغيل الواجهة");
   const p=$("pipelineNote");if(p)p.textContent=message||"تعذر تشغيل واجهة غرفة التحكم.";
@@ -33,9 +54,28 @@ window.addEventListener("unhandledrejection",e=>{
   if($("status")?.textContent?.includes("جار"))setBootFailure("خطأ اتصال: "+msg);
 })
 
-async function api(body){if(!session){throw new Error("جلسة Telegram غير جاهزة")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";storageRemove("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
-
-async function apiWithoutSession(body){const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");return j}
+async function api(body){
+  if(!session)throw new Error("جلسة غرفة التحكم غير جاهزة");
+  const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401){
+    session="";storageRemove("midad_cr_session");setStatus(false);
+    throw new Error(j.error||"انتهت الجلسة، أعد الدخول");
+  }
+  if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");
+  return j;
+}
+async function apiWithoutSession(body){
+  const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");
+  return j;
+}
+async function loginWithWebAccessKey(){
+  authMode="web";
+  showLogin(true);
+  return false;
+}
 async function loginWithTelegram(){
   if(!isTelegramMiniApp()){
     setStatus(false,"افتح من Telegram");
@@ -62,7 +102,20 @@ async function loginWithTelegram(){
     return false;
   }
 }
-async function load(){try{const j=await api({action:"dashboard"});state=j;showLogin(false);setStatus(true,"Telegram متصل");render();return true}catch(e){if(String(e.message||"").includes("انتهت الجلسة")){return await loginWithTelegram()}setStatus(false);toast(e.message);return false}}
+async function load(){
+  try{
+    const j=await api({action:"dashboard"});
+    state=j;showLogin(false);setStatus(true,authMode==="web"?"Web متصل":"Telegram متصل");render();return true;
+  }catch(e){
+    const m=String(e.message||"");
+    if(m.includes("انتهت الجلسة")||m.includes("session_expired")){
+      session="";storageRemove("midad_cr_session");
+      if(authMode==="telegram")return await loginWithTelegram();
+      showLogin(true);return false;
+    }
+    setStatus(false);toast(e.message);return false;
+  }
+}
 function render(){const h=state.health; $("signals").textContent=num(h.signals);$("opportunities").textContent=num(h.opportunities);$("sentinelAlerts").textContent=num(h.sentinel_alerts);$("derivedAlerts").textContent=num(state.alerts.filter(a=>a.kind==="derived_signal").length);$("engineRuns").textContent=num(h.engine_runs);$("entities").textContent=num(h.entities);$("pipelineNote").textContent=h.pipeline_note;const healthy=h.pipeline_ok; $("healthBadge").textContent=healthy?"المسار يعمل":"يوجد انقطاع تشغيلي";$("healthBadge").className="pill "+(healthy?"online":"warning");
 $("healthRows").innerHTML=[["إدخال الإشارات",h.signals>0,"615+ إشارة موجودة"],["مولّد الفرص",h.opportunities>0,"الجدول الحالي: "+num(h.opportunities)],["سجل المحرك",h.engine_runs>0,"Engine runs: "+num(h.engine_runs)],["Sentinel",h.sentinel_alerts>0,"Active/review: "+num(h.sentinel_alerts)],["Wallet layer",h.wallets>0,"المحافظ: "+num(h.wallets)],["Trade review",h.trade_intents>0,"نوايا التداول: "+num(h.trade_intents)]].map(x=>'<div class="status-row"><span>'+esc(x[0])+'</span><span class="'+(x[1]?"good":"warning-text")+'">'+esc(x[2])+'</span></div>').join("");
 $("strongSignals").innerHTML=state.signals.filter(s=>s.score>=85).slice(0,6).map(signalHtml).join("")||'<div class="empty">لا توجد إشارات قوية الآن.</div>';
@@ -82,6 +135,7 @@ async function promote(id){try{const j=await api({action:"promote_signal",signal
 async function addForm(action,payload){try{await api({action,payload});toast("تم الحفظ");await load()}catch(e){toast(e.message)}}
 $("refresh").onclick=load;$("runMining").onclick=async()=>{try{const j=await api({action:"run_mining_monitor"});toast(j.configured?"ViaBTC تمت مزامنته":"ViaBTC API غير مهيأ بعد");await loadMining()}catch(e){toast(e.message)}};
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));$("tab-"+b.dataset.tab).classList.add("active");});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(b?.dataset.action==="dashboard_refresh")load();});
 $("addWallet").onclick=()=>addForm("wallet_add",{label:$("walletLabel").value,chain:$("walletChain").value,address:$("walletAddress").value,purpose:$("walletPurpose").value});
 $("addExchange").onclick=()=>addForm("exchange_add",{exchange:$("exchangeName").value,label:$("exchangeLabel").value,account_ref:$("exchangeRef").value});
 $("runOppScan").onclick=async()=>{try{const j=await api({action:"run_opportunity_scan"});toast("محرك الفرص: "+num(j.created||0)+" فرصة جديدة");await load()}catch(e){toast(e.message)}};
@@ -91,6 +145,7 @@ window.promote=promote;
 async function bootstrapAuth(){
   try{
     if(isTelegramMiniApp()){
+      authMode="telegram";
       if(session){
         const ok=await load();
         if(ok){await loadMining();return}
@@ -99,14 +154,22 @@ async function bootstrapAuth(){
       return;
     }
     if(isTelegramContext()){
-      setBootFailure("Telegram فتح الواجهة بدون initData؛ تحقق من إعداد Mini App في BotFather.");
+      setBootFailure("Telegram فتح الصفحة بدون initData؛ افتح Mini App من زر Telegram الرسمي وتأكد من إعداداته.");
+      setAuthMessage("لم تصل بيانات Telegram الآمنة إلى الصفحة.");
       return;
     }
-    setBootFailure("وضع WebApp: الواجهة تعمل، لكن فتح بيانات MIDAD يتطلب تشغيلها من Telegram.");
+    authMode="web";
+    if(session){
+      const ok=await load();
+      if(ok){await loadMining();return}
+    }
+    setStatus(false,"Web ينتظر مفتاح الدخول");
+    setBootFailure("وضع الويب جاهز؛ أدخل مفتاح غرفة التحكم لفتح البيانات.");
+    showLogin(true);
   }catch(e){
     console.error("MIDAD bootstrap failed",e);
-    setBootFailure("تعذر تشغيل غرفة التحكم");
+    setBootFailure("تعذر تشغيل غرفة التحكم: "+(e?.message||"خطأ غير معروف"));
     toast(e?.message||"تعذر التشغيل");
   }
 }
-bootstrapAuth();
+
