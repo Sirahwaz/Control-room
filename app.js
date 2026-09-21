@@ -1,33 +1,33 @@
-const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};
-const tg=window.Telegram?.WebApp;
-if(tg){tg.ready();tg.expand();}
-const $=id=>document.getElementById(id);
-let session=localStorage.getItem("midad_cr_session")||"";
-function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__t);window.__t=setTimeout(()=>x.style.display="none",2600)}
-function setStatus(ok){$("status").textContent=ok?"متصل":"غير متصل";$("status").className="pill "+(ok?"online":"offline")}
-function addEvent(title,detail){const e=document.createElement("div");e.className="event";e.innerHTML="<b>"+escapeHtml(title)+"</b><div>"+escapeHtml(detail)+"</div>";$("events").prepend(e)}
-function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
-function showLogin(){if($("loginCard"))$("loginCard").style.display="block"}
-async function login(){
- const key=$("controlKey")?.value||"";
- if(key.length<12){toast("مفتاح غرفة التحكم غير صالح");return}
- const b=$("loginBtn");b.disabled=true;b.textContent="جارِ التحقق…";
- try{const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})});const j=await r.json();if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");session=j.token;localStorage.setItem("midad_cr_session",session);$("controlKey").value="";$("loginCard").style.display="none";setStatus(true);toast("تم الدخول بأمان");run("status");}
- catch(e){setStatus(false);toast(e.message||"تعذر الدخول");}
- finally{b.disabled=false;b.textContent="دخول آمن"}
+const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#07111f");tg.setBackgroundColor("#07111f")}catch(e){}}const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
+function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[c]))}
+function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
+function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
+function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
+function showLogin(show=true){$("loginCard").style.display=show?"block":"none"}
+async function api(body){if(!session){showLogin(true);throw new Error("سجّل الدخول أولًا")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
+async function login(){const key=$("controlKey").value.trim();if(key.length<12){toast("مفتاح الدخول غير صالح");return}$("loginBtn").disabled=true;try{const j=await apiWithoutSession({key});session=j.token;localStorage.setItem("midad_cr_session",session);$("controlKey").value="";showLogin(false);setStatus(true);await load()}catch(e){toast(e.message)}finally{$("loginBtn").disabled=false}}
+async function apiWithoutSession(body){const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");return j}
+async function load(){try{const j=await api({action:"dashboard"});state=j;showLogin(false);setStatus(true);render();}catch(e){setStatus(false);if(session)toast(e.message)}}
+function render(){const h=state.health; $("signals").textContent=num(h.signals);$("opportunities").textContent=num(h.opportunities);$("sentinelAlerts").textContent=num(h.sentinel_alerts);$("derivedAlerts").textContent=num(state.alerts.filter(a=>a.kind==="derived_signal").length);$("engineRuns").textContent=num(h.engine_runs);$("entities").textContent=num(h.entities);$("pipelineNote").textContent=h.pipeline_note;const healthy=h.pipeline_ok; $("healthBadge").textContent=healthy?"المسار يعمل":"يوجد انقطاع تشغيلي";$("healthBadge").className="pill "+(healthy?"online":"warning");
+$("healthRows").innerHTML=[["إدخال الإشارات",h.signals>0,"615+ إشارة موجودة"],["مولّد الفرص",h.opportunities>0,"الجدول الحالي: "+num(h.opportunities)],["سجل المحرك",h.engine_runs>0,"Engine runs: "+num(h.engine_runs)],["Sentinel",h.sentinel_alerts>0,"Active/review: "+num(h.sentinel_alerts)],["Wallet layer",h.wallets>0,"المحافظ: "+num(h.wallets)],["Trade review",h.trade_intents>0,"نوايا التداول: "+num(h.trade_intents)]].map(x=>'<div class="status-row"><span>'+esc(x[0])+'</span><span class="'+(x[1]?"good":"warning-text")+'">'+esc(x[2])+'</span></div>').join("");
+$("strongSignals").innerHTML=state.signals.filter(s=>s.score>=85).slice(0,6).map(signalHtml).join("")||'<div class="empty">لا توجد إشارات قوية الآن.</div>';
+$("signalList").innerHTML=state.signals.map(signalHtml).join("")||'<div class="empty">لا توجد إشارات.</div>';
+$("opportunityList").innerHTML=state.opportunities.map(o=>'<article class="opp-card"><div class="row"><div><b>'+esc(o.title)+'</b><div class="muted">'+esc(o.source||"unknown")+' · '+esc(o.opportunity_type||"review")+'</div></div><div class="score">'+num(o.score)+'</div></div><div class="tags"><span class="tag">الثقة '+pct(o.confidence)+'</span><span class="tag">'+esc(o.status||"new")+'</span><span class="tag">القيمة '+(o.expected_value==null?"غير محددة":num(o.expected_value))+'</span></div><p>'+esc(o.description||"لا يوجد وصف إضافي.")+'</p></article>').join("")||'<div class="empty">لا توجد فرصة مثبتة. استخرجها من إشارة قوية عبر زر «تكوين فرصة للمراجعة».</div>';
+$("alertList").innerHTML=state.alerts.map(alertHtml).join("")||'<div class="empty">لا توجد تنبيهات نشطة.</div>';
+$("capitalList").innerHTML=state.capital.map(c=>'<article class="capital-card"><div class="row"><div><b>'+esc(c.label)+'</b><div class="muted">'+esc(c.source_type)+' · '+esc(c.asset||"")+'</div></div><div class="score">'+(c.estimated_daily_value==null?"—":num(c.estimated_daily_value)+" "+esc(c.currency||"USD"))+'</div></div><div class="tags"><span class="tag">الرصيد '+num(c.amount)+'</span><span class="tag">التكلفة '+num(c.operating_cost)+'</span><span class="tag">'+esc(c.status||"active")+'</span></div></article>').join("")||'<div class="empty">أضف مصدر رأس المال، مثل ViaBTC Mining.</div>';
+$("walletList").innerHTML=state.wallets.map(w=>'<article class="wallet-card"><div class="row"><div><b>'+esc(w.label)+'</b><div class="muted">'+esc(w.chain)+' · '+esc(w.purpose)+'</div></div><span class="pill online">watch</span></div><div class="tags"><span class="tag address">'+esc(w.address)+'</span></div></article>').join("")||'<div class="empty">لا توجد محافظ مراقبة.</div>';
+$("tradeList").innerHTML=state.trades.map(t=>'<article class="trade-card"><div class="row"><div><b>'+esc(t.asset_symbol)+' @ '+esc(t.venue)+'</b><div class="muted">'+esc(t.strategy)+' · '+esc(t.side)+'</div></div><span class="pill warning">'+esc(t.status||"review")+'</span></div><div class="tags"><span class="tag">Amount '+num(t.amount)+'</span><span class="tag">Max loss '+num(t.max_loss_pct)+'%</span><span class="tag">Max fee '+num(t.max_fee_pct)+'%</span><span class="tag">'+(t.requires_approval?"موافقة مطلوبة":"—")+'</span></div></article>').join("")||'<div class="empty">لا توجد نوايا تداول. ابدأ بوضع Watch/Review.</div>';
+$("automationPanel").innerHTML='<article class="card"><h3>🔌 مسار البيانات</h3><p>'+esc(h.pipeline_note)+'</p><div class="tags"><span class="tag">signals '+num(h.signals)+'</span><span class="tag">opportunities '+num(h.opportunities)+'</span><span class="tag">engine '+num(h.engine_runs)+'</span></div></article><article class="card"><h3>🛠️ المطلوب تشغيليًا</h3><p>طبقة توليد الفرص تحتاج Worker/Workflow يستهلك signal_events ويكتب opportunities + opportunity_signals + engine_runs. لن أعتبر الإشارة فرصة لمجرد ارتفاع score.</p><div class="actions-inline"><button data-action="dashboard_refresh" class="primary">إعادة فحص</button><button class="danger" onclick="toast('لا يوجد تنفيذ مالي تلقائي')">سلامة التنفيذ</button></div></article>';
 }
-async function callBackend(command){
- if(!session){showLogin();toast("أدخل مفتاح غرفة التحكم أولًا");return null}
- const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:session,command})});
- const j=await r.json().catch(()=>({}));
- if(r.status===401){session="";localStorage.removeItem("midad_cr_session");showLogin();setStatus(false);throw new Error("انتهت الجلسة، أعد الدخول")}
- if(!r.ok)throw new Error(j.error||("Backend "+r.status));
- return j;
-}
-function updateMetrics(reply){const s=String(reply||"");const m=s.match(/الإشارات:\s*(\\d+)[\\s\\S]*?الفرص:\s*(\\d+)/);if(m){$("signals").textContent=m[1];$("opportunities").textContent=m[2]}}
-async function run(action){try{const command=action==="status"?"/status":action==="revenue"?"/revenue":action==="scan"?"menu:radar":action==="opportunities"?"menu:opps":action==="alerts"?"menu:radar":action;const data=await callBackend(command);if(!data)return;setStatus(true);const reply=data.reply||"تم تنفيذ الأمر";updateMetrics(reply);addEvent(command,reply);$("lastSync").textContent=new Date().toLocaleTimeString("ar");}catch(e){setStatus(false);toast(e.message||"تعذر الاتصال بالخدمة");console.error(e)}}
-$("refresh").onclick=()=>run("status");
-$("loginBtn")?.addEventListener("click",login);
-$("controlKey")?.addEventListener("keydown",e=>{if(e.key==="Enter")login()});
-document.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>run(b.dataset.action));
-if(session){setStatus(true);run("status")}else{setStatus(false)}
+function signalHtml(s){const strong=Number(s.score)>=90;return '<article class="signal-card '+(strong?"critical":Number(s.score)>=85?"high":"")+'"><div class="row"><div><b>'+esc(s.type_label)+'</b><div class="muted">'+esc(s.source)+' · '+esc(s.entity||"كيان غير محدد")+'</div></div><div class="score">'+num(s.score)+'</div></div><div class="tags"><span class="tag">الثقة '+pct(s.confidence)+'</span><span class="tag">'+esc(time(s.occurred_at))+'</span></div><div class="actions-inline"><button onclick="promote(''+esc(s.id)+'')" class="primary">تكوين فرصة للمراجعة</button></div></article>'}
+function alertHtml(a){return '<article class="alert-card '+esc(a.severity)+'"><div class="row"><div><b>'+esc(a.title)+'</b><div class="muted">'+esc(a.entity||"")+' · '+esc(a.source)+'</div></div><div class="score">'+num(a.score)+'</div></div><div class="tags"><span class="tag">'+esc(a.severity)+'</span><span class="tag">الثقة '+pct(a.confidence)+'</span><span class="tag">'+esc(time(a.occurred_at))+'</span></div><p>'+esc(a.note)+'</p></article>'}
+async function promote(id){try{const j=await api({action:"promote_signal",signal_id:id});toast(j.opportunity?"تم تكوين فرصة للمراجعة":"تمت المعالجة");await load()}catch(e){toast(e.message)}}
+async function addForm(action,payload){try{await api({action,payload});toast("تم الحفظ");await load()}catch(e){toast(e.message)}}
+$("loginBtn").onclick=login;$("controlKey").onkeydown=e=>{if(e.key==="Enter")login()};$("refresh").onclick=load;
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));$("tab-"+b.dataset.tab).classList.add("active");});
+$("addWallet").onclick=()=>addForm("wallet_add",{label:$("walletLabel").value,chain:$("walletChain").value,address:$("walletAddress").value,purpose:$("walletPurpose").value});
+$("addTrade").onclick=()=>addForm("trade_add",{asset_symbol:$("tradeAsset").value,venue:$("tradeVenue").value,side:$("tradeSide").value,strategy:$("tradeStrategy").value,amount:$("tradeAmount").value,max_loss_pct:$("tradeLoss").value,max_fee_pct:$("tradeFee").value});
+$("addCapital").onclick=()=>addForm("capital_add",{label:$("capLabel").value,source_type:$("capType").value||"capital",asset:$("capAsset").value,amount:$("capAmount").value,estimated_daily_value:$("capDaily").value,operating_cost:$("capCost").value});
+window.promote=promote;
+if(session){setStatus(true);load()}else{showLogin(true);setStatus(false)}
