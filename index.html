@@ -1,44 +1,155 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>MIDAD Control Room</title>
+<meta name="telegram-web-app-capable" content="yes">
+<title>MIDAD Intelligence Control Room</title>
 <link rel="stylesheet" href="./styles.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div class="app">
-<header class="topbar">
-  <div><div class="eyebrow">MIDAD — INTELLIGENCE ORCHESTRATOR</div><h1>غرفة التحكم</h1></div>
-  <span id="status" class="pill offline">غير متصل</span>
-</header>
-<main>\n<section id="loginCard" class="card" style="margin-bottom:14px"><div class="section-head"><h3>🔐 دخول غرفة التحكم</h3><span>جلسة آمنة</span></div><p>المفتاح لا يُحفظ داخل GitHub. يُستخدم فقط لفتح جلسة مؤقتة.</p><input id="controlKey" type="password" autocomplete="off" placeholder="Control Room Key" style="width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:1px solid #29435e;background:#071522;color:#fff;margin:8px 0"><button id="loginBtn" class="primary" style="width:100%">دخول آمن</button></section>\n
-<section class="hero card">
-  <div><div class="label">CONTROL ROOM</div><h2>مركز قيادة مداد</h2><p>مراقبة الإشارات، الفرص، والتنبيهات من واجهة واحدة.</p></div>
-  <button id="refresh" class="primary">تحديث</button>
-</section>
-<section class="grid">
-  <article class="card metric"><span>الإشارات</span><strong id="signals">—</strong><small>آخر قراءة</small></article>
-  <article class="card metric"><span>الفرص</span><strong id="opportunities">—</strong><small>قابلة للمراجعة</small></article>
-  <article class="card metric"><span>التنبيهات</span><strong id="alerts">—</strong><small>حرجة / مهمة</small></article>
-</section>
-<section class="card">
- <div class="section-head"><h3>الأوامر</h3><span id="lastSync">لم تتم المزامنة</span></div>
- <div class="actions">
-  <button data-action="status">حالة النظام</button>
-  <button data-action="scan">فحص الإشارات</button>
-  <button data-action="opportunities">الفرص</button>
-  <button data-action="alerts">التنبيهات</button>
- </div>
-</section>
-<section class="card">
- <div class="section-head"><h3>آخر الأحداث</h3><span>Live-ready</span></div>
- <div id="events" class="events"><div class="empty">لا توجد بيانات بعد. اضغط «تحديث».</div></div>
-</section>
-</main>
-<footer>MIDAD Control Room · Secure client shell</footer>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">MIDAD — INTELLIGENCE ORCHESTRATOR</div>
+      <h1>غرفة التحكم</h1>
+      <div class="subline">الرادار → التحقق → الفرص → رأس المال → التنفيذ المراقب</div>
+    </div>
+    <div class="top-actions">
+      <span id="status" class="pill offline">غير متصل</span>
+      <button id="refresh" class="icon-btn" title="تحديث">↻</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="loginCard" class="card login-card">
+      <div class="section-head"><h3>🔐 دخول غرفة التحكم</h3><span>جلسة مؤقتة</span></div>
+      <p>مفتاح الدخول لا يُخزّن كنص صريح في GitHub. الجلسة تحفظ رمزًا مؤقتًا فقط.</p>
+      <input id="controlKey" type="password" autocomplete="off" placeholder="Control Room Key">
+      <button id="loginBtn" class="primary wide">دخول آمن</button>
+    </section>
+
+    <section class="hero card">
+      <div>
+        <div class="label">COMMAND CENTER</div>
+        <h2>مِداد لا يعرض رقمًا فقط؛ يشرح ماذا حدث ولماذا يستحق الانتباه.</h2>
+        <p id="pipelineNote">جارِ فحص مسار البيانات…</p>
+      </div>
+      <div class="hero-badges">
+        <span class="mini-badge">Signals Ingest</span>
+        <span class="mini-badge">Opportunity Review</span>
+        <span class="mini-badge">Capital</span>
+        <span class="mini-badge">Wallet Watch</span>
+        <span class="mini-badge">Trade Review</span>
+      </div>
+    </section>
+
+    <nav class="nav-tabs" aria-label="وحدات الغرفة">
+      <button class="nav active" data-tab="overview">نظرة عامة</button>
+      <button class="nav" data-tab="radar">الرادار</button>
+      <button class="nav" data-tab="opportunities">الفرص</button>
+      <button class="nav" data-tab="alerts">التنبيهات</button>
+      <button class="nav" data-tab="capital">رأس المال</button>
+      <button class="nav" data-tab="wallets">Wallets</button>
+      <button class="nav" data-tab="trade">التداول</button>
+      <button class="nav" data-tab="automation">الأتمة</button>
+    </nav>
+
+    <section id="tab-overview" class="tab-panel active">
+      <section class="metric-grid">
+        <article class="card metric"><span>الإشارات</span><strong id="signals">—</strong><small>كل الإشارات الداخلة</small></article>
+        <article class="card metric"><span>الفرص المثبتة</span><strong id="opportunities">—</strong><small>تحتاج مراجعة قبل التنفيذ</small></article>
+        <article class="card metric"><span>التنبيهات الحقيقية</span><strong id="sentinelAlerts">—</strong><small>Sentinel active/review</small></article>
+        <article class="card metric"><span>تنبيهات مشتقة</span><strong id="derivedAlerts">—</strong><small>من إشارات قوية فقط</small></article>
+        <article class="card metric"><span>تشغيلات المحرك</span><strong id="engineRuns">—</strong><small>Engine run ledger</small></article>
+        <article class="card metric"><span>عُقد المعرفة</span><strong id="entities">—</strong><small>كيانات مرصودة</small></article>
+      </section>
+
+      <section class="two-col">
+        <article class="card">
+          <div class="section-head"><h3>🧭 ماذا يعمل وماذا متوقف؟</h3><span id="healthBadge" class="pill offline">تشخيص</span></div>
+          <div id="healthRows" class="status-list"></div>
+        </article>
+        <article class="card">
+          <div class="section-head"><h3>⚡ آخر إشارات قوية</h3><span>التحقق قبل الترشيح</span></div>
+          <div id="strongSignals" class="list"></div>
+        </article>
+      </section>
+    </section>
+
+    <section id="tab-radar" class="tab-panel">
+      <div class="section-head page-title"><div><h2>📡 الرادار</h2><p>الإشارة = دليل أولي، وليست فرصة مؤكدة.</p></div><button data-action="dashboard_refresh" class="primary">تحديث الرادار</button></div>
+      <div id="signalList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-opportunities" class="tab-panel">
+      <div class="section-head page-title"><div><h2>🎯 الفرص</h2><p>الفرص المثبتة يدويًا أو آليًا فقط؛ لا نحول كل إشارة إلى فرصة.</p></div></div>
+      <div id="opportunityList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-alerts" class="tab-panel">
+      <div class="section-head page-title"><div><h2>🚨 التنبيهات</h2><p>نميز بين Alert فعلي من Sentinel وتنبيه مشتق من إشارة قوية.</p></div></div>
+      <div id="alertList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-capital" class="tab-panel">
+      <div class="section-head page-title"><div><h2>💰 رأس المال</h2><p>من أين يأتي المال، كم يدخل يوميًا، وما تكلفته.</p></div></div>
+      <article class="card">
+        <div class="form-grid">
+          <input id="capLabel" placeholder="مثال: ViaBTC Mining">
+          <input id="capType" placeholder="source_type: mining">
+          <input id="capAsset" placeholder="Asset: BTC">
+          <input id="capAmount" type="number" step="any" placeholder="الكمية الحالية">
+          <input id="capDaily" type="number" step="any" placeholder="القيمة اليومية المتوقعة USD">
+          <input id="capCost" type="number" step="any" placeholder="التكلفة اليومية USD">
+        </div>
+        <button id="addCapital" class="primary wide">+ إضافة مصدر رأس مال</button>
+      </article>
+      <div id="capitalList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-wallets" class="tab-panel">
+      <div class="section-head page-title"><div><h2>👛 المحافظ</h2><p>عناوين عامة للمراقبة فقط. لا تضع private keys أو seed phrases هنا.</p></div></div>
+      <article class="card">
+        <div class="form-grid">
+          <input id="walletLabel" placeholder="اسم المحفظة">
+          <input id="walletChain" placeholder="BTC / ETH / BSC / SOL...">
+          <input id="walletAddress" class="wide-field" placeholder="العنوان العام Public Address">
+          <input id="walletPurpose" placeholder="watch / treasury / mining / ops">
+        </div>
+        <button id="addWallet" class="primary wide">+ إضافة محفظة للمراقبة</button>
+      </article>
+      <div id="walletList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-trade" class="tab-panel">
+      <div class="section-head page-title"><div><h2>💹 التداول</h2><p>وضع Review / Paper أولًا. كل نية تداول تتطلب موافقة؛ لا توجد أوامر سوق تلقائية من هذه الواجهة.</p></div></div>
+      <article class="card">
+        <div class="form-grid">
+          <input id="tradeAsset" placeholder="BTC">
+          <input id="tradeVenue" placeholder="ViaBTC / CoinEx / Ourbit / ...">
+          <select id="tradeSide"><option value="watch">watch</option><option value="buy">buy</option><option value="sell">sell</option></select>
+          <input id="tradeStrategy" placeholder="strategy">
+          <input id="tradeAmount" type="number" step="any" placeholder="amount">
+          <input id="tradeLoss" type="number" step="any" placeholder="max loss %">
+          <input id="tradeFee" type="number" step="any" placeholder="max fee %">
+        </div>
+        <button id="addTrade" class="primary wide">+ حفظ نية تداول للمراجعة</button>
+      </article>
+      <div id="tradeList" class="cards-list"></div>
+    </section>
+
+    <section id="tab-automation" class="tab-panel">
+      <div class="section-head page-title"><div><h2>🤖 الأتمة</h2><p>هنا تظهر فجوة التشغيل الحقيقية، لا مجرد زر تجميلي.</p></div></div>
+      <div id="automationPanel" class="two-col"></div>
+    </section>
+  </main>
+
+  <footer>MIDAD Control Room · Secure shell · Telegram Mini App</footer>
 </div>
 <div id="toast" class="toast"></div>
 <script src="./app.js"></script>
-</body></html>
+</body>
+</html>
