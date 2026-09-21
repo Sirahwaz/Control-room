@@ -53,6 +53,7 @@
       <button class="nav" data-tab="alerts">التنبيهات</button>
       <button class="nav" data-tab="capital">رأس المال</button>
       <button class="nav" data-tab="wallets">Wallets</button>
+      <button class="nav" data-tab="exchanges">المنصات</button>
       <button class="nav" data-tab="trade">التداول</button>
       <button class="nav" data-tab="automation">الأتمة</button>
     </nav>
@@ -60,7 +61,7 @@
     <section id="tab-overview" class="tab-panel active">
       <section class="metric-grid">
         <article class="card metric"><span>الإشارات</span><strong id="signals">—</strong><small>كل الإشارات الداخلة</small></article>
-        <article class="card metric"><span>الفرص المثبتة</span><strong id="opportunities">—</strong><small>تحتاج مراجعة قبل التنفيذ</small></article>
+        <article class="card metric"><span>الفرص المثبتة</span><strong id="opportunities">—</strong><small>مرشحة · تحتاج تحقق</small></article>
         <article class="card metric"><span>التنبيهات الحقيقية</span><strong id="sentinelAlerts">—</strong><small>Sentinel active/review</small></article>
         <article class="card metric"><span>تنبيهات مشتقة</span><strong id="derivedAlerts">—</strong><small>من إشارات قوية فقط</small></article>
         <article class="card metric"><span>تشغيلات المحرك</span><strong id="engineRuns">—</strong><small>Engine run ledger</small></article>
@@ -85,7 +86,7 @@
     </section>
 
     <section id="tab-opportunities" class="tab-panel">
-      <div class="section-head page-title"><div><h2>🎯 الفرص</h2><p>الفرص المثبتة يدويًا أو آليًا فقط؛ لا نحول كل إشارة إلى فرصة.</p></div></div>
+      <div class="section-head page-title"><div><h2>🎯 الفرص المرشحة</h2><p>مرشحات ناتجة عن إشارات قوية؛ تحتاج تحقق الأدلة والرسوم والمخاطر قبل اعتمادها.</p></div><button id="runOppScan" class="primary">⚡ تشغيل محرك الفرص</button></div>
       <div id="opportunityList" class="cards-list"></div>
     </section>
 
@@ -124,6 +125,19 @@
       <div id="walletList" class="cards-list"></div>
     </section>
 
+
+    <section id="tab-exchanges" class="tab-panel">
+      <div class="section-head page-title"><div><h2>🏦 المنصات</h2><p>حسابات منصات للمراقبة/الورق أولًا، مع دعم العملات الرقمية وبدون تخزين مفاتيح سرية في الواجهة.</p></div></div>
+      <article class="card">
+        <div class="form-grid">
+          <input id="exchangeName" placeholder="CoinEx / Ourbit / Binance / ...">
+          <input id="exchangeLabel" placeholder="اسم الحساب">
+          <input id="exchangeRef" placeholder="Account reference أو label">
+        </div>
+        <button id="addExchange" class="primary wide">+ إضافة منصة للمراقبة</button>
+      </article>
+      <div id="exchangeList" class="cards-list"></div>
+    </section>
     <section id="tab-trade" class="tab-panel">
       <div class="section-head page-title"><div><h2>💹 التداول</h2><p>وضع Review / Paper أولًا. كل نية تداول تتطلب موافقة؛ لا توجد أوامر سوق تلقائية من هذه الواجهة.</p></div></div>
       <article class="card">
