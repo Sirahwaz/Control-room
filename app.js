@@ -1,14 +1,48 @@
-const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#07111f");tg.setBackgroundColor("#07111f")}catch(e){}}const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
+const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#07111f");tg.setBackgroundColor("#07111f")}catch(e){}}
+const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
 function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[c]))}
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
 function showLogin(show=true){$("loginCard").style.display=show?"block":"none"}
+function isTelegramMiniApp(){return !!(tg&&tg.initData)}
+function setAuthMessage(t,showButton=false){$("authMessage").textContent=t;$("openTelegramBtn").style.display=showButton?"block":"none"}
+
 async function api(body){if(!session){showLogin(true);throw new Error("سجّل الدخول أولًا")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
 async function login(){const key=$("controlKey").value.trim();if(key.length<12){toast("مفتاح الدخول غير صالح");return}$("loginBtn").disabled=true;try{const j=await apiWithoutSession({key});session=j.token;localStorage.setItem("midad_cr_session",session);$("controlKey").value="";showLogin(false);setStatus(true);await load()}catch(e){toast(e.message)}finally{$("loginBtn").disabled=false}}
 async function apiWithoutSession(body){const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");return j}
-async function load(){try{const j=await api({action:"dashboard"});state=j;showLogin(false);setStatus(true);render();}catch(e){setStatus(false);if(session)toast(e.message)}}
+async function loginWithTelegram(){
+  if(!isTelegramMiniApp()){
+    setStatus(false,"افتح من Telegram");
+    showLogin(true);
+    setAuthMessage("هذه غرفة التحكم تعمل بدون مفتاح عند فتحها من Telegram Mini App.",true);
+    $("openTelegramBtn").onclick=()=>{location.href="https://t.me/Sirdeep_bot"};
+    return false;
+  }
+  try{
+    setStatus(false,"جارِ التحقق…");
+    setAuthMessage("جارِ التحقق من Telegram…");
+    const j=await apiWithoutSession({telegram_init_data:tg.initData});
+    session=j.token;
+    localStorage.setItem("midad_cr_session",session);
+    showLogin(false);
+    setStatus(true,"Telegram متصل");
+    await load();
+    await loadMining();
+    return true;
+  }catch(e){
+    session="";
+    localStorage.removeItem("midad_cr_session");
+    setStatus(false,"تعذر التحقق");
+    showLogin(true);
+    setAuthMessage("تعذر التحقق من جلسة Telegram. أغلق Mini App وافتحه من البوت مرة أخرى.",false);
+    toast(e.message||"تعذر التحقق");
+    return false;
+  }
+}
+async function load(){try{const j=await api({action:"dashboard"});state=j;showLogin(false);setStatus(true,"Telegram متصل");render();return true}catch(e){if(String(e.message||"").includes("انتهت الجلسة")){return await loginWithTelegram()}setStatus(false);toast(e.message);return false}}
 function render(){const h=state.health; $("signals").textContent=num(h.signals);$("opportunities").textContent=num(h.opportunities);$("sentinelAlerts").textContent=num(h.sentinel_alerts);$("derivedAlerts").textContent=num(state.alerts.filter(a=>a.kind==="derived_signal").length);$("engineRuns").textContent=num(h.engine_runs);$("entities").textContent=num(h.entities);$("pipelineNote").textContent=h.pipeline_note;const healthy=h.pipeline_ok; $("healthBadge").textContent=healthy?"المسار يعمل":"يوجد انقطاع تشغيلي";$("healthBadge").className="pill "+(healthy?"online":"warning");
 $("healthRows").innerHTML=[["إدخال الإشارات",h.signals>0,"615+ إشارة موجودة"],["مولّد الفرص",h.opportunities>0,"الجدول الحالي: "+num(h.opportunities)],["سجل المحرك",h.engine_runs>0,"Engine runs: "+num(h.engine_runs)],["Sentinel",h.sentinel_alerts>0,"Active/review: "+num(h.sentinel_alerts)],["Wallet layer",h.wallets>0,"المحافظ: "+num(h.wallets)],["Trade review",h.trade_intents>0,"نوايا التداول: "+num(h.trade_intents)]].map(x=>'<div class="status-row"><span>'+esc(x[0])+'</span><span class="'+(x[1]?"good":"warning-text")+'">'+esc(x[2])+'</span></div>').join("");
 $("strongSignals").innerHTML=state.signals.filter(s=>s.score>=85).slice(0,6).map(signalHtml).join("")||'<div class="empty">لا توجد إشارات قوية الآن.</div>';
@@ -26,7 +60,7 @@ function signalHtml(s){const strong=Number(s.score)>=90;return '<article class="
 function alertHtml(a){return '<article class="alert-card '+esc(a.severity)+'"><div class="row"><div><b>'+esc(a.title)+'</b><div class="muted">'+esc(a.entity||"")+' · '+esc(a.source)+'</div></div><div class="score">'+num(a.score)+'</div></div><div class="tags"><span class="tag">'+esc(a.severity)+'</span><span class="tag">الثقة '+pct(a.confidence)+'</span><span class="tag">'+esc(time(a.occurred_at))+'</span></div><p>'+esc(a.note)+'</p></article>'}
 async function promote(id){try{const j=await api({action:"promote_signal",signal_id:id});toast(j.opportunity?"تم تكوين فرصة للمراجعة":"تمت المعالجة");await load()}catch(e){toast(e.message)}}
 async function addForm(action,payload){try{await api({action,payload});toast("تم الحفظ");await load()}catch(e){toast(e.message)}}
-$("loginBtn").onclick=login;$("controlKey").onkeydown=e=>{if(e.key==="Enter")login()};$("refresh").onclick=load;$("runMining").onclick=async()=>{try{const j=await api({action:"run_mining_monitor"});toast(j.configured?"ViaBTC تمت مزامنته":"ViaBTC API غير مهيأ بعد");await loadMining()}catch(e){toast(e.message)}};
+$("refresh").onclick=load;$("runMining").onclick=async()=>{try{const j=await api({action:"run_mining_monitor"});toast(j.configured?"ViaBTC تمت مزامنته":"ViaBTC API غير مهيأ بعد");await loadMining()}catch(e){toast(e.message)}};
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));$("tab-"+b.dataset.tab).classList.add("active");});
 $("addWallet").onclick=()=>addForm("wallet_add",{label:$("walletLabel").value,chain:$("walletChain").value,address:$("walletAddress").value,purpose:$("walletPurpose").value});
 $("addExchange").onclick=()=>addForm("exchange_add",{exchange:$("exchangeName").value,label:$("exchangeLabel").value,account_ref:$("exchangeRef").value});
@@ -34,4 +68,18 @@ $("runOppScan").onclick=async()=>{try{const j=await api({action:"run_opportunity
 $("addTrade").onclick=()=>addForm("trade_add",{asset_symbol:$("tradeAsset").value,venue:$("tradeVenue").value,side:$("tradeSide").value,strategy:$("tradeStrategy").value,amount:$("tradeAmount").value,max_loss_pct:$("tradeLoss").value,max_fee_pct:$("tradeFee").value});
 $("addCapital").onclick=()=>addForm("capital_add",{label:$("capLabel").value,source_type:$("capType").value||"capital",asset:$("capAsset").value,amount:$("capAmount").value,estimated_daily_value:$("capDaily").value,operating_cost:$("capCost").value});
 window.promote=promote;
-if(session){setStatus(true);load();loadMining()}else{showLogin(true);setStatus(false)}
+async function bootstrapAuth(){
+  if(isTelegramMiniApp()){
+    if(session){
+      const ok=await load();
+      if(ok){await loadMining();return}
+    }
+    await loginWithTelegram();
+  }else{
+    showLogin(true);
+    setStatus(false,"افتح من Telegram");
+    setAuthMessage("افتح غرفة التحكم من داخل Telegram عبر @Sirdeep_bot — الدخول بالمفتاح أُلغي.",true);
+    $("openTelegramBtn").onclick=()=>{location.href="https://t.me/Sirdeep_bot"};
+  }
+}
+bootstrapAuth();
