@@ -1,5 +1,9 @@
-const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};const tg=window.Telegram?.WebApp;
-if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#07111f");tg.setBackgroundColor("#07111f")}catch(e){}}
+const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room"};
+const tg=(window.Telegram&&window.Telegram.WebApp)?window.Telegram.WebApp:null;
+if(tg){
+  try{if(typeof tg.ready==="function")tg.ready();if(typeof tg.expand==="function")tg.expand();if(typeof tg.setHeaderColor==="function")tg.setHeaderColor("#07111f");if(typeof tg.setBackgroundColor==="function")tg.setBackgroundColor("#07111f");}
+  catch(e){console.warn("MIDAD Telegram bootstrap warning",e);}
+}
 const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
 function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -7,8 +11,23 @@ function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}functi
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
 function showLogin(show=true){}
-function isTelegramMiniApp(){return !!(tg&&tg.initData)}
+function isTelegramMiniApp(){return !!(tg&&typeof tg.initData==="string"&&tg.initData.trim())}
+function isTelegramContext(){return !!tg}
 function setAuthMessage(t,showButton=false){}
+function setBootFailure(message){
+  setStatus(false,message||"تعذر تشغيل الواجهة");
+  const p=$("pipelineNote");if(p)p.textContent=message||"تعذر تشغيل واجهة غرفة التحكم.";
+}
+window.addEventListener("error",e=>{
+  const msg=e?.error?.message||e?.message||"JavaScript runtime error";
+  console.error("MIDAD Control Room error",e?.error||e);
+  if($("status")?.textContent?.includes("جار"))setBootFailure("خطأ في تشغيل الواجهة: "+msg);
+});
+window.addEventListener("unhandledrejection",e=>{
+  const msg=e?.reason?.message||String(e?.reason||"Unhandled promise rejection");
+  console.error("MIDAD Control Room rejection",e?.reason);
+  if($("status")?.textContent?.includes("جار"))setBootFailure("خطأ اتصال: "+msg);
+})
 
 async function api(body){if(!session){throw new Error("جلسة Telegram غير جاهزة")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
 
@@ -66,14 +85,24 @@ $("addTrade").onclick=()=>addForm("trade_add",{asset_symbol:$("tradeAsset").valu
 $("addCapital").onclick=()=>addForm("capital_add",{label:$("capLabel").value,source_type:$("capType").value||"capital",asset:$("capAsset").value,amount:$("capAmount").value,estimated_daily_value:$("capDaily").value,operating_cost:$("capCost").value});
 window.promote=promote;
 async function bootstrapAuth(){
-  if(isTelegramMiniApp()){
-    if(session){
-      const ok=await load();
-      if(ok){await loadMining();return}
+  try{
+    if(isTelegramMiniApp()){
+      if(session){
+        const ok=await load();
+        if(ok){await loadMining();return}
+      }
+      await loginWithTelegram();
+      return;
     }
-    await loginWithTelegram();
-  }else{
-    setStatus(false,"افتح من Telegram");
+    if(isTelegramContext()){
+      setBootFailure("Telegram فتح الواجهة بدون initData؛ تحقق من إعداد Mini App في BotFather.");
+      return;
+    }
+    setBootFailure("وضع WebApp: الواجهة تعمل، لكن فتح بيانات MIDAD يتطلب تشغيلها من Telegram.");
+  }catch(e){
+    console.error("MIDAD bootstrap failed",e);
+    setBootFailure("تعذر تشغيل غرفة التحكم");
+    toast(e?.message||"تعذر التشغيل");
   }
 }
 bootstrapAuth();
