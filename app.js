@@ -4,7 +4,11 @@ if(tg){
   try{if(typeof tg.ready==="function")tg.ready();if(typeof tg.expand==="function")tg.expand();if(typeof tg.setHeaderColor==="function")tg.setHeaderColor("#07111f");if(typeof tg.setBackgroundColor==="function")tg.setBackgroundColor("#07111f");}
   catch(e){console.warn("MIDAD Telegram bootstrap warning",e);}
 }
-const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
+const $=id=>document.getElementById(id);
+function storageGet(k){try{return localStorage.getItem(k)||""}catch(e){console.warn("MIDAD storage read blocked",e);return ""}}
+function storageSet(k,v){try{localStorage.setItem(k,v)}catch(e){console.warn("MIDAD storage write blocked",e)}}
+function storageRemove(k){try{localStorage.removeItem(k)}catch(e){console.warn("MIDAD storage remove blocked",e)}}
+let session=storageGet("midad_cr_session");let state=null;
 function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
@@ -29,7 +33,7 @@ window.addEventListener("unhandledrejection",e=>{
   if($("status")?.textContent?.includes("جار"))setBootFailure("خطأ اتصال: "+msg);
 })
 
-async function api(body){if(!session){throw new Error("جلسة Telegram غير جاهزة")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
+async function api(body){if(!session){throw new Error("جلسة Telegram غير جاهزة")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";storageRemove("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
 
 async function apiWithoutSession(body){const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");return j}
 async function loginWithTelegram(){
@@ -42,7 +46,7 @@ async function loginWithTelegram(){
     setAuthMessage("جارِ الاتصال…");
     const j=await apiWithoutSession({telegram_init_data:tg.initData});
     session=j.token;
-    localStorage.setItem("midad_cr_session",session);
+    storageSet("midad_cr_session",session);
     showLogin(false);
     setStatus(true,"Telegram متصل");
     await load();
@@ -50,7 +54,7 @@ async function loginWithTelegram(){
     return true;
   }catch(e){
     session="";
-    localStorage.removeItem("midad_cr_session");
+    storageRemove("midad_cr_session");
     setStatus(false,"تعذر التحقق");
     showLogin(true);
     setAuthMessage("تعذر الاتصال بغرفة التحكم.",false);
