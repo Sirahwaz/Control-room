@@ -215,3 +215,5 @@ async function bootstrapAuth(){
   }
 }
 
+// Start the Control Room auth/data bootstrap after the deferred script is loaded.
+bootstrapAuth();
