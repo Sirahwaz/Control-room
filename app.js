@@ -2,7 +2,7 @@ const CONFIG={controlRoomUrl:"https://froegigfmpmvtecztfbf.supabase.co/functions
 if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#07111f");tg.setBackgroundColor("#07111f")}catch(e){}}
 const $=id=>document.getElementById(id);let session=localStorage.getItem("midad_cr_session")||"";let state=null;
 function toast(t){const x=$("toast");x.textContent=t;x.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>x.style.display="none",3000)}
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[c]))}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
