@@ -6,24 +6,21 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
-function showLogin(show=true){$("loginCard").style.display=show?"block":"none"}
+function showLogin(show=true){}
 function isTelegramMiniApp(){return !!(tg&&tg.initData)}
-function setAuthMessage(t,showButton=false){$("authMessage").textContent=t;$("openTelegramBtn").style.display=showButton?"block":"none"}
+function setAuthMessage(t,showButton=false){}
 
-async function api(body){if(!session){showLogin(true);throw new Error("سجّل الدخول أولًا")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
-async function login(){const key=$("controlKey").value.trim();if(key.length<12){toast("مفتاح الدخول غير صالح");return}$("loginBtn").disabled=true;try{const j=await apiWithoutSession({key});session=j.token;localStorage.setItem("midad_cr_session",session);$("controlKey").value="";showLogin(false);setStatus(true);await load()}catch(e){toast(e.message)}finally{$("loginBtn").disabled=false}}
+async function api(body){if(!session){throw new Error("جلسة Telegram غير جاهزة")}const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,token:session})});const j=await r.json().catch(()=>({}));if(r.status===401){session="";localStorage.removeItem("midad_cr_session");setStatus(false);showLogin(true);throw new Error("انتهت الجلسة، أعد الدخول")}if(!r.ok||j.error)throw new Error(j.error||"تعذر تنفيذ الطلب");return j}
+
 async function apiWithoutSession(body){const r=await fetch(CONFIG.controlRoomUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok||!j.token)throw new Error(j.error||"رفض الدخول");return j}
 async function loginWithTelegram(){
   if(!isTelegramMiniApp()){
     setStatus(false,"افتح من Telegram");
-    showLogin(true);
-    setAuthMessage("هذه غرفة التحكم تعمل بدون مفتاح عند فتحها من Telegram Mini App.",true);
-    $("openTelegramBtn").onclick=()=>{location.href="https://t.me/Sirdeep_bot"};
     return false;
   }
   try{
     setStatus(false,"جارِ التحقق…");
-    setAuthMessage("جارِ التحقق من Telegram…");
+    setAuthMessage("جارِ الاتصال…");
     const j=await apiWithoutSession({telegram_init_data:tg.initData});
     session=j.token;
     localStorage.setItem("midad_cr_session",session);
@@ -37,7 +34,7 @@ async function loginWithTelegram(){
     localStorage.removeItem("midad_cr_session");
     setStatus(false,"تعذر التحقق");
     showLogin(true);
-    setAuthMessage("تعذر التحقق من جلسة Telegram. أغلق Mini App وافتحه من البوت مرة أخرى.",false);
+    setAuthMessage("تعذر الاتصال بغرفة التحكم.",false);
     toast(e.message||"تعذر التحقق");
     return false;
   }
@@ -76,10 +73,7 @@ async function bootstrapAuth(){
     }
     await loginWithTelegram();
   }else{
-    showLogin(true);
     setStatus(false,"افتح من Telegram");
-    setAuthMessage("افتح غرفة التحكم من داخل Telegram عبر @Sirdeep_bot — الدخول بالمفتاح أُلغي.",true);
-    $("openTelegramBtn").onclick=()=>{location.href="https://t.me/Sirdeep_bot"};
   }
 }
 bootstrapAuth();
