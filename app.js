@@ -14,31 +14,28 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function pct(v){const n=Number(v||0);return (n<=1?n*100:n).toFixed(0)+"%"}function num(v){return v==null||v===""?"—":Number(v).toLocaleString("ar")}
 function time(v){if(!v)return "—";try{return new Date(v).toLocaleString("ar",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}catch{return v}}
 function setStatus(ok,text){$("status").textContent=text|| (ok?"متصل":"غير متصل");$("status").className="pill "+(ok?"online":"offline")}
-function showLogin(show=true){
-  if(!show){if(loginOverlay){loginOverlay.remove();loginOverlay=null;}return;}
+async function showLogin(show=true){
+  if(!show)return;
+  if(isTelegramMiniApp())return;
   if(loginOverlay)return;
-  const wrap=document.createElement("div");
-  wrap.id="midad-web-login";
-  wrap.style.cssText="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:rgba(3,10,20,.88);backdrop-filter:blur(8px)";
-  wrap.innerHTML='<div style="width:min(460px,100%);box-sizing:border-box;background:#0b1728;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.35)"><div style="font-size:12px;opacity:.7;margin-bottom:8px">MIDAD CONTROL ROOM</div><h2 style="margin:0 0 8px">دخول غرفة التحكم</h2><p style="margin:0 0 16px;opacity:.78">وضع الويب يحتاج مفتاح وصول مخصصًا. لا تضع هنا أي Telegram token أو Supabase key.</p><input id="midadWebKey" type="password" autocomplete="off" placeholder="مفتاح غرفة التحكم" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:#07111f;color:#fff;outline:none"><div id="midadWebMsg" style="min-height:20px;margin:10px 0;color:#ffcf66;font-size:13px"></div><button id="midadWebLoginBtn" style="width:100%;padding:13px 14px;border:0;border-radius:12px;background:#1f8fff;color:#fff;font-weight:700;cursor:pointer">دخول آمن</button></div>';
-  document.body.appendChild(wrap);loginOverlay=wrap;
-  const input=$("midadWebKey"),btn=$("midadWebLoginBtn"),msg=$("midadWebMsg");
-  const submit=async()=>{
-    const key=String(input?.value||"").trim();
-    if(!key){if(msg)msg.textContent="أدخل مفتاح الوصول.";return;}
-    btn.disabled=true;if(msg)msg.textContent="جارِ التحقق…";
-    try{
-      const j=await apiWithoutSession({access_key:key});
-      session=j.token;authMode="web";storageSet("midad_cr_session",session);showLogin(false);setStatus(true,"Web متصل");await load();await loadMining();
-    }catch(e){if(msg)msg.textContent=e?.message||"مفتاح غير صالح";btn.disabled=false;}
-  };
-  btn.addEventListener("click",submit);
-  input.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
-  setTimeout(()=>input?.focus(),0);
+  loginOverlay=true;
+  try{
+    const key=window.prompt("MIDAD Control Room\\nأدخل مفتاح وصول الويب:");
+    if(!key){setStatus(false,"Web ينتظر مفتاح الدخول");setBootFailure("وضع الويب جاهز؛ أدخل مفتاح غرفة التحكم لفتح البيانات.");return;}
+    setStatus(false,"جارِ التحقق…");
+    const j=await apiWithoutSession({access_key:String(key).trim()});
+    session=j.token;authMode="web";storageSet("midad_cr_session",session);
+    setStatus(true,"Web متصل");showLogin(false);
+    await load();await loadMining();
+  }catch(e){
+    setStatus(false,"تعذر التحقق");
+    setBootFailure("تعذر دخول غرفة التحكم: "+(e?.message||"مفتاح غير صالح"));
+    toast(e?.message||"مفتاح غير صالح");
+  }finally{loginOverlay=false;}
 }
 function isTelegramMiniApp(){return !!(tg&&typeof tg.initData==="string"&&tg.initData.trim())}
 function isTelegramContext(){return !!tg}
-function setAuthMessage(t){const m=$("midadWebMsg");if(m)m.textContent=t||"";}
+function setAuthMessage(t){}
 function setBootFailure(message){
   setStatus(false,message||"تعذر تشغيل الواجهة");
   const p=$("pipelineNote");if(p)p.textContent=message||"تعذر تشغيل واجهة غرفة التحكم.";
@@ -125,11 +122,11 @@ $("alertList").innerHTML=state.alerts.map(alertHtml).join("")||'<div class="empt
 $("capitalList").innerHTML=state.capital.map(c=>'<article class="capital-card"><div class="row"><div><b>'+esc(c.label)+'</b><div class="muted">'+esc(c.source_type)+' · '+esc(c.asset||"")+'</div></div><div class="score">'+(c.estimated_daily_value==null?"—":num(c.estimated_daily_value)+" "+esc(c.currency||"USD"))+'</div></div><div class="tags"><span class="tag">الرصيد '+num(c.amount)+'</span><span class="tag">التكلفة '+num(c.operating_cost)+'</span><span class="tag">'+esc(c.status||"active")+'</span></div></article>').join("")||'<div class="empty">أضف مصدر رأس المال، مثل ViaBTC Mining.</div>';
 $("walletList").innerHTML=state.wallets.map(w=>'<article class="wallet-card"><div class="row"><div><b>'+esc(w.label)+'</b><div class="muted">'+esc(w.chain)+' · '+esc(w.purpose)+'</div></div><span class="pill online">watch</span></div><div class="tags"><span class="tag address">'+esc(w.address)+'</span></div></article>').join("")||'<div class="empty">لا توجد محافظ مراقبة.</div>';
 $("exchangeList").innerHTML=state.exchanges.map(x=>'<article class="wallet-card"><div class="row"><div><b>'+esc(x.exchange)+' · '+esc(x.label)+'</b><div class="muted">'+esc(x.mode)+' · '+esc(x.status)+'</div></div><span class="pill '+(x.status==="connected"?"online":"warning")+'">'+esc(x.supports_crypto?"crypto":"fiat-only")+'</span></div><div class="tags"><span class="tag">إيداع '+(x.deposit_enabled?"متاح":"غير مفعّل")+'</span><span class="tag">سحب '+(x.withdrawal_enabled?"متاح":"غير مفعّل")+'</span></div></article>').join("")||'<div class="empty">لا توجد منصات مسجلة بعد.</div>';$("tradeList").innerHTML=state.trades.map(t=>'<article class="trade-card"><div class="row"><div><b>'+esc(t.asset_symbol)+' @ '+esc(t.venue)+'</b><div class="muted">'+esc(t.strategy)+' · '+esc(t.side)+'</div></div><span class="pill warning">'+esc(t.status||"review")+'</span></div><div class="tags"><span class="tag">Amount '+num(t.amount)+'</span><span class="tag">Max loss '+num(t.max_loss_pct)+'%</span><span class="tag">Max fee '+num(t.max_fee_pct)+'%</span><span class="tag">'+(t.requires_approval?"موافقة مطلوبة":"—")+'</span></div></article>').join("")||'<div class="empty">لا توجد نوايا تداول. ابدأ بوضع Watch/Review.</div>';
-$("automationPanel").innerHTML='<article class="card"><h3>🔌 مسار البيانات</h3><p>'+esc(h.pipeline_note)+'</p><div class="tags"><span class="tag">signals '+num(h.signals)+'</span><span class="tag">opportunities '+num(h.opportunities)+'</span><span class="tag">engine '+num(h.engine_runs)+'</span></div></article><article class="card"><h3>🛠️ المطلوب تشغيليًا</h3><p>طبقة توليد الفرص تحتاج Worker/Workflow يستهلك signal_events ويكتب opportunities + opportunity_signals + engine_runs. لن أعتبر الإشارة فرصة لمجرد ارتفاع score.</p><div class="actions-inline"><button data-action="dashboard_refresh" class="primary">إعادة فحص</button><button class="danger" onclick="toast('لا يوجد تنفيذ مالي تلقائي')">سلامة التنفيذ</button></div></article>';
+$("automationPanel").innerHTML='<article class="card"><h3>🔌 مسار البيانات</h3><p>'+esc(h.pipeline_note)+'</p><div class="tags"><span class="tag">signals '+num(h.signals)+'</span><span class="tag">opportunities '+num(h.opportunities)+'</span><span class="tag">engine '+num(h.engine_runs)+'</span></div></article><article class="card"><h3>🛠️ المطلوب تشغيليًا</h3><p>طبقة توليد الفرص تحتاج Worker/Workflow يستهلك signal_events ويكتب opportunities + opportunity_signals + engine_runs. لن أعتبر الإشارة فرصة لمجرد ارتفاع score.</p><div class="actions-inline"><button data-action="dashboard_refresh" class="primary">إعادة فحص</button><button class="danger" onclick="toast(&quot;لا يوجد تنفيذ مالي تلقائي&quot;)">سلامة التنفيذ</button></div></article>';
 }
 function renderMining(accounts){$("miningList").innerHTML=(accounts||[]).map(x=>'<article class="capital-card"><div class="row"><div><b>'+esc(x.label)+'</b><div class="muted">'+esc(x.provider)+' · '+esc(x.coin)+' · '+esc(x.mode)+'</div></div><span class="pill '+(x.status==="connected"?"online":x.status==="planned"?"warning":"offline")+'">'+esc(x.status)+'</span></div><div class="tags"><span class="tag">Hashrate '+num(x.last_hashrate_ths)+' TH/s</span><span class="tag">Workers '+num(x.last_worker_count)+'</span><span class="tag">'+(x.read_only?"Read-only":"—")+'</span><span class="tag">آخر تحديث '+esc(time(x.last_snapshot_at))+'</span></div></article>').join("")||'<div class="empty">لا يوجد حساب تعدين مسجل بعد.</div>'}
 async function loadMining(){try{const j=await api({action:"mining_status"});renderMining(j.accounts)}catch(e){toast(e.message)}}
-function signalHtml(s){const strong=Number(s.score)>=90;return '<article class="signal-card '+(strong?"critical":Number(s.score)>=85?"high":"")+'"><div class="row"><div><b>'+esc(s.type_label)+'</b><div class="muted">'+esc(s.source)+' · '+esc(s.entity||"كيان غير محدد")+'</div></div><div class="score">'+num(s.score)+'</div></div><div class="tags"><span class="tag">الثقة '+pct(s.confidence)+'</span><span class="tag">'+esc(time(s.occurred_at))+'</span></div><div class="actions-inline"><button onclick="promote(''+esc(s.id)+'')" class="primary">تكوين فرصة للمراجعة</button></div></article>'}
+function signalHtml(s){const strong=Number(s.score)>=90;return '<article class="signal-card '+(strong?"critical":Number(s.score)>=85?"high":"")+'"><div class="row"><div><b>'+esc(s.type_label)+'</b><div class="muted">'+esc(s.source)+' · '+esc(s.entity||"كيان غير محدد")+'</div></div><div class="score">'+num(s.score)+'</div></div><div class="tags"><span class="tag">الثقة '+pct(s.confidence)+'</span><span class="tag">'+esc(time(s.occurred_at))+'</span></div><div class="actions-inline"><button onclick="promote(&quot;'+esc(s.id)+'&quot;)" class="primary">تكوين فرصة للمراجعة</button></div></article>'}
 function alertHtml(a){return '<article class="alert-card '+esc(a.severity)+'"><div class="row"><div><b>'+esc(a.title)+'</b><div class="muted">'+esc(a.entity||"")+' · '+esc(a.source)+'</div></div><div class="score">'+num(a.score)+'</div></div><div class="tags"><span class="tag">'+esc(a.severity)+'</span><span class="tag">الثقة '+pct(a.confidence)+'</span><span class="tag">'+esc(time(a.occurred_at))+'</span></div><p>'+esc(a.note)+'</p></article>'}
 async function promote(id){try{const j=await api({action:"promote_signal",signal_id:id});toast(j.opportunity?"تم تكوين فرصة للمراجعة":"تمت المعالجة");await load()}catch(e){toast(e.message)}}
 async function addForm(action,payload){try{await api({action,payload});toast("تم الحفظ");await load()}catch(e){toast(e.message)}}
