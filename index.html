@@ -52,6 +52,7 @@
       <button class="nav" data-tab="exchanges">المنصات</button>
       <button class="nav" data-tab="trade">التداول</button>
       <button class="nav" data-tab="automation">الأتمة</button>
+      <button class="nav" data-tab="agent">🧠 Agent</button>
     </nav>
 
     <section id="tab-overview" class="tab-panel active">
@@ -161,11 +162,49 @@
       <div class="section-head page-title"><div><h2>🤖 الأتمة</h2><p>هنا تظهر فجوة التشغيل الحقيقية، لا مجرد زر تجميلي.</p></div></div>
       <div id="automationPanel" class="two-col"></div>
     </section>
+
+    <section id="tab-agent" class="tab-panel">
+      <div class="section-head page-title">
+        <div><h2>🧠 MIDAD Agent Control Plane</h2><p>الوكيل يتصرف تلقائيًا في الحالات منخفضة المخاطر؛ القرارات الحساسة تمر بالموافقة البشرية.</p></div>
+        <button id="runOsint" class="primary">📡 مزامنة OSINT</button>
+      </div>
+
+      <section class="metric-grid">
+        <article class="card metric"><span>موافقات معلّقة</span><strong id="pendingApprovals">—</strong><small>Human-in-the-loop</small></article>
+        <article class="card metric"><span>العملاء</span><strong id="clientCount">—</strong><small>Client Profiles</small></article>
+        <article class="card metric"><span>المحادثات المفتوحة</span><strong id="conversationCount">—</strong><small>Conversations</small></article>
+        <article class="card metric"><span>طلبات الدفع</span><strong id="paymentCount">—</strong><small>Payment Intents</small></article>
+        <article class="card metric"><span>أحداث OSINT</span><strong id="osintEventCount">—</strong><small>Evidence events</small></article>
+        <article class="card metric"><span>مصادر OSINT</span><strong id="osintSourceCount">—</strong><small>Enabled sources</small></article>
+      </section>
+
+      <section class="two-col">
+        <article class="card">
+          <div class="section-head"><h3>🛂 الموافقات</h3><span>لا إرسال نهائي ولا حركة أموال دون البوابة المطلوبة</span></div>
+          <div id="approvalList" class="cards-list"></div>
+        </article>
+        <article class="card">
+          <div class="section-head"><h3>👤 العملاء</h3><span>لغة، تاريخ، تفضيلات، ودرجة الثقة</span></div>
+          <div id="clientList" class="cards-list"></div>
+        </article>
+      </section>
+
+      <section class="two-col">
+        <article class="card">
+          <div class="section-head"><h3>💳 المدفوعات</h3><span>Crypto-first / verification-first</span></div>
+          <div id="paymentList" class="cards-list"></div>
+        </article>
+        <article class="card">
+          <div class="section-head"><h3>🛰️ OSINT</h3><span>Evidence → corroboration → alert</span></div>
+          <div id="osintList" class="cards-list"></div>
+        </article>
+      </section>
+    </section>
   </main>
 
   <footer>MIDAD Control Room · Telegram Mini App</footer>
 </div>
 <div id="toast" class="toast"></div>
-<script defer src="./app.js?v=70bcdff"></script>
+<script defer src="./app.js?v=controlplane-v1"></script>
 </body>
 </html>
