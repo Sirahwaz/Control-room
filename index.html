@@ -11,7 +11,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
 </head>
 <body>
-<div id="app" class="app" aria-live="polite">
+<div id="app" class="app" aria-live="polite"><div id="midadBootGuard" style="display:none;min-height:100vh;padding:28px;background:#05070c;color:#edf5ff;font-family:system-ui,sans-serif"><div style="max-width:760px;margin:10vh auto;border:1px solid #243246;border-radius:18px;padding:24px;background:#0b1019"><div style="font-size:11px;letter-spacing:.14em;color:#5be7d9;font-weight:800">MIDAD // BOOT DIAGNOSTIC</div><h2 style="margin:10px 0">تعذر تشغيل غرفة التحكم</h2><p id="midadBootError" style="line-height:1.8;color:#9fb0c3">حدث خطأ غير متوقع أثناء تهيئة الواجهة.</p><button onclick="location.reload()" style="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #243246;background:#111925;color:#edf5ff">إعادة المحاولة</button></div></div>
   <aside class="sidebar" id="sidebar">
     <div class="logo"><div class="logo-mark">M</div><div><strong>MIDAD</strong><span>NEURAL COMMAND CENTER</span></div></div>
     <div class="nav-section"><div class="nav-label">COMMAND</div>
@@ -62,8 +62,27 @@
 </div>
 <noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
 <script>
+window.addEventListener("error",function(e){
+  try{
+    var box=document.getElementById("midadBootGuard"),msg=document.getElementById("midadBootError");
+    if(box&&msg){
+      msg.textContent="JavaScript: "+(e.message||"Unknown error")+" · "+(e.filename||"inline")+" : "+(e.lineno||"—");
+      box.style.display="block";
+    }
+  }catch(_){}
+});
+window.addEventListener("unhandledrejection",function(e){
+  try{
+    var box=document.getElementById("midadBootGuard"),msg=document.getElementById("midadBootError"),r=e&&e.reason;
+    if(box&&msg){
+      msg.textContent="Promise: "+((r&&r.message)||String(r||"Unknown rejection"));
+      box.style.display="block";
+    }
+  }catch(_){}
+});
+
 (function(){
-  var src="./app-max.js?v=max-neural-20260922";
+  var src="./app-max.js?v=max-neural-20260923-bootfix";
   var s=document.createElement("script");
   s.src=src;
   s.async=false;
@@ -72,6 +91,6 @@
   document.head.appendChild(s);
 })();
 </script>
-<script src="./midad-maximum-enhancements.js?v=20260923"></script>
+<script src="./midad-maximum-enhancements.js?v=20260923-bootfix"></script>
 </body>
 </html>
