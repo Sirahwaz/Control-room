@@ -10,8 +10,22 @@
 <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
 </head>
 <body>
-<div id="app" class="app" aria-live="polite"></div>
-<noscript>MIDAD Control Room يحتاج JavaScript للعمل.</noscript>
-<script defer src="./app-max.js?v=max-neural-20260922"></script>
+<div id="app" class="app" aria-live="polite">
+  <div style="min-height:100vh;display:grid;place-items:center;color:#8897aa;font-family:system-ui;text-align:center">
+    <div><div style="font-size:34px;font-weight:900;letter-spacing:.18em;color:#f5f8fc">MIDAD</div><div style="font-size:10px;letter-spacing:.16em;margin-top:4px">NEURAL COMMAND CENTER</div><div style="margin-top:18px;font-size:11px">جاري تشغيل المحرك…</div></div>
+  </div>
+</div>
+<noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
+<script>
+(function(){
+  var src="./app-max.js?v=max-neural-20260922";
+  var s=document.createElement("script");
+  s.src=src;
+  s.async=false;
+  s.onload=function(){document.documentElement.dataset.midadRuntime="loaded"};
+  s.onerror=function(){var a=document.getElementById("app");if(a)a.innerHTML='<div style="padding:40px;color:#fff;font-family:system-ui">تعذر تحميل محرك MIDAD. تحقق من اتصال GitHub Pages.</div>';};
+  document.head.appendChild(s);
+})();
+</script>
 </body>
 </html>
