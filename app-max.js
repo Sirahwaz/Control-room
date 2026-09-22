@@ -200,7 +200,7 @@ function bind(){document.querySelectorAll("[data-route]").forEach(function(x){x.
 function render(){shell();if(S.route==="dashboard")inject();bind();if(typeof window.__MIDAD_APPLY_TYPOGRAPHY==="function")window.__MIDAD_APPLY_TYPOGRAPHY()}
 window.addEventListener("hashchange",function(){var h=location.hash.slice(1);if(R.some(function(r){return r[0]===h})){S.route=h;render()}});
 if(TG())try{TG().ready();TG().expand();if(TG().enableClosingConfirmation)TG().enableClosingConfirmation()}catch(e){}
-render();log("MAXIMUM Neural UI v5 booted","ok");
+render();log("MAXIMUM Neural UI v6 booted","ok");
 window.__MIDAD_RUNTIME_READY=true;
 setInterval(function(){if(S.connected)connect(true)},30000);
 })();
