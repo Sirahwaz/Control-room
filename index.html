@@ -1,492 +1,60 @@
 
-1	<!doctype html> 
-2	<html lang="ar" dir="rtl"> 
-3	<head> 
-4	  <meta charset="utf-8" /> 
-5	  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /> 
-6	  <meta name="theme-color" content="#080b12" /> 
-7	  <meta name="description" content="MIDAD — Intelligence Control Room v4 — MAXIMUM POWER — MAXIMUM" /> 
-8	  <title>MIDAD — Intelligence Control Room v4 — MAXIMUM POWER</title> 
-9	<style> 
-10	:root{ 
-11	  --bg:#070a10;--bg2:#0b0f17;--panel:#0e141e;--panel2:#121a25;--line:#1d2937;--text:#eef3f8;--muted:#93a0b1; 
-12	  --brand:#5be7d9;--brand2:#8b7cff;--blue:#63a2ff;--green:#55d69b;--amber:#f3c969;--red:#ff6b7a; 
-13	  --shadow:0 18px 50px rgba(0,0,0,.35);--radius:20px;--radius-sm:14px;--sidebar:286px; 
-14	  --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif; 
-15	} 
-16	*{box-sizing:border-box}html,body{margin:0;padding:0;background:radial-gradient(circle at 75% -10%,rgba(91,231,217,.08),transparent 38%),radial-gradient(circle at 10% 20%,rgba(139,124,255,.07),transparent 34%),var(--bg);color:var(--text);font-family:var(--font);min-height:100%;} 
-17	body{overflow-x:hidden}.app-shell{min-height:100vh}.is-loading{display:grid;place-items:center}.boot-screen{text-align:center;color:var(--muted)}.boot-brand{font-size:40px;font-weight:900;letter-spacing:.16em;color:#fff}.boot-sub{font-size:10px;letter-spacing:.28em;margin-top:4px}.boot-status{margin-top:28px;font-size:13px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brand);margin-left:8px;box-shadow:0 0 18px var(--brand)} 
-18	.topbar{height:74px;position:fixed;top:0;right:0;left:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 calc(var(--sidebar) + 24px);background:rgba(7,10,16,.82);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.05)} 
-19	.topbar-left,.topbar-right{display:flex;align-items:center;gap:10px}.brand-mini{display:none;font-weight:900;letter-spacing:.14em}.page-title{display:flex;flex-direction:column;gap:2px}.page-title strong{font-size:17px}.page-title span{font-size:11px;color:var(--muted);direction:ltr;text-align:right}.identity{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);background:rgba(18,26,37,.75);border-radius:14px}.avatar{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(91,231,217,.22),rgba(139,124,255,.22));border:1px solid rgba(255,255,255,.08);font-weight:800}.identity-meta{line-height:1.1}.identity-meta strong{font-size:12px}.identity-meta span{display:block;font-size:10px;color:var(--muted);margin-top:4px}.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}.icon-btn:hover{border-color:#2f4155;background:var(--panel2)} 
-20	.sidebar{position:fixed;top:0;right:0;bottom:0;width:var(--sidebar);padding:18px 16px 16px;z-index:60;background:linear-gradient(180deg,#080c13 0%,#090d15 70%,#0b1018 100%);border-left:1px solid rgba(255,255,255,.04);overflow-y:auto}.brand{display:flex;align-items:center;gap:12px;padding:10px 10px 20px}.brand-mark{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,rgba(91,231,217,.16),rgba(139,124,255,.16));border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;font-weight:900;font-size:20px}.brand-copy strong{display:block;font-size:18px;letter-spacing:.12em}.brand-copy span{display:block;font-size:9px;color:var(--muted);letter-spacing:.17em;margin-top:3px;direction:ltr;text-align:right}.nav-group{margin-top:12px}.nav-heading{padding:10px 12px 8px;font-size:9px;color:#667385;letter-spacing:.16em}.nav-item{width:100%;display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:11px 12px;border:1px solid transparent;background:transparent;color:#b7c1ce;border-radius:13px;cursor:pointer;text-align:right;transition:.18s}.nav-item:hover{background:#0f1620;color:#fff}.nav-item.active{background:linear-gradient(90deg,rgba(91,231,217,.10),rgba(139,124,255,.06));border-color:rgba(91,231,217,.12);color:#fff;box-shadow:inset 2px 0 0 var(--brand)}.nav-icon{width:20px;font-size:16px;opacity:.9}.nav-label{flex:1;font-size:12px}.nav-meta{font-size:9px;color:#738196;direction:ltr}.sidebar-bottom{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#0e151f,#0b1018)}.connection-line{display:flex;align-items:center;gap:8px;font-size:11px;color:#c8d2de}.connection-dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}.connection-dot.ok{background:var(--green);box-shadow:0 0 15px rgba(85,214,155,.5)}.connection-dot.bad{background:var(--red)} 
-21	.main{padding:98px 24px 100px calc(var(--sidebar) + 24px);max-width:1800px;margin:0 auto;}.route{display:none}.route.active{display:block}.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.hero h1{margin:0;font-size:28px;letter-spacing:-.03em}.hero p{margin:7px 0 0;color:var(--muted);font-size:12px;max-width:780px}.hero-actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;font-size:12px;cursor:pointer}.btn:hover{background:var(--panel2)}.btn-primary{background:linear-gradient(135deg,rgba(91,231,217,.18),rgba(139,124,255,.17));border-color:rgba(91,231,217,.26)}.btn-danger{border-color:rgba(255,107,122,.25);color:#ffd2d8}.btn:disabled{opacity:.45;cursor:not-allowed}.ltr{direction:ltr;text-align:left} 
-22	.grid{display:grid;gap:14px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.span-2{grid-column:span 2}.card{background:linear-gradient(180deg,rgba(14,20,30,.98),rgba(11,16,24,.98));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.eyebrow{font-size:9px;letter-spacing:.16em;color:#728093;text-transform:uppercase;direction:ltr}.card-title{font-size:14px;font-weight:800;margin-top:3px}.muted{color:var(--muted)}.metric{font-size:28px;font-weight:900;letter-spacing:-.04em}.metric-sub{font-size:10px;color:var(--muted);margin-top:3px}.metric-row{display:flex;align-items:end;justify-content:space-between;gap:12px}.status-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;font-size:9px;border:1px solid var(--line);white-space:nowrap}.status-chip.green{color:#bff3d6;background:rgba(85,214,155,.07);border-color:rgba(85,214,155,.18)}.status-chip.amber{color:#ffe6a8;background:rgba(243,201,105,.07);border-color:rgba(243,201,105,.18)}.status-chip.red{color:#ffd3d8;background:rgba(255,107,122,.07);border-color:rgba(255,107,122,.18)}.status-chip.blue{color:#cfe2ff;background:rgba(99,162,255,.07);border-color:rgba(99,162,255,.18)}.status-chip.gray{color:#c9d2df;background:rgba(147,160,177,.05)}.mini-list{display:grid;gap:8px}.mini-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.045)}.mini-row:first-child{border-top:0}.mini-name{font-size:11px;font-weight:700}.mini-desc{font-size:10px;color:var(--muted);margin-top:3px}.mini-right{font-size:11px;font-weight:700;white-space:nowrap}.progress{height:8px;background:#131c28;border-radius:999px;overflow:hidden}.progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));border-radius:inherit}.section-note{font-size:10px;color:var(--muted);line-height:1.7}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:680px}.table th,.table td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;font-size:11px;vertical-align:middle}.table th{font-size:9px;color:#738196;letter-spacing:.1em;text-transform:uppercase}.tag{display:inline-flex;padding:5px 7px;border-radius:8px;border:1px solid var(--line);font-size:9px;color:#d4dde7}.empty{display:grid;place-items:center;padding:30px;text-align:center;border:1px dashed #263344;border-radius:16px;color:var(--muted)}.empty strong{color:#dce6f1;font-size:13px}.empty p{margin:6px 0 0;font-size:10px;max-width:520px;line-height:1.7}.activity{display:grid;gap:0}.activity-item{display:grid;grid-template-columns:12px 1fr auto;gap:10px;padding:11px 0;border-top:1px solid rgba(255,255,255,.05)}.activity-item:first-child{border-top:0}.activity-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--blue)}.activity-main strong{font-size:11px}.activity-main p{font-size:10px;color:var(--muted);margin:3px 0 0}.activity-time{font-size:9px;color:#667487;direction:ltr} 
-23	.callout{border:1px solid rgba(91,231,217,.16);background:radial-gradient(circle at 10% 50%,rgba(91,231,217,.10),transparent 45%),linear-gradient(90deg,rgba(91,231,217,.03),rgba(139,124,255,.04));border-radius:18px;padding:15px}.callout strong{display:block;font-size:12px}.callout p{font-size:10px;color:var(--muted);line-height:1.7;margin:7px 0 0}.filter-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.filter{padding:7px 9px;border:1px solid var(--line);background:var(--panel);border-radius:10px;color:#9eacbc;font-size:10px;cursor:pointer}.filter.active{color:#fff;border-color:rgba(91,231,217,.24);background:rgba(91,231,217,.06)}.searchbox{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:9px 11px;border-radius:12px;width:min(360px,100%)}.searchbox input{width:100%;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:11px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px}.field label{font-size:9px;color:#7e8da0}.field input,.field textarea,.field select{width:100%;background:#0b111a;border:1px solid var(--line);border-radius:10px;padding:10px 11px;color:#fff;outline:0;font:inherit;font-size:11px}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field textarea:focus,.field select:focus{border-color:rgba(91,231,217,.3)} 
-24	.command{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;padding:12vh 20px}.command.open{display:flex}.command-box{width:min(720px,100%);background:#0c121b;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 35px 100px rgba(0,0,0,.55)}.command-input{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:#fff;padding:17px 18px;font-size:14px;outline:0}.command-list{max-height:60vh;overflow:auto;padding:8px}.command-row{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;cursor:pointer}.command-row:hover,.command-row.active{background:#121b27}.command-row strong{font-size:12px}.command-row span{display:block;color:var(--muted);font-size:10px;margin-top:3px}.drawer{position:fixed;top:0;bottom:0;left:0;width:min(420px,92vw);background:#0c121b;border-right:1px solid var(--line);z-index:180;transform:translateX(-102%);transition:.22s;box-shadow:30px 0 80px rgba(0,0,0,.35);display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}.drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.drawer-body{padding:16px;overflow:auto}.approval{border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:10px;background:#0f1620}.approval strong{font-size:11px}.approval p{font-size:10px;color:var(--muted);line-height:1.7}.approval-actions{display:flex;gap:7px;margin-top:10px}.mobile-nav{display:none}.modal{position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.6);display:none;place-items:center;padding:20px}.modal.open{display:grid}.modal-box{width:min(520px,100%);background:#0c121b;border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}.modal-box h3{margin:0 0 7px}.modal-box p{font-size:11px;color:var(--muted);line-height:1.7}.toast-stack{position:fixed;left:18px;bottom:18px;z-index:300;display:grid;gap:8px}.toast{min-width:240px;max-width:360px;padding:11px 13px;border-radius:13px;border:1px solid var(--line);background:#0d141e;box-shadow:var(--shadow);font-size:11px}.toast.good{border-color:rgba(85,214,155,.2)}.toast.bad{border-color:rgba(255,107,122,.2)}.toast.warn{border-color:rgba(243,201,105,.2)} 
-25	@media(max-width:1200px){:root{--sidebar:250px}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{padding-right:18px}.main{padding-left:18px}} 
-26	@media(max-width:920px){.sidebar{transform:translateX(102%);transition:.22s;box-shadow:-20px 0 50px rgba(0,0,0,.4)}.sidebar.open{transform:translateX(0)}.topbar{padding:0 14px;height:66px}.brand-mini{display:block}.topbar .page-title{display:none}.main{padding:86px 14px 96px}.mobile-nav{display:flex;position:fixed;left:10px;right:10px;bottom:10px;z-index:70;background:rgba(10,15,22,.94);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:18px;padding:7px;box-shadow:0 14px 50px rgba(0,0,0,.35)}.mobile-nav button{flex:1;border:0;background:transparent;color:#8b98aa;padding:7px 3px;border-radius:12px;font-size:9px}.mobile-nav button.active{background:rgba(91,231,217,.08);color:#fff}.mobile-nav button .nav-ico{display:block;font-size:15px;margin-bottom:2px}.identity-meta{display:none}.grid-3{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}.span-2{grid-column:auto}.hero{flex-direction:column}.form-grid{grid-template-columns:1fr}} 
-27	@media(max-width:560px){.grid-3,.grid-4{grid-template-columns:1fr}.metric{font-size:24px}.hero h1{font-size:24px}.card{padding:14px}.topbar-right .icon-btn:nth-child(2){display:none}.drawer{width:94vw}} 
-28	 
-29	/* v4 MAXIMUM visual layer */ 
-30	body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black,transparent 75%);} 
-31	.main,.topbar,.sidebar{position:relative;z-index:1} 
-32	.route-kicker{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.11em;color:#718197;text-transform:uppercase;direction:ltr;margin-bottom:8px}.route-sep{opacity:.4}.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(243,201,105,.35)}.pulse-dot.live{background:var(--green);box-shadow:0 0 13px rgba(85,214,155,.45)} 
-33	.command-strip{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0 2px;margin-bottom:4px}.quick-chip{border:1px solid var(--line);background:rgba(15,22,32,.72);color:#b8c4d2;padding:8px 11px;border-radius:999px;font-size:10px;cursor:pointer;backdrop-filter:blur(8px)}.quick-chip:hover{color:#fff;border-color:#33485f}.quick-chip.primary{color:#dffdf6;border-color:rgba(91,231,217,.25);background:rgba(91,231,217,.07)} 
-34	.mission-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.mission-lane{padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(15,22,32,.95),rgba(9,14,21,.95));min-height:190px}.mission-lane-head{display:flex;justify-content:space-between;align-items:center;color:#aeb9c7;font-size:10px;letter-spacing:.12em;margin-bottom:10px}.mission-lane-head strong{font-size:12px;color:#eef4f8;letter-spacing:normal}.mission-card{display:flex;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.05);border-radius:13px;background:rgba(255,255,255,.015);margin-top:8px}.mission-card .mission-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;background:var(--blue);box-shadow:0 0 10px rgba(99,162,255,.35);flex:none}.mission-card.green .mission-dot{background:var(--green);box-shadow:0 0 10px rgba(85,214,155,.35)}.mission-card.amber .mission-dot{background:var(--amber);box-shadow:0 0 10px rgba(243,201,105,.3)}.mission-card.red .mission-dot{background:var(--red);box-shadow:0 0 10px rgba(255,107,122,.3)}.mission-card.purple .mission-dot{background:#9b8cff;box-shadow:0 0 10px rgba(155,140,255,.3)}.mission-card strong{display:block;font-size:10px}.mission-card span{display:block;color:var(--muted);font-size:9px;margin-top:3px} 
-35	.decision-stack{display:grid;gap:7px}.decision-stack>div{display:grid;grid-template-columns:36px 86px 1fr;gap:8px;align-items:center;padding:9px 0;border-top:1px solid rgba(255,255,255,.045)}.decision-stack>div:first-child{border-top:0}.decision-stack strong{font-size:11px}.decision-stack span:last-child{font-size:9px;color:var(--muted)}.step-index{font-variant-numeric:tabular-nums;color:#7d8ba0;font-size:9px} 
-36	.incident-list{display:grid;gap:8px}.incident-row{display:flex;justify-content:space-between;gap:14px;padding:12px;border:1px solid rgba(255,255,255,.05);border-radius:14px;background:rgba(255,255,255,.012);align-items:flex-start}.incident-row strong{font-size:11px}.incident-row p{margin:4px 0 0;color:var(--muted);font-size:9px;line-height:1.65}.incident-row.critical{border-color:rgba(255,107,122,.16);background:rgba(255,107,122,.025)}.incident-row.warning{border-color:rgba(243,201,105,.16);background:rgba(243,201,105,.018)}.incident-row.info{border-color:rgba(99,162,255,.14)}.incident-row.observed{border-color:rgba(139,124,255,.12)} 
-37	.offer-deck{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.offer-card{position:relative;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(18,26,37,.95),rgba(10,15,22,.95));overflow:hidden}.offer-card:after{content:"";position:absolute;inset:auto -20px -50px auto;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(91,231,217,.08),transparent 68%)}.offer-card.hot{border-color:rgba(91,231,217,.2);box-shadow:inset 0 1px 0 rgba(91,231,217,.06),0 14px 40px rgba(0,0,0,.18)}.offer-card>span{font-size:9px;color:#6e7d90;letter-spacing:.12em}.offer-card strong{display:block;font-size:28px;letter-spacing:-.04em;margin-top:3px}.offer-card em{display:block;font-size:11px;font-style:normal;color:#d7e1ec;font-weight:800;margin-top:1px}.offer-card p{font-size:9px;line-height:1.6;color:var(--muted);min-height:36px} 
-38	.mission-progress{height:10px} 
-39	@media(max-width:1120px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.offer-deck{grid-template-columns:1fr}} 
-40	@media(max-width:560px){.mission-grid{grid-template-columns:1fr}.command-strip{overflow:auto;flex-wrap:nowrap;padding-bottom:4px}.quick-chip{flex:none}.decision-stack>div{grid-template-columns:30px 74px 1fr}.incident-row{flex-direction:column}.offer-card{padding:14px}} 
-41	 
-42	</style> 
-43	</head> 
-44	<body> 
-45	  <div id="app" class="app-shell is-loading" aria-live="polite"> 
-46	    <div class="boot-screen"> 
-47	      <div class="boot-orbit"></div> 
-48	      <div class="boot-brand">MIDAD</div> 
-49	      <div class="boot-sub">INTELLIGENCE CONTROL ROOM</div> 
-50	      <div class="boot-status"><span class="status-dot"></span> جاري تهيئة غرفة التحكم…</div> 
-51	    </div> 
-52	  </div> 
-53	  <noscript> 
-54	    <div class="noscript">MIDAD Control Room يحتاج JavaScript للعمل.</div> 
-55	  </noscript> 
-56	<script> 
-57	/* MIDAD Control Room v4 — MAXIMUM — runtime configuration. 
-58	 * Keep secrets out of this file. Values are safe-to-edit public configuration only. 
-59	 */ 
-60	window.MIDAD_CONFIG = { 
-61	  supabaseUrl: 'https://froegigfmpmvtecztfb.supabase.co', 
-62	  controlRoomFunction: '/functions/v1/midad_control_room', 
-63	  dashboardAction: 'dashboard', 
-64	  statusAction: 'status', 
-65	  sessionAction: 'session', 
-66	  projectName: 'MIDAD — Intelligence Orchestrator', 
-67	  defaultLocale: 'ar', 
-68	  defaultTheme: 'midnight', 
-69	  emergencyTargetUsd: 1000, 
-70	  buildVersion: 'v4-max-2026-09-22', 
-71	  // The active Telegram Mini App can supply initData automatically. 
-72	  // For browser-only access, the user may optionally enter an access key in Settings. 
-73	  allowBrowserAccessKey: true, 
-74	  persistBrowserAccessKey: false, 
-75	  knownRuntimeSnapshot: { 
-76	    snapshotAt: '2026-09-22T05:15:00+03:30', 
-77	    note: 'Runtime snapshot only. Live health must be verified by the Control Room API.', 
-78	    incidents: [ 
-79	      { id: 'n8n-execution-quota', severity: 'critical', title: 'n8n execution limit reached', detail: 'New workflow executions are currently blocked by the account execution limit.', source: 'n8n runtime', status: 'observed' }, 
-80	      { id: 'openrouter-credits', severity: 'warning', title: 'OpenRouter agent credits unavailable', detail: 'Agent Preview reported insufficient credits on the linked account.', source: 'OpenRouter', status: 'observed' } 
-81	    ], 
-82	    workflows: [ 
-83	      { id: 'fChZsDbnsxP9dwwr', name: 'MIDAD — Revenue Intelligence Scanner v2', configured: true }, 
-84	      { id: '5EqjQcaY0dq8SHTA', name: 'MIDAD — Opportunity Intelligence Mesh v1', configured: true }, 
-85	      { id: 'h9IOP39SuVYaXnDP', name: 'MIDAD — Market Intelligence & New Assets v1', configured: true }, 
-86	      { id: '4aBQunkIwgkwgfki', name: 'MIDAD — Intelligence Read v1', configured: true }, 
-87	      { id: 'LC3tTcFBEukB1R5u', name: 'MIDAD — AI Command Core v2', configured: true } 
-88	    ], 
-89	    agents: [ 
-90	      { id: '8aZ5brqD90KBgosv', name: 'MIDAD — Telegram Control Room Live', lifecycle: 'published' }, 
-91	      { id: 'wunryjaKS9vf5lVX', name: 'MIDAD — Telegram Control Room Agent', lifecycle: 'published' }, 
-92	      { id: 'mH2RVBpG5uKgecYf', name: 'MIDAD — Financial Intelligence & Capital Agent v1', lifecycle: 'draft' }, 
-93	      { id: 'Q49UsxpJbbN7iLXz', name: 'MIDAD — Emergency Revenue Hunter v1', lifecycle: 'draft' }, 
-94	      { id: '5Bl8Tog6rcVTJ3cZ', name: 'MIDAD — Revenue & Outreach Copilot v1', lifecycle: 'draft' } 
-95	    ] 
-96	  } 
-97	}; 
-98	 
-99	(() => { 
-100	  'use strict'; 
-101	 
-102	  const CFG = window.MIDAD_CONFIG || {}; 
-103	  const APP = document.getElementById('app'); 
-104	 
-105	  const ICONS = { 
-106	    grid:'▦', mission:'✦', radar:'⌁', revenue:'◈', bot:'◉', capital:'◌', wallet:'◇', mining:'⛏', trade:'↗', intelligence:'⌬', alerts:'◍', person:'●', settings:'⚙', health:'✦', lab:'⌁', search:'⌕', menu:'☰' 
-107	  }; 
-108	 
-109	  const routes = [ 
-110	    ['dashboard','الرئيسية','Dashboard','grid'], 
-111	    ['mission','غرفة المهمة','Mission Control','mission'], 
-112	    ['opportunities','الفرص','Opportunities','radar'], 
-113	    ['revenue','الإيرادات والعملاء','Revenue & Clients','revenue'], 
-114	    ['automation','الأتمتة والوكلاء','Automation & Agents','bot'], 
-115	    ['capital','رأس المال','Capital','capital'], 
-116	    ['wallets','المحافظ','Wallets','wallet'], 
-117	    ['mining','التعدين','Mining','mining'], 
-118	    ['trading','التداول المحاكى','Trading • Paper','trade'], 
-119	    ['intelligence','الذكاء وOSINT','Intelligence / OSINT','intelligence'], 
-120	    ['alerts','التنبيهات والرسائل','Alerts & Messages','alerts'], 
-121	    ['personal','المساحة الشخصية','Personal','person'], 
-122	    ['settings','الإعدادات','Settings','settings'], 
-123	    ['health','صحة النظام','System / Health','health'] 
-124	  ]; 
-125	 
-126	  const navGroups = [ 
-127	    {title:'COMMAND', items:['dashboard','mission']}, 
-128	    {title:'REVENUE', items:['opportunities','revenue','automation']}, 
-129	    {title:'CAPITAL', items:['capital','wallets','mining','trading']}, 
-130	    {title:'INTELLIGENCE', items:['intelligence','alerts']}, 
-131	    {title:'PERSONAL', items:['personal','settings','health']} 
-132	  ]; 
-133	 
-134	  const STORE_KEY = 'midad_control_room_v4_local'; 
-135	  const state = { 
-136	    route:'dashboard', 
-137	    locale: localStorage.getItem('midad_locale') || CFG.defaultLocale || 'ar', 
-138	    theme: localStorage.getItem('midad_theme') || CFG.defaultTheme || 'midnight', 
-139	    connected:false, 
-140	    connectionLabel:'غير متصل', 
-141	    user:{name:'',email:'',telegram:''}, 
-142	    live:null, 
-143	    accessKey:'', 
-144	    commandOpen:false, 
-145	    drawerOpen:false, 
-146	    search:'', 
-147	    activeFilter:'all', 
-148	    personal:loadLocal(), 
-149	    pendingApproval:[], 
-150	    activity:[], 
-151	    mission:{now:'Secure first cashflow', next:'Build qualified lead pipeline', waiting:'Verified buyer response', blocked:'n8n execution quota'}, 
-152	    lastProbe:null 
-153	  }; 
-154	 
-155	  function loadLocal(){ 
-156	    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {wallets:[],income:[],goals:[],notes:[],paperTrades:[]}; } 
-157	    catch { return {wallets:[],income:[],goals:[],notes:[],paperTrades:[]}; } 
-158	  } 
-159	  function saveLocal(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state.personal)); }catch{ toast('Local storage is unavailable; changes may not persist.','warn'); } } 
-160	  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); } 
-161	  function fmt(n,cur='$'){ return `${cur}${Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2})}`; } 
-162	  function nowLabel(){ return new Intl.DateTimeFormat('ar',{dateStyle:'short',timeStyle:'short'}).format(new Date()); } 
-163	  function routeMeta(id){ return routes.find(x=>x[0]===id) || routes[0]; } 
-164	  function navButton(route){ const r=routeMeta(route); return `<button class="nav-item ${state.route===route?'active':''}" data-route="${route}"><span class="nav-icon">${ICONS[r[3]]}</span><span class="nav-label">${r[1]}</span><span class="nav-meta" dir="ltr">${r[2]}</span></button>`; } 
-165	  function mobileButton(route){ const r=routeMeta(route); return `<button class="${state.route===route?'active':''}" data-route="${route}"><span class="nav-ico">${ICONS[r[3]]}</span>${esc(r[1])}</button>`; } 
-166	 
-167	  function shell(){ 
-168	    const meta=routeMeta(state.route); 
-169	    APP.className='app-shell'; 
-170	    APP.innerHTML=` 
-171	      <aside class="sidebar" id="sidebar"> 
-172	        <div class="brand"><div class="brand-mark">M</div><div class="brand-copy"><strong>MIDAD</strong><span>INTELLIGENCE CONTROL ROOM</span></div></div> 
-173	        ${navGroups.map(g=>`<div class="nav-group"><div class="nav-heading">${g.title}</div>${g.items.map(navButton).join('')}</div>`).join('')} 
-174	        <div class="sidebar-bottom"> 
-175	          <div class="connection-line"><span class="connection-dot ${state.connected?'ok':''}"></span><span>${esc(state.connectionLabel)}</span></div> 
-176	          <div class="section-note" style="margin-top:7px">الأرقام الحية لا تُعرض إلا بعد التحقق من المصدر.</div> 
-177	        </div> 
-178	      </aside> 
-179	      <header class="topbar"> 
-180	        <div class="topbar-left"><button class="icon-btn" id="menuBtn" aria-label="القائمة">${ICONS.menu}</button><div class="brand-mini">MIDAD</div><div class="page-title"><strong>${esc(meta[1])}</strong><span>${esc(meta[2])}</span></div></div> 
-181	        <div class="topbar-right"><button class="icon-btn" id="commandBtn" title="Command Palette">⌘K</button><button class="icon-btn" id="whatBtn" title="What needs me?">◍</button><div class="identity"><div class="avatar">${esc(identityInitial())}</div><div class="identity-meta"><strong>${esc(displayName())}</strong><span>${state.connected?'Connected / verified context':'Degraded / awaiting connection'}</span></div></div></div> 
-182	      </header> 
-183	      <main class="main" id="main">${renderRoute()}</main> 
-184	      <nav class="mobile-nav">${['dashboard','mission','opportunities','revenue'].map(mobileButton).join('')}<button data-mobile-menu><span class="nav-ico">${ICONS.menu}</span>المزيد</button></nav> 
-185	      <div class="drawer" id="approvalDrawer"><div class="drawer-head"><div><strong>What Needs Me?</strong><div class="muted" style="font-size:10px;margin-top:4px">موافقات وأحداث تحتاج تدخلك</div></div><button class="icon-btn" id="closeDrawer">×</button></div><div class="drawer-body">${renderApprovals()}</div></div> 
-186	      <div class="command" id="command"><div class="command-box"><input id="commandInput" class="command-input" placeholder="ابحث عن صفحة أو إجراء… / Search" autocomplete="off"><div class="command-list" id="commandList"></div></div></div> 
-187	      <div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div> 
-188	      <div class="toast-stack" id="toastStack"></div> 
-189	    `; 
-190	    bindShell(); 
-191	  } 
-192	 
-193	  function identityInitial(){ const n=displayName(); return n ? n.slice(0,1).toUpperCase() : 'M'; } 
-194	  function displayName(){ return state.user.name || state.user.telegram || state.user.email || 'مستخدم MIDAD'; } 
-195	  function renderApprovals(){ 
-196	    const items = state.pendingApproval.length ? state.pendingApproval : [{title:'لا توجد موافقات الآن',body:'ستظهر هنا المعاملات والأفعال الحساسة فقط بعد أن يطلبها نظام موثوق.',kind:'info'}]; 
-197	    return items.map((x,i)=>`<div class="approval"><strong>${esc(x.title)}</strong><p>${esc(x.body||'')}</p>${x.kind==='info'?'':`<div class="approval-actions"><button class="btn btn-primary" data-approval="approve" data-i="${i}">موافقة</button><button class="btn btn-danger" data-approval="reject" data-i="${i}">رفض</button></div>`}</div>`).join(''); 
-198	  } 
-199	 
-200	  function renderRoute(){ 
-201	    const renderers={dashboard:renderDashboard,mission:renderMission,opportunities:renderOpportunities,revenue:renderRevenue,automation:renderAutomation,capital:renderCapital,wallets:renderWallets,mining:renderMining,trading:renderTrading,intelligence:renderIntelligence,alerts:renderAlerts,personal:renderPersonal,settings:renderSettings,health:renderHealth}; 
-202	    return `<section class="route active">${(renderers[state.route]||renderDashboard)()}</section>`; 
-203	  } 
-204	 
-205	  function pageHero(title,sub,actions=''){ 
-206	    const mode=state.connected?'VERIFIED SESSION':'DEGRADED / AWAITING VERIFY'; 
-207	    return `<div class="hero"><div><div class="route-kicker"><span class="pulse-dot ${state.connected?'live':''}"></span><span>MIDAD OS // ${esc(routeMeta(state.route)[2])}</span><span class="route-sep">•</span><span>${mode}</span></div><h1>${esc(title)}</h1><p>${esc(sub)}</p></div><div class="hero-actions">${actions}</div></div>`; 
-208	  } 
-209	  function card(title,eyebrow,body,cls=''){ return `<section class="card ${cls}"><div class="card-head"><div><div class="eyebrow">${esc(eyebrow)}</div><div class="card-title">${esc(title)}</div></div></div>${body}</section>`; } 
-210	  function dataBadge(label='Snapshot',tone='gray'){ return `<span class="status-chip ${tone}">${esc(label)}</span>`; } 
-211	  function empty(title,desc,action=''){ return `<div class="empty"><strong>${esc(title)}</strong><p>${esc(desc)}</p>${action?`<div style="margin-top:11px">${action}</div>`:''}</div>`; } 
-212	 
-213	  function dashboardData(){ 
-214	    const live=state.live || {}; 
-215	    const target=1000; 
-216	    const realized=Number(live?.cashflow?.realized_usd||sum(state.personal.income,'amount')||0); 
-217	    return {target,realized,progress:Math.min(100, target ? realized/target*100 : 0),opps:Number(live?.opportunities?.new_count||0),alerts:Number(live?.alerts?.unread_count||0)}; 
-218	  } 
-219	  function sum(arr,key){ return (arr||[]).reduce((a,x)=>a+Number(x?.[key]||0),0); } 
-220	 
-221	  function renderMission(){ 
-222	    const d=dashboardData(); 
-223	    const incidents=CFG.knownRuntimeSnapshot?.incidents||[]; 
-224	    return `${pageHero('غرفة المهمة','Mission Control — طبقة التفكير والتنفيذ: الآن، التالي، المنتظر، المحجوب.',`<button class="btn btn-primary" data-action="scan">⚡ Run Mission Scan</button><button class="btn" data-action="openApprovals">◍ What Needs Me?</button>`)} 
-225	      <div class="mission-grid"> 
-226	        ${missionLane('NOW','الآن',[[state.mission.now,'cashflow-first','blue'],['تحقق من مصادر الحقيقة قبل التنفيذ','evidence-first','green'],['حماية الأموال والحسابات','human gate','amber']])} 
-227	        ${missionLane('NEXT','التالي',[[state.mission.next,'lead engine','blue'],['عرض صغير + milestone','productized service','green'],['تعلم من كل رد','feedback loop','purple']])} 
-228	        ${missionLane('WAITING','منتظر',[[state.mission.waiting,'external response','amber'],['Agent runtime credits','provider dependency','amber']])} 
-229	        ${missionLane('BLOCKED','محجوب',[[state.mission.blocked,'runtime dependency','red'],['Agent Preview credits','provider dependency','red']])} 
-230	      </div> 
-231	      <div class="grid grid-3" style="margin-top:14px"> 
-232	        ${card('Decision Stack','SIGNAL → ACTION',`<div class="decision-stack"><div><span class="step-index">01</span><strong>Signal</strong><span>حدث أو طلب جديد</span></div><div><span class="step-index">02</span><strong>Evidence</strong><span>مصدر + freshness + reliability</span></div><div><span class="step-index">03</span><strong>Economics</strong><span>net value + effort + time-to-cash</span></div><div><span class="step-index">04</span><strong>Risk</strong><span>security + custody + counterparty</span></div><div><span class="step-index">05</span><strong>Action</strong><span>prepare → approve → execute → verify</span></div></div>`,'span-2')} 
-233	        ${card('Emergency Cash','7-DAY MISSION',`<div class="metric">${fmt(d.realized)}</div><div class="metric-sub">realized / ${fmt(d.target)} target</div><div class="progress mission-progress" style="margin-top:12px"><span style="width:${d.progress}%"></span></div><div class="metric-sub" style="margin-top:8px">${d.progress.toFixed(1)}% of current target • not a guarantee</div>`)} 
-234	      </div> 
-235	      <div style="margin-top:14px">${card('Observed Incidents','SYSTEM MEMORY',incidents.length?`<div class="incident-list">${incidents.map(i=>`<div class="incident-row ${esc(i.severity)}"><div><strong>${esc(i.title)}</strong><p>${esc(i.detail)}</p></div><div><span class="tag">${esc(i.source)}</span><div class="mini-desc ltr">${esc(CFG.knownRuntimeSnapshot?.snapshotAt||'snapshot')}</div></div></div>`).join('')}</div>`:empty('لا توجد حوادث مسجلة','سيظهر هنا التاريخ التشغيلي عندما توجد مشكلة موثقة.'))}</div>`; 
-236	  } 
-237	 
-238	  function missionLane(code,title,items){ 
-239	    return `<section class="mission-lane"><div class="mission-lane-head"><span>${code}</span><strong>${title}</strong></div>${items.map(x=>`<div class="mission-card ${x[2]}"><div class="mission-dot"></div><div><strong>${esc(x[0])}</strong><span>${esc(x[1])}</span></div></div>`).join('')}</section>`; 
-240	  } 
-241	 
-242	  function renderDashboard(){ 
-243	    const d=dashboardData(); 
-244	    return `${pageHero('مركز القيادة','نظرة تنفيذية واحدة: ماذا يحدث؟ ماذا يحتاجني؟ أين يوجد التدفق النقدي؟ وما الذي تعطل؟',`<button class="btn btn-primary" data-action="connect">⚡ اتصال / Connect</button><button class="btn" data-action="quickOpportunity">＋ فرصة</button>`)} 
-245	      <div class="command-strip"><button class="quick-chip primary" data-action="quickOpportunity">＋ Opportunity</button><button class="quick-chip" data-action="quickLead">＋ Prospect</button><button class="quick-chip" data-action="recordIncome">＋ Income</button><button class="quick-chip" data-action="addWallet">＋ Wallet</button><button class="quick-chip" data-action="scan">⌁ Scan</button></div> 
-246	      <div class="grid grid-4"> 
-247	        ${card('الهدف الطارئ','EMERGENCY CASHFLOW',`<div class="metric-row"><div><div class="metric">${fmt(d.realized)}</div><div class="metric-sub">من أصل ${fmt(d.target)} خلال 7 أيام</div></div>${dataBadge(d.realized?'تقدم':'بانتظار دخل',d.realized?'green':'amber')}</div><div style="margin-top:12px"><div class="progress"><span style="width:${d.progress}%"></span></div></div>`)} 
-248	        ${card('فرص جديدة','OPPORTUNITIES',`<div class="metric-row"><div><div class="metric">${d.opps}</div><div class="metric-sub">إشارة جديدة بعد التحقق</div></div>${dataBadge(state.live?'LIVE':'Snapshot',state.live?'green':'gray')}</div>`)} 
-249	        ${card('موافقات','WHAT NEEDS ME',`<div class="metric-row"><div><div class="metric">${state.pendingApproval.length}</div><div class="metric-sub">إجراءات تنتظر قرارك</div></div>${dataBadge('Human gate','blue')}</div>`)} 
-250	        ${card('تنبيهات','ALERTS',`<div class="metric-row"><div><div class="metric">${d.alerts}</div><div class="metric-sub">غير مقروءة</div></div>${dataBadge(d.alerts?'Review':'Clear',d.alerts?'amber':'green')}</div>`)} 
-251	      </div> 
-252	      <div class="grid grid-3" style="margin-top:14px"> 
-253	        ${card('أولوية الآن','NOW',renderNowPanel(),'span-2')} 
-254	        ${card('هوية التشغيل','IDENTITY',renderIdentityPanel())} 
-255	      </div> 
-256	      <div class="grid grid-3" style="margin-top:14px"> 
-257	        ${card('Revenue Pipeline','REVENUE',renderRevenueMini())} 
-258	        ${card('Automation / Agents','AUTOMATION',renderAgentsMini())} 
-259	        ${card('System Health','HEALTH',renderHealthMini())} 
-260	      </div> 
-261	      <div style="margin-top:14px">${card('آخر النشاطات','ACTIVITY',renderActivity())}</div>`; 
-262	  } 
-263	 
-264	  function renderNowPanel(){ 
-265	    const rows=[ 
-266	      ['🧲', 'استهداف عميل', 'ابدأ بأقرب فرصة n8n/automation موثقة، ثم اعرض milestone صغير.','إجراء تجاري'], 
-267	      ['🤖', 'طبقة Agents', 'الأتمتة تُسرّع البحث والصياغة، لكنها لا تتجاوز بوابة الموافقة المالية.','مبدأ تشغيل'], 
-268	      ['🛡', 'حماية المال', 'لا live trading ولا تحويلات تلقائية ولا أسرار في الواجهة.','قاعدة أمان'] 
-269	    ]; 
-270	    return `<div class="mini-list">${rows.map(r=>`<div class="mini-row"><div style="display:flex;gap:10px"><div style="font-size:16px">${r[0]}</div><div><div class="mini-name">${r[1]}</div><div class="mini-desc">${r[2]}</div></div></div><span class="tag">${r[3]}</span></div>`).join('')}</div>`; 
-271	  } 
-272	  function renderIdentityPanel(){ 
-273	    return `<div class="callout"><strong>${esc(displayName())}</strong><p>${state.connected?'تم التحقق من سياق الاتصال الحالي.':'لم يتم التحقق من اسم شخصي بعد؛ لن نخمن هوية المستخدم.'}</p><div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">${dataBadge(state.connected?'Connected':'Not Connected',state.connected?'green':'amber')} ${dataBadge(state.user.email||'Email unknown','gray')}</div></div>`; 
-274	  } 
-275	  function renderRevenueMini(){ 
-276	    const rows=[['Leads','إشارات مستهدفة','—'],['Proposals','عروض قيد التفاوض','—'],['Receivables','مبالغ مستحقة','—']]; 
-277	    return `<div class="mini-list">${rows.map(r=>`<div class="mini-row"><div><div class="mini-name">${r[0]}</div><div class="mini-desc">${r[1]}</div></div><div class="mini-right">${r[2]}</div></div>`).join('')}</div><div style="margin-top:10px">${dataBadge('No verified live totals','gray')}</div>`; 
-278	  } 
-279	  function renderAgentsMini(){ 
-280	    const a=CFG.knownRuntimeSnapshot?.agents||[]; 
-281	    return `<div class="mini-list">${a.slice(0,4).map(x=>`<div class="mini-row"><div><div class="mini-name">${esc(x.name.replace('MIDAD — ',''))}</div><div class="mini-desc">${esc(x.lifecycle)}</div></div>${dataBadge(x.lifecycle==='published'?'Configured':'Draft',x.lifecycle==='published'?'green':'amber')}</div>`).join('')}</div>`; 
-282	  } 
-283	  function renderHealthMini(){ 
-284	    const systems=['Supabase','n8n','Telegram','Vespa','TinyFish']; 
-285	    return `<div class="mini-list">${systems.map(s=>`<div class="mini-row"><div class="mini-name">${s}</div>${dataBadge('Unverified','gray')}</div>`).join('')}</div><div style="margin-top:10px" class="section-note">لا نعلن Healthy إلا إذا وصل probe موثوق.</div>`; 
-286	  } 
-287	  function renderActivity(){ 
-288	    const rows=[['blue','واجهة جديدة قيد التصميم','Control Room v4 — MAXIMUM'],['amber','تنبيه توصيل','Telegram delivery not verified'],['green','دفتر فرص الطوارئ','Revenue leads updated'],['blue','قاعدة البيانات الشخصية','Local-only mode']]; 
-289	    return `<div class="activity">${rows.map(r=>`<div class="activity-item"><span class="activity-dot" style="background:${r[0]==='green'?'var(--green)':r[0]==='amber'?'var(--amber)':'var(--blue)'}"></span><div class="activity-main"><strong>${r[1]}</strong><p>${r[2]}</p></div><div class="activity-time">${nowLabel()}</div></div>`).join('')}</div>`; 
-290	  } 
-291	 
-292	  function renderOpportunities(){ 
-293	    const leads = state.live?.opportunities?.items || []; 
-294	    const known = leads.length ? leads : []; 
-295	    const filtered=known.filter(x=>state.activeFilter==='all'||x.stage===state.activeFilter).filter(x=>!state.search||JSON.stringify(x).toLowerCase().includes(state.search.toLowerCase())); 
-296	    const stages=['all','new','verified','qualified','contacted','negotiating','won','lost','watch']; 
-297	    return `${pageHero('الفرص','Opportunity pipeline — دليل + مصدر + ثقة + خطوة تالية، لا مجرد قائمة روابط.',`<button class="btn btn-primary" data-action="scan">↻ Scan</button><button class="btn" data-action="quickOpportunity">＋ إضافة</button>`)} 
-298	      <div class="card"><div class="filter-bar">${stages.map(s=>`<button class="filter ${state.activeFilter===s?'active':''}" data-filter="${s}">${s==='all'?'All / الكل':s}</button>`).join('')}</div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div class="searchbox"><span>⌕</span><input id="opSearch" value="${esc(state.search)}" placeholder="ابحث في الفرص / Search" /></div>${dataBadge(known.length?'Live data loaded':'No verified live leads',known.length?'green':'gray')}</div></div> 
-299	      <div class="card" style="margin-top:12px">${filtered.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Lead</th><th>Stage</th><th>Reward</th><th>Payment</th><th>Confidence</th><th>Next</th></tr></thead><tbody>${filtered.map(x=>`<tr><td><strong>${esc(x.title||x.name||'—')}</strong><div class="muted" style="margin-top:4px">${esc(x.source||'Unknown source')}</div></td><td><span class="tag">${esc(x.stage||'—')}</span></td><td class="ltr">${x.reward_usd?fmt(x.reward_usd):'—'}</td><td>${esc(x.payment_method||'—')}</td><td class="ltr">${x.confidence!=null?(Number(x.confidence)*100).toFixed(0)+'%':'—'}</td><td>${esc(x.next_action||'—')}</td></tr>`).join('')}</tbody></table></div>`:empty('لا توجد فرص موثقة حية هنا بعد','الواجهة جاهزة، لكن لن نخترع فرصاً أو أرقاماً. اضغط Scan بعد توفر مصدر موثوق.','<button class="btn btn-primary" data-action="scan">تشغيل Radar</button>')}</div>`; 
-300	  } 
-301	 
-302	  function renderRevenue(){ 
-303	    return `${pageHero('الإيرادات والعملاء','من أول رسالة إلى الاتفاق ثم milestone والتحصيل. كل مرحلة لها حالة واضحة.',`<button class="btn btn-primary" data-action="quickLead">＋ Prospect</button>`)} 
-304	      <div class="grid grid-4">${['Prospects','Proposals','Negotiating','Receivables'].map((x,i)=>card(x,i===0?'PIPELINE':'PIPELINE',`<div class="metric">—</div><div class="metric-sub">No verified live total</div>`)).join('')}</div> 
-305	      <div class="offer-deck"><div class="offer-card"><span>01</span><strong>$99</strong><em>Quick Fix</em><p>One bounded n8n/API/Telegram problem.</p><button class="btn" data-action="quickLead">Prepare offer</button></div><div class="offer-card hot"><span>02</span><strong>$199</strong><em>Automation Sprint</em><p>Repair/build one small workflow end-to-end.</p><button class="btn btn-primary" data-action="quickLead">Prepare offer</button></div><div class="offer-card"><span>03</span><strong>$399+</strong><em>AI / Web3 System Slice</em><p>Paid milestone before any large commitment.</p><button class="btn" data-action="quickLead">Prepare offer</button></div></div> 
-306	      <div class="grid grid-2" style="margin-top:14px"> 
-307	        ${card('Deal Workspace','CLIENT WORKSPACE',empty('لا يوجد عميل نشط','أضف prospect أو اربط lead موثق. سنستخدم scope صغيراً وmilestone واضحاً قبل التزام كبير.','<button class="btn btn-primary" data-action="quickLead">＋ Prospect</button>'))} 
-308	        ${card('Payment Rail','CRYPTO SETTLEMENT',`<div class="mini-list"><div class="mini-row"><div><div class="mini-name">USDC / USDT</div><div class="mini-desc">Preferred when the buyer explicitly agrees</div></div>${dataBadge('Negotiation','amber')}</div><div class="mini-row"><div><div class="mini-name">Escrow / Milestone</div><div class="mini-desc">Use when platform/client supports it</div></div>${dataBadge('Recommended','blue')}</div></div>`)} 
-309	      </div>`; 
-310	  } 
-311	 
-312	  function renderAutomation(){ 
-313	    const agents=CFG.knownRuntimeSnapshot?.agents||[]; const workflows=CFG.knownRuntimeSnapshot?.workflows||[]; 
-314	    return `${pageHero('الأتمتة والوكلاء','Agent layer + workflow layer + approval gate. السرعة آلية، المال والحذف تحت موافقة.',`<button class="btn btn-primary" data-action="agentStatus">↻ Health</button>`)} 
-315	      <div class="grid grid-2"> 
-316	        ${card('Agents','AI AGENTS',`<div class="table-wrap"><table class="table"><thead><tr><th>Agent</th><th>Lifecycle</th><th>Control</th></tr></thead><tbody>${agents.map(a=>`<tr><td><strong>${esc(a.name)}</strong><div class="muted" style="margin-top:3px">${esc(a.id)}</div></td><td>${dataBadge(a.lifecycle,a.lifecycle==='published'?'green':'amber')}</td><td>${a.lifecycle==='published'?'<button class="btn" disabled>Published</button>':'<button class="btn" disabled>Draft / needs runtime</button>'}</td></tr>`).join('')}</tbody></table></div>`)} 
-317	        ${card('Workflows','N8N',`<div class="mini-list">${workflows.map(w=>`<div class="mini-row"><div><div class="mini-name">${esc(w.name)}</div><div class="mini-desc ltr">${esc(w.id)}</div></div>${dataBadge('Configured','blue')}</div>`).join('')}</div><div style="margin-top:10px">${dataBadge('Execution quota currently blocked','amber')}</div>`)} 
-318	      </div>`; 
-319	  } 
-320	 
-321	  function renderCapital(){ 
-322	    return `${pageHero('رأس المال','Capital ledger — مصدر المال، تكلفته، استخدامه، السيولة، والـrunway.',`<button class="btn btn-primary" data-action="recordIncome">＋ Record Income</button>`)} 
-323	      <div class="grid grid-4">${['Available','Committed','Monthly Costs','Runway'].map(x=>card(x,'CAPITAL',`<div class="metric">—</div><div class="metric-sub">Awaiting verified source</div>`)).join('')}</div> 
-324	      <div class="grid grid-2" style="margin-top:14px">${card('Capital Sources','SOURCES',empty('لا توجد مصادر موثقة معروضة','أضف أو اربط مصدراً حقيقياً فقط. التعدين يمكن أن يظهر هنا كمصدر منفصل.'))}${card('Risk Envelope','RISK',`<div class="callout"><strong>Default: capital-preserving</strong><p>لا live trade، لا تحويل أموال تلقائي، ولا تدوير يرفع المخاطر دون موافقة.</p></div>`)}</div>`; 
-325	  } 
-326	 
-327	  function renderWallets(){ 
-328	    const ws=state.personal.wallets||[]; 
-329	    return `${pageHero('المحافظ','Wallets — فصل تام بين operational wallets والمحافظ الشخصية. لا مفاتيح خاصة في النظام.',`<button class="btn btn-primary" data-action="addWallet">＋ Add Wallet</button>`)} 
-330	      <div class="grid grid-2"> 
-331	        ${card('Operational Wallets','SYSTEM / OPERATIONS',empty('لا توجد محفظة تشغيلية معروضة','سيتم ربطها فقط عندما يدعم backend المصدر والتحقق. لا توجد أرقام وهمية.'))} 
-332	        ${card('Personal Wallets','PERSONAL',ws.length?`<div class="mini-list">${ws.map((w,i)=>`<div class="mini-row"><div><div class="mini-name">${esc(w.label)}</div><div class="mini-desc ltr">${esc(w.address)} · ${esc(w.network)}</div></div><button class="btn" data-remove-wallet="${i}">حذف</button></div>`).join('')}</div>`:empty('محافظك الشخصية هنا','مساحة شخصية منفصلة تماماً عن Wallets التشغيلية. لا نحفظ seed phrase/private key.','<button class="btn btn-primary" data-action="addWallet">＋ Add personal wallet</button>'))} 
-333	      </div>`; 
-334	  } 
-335	 
-336	  function renderMining(){ return `${pageHero('التعدين','Mining — مسار مستقل عن المحافظ والتداول.',`<button class="btn btn-primary" data-action="refresh">↻ Refresh</button>`)}<div class="grid grid-4">${['M31+ · 84 TH/s','M21 · 56 TH/s','Pool','Revenue'].map((x,i)=>card(x,'MINING',`<div class="metric">${i<2?x.split('·')[1].trim():'—'}</div><div class="metric-sub">${i<2?'Known configuration snapshot':'Awaiting verified live data'}</div>`)).join('')}</div><div class="card" style="margin-top:14px">${empty('تفاصيل التشغيل ستظهر هنا','Uptime, pool, realized revenue, costs, alerts — بعد تحقق المصدر. الكهرباء المجانية لا تعني أننا نخترع الربح؛ سنحسب بعد وصول البيانات.')}</div>`; } 
-337	 
-338	  function renderTrading(){ 
-339	    const trades=state.personal.paperTrades||[]; 
-340	    return `${pageHero('التداول المحاكى','Trading — PAPER / SIMULATION FIRST. لا يوجد تحريك أموال ولا أوامر حية من هذه الواجهة.',`<button class="btn btn-primary" data-action="paperTrade">＋ Paper Trade</button>`)} 
-341	      <div class="callout" style="margin-bottom:14px"><strong>SIMULATION MODE</strong><p>كل trade هنا فكرة أو محاكاة. أي انتقال إلى live execution يحتاج موافقة بشرية صريحة وممر backend منفصل.</p></div> 
-342	      ${trades.length?card('Paper Trade Ledger','SIMULATION',`<div class="table-wrap"><table class="table"><thead><tr><th>Asset</th><th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Status</th></tr></thead><tbody>${trades.map(t=>`<tr><td>${esc(t.asset)}</td><td>${esc(t.side)}</td><td class="ltr">${esc(t.entry)}</td><td class="ltr">${esc(t.stop)}</td><td class="ltr">${esc(t.target)}</td><td>${dataBadge('Paper','blue')}</td></tr>`).join('')}</tbody></table></div>`):empty('لا توجد محاكاة بعد','لا نملأ دفتر التداول بصفقات خيالية. أضف فكرة محاكاة فقط عندما تريد اختبار فرضية.')}`; 
-343	  } 
-344	 
-345	  function renderIntelligence(){ return `${pageHero('الذكاء وOSINT','Signal → Evidence → Confidence → Action. لا إشاعة بلا مصدر.',`<button class="btn btn-primary" data-action="scan">↻ Scan</button>`)}<div class="grid grid-3">${['Signals','Evidence','Entities'].map(x=>card(x,'INTELLIGENCE',`<div class="metric">—</div><div class="metric-sub">No verified live feed</div>`)).join('')}</div><div class="card" style="margin-top:14px">${empty('Intelligence canvas جاهز','هنا سنعرض freshness، source reliability، fingerprints، anomalies، entity links، وسبب الانتقال من signal إلى opportunity.')}</div>`; } 
-346	 
-347	  function renderAlerts(){ 
-348	    const incidents=CFG.knownRuntimeSnapshot?.incidents||[]; 
-349	    const liveAlerts=state.live?.alerts?.items||[]; 
-350	    const items=liveAlerts.length?liveAlerts:incidents.map(i=>({title:i.title,body:i.detail,source:i.source,severity:i.severity,delivery:'observed',timestamp:CFG.knownRuntimeSnapshot?.snapshotAt})); 
-351	    return `${pageHero('التنبيهات والرسائل','Unified inbox — source, severity, freshness, and verified delivery state.',`<button class="btn btn-primary" data-action="refresh">↻ Refresh</button>`)}<div class="filter-bar"><button class="filter active">All</button><button class="filter">Unread</button><button class="filter">Critical</button><button class="filter">Opportunity</button><button class="filter">Mining</button><button class="filter">Security</button></div>${items.length?card('Inbox','MESSAGES',`<div class="incident-list">${items.map(x=>`<div class="incident-row ${esc(x.severity||'info')}"><div><strong>${esc(x.title||'—')}</strong><p>${esc(x.body||'')}</p><div class="mini-desc">${esc(x.source||'unknown source')} · ${esc(x.timestamp||'time not verified')}</div></div><div style="text-align:left"><span class="tag">${esc(x.delivery||'not verified')}</span></div></div>`).join('')}</div>`):card('Inbox','MESSAGES',empty('لا توجد رسائل موثقة وصلت بعد','لن نعرض “تم الإرسال” إلا إذا أكد مزود النقل نجاح التوصيل.'))}`; 
-352	  } 
-353	 
-354	  function renderPersonal(){ 
-355	    const income=sum(state.personal.income,'amount'); 
-356	    return `${pageHero('المساحة الشخصية','هذه مساحتك أنت: الهوية، المحافظ الشخصية، الأرباح، الأهداف والملاحظات. منفصلة عن النظام.',`<button class="btn btn-primary" data-action="recordIncome">＋ Income</button>`)} 
-357	      <div class="grid grid-3"> 
-358	        ${card('My Identity','PROFILE',`<div class="callout"><strong>${esc(displayName())}</strong><p>${esc(state.user.email||'لا يوجد بريد متحقق')} · ${esc(state.user.telegram||'Telegram not verified')}</p></div>`)} 
-359	        ${card('My Income','EARNINGS',`<div class="metric">${fmt(income)}</div><div class="metric-sub">محفوظ محلياً فقط · لا يمثل ledger مالي رسمي</div>`)} 
-360	        ${card('Goals','GOALS',state.personal.goals.length?`<div class="mini-list">${state.personal.goals.map(g=>`<div class="mini-row"><div class="mini-name">${esc(g.title)}</div><span class="tag">${esc(g.status||'active')}</span></div>`).join('')}</div>`:empty('لا أهداف بعد','أضف هدفاً واضحاً: أسبوع / شهر / مشروع.'))} 
-361	      </div> 
-362	      <div style="margin-top:14px">${card('Notes','PRIVATE NOTES',`<textarea id="personalNote" class="field" style="width:100%;min-height:150px;background:#0b111a;border:1px solid var(--line);border-radius:12px;color:#fff;padding:12px" placeholder="ملاحظاتك الخاصة…">${esc(state.personal.notes?.[0]?.text||'')}</textarea><div style="margin-top:10px"><button class="btn btn-primary" data-action="saveNote">Save</button> <span class="section-note">محلياً في المتصفح، لا يتم رفعها إلى backend في هذه النسخة.</span></div>`)}</div>`; 
-363	  } 
-364	 
-365	  function renderSettings(){ 
-366	    return `${pageHero('الإعدادات','Settings — لا مزيد من صفحة طويلة. كل فئة لها مكانها.',`<button class="btn btn-primary" data-action="saveSettings">Save</button>`)} 
-367	      <div class="grid grid-2"> 
-368	        ${card('Appearance','UI',`<div class="form-grid"><div class="field"><label>Language</label><select id="setLocale"><option value="ar" ${state.locale==='ar'?'selected':''}>العربية</option><option value="en" ${state.locale==='en'?'selected':''}>English</option></select></div><div class="field"><label>Theme</label><select id="setTheme"><option value="midnight" selected>Midnight</option><option value="light">Light (future)</option></select></div></div>`)} 
-369	        ${card('Connection','CONTROL ROOM',`<div class="form-grid"><div class="field"><label>Access key</label><input id="accessKey" type="password" placeholder="اختياري للـbrowser فقط" value="${esc(state.accessKey)}"></div><div class="field"><label>Telegram Mini App</label><input value="${window.Telegram?.WebApp?.initData?'Detected':'Not detected'}" disabled></div></div><div class="section-note" style="margin-top:8px">لا نحفظ مفتاح الوصول في LocalStorage افتراضياً.</div><div style="margin-top:10px"><button class="btn btn-primary" data-action="connect">Connect / Verify</button> <button class="btn" data-action="disconnect">Disconnect</button></div>`)} 
-370	        ${card('Notifications','DELIVERY',`<div class="mini-list"><div class="mini-row"><div><div class="mini-name">Telegram alerts</div><div class="mini-desc">Show verified delivery only</div></div><span class="tag">Audit</span></div><div class="mini-row"><div><div class="mini-name">Security alerts</div><div class="mini-desc">Critical events require review</div></div><span class="tag">Priority</span></div></div>`)} 
-371	        ${card('Privacy & Safety','GUARDRAILS',`<div class="mini-list"><div class="mini-row"><span class="mini-name">Seed phrases / private keys</span>${dataBadge('Never stored','green')}</div><div class="mini-row"><span class="mini-name">Live trading</span>${dataBadge('Disabled by default','green')}</div><div class="mini-row"><span class="mini-name">Destructive actions</span>${dataBadge('Human approval','blue')}</div></div>`)} 
-372	      </div>`; 
-373	  } 
-374	 
-375	  function renderHealth(){ 
-376	    const systems=[ 
-377	      ['Supabase','Backend / Edge Function'],['n8n','Automation runtime'],['Telegram','Control channel'],['Vespa','Cognitive / search layer'],['TinyFish','Browser automation'],['GitHub Pages','UI deployment'] 
-378	    ]; 
-379	    return `${pageHero('صحة النظام','System / Health — حالة موثقة فقط، مع وضع degraded صريح عند الفشل.',`<button class="btn btn-primary" data-action="refresh">↻ Probe</button>`)} 
-380	      <div class="grid grid-3">${systems.map(s=>card(s[0],'SYSTEM',`<div class="metric" style="font-size:20px">${state.connected&&s[0]==='Supabase'?'Connected':'Unverified'}</div><div class="metric-sub">${esc(s[1])}</div><div style="margin-top:10px">${dataBadge(state.connected&&s[0]==='Supabase'?'Verified connection':'No live probe','gray')}</div>`)).join('')}</div> 
-381	      <div class="grid grid-2" style="margin-top:14px"><div class="card">${empty('Incident timeline','Loading, delivery, execution quota, AI credit and API errors enter this audit stream with timestamp + source.','<button class="btn btn-primary" data-action="refresh">↻ Probe again</button>')}</div><div class="card"><div class="card-head"><div><div class="eyebrow">OBSERVED NOW</div><div class="card-title">Known blockers</div></div></div>${(CFG.knownRuntimeSnapshot?.incidents||[]).map(i=>`<div class="incident-row ${esc(i.severity)}"><div><strong>${esc(i.title)}</strong><p>${esc(i.detail)}</p></div><span class="tag">${esc(i.status)}</span></div>`).join('')||empty('None','No stored incident snapshot.')}</div></div>`; 
-382	  } 
-383	 
-384	  function bindShell(){ 
-385	    document.querySelectorAll('[data-route]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.route))); 
-386	    document.getElementById('menuBtn')?.addEventListener('click',()=>document.getElementById('sidebar')?.classList.toggle('open')); 
-387	    document.querySelector('[data-mobile-menu]')?.addEventListener('click',()=>document.getElementById('sidebar')?.classList.add('open')); 
-388	    document.getElementById('commandBtn')?.addEventListener('click',openCommand); 
-389	    document.getElementById('whatBtn')?.addEventListener('click',()=>document.getElementById('approvalDrawer')?.classList.add('open')); 
-390	    document.getElementById('closeDrawer')?.addEventListener('click',()=>document.getElementById('approvalDrawer')?.classList.remove('open')); 
-391	    document.getElementById('command')?.addEventListener('click',e=>{if(e.target.id==='command')closeCommand()}); 
-392	    document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>handleAction(el.dataset.action))); 
-393	    document.querySelectorAll('[data-filter]').forEach(el=>el.addEventListener('click',()=>{state.activeFilter=el.dataset.filter;render()})); 
-394	    document.querySelectorAll('[data-approval]').forEach(el=>el.addEventListener('click',()=>toast('هذا الإجراء يحتاج backend approval flow فعلي قبل التنفيذ.','warn'))); 
-395	    document.querySelectorAll('[data-remove-wallet]').forEach(el=>el.addEventListener('click',()=>{state.personal.wallets.splice(Number(el.dataset.removeWallet),1);saveLocal();render();toast('تم حذف المحفظة محلياً.','good')})); 
-396	    const opSearch=document.getElementById('opSearch'); if(opSearch) opSearch.addEventListener('input',e=>{state.search=e.target.value;render();document.getElementById('opSearch')?.focus()}); 
-397	    bindPageInputs(); 
-398	    window.onkeydown=(e)=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommand();} if(e.key==='Escape'){closeCommand();document.getElementById('approvalDrawer')?.classList.remove('open');}}; 
-399	  } 
-400	 
-401	  function bindPageInputs(){ 
-402	    document.getElementById('commandInput')?.addEventListener('input',e=>renderCommands(e.target.value)); 
-403	    document.getElementById('commandInput')?.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCommand();return;}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const rows=[...document.querySelectorAll('.command-row')];if(!rows.length)return;const idx=Math.max(0,rows.findIndex(r=>r.classList.contains('active')));const next=e.key==='ArrowDown'?Math.min(rows.length-1,idx+1):Math.max(0,idx-1);rows.forEach(r=>r.classList.remove('active'));rows[next].classList.add('active');rows[next].scrollIntoView({block:'nearest'});return;}if(e.key==='Enter'){const a=document.querySelector('.command-row.active');if(a){if(a.dataset.cmdKind==='action'){closeCommand();handleAction(a.dataset.action);}else{go(a.dataset.route);closeCommand();}}}}); 
-404	  } 
-405	 
-406	  function openCommand(){ state.commandOpen=true; document.getElementById('command')?.classList.add('open'); document.getElementById('commandInput')?.focus(); renderCommands(''); } 
-407	  function closeCommand(){ state.commandOpen=false; document.getElementById('command')?.classList.remove('open'); } 
-408	  function renderCommands(q){ 
-409	    const list=document.getElementById('commandList');if(!list)return;const term=(q||'').toLowerCase(); 
-410	    const actions=[ 
-411	      ['quickOpportunity','＋ إضافة فرصة','Add Opportunity','radar'],['quickLead','＋ إضافة Prospect','Add Prospect','revenue'],['recordIncome','＋ تسجيل دخل','Record Income','capital'],['addWallet','＋ إضافة محفظة','Add Wallet','wallet'],['scan','⌁ تشغيل Radar','Run Scan','intelligence'],['openApprovals','◍ ما الذي يحتاجني؟','What Needs Me?','alerts'] 
-412	    ]; 
-413	    const routeRows=routes.filter(r=>!term || r[1].toLowerCase().includes(term)||r[2].toLowerCase().includes(term)).map(r=>({kind:'route',route:r[0],title:r[1],meta:r[2],icon:r[3]})); 
-414	    const actionRows=actions.filter(a=>!term||a[1].toLowerCase().includes(term)||a[2].toLowerCase().includes(term)).map(a=>({kind:'action',action:a[0],title:a[1],meta:a[2],icon:a[3]})); 
-415	    const rows=[...actionRows,...routeRows]; 
-416	    list.innerHTML=rows.map((r,i)=>`<div class="command-row ${i===0?'active':''}" data-cmd-kind="${r.kind}" data-route="${r.route||''}" data-action="${r.action||''}"><div class="nav-icon">${ICONS[r.icon]||ICONS.search}</div><div><strong>${esc(r.title)}</strong><span>${esc(r.meta)}</span></div></div>`).join('') || `<div class="empty">لا نتيجة</div>`; 
-417	    list.querySelectorAll('.command-row').forEach(x=>x.addEventListener('click',()=>{if(x.dataset.cmdKind==='action'){closeCommand();handleAction(x.dataset.action);}else{go(x.dataset.route);closeCommand();}})); 
-418	  } 
-419	 
-420	  function go(route){ if(!routeMeta(route))return; state.route=route; location.hash=route; document.getElementById('sidebar')?.classList.remove('open'); render(); window.scrollTo({top:0,behavior:'smooth'}); } 
-421	  function render(){ shell(); } 
-422	 
-423	  async function handleAction(action){ 
-424	    if(action==='connect'){ await connect(); return; } 
-425	    if(action==='disconnect'){ state.connected=false;state.live=null;state.connectionLabel='غير متصل';render();toast('تم فصل الاتصال.','good');return; } 
-426	    if(action==='scan'){ toast('Radar جاهز، لكن التنفيذ الفعلي متوقف حالياً حتى تتوفر قناة runtime غير مقيدة. لا يوجد نجاح وهمي.','warn');return; } 
-427	    if(action==='agentStatus'){ toast('Agent health يحتاج execution runtime؛ n8n execution quota مستنفد حالياً.','warn');return; } 
-428	    if(action==='refresh'){ await connect(true);return; } 
-429	    if(action==='quickOpportunity'){ modalForm('إضافة فرصة','opportunity');return; } 
-430	    if(action==='quickLead'){ modalForm('إضافة Prospect','lead');return; } 
-431	    if(action==='recordIncome'){ modalForm('تسجيل دخل شخصي','income');return; } 
-432	    if(action==='addWallet'){ modalForm('إضافة محفظة شخصية','wallet');return; } 
-433	    if(action==='paperTrade'){ modalForm('إضافة Paper Trade','trade');return; } 
-434	    if(action==='saveNote'){ const v=document.getElementById('personalNote')?.value||''; state.personal.notes=[{text:v,updatedAt:Date.now()}];saveLocal();toast('تم حفظ الملاحظة محلياً.','good');return; } 
-435	    if(action==='saveSettings'){ state.locale=document.getElementById('setLocale')?.value||'ar';state.theme=document.getElementById('setTheme')?.value||'midnight';state.accessKey=(document.getElementById('accessKey')?.value||'').trim();localStorage.setItem('midad_locale',state.locale);localStorage.setItem('midad_theme',state.theme);toast('تم حفظ تفضيلات الواجهة.','good');render();return; } 
-436	  } 
-437	 
-438	  function modalForm(title,kind){ 
-439	    const map={ 
-440	      opportunity:[['title','اسم/عنوان الفرصة'],['source','المصدر'],['reward_usd','المكافأة بالدولار','number']], 
-441	      lead:[['title','اسم العميل / المشروع'],['source','مصدر العميل'],['budget','الميزانية التقريبية','number']], 
-442	      income:[['title','وصف الدخل'],['amount','المبلغ USD','number']], 
-443	      wallet:[['label','اسم المحفظة'],['address','العنوان العام فقط'],['network','Network']], 
-444	      trade:[['asset','Asset'],['side','Side: long/short'],['entry','Entry'],['stop','Stop'],['target','Target']] 
-445	    }; 
-446	    const fields=map[kind]||[]; 
-447	    const box=document.getElementById('modalBox');const modal=document.getElementById('modal'); 
-448	    box.innerHTML=`<h3>${esc(title)}</h3><p>هذا السجل المحلي لا يرسل أموالاً ولا يغير النظام. لا تدخل seed phrase أو private key.</p><div class="form-grid">${fields.map(f=>`<div class="field"><label>${esc(f[1])}</label><input id="mf_${f[0]}" type="${f[2]||'text'}"></div>`).join('')}</div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" id="modalCancel">إلغاء</button><button class="btn btn-primary" id="modalSave">حفظ</button></div>`; 
-449	    modal.classList.add('open'); 
-450	    document.getElementById('modalCancel').onclick=()=>modal.classList.remove('open'); 
-451	    document.getElementById('modalSave').onclick=()=>{ if(kind==='wallet'){state.personal.wallets.push({label:v('label'),address:v('address'),network:v('network')});} else if(kind==='income'){state.personal.income.push({title:v('title'),amount:Number(v('amount')||0),createdAt:Date.now()});} else if(kind==='trade'){state.personal.paperTrades.push({asset:v('asset'),side:v('side'),entry:v('entry'),stop:v('stop'),target:v('target')});} else { toast('السجل حُفِظ كمخطط محلي.','good'); } 
-452	      saveLocal(); modal.classList.remove('open'); render(); 
-453	    }; 
-454	    function v(k){return document.getElementById('mf_'+k)?.value.trim()||'';} 
-455	  } 
-456	 
-457	  function toast(msg,type='good'){ 
-458	    const stack=document.getElementById('toastStack');if(!stack)return;const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;stack.appendChild(el);setTimeout(()=>el.remove(),4200); 
-459	  } 
-460	 
-461	  async function connect(){ 
-462	    const tg = window.Telegram?.WebApp?.initData || ''; 
-463	    const access = (document.getElementById('accessKey')?.value || state.accessKey || '').trim(); 
-464	    state.accessKey = access; 
-465	    const url=(CFG.supabaseUrl||'')+(CFG.controlRoomFunction||''); 
-466	    if(!url){toast('Supabase URL/function غير مضبوطين.','bad');return;} 
-467	    const body={action:CFG.dashboardAction||'dashboard',telegram_init_data:tg,access_key:access}; 
-468	    try{ 
-469	      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); 
-470	      const data=await res.json().catch(()=>({})); 
-471	      if(!res.ok) throw new Error(data?.error||data?.message||`HTTP ${res.status}`); 
-472	      state.connected=true;state.connectionLabel='متصل ومُتحقق';state.lastProbe=Date.now();state.live=data?.dashboard||data?.data||data||{}; 
-473	      const u=state.live?.user||data?.user||{}; state.user={name:u.name||u.full_name||'',email:u.email||'',telegram:u.telegram||u.username||''}; 
-474	      render();toast('تم التحقق من اتصال غرفة التحكم.','good'); 
-475	    }catch(err){ state.connected=false;state.connectionLabel='Degraded / غير متصل';state.live=null;render();toast(`تعذر التحقق من الاتصال: ${err.message}`,'warn'); } 
-476	  } 
-477	 
-478	  function boot(){ 
-479	    const hash=(location.hash||'').replace('#','');if(routes.some(r=>r[0]===hash))state.route=hash; 
-480	    if(window.Telegram?.WebApp){ try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand();}catch{} } 
-481	    render(); 
-482	    setTimeout(()=>APP.classList.remove('is-loading'),40); 
-483	    if(window.Telegram?.WebApp?.initData){ setTimeout(()=>connect(),120); } 
-484	  } 
-485	  window.addEventListener('hashchange',()=>{const h=(location.hash||'').slice(1);if(routes.some(r=>r[0]===h)){state.route=h;render();}}); 
-486	  boot(); 
-487	})(); 
-488	 
-489	</script> 
-490	</body> 
-491	</html> 
+<!doctype html> 
+<html lang="ar" dir="rtl"> 
+<head> 
+  <meta charset="utf-8" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /> 
+  <meta name="theme-color" content="#080b12" /> 
+  <meta name="description" content="MIDAD — Intelligence Control Room v4 — MAXIMUM POWER — MAXIMUM" /> 
+  <title>MIDAD — Intelligence Control Room v4 — MAXIMUM POWER</title> 
+<style> 
+:root{ 
+  --bg:#070a10;--bg2:#0b0f17;--panel:#0e141e;--panel2:#121a25;--line:#1d2937;--text:#eef3f8;--muted:#93a0b1; 
+  --brand:#5be7d9;--brand2:#8b7cff;--blue:#63a2ff;--green:#55d69b;--amber:#f3c969;--red:#ff6b7a; 
+  --shadow:0 18px 50px rgba(0,0,0,.35);--radius:20px;--radius-sm:14px;--sidebar:286px; 
+  --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif; 
+} 
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:radial-gradient(circle at 75% -10%,rgba(91,231,217,.08),transparent 38%),radial-gradient(circle at 10% 20%,rgba(139,124,255,.07),transparent 34%),var(--bg);color:var(--text);font-family:var(--font);min-height:100%;} 
+body{overflow-x:hidden}.app-shell{min-height:100vh}.is-loading{display:grid;place-items:center}.boot-screen{text-align:center;color:var(--muted)}.boot-brand{font-size:40px;font-weight:900;letter-spacing:.16em;color:#fff}.boot-sub{font-size:10px;letter-spacing:.28em;margin-top:4px}.boot-status{margin-top:28px;font-size:13px}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brand);margin-left:8px;box-shadow:0 0 18px var(--brand)} 
+.topbar{height:74px;position:fixed;top:0;right:0;left:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 calc(var(--sidebar) + 24px);background:rgba(7,10,16,.82);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.05)} 
+.topbar-left,.topbar-right{display:flex;align-items:center;gap:10px}.brand-mini{display:none;font-weight:900;letter-spacing:.14em}.page-title{display:flex;flex-direction:column;gap:2px}.page-title strong{font-size:17px}.page-title span{font-size:11px;color:var(--muted);direction:ltr;text-align:right}.identity{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);background:rgba(18,26,37,.75);border-radius:14px}.avatar{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(91,231,217,.22),rgba(139,124,255,.22));border:1px solid rgba(255,255,255,.08);font-weight:800}.identity-meta{line-height:1.1}.identity-meta strong{font-size:12px}.identity-meta span{display:block;font-size:10px;color:var(--muted);margin-top:4px}.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}.icon-btn:hover{border-color:#2f4155;background:var(--panel2)} 
+.sidebar{position:fixed;top:0;right:0;bottom:0;width:var(--sidebar);padding:18px 16px 16px;z-index:60;background:linear-gradient(180deg,#080c13 0%,#090d15 70%,#0b1018 100%);border-left:1px solid rgba(255,255,255,.04);overflow-y:auto}.brand{display:flex;align-items:center;gap:12px;padding:10px 10px 20px}.brand-mark{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,rgba(91,231,217,.16),rgba(139,124,255,.16));border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;font-weight:900;font-size:20px}.brand-copy strong{display:block;font-size:18px;letter-spacing:.12em}.brand-copy span{display:block;font-size:9px;color:var(--muted);letter-spacing:.17em;margin-top:3px;direction:ltr;text-align:right}.nav-group{margin-top:12px}.nav-heading{padding:10px 12px 8px;font-size:9px;color:#667385;letter-spacing:.16em}.nav-item{width:100%;display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:11px 12px;border:1px solid transparent;background:transparent;color:#b7c1ce;border-radius:13px;cursor:pointer;text-align:right;transition:.18s}.nav-item:hover{background:#0f1620;color:#fff}.nav-item.active{background:linear-gradient(90deg,rgba(91,231,217,.10),rgba(139,124,255,.06));border-color:rgba(91,231,217,.12);color:#fff;box-shadow:inset 2px 0 0 var(--brand)}.nav-icon{width:20px;font-size:16px;opacity:.9}.nav-label{flex:1;font-size:12px}.nav-meta{font-size:9px;color:#738196;direction:ltr}.sidebar-bottom{margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#0e151f,#0b1018)}.connection-line{display:flex;align-items:center;gap:8px;font-size:11px;color:#c8d2de}.connection-dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}.connection-dot.ok{background:var(--green);box-shadow:0 0 15px rgba(85,214,155,.5)}.connection-dot.bad{background:var(--red)} 
+.main{padding:98px 24px 100px calc(var(--sidebar) + 24px);max-width:1800px;margin:0 auto;}.route{display:none}.route.active{display:block}.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.hero h1{margin:0;font-size:28px;letter-spacing:-.03em}.hero p{margin:7px 0 0;color:var(--muted);font-size:12px;max-width:780px}.hero-actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;font-size:12px;cursor:pointer}.btn:hover{background:var(--panel2)}.btn-primary{background:linear-gradient(135deg,rgba(91,231,217,.18),rgba(139,124,255,.17));border-color:rgba(91,231,217,.26)}.btn-danger{border-color:rgba(255,107,122,.25);color:#ffd2d8}.btn:disabled{opacity:.45;cursor:not-allowed}.ltr{direction:ltr;text-align:left} 
+.grid{display:grid;gap:14px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.span-2{grid-column:span 2}.card{background:linear-gradient(180deg,rgba(14,20,30,.98),rgba(11,16,24,.98));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.eyebrow{font-size:9px;letter-spacing:.16em;color:#728093;text-transform:uppercase;direction:ltr}.card-title{font-size:14px;font-weight:800;margin-top:3px}.muted{color:var(--muted)}.metric{font-size:28px;font-weight:900;letter-spacing:-.04em}.metric-sub{font-size:10px;color:var(--muted);margin-top:3px}.metric-row{display:flex;align-items:end;justify-content:space-between;gap:12px}.status-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;font-size:9px;border:1px solid var(--line);white-space:nowrap}.status-chip.green{color:#bff3d6;background:rgba(85,214,155,.07);border-color:rgba(85,214,155,.18)}.status-chip.amber{color:#ffe6a8;background:rgba(243,201,105,.07);border-color:rgba(243,201,105,.18)}.status-chip.red{color:#ffd3d8;background:rgba(255,107,122,.07);border-color:rgba(255,107,122,.18)}.status-chip.blue{color:#cfe2ff;background:rgba(99,162,255,.07);border-color:rgba(99,162,255,.18)}.status-chip.gray{color:#c9d2df;background:rgba(147,160,177,.05)}.mini-list{display:grid;gap:8px}.mini-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.045)}.mini-row:first-child{border-top:0}.mini-name{font-size:11px;font-weight:700}.mini-desc{font-size:10px;color:var(--muted);margin-top:3px}.mini-right{font-size:11px;font-weight:700;white-space:nowrap}.progress{height:8px;background:#131c28;border-radius:999px;overflow:hidden}.progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));border-radius:inherit}.section-note{font-size:10px;color:var(--muted);line-height:1.7}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:680px}.table th,.table td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;font-size:11px;vertical-align:middle}.table th{font-size:9px;color:#738196;letter-spacing:.1em;text-transform:uppercase}.tag{display:inline-flex;padding:5px 7px;border-radius:8px;border:1px solid var(--line);font-size:9px;color:#d4dde7}.empty{display:grid;place-items:center;padding:30px;text-align:center;border:1px dashed #263344;border-radius:16px;color:var(--muted)}.empty strong{color:#dce6f1;font-size:13px}.empty p{margin:6px 0 0;font-size:10px;max-width:520px;line-height:1.7}.activity{display:grid;gap:0}.activity-item{display:grid;grid-template-columns:12px 1fr auto;gap:10px;padding:11px 0;border-top:1px solid rgba(255,255,255,.05)}.activity-item:first-child{border-top:0}.activity-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--blue)}.activity-main strong{font-size:11px}.activity-main p{font-size:10px;color:var(--muted);margin:3px 0 0}.activity-time{font-size:9px;color:#667487;direction:ltr} 
+.callout{border:1px solid rgba(91,231,217,.16);background:radial-gradient(circle at 10% 50%,rgba(91,231,217,.10),transparent 45%),linear-gradient(90deg,rgba(91,231,217,.03),rgba(139,124,255,.04));border-radius:18px;padding:15px}.callout strong{display:block;font-size:12px}.callout p{font-size:10px;color:var(--muted);line-height:1.7;margin:7px 0 0}.filter-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.filter{padding:7px 9px;border:1px solid var(--line);background:var(--panel);border-radius:10px;color:#9eacbc;font-size:10px;cursor:pointer}.filter.active{color:#fff;border-color:rgba(91,231,217,.24);background:rgba(91,231,217,.06)}.searchbox{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:9px 11px;border-radius:12px;width:min(360px,100%)}.searchbox input{width:100%;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:11px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px}.field label{font-size:9px;color:#7e8da0}.field input,.field textarea,.field select{width:100%;background:#0b111a;border:1px solid var(--line);border-radius:10px;padding:10px 11px;color:#fff;outline:0;font:inherit;font-size:11px}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field textarea:focus,.field select:focus{border-color:rgba(91,231,217,.3)} 
+.command{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;padding:12vh 20px}.command.open{display:flex}.command-box{width:min(720px,100%);background:#0c121b;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 35px 100px rgba(0,0,0,.55)}.command-input{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:#fff;padding:17px 18px;font-size:14px;outline:0}.command-list{max-height:60vh;overflow:auto;padding:8px}.command-row{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;cursor:pointer}.command-row:hover,.command-row.active{background:#121b27}.command-row strong{font-size:12px}.command-row span{display:block;color:var(--muted);font-size:10px;margin-top:3px}.drawer{position:fixed;top:0;bottom:0;left:0;width:min(420px,92vw);background:#0c121b;border-right:1px solid var(--line);z-index:180;transform:translateX(-102%);transition:.22s;box-shadow:30px 0 80px rgba(0,0,0,.35);display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}.drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.drawer-body{padding:16px;overflow:auto}.approval{border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:10px;background:#0f1620}.approval strong{font-size:11px}.approval p{font-size:10px;color:var(--muted);line-height:1.7}.approval-actions{display:flex;gap:7px;margin-top:10px}.mobile-nav{display:none}.modal{position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.6);display:none;place-items:center;padding:20px}.modal.open{display:grid}.modal-box{width:min(520px,100%);background:#0c121b;border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}.modal-box h3{margin:0 0 7px}.modal-box p{font-size:11px;color:var(--muted);line-height:1.7}.toast-stack{position:fixed;left:18px;bottom:18px;z-index:300;display:grid;gap:8px}.toast{min-width:240px;max-width:360px;padding:11px 13px;border-radius:13px;border:1px solid var(--line);background:#0d141e;box-shadow:var(--shadow);font-size:11px}.toast.good{border-color:rgba(85,214,155,.2)}.toast.bad{border-color:rgba(255,107,122,.2)}.toast.warn{border-color:rgba(243,201,105,.2)} 
+@media(max-width:1200px){:root{--sidebar:250px}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{padding-right:18px}.main{padding-left:18px}} 
+@media(max-width:920px){.sidebar{transform:translateX(102%);transition:.22s;box-shadow:-20px 0 50px rgba(0,0,0,.4)}.sidebar.open{transform:translateX(0)}.topbar{padding:0 14px;height:66px}.brand-mini{display:block}.topbar .page-title{display:none}.main{padding:86px 14px 96px}.mobile-nav{display:flex;position:fixed;left:10px;right:10px;bottom:10px;z-index:70;background:rgba(10,15,22,.94);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:18px;padding:7px;box-shadow:0 14px 50px rgba(0,0,0,.35)}.mobile-nav button{flex:1;border:0;background:transparent;color:#8b98aa;padding:7px 3px;border-radius:12px;font-size:9px}.mobile-nav button.active{background:rgba(91,231,217,.08);color:#fff}.mobile-nav button .nav-ico{display:block;font-size:15px;margin-bottom:2px}.identity-meta{display:none}.grid-3{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}.span-2{grid-column:auto}.hero{flex-direction:column}.form-grid{grid-template-columns:1fr}} 
+@media(max-width:560px){.grid-3,.grid-4{grid-template-columns:1fr}.metric{font-size:24px}.hero h1{font-size:24px}.card{padding:14px}.topbar-right .icon-btn:nth-child(2){display:none}.drawer{width:94vw}} 
+ 
+/* v4 MAXIMUM visual layer */ 
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.014) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black,transparent 75%);} 
+.main,.topbar,.sidebar{position:relative;z-index:1} 
+.route-kicker{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.11em;color:#718197;text-transform:uppercase;direction:ltr;margin-bottom:8px}.route-sep{opacity:.4}.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(243,201,105,.35)}.pulse-dot.live{background:var(--green);box-shadow:0 0 13px rgba(85,214,155,.45)} 
+.command-strip{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0 2px;margin-bottom:4px}.quick-chip{border:1px solid var(--line);background:rgba(15,22,32,.72);color:#b8c4d2;padding:8px 11px;border-radius:999px;font-size:10px;cursor:pointer;backdrop-filter:blur(8px)}.quick-chip:hover{color:#fff;border-color:#33485f}.quick-chip.primary{color:#dffdf6;border-color:rgba(91,231,217,.25);background:rgba(91,231,217,.07)} 
+.mission-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.mission-lane{padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(15,22,32,.95),rgba(9,14,21,.95));min-height:190px}.mission-lane-head{display:flex;justify-content:space-between;align-items:center;color:#aeb9c7;font-size:10px;letter-spacing:.12em;margin-bottom:10px}.mission-lane-head strong{font-size:12px;color:#eef4f8;letter-spacing:normal}.mission-card{display:flex;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.05);border-radius:13px;background:rgba(255,255,255,.015);margin-top:8px}.mission-card .mission-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;background:var(--blue);box-shadow:0 0 10px rgba(99,162,255,.35);flex:none}.mission-card.green .mission-dot{background:var(--green);box-shadow:0 0 10px rgba(85,214,155,.35)}.mission-card.amber .mission-dot{background:var(--amber);box-shadow:0 0 10px rgba(243,201,105,.3)}.mission-card.red .mission-dot{background:var(--red);box-shadow:0 0 10px rgba(255,107,122,.3)}.mission-card.purple .mission-dot{background:#9b8cff;box-shadow:0 0 10px rgba(155,140,255,.3)}.mission-card strong{display:block;font-size:10px}.mission-card span{display:block;color:var(--muted);font-size:9px;margin-top:3px} 
+.decision-stack{display:grid;gap:7px}.decision-stack>div{display:grid;grid-template-columns:36px 86px 1fr;gap:8px;align-items:center;padding:9px 0;border-top:1px solid rgba(255,255,255,.045)}.decision-stack>div:first-child{border-top:0}.decision-stack strong{font-size:11px}.decision-stack span:last-child{font-size:9px;color:var(--muted)}.step-index{font-variant-numeric:tabular-nums;color:#7d8ba0;font-size:9px} 
+.incident-list{display:grid;gap:8px}.incident-row{display:flex;justify-content:space-between;gap:14px;padding:12px;border:1px solid rgba(255,255,255,.05);border-radius:14px;background:rgba(255,255,255,.012);align-items:flex-start}.incident-row strong{font-size:11px}.incident-row p{margin:4px 0 0;color:var(--muted);font-size:9px;line-height:1.65}.incident-row.critical{border-color:rgba(255,107,122,.16);background:rgba(255,107,122,.025)}.incident-row.warning{border-color:rgba(243,201,105,.16);background:rgba(243,201,105,.018)}.incident-row.info{border-color:rgba(99,162,255,.14)}.incident-row.observed{border-color:rgba(139,124,255,.12)} 
+.offer-deck{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.offer-card{position:relative;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(18,26,37,.95),rgba(10,15,22,.95));overflow:hidden}.offer-card:after{content:"";position:absolute;inset:auto -20px -50px auto;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(91,231,217,.08),transparent 68%)}.offer-card.hot{border-color:rgba(91,231,217,.2);box-shadow:inset 0 1px 0 rgba(91,231,217,.06),0 14px 40px rgba(0,0,0,.18)}.offer-card>span{font-size:9px;color:#6e7d90;letter-spacing:.12em}.offer-card strong{display:block;font-size:28px;letter-spacing:-.04em;margin-top:3px}.offer-card em{display:block;font-size:11px;font-style:normal;color:#d7e1ec;font-weight:800;margin-top:1px}.offer-card p{font-size:9px;line-height:1.6;color:var(--muted);min-height:36px} 
+.mission-progress{height:10px} 
+@media(max-width:1120px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.offer-deck{grid-template-columns:1fr}} 
+@media(max-width:560px){.mission-grid{grid-template-columns:1fr}.command-strip{overflow:auto;flex-wrap:nowrap;padding-bottom:4px}.quick-chip{flex:none}.decision-stack>div{grid-template-columns:30px 74px 1fr}.incident-row{flex-direction:column}.offer-card{padding:14px}} 
+ 
+</style> 
+<script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+</head> 
+<body> 
+  <div id="app" class="app-shell is-loading" aria-live="polite"> 
+    <div class="boot-screen"> 
+      <div class="boot-orbit"></div> 
+      <div class="boot-brand">MIDAD</div> 
+      <div class="boot-sub">INTELLIGENCE CONTROL ROOM</div> 
+      <div class="boot-status"><span class="status-dot"></span> جاري تهيئة غرفة التحكم…</div> 
+    </div> 
+  </div> 
+  <noscript> 
+    <div class="noscript">MIDAD Control Room يحتاج JavaScript للعمل.</div> 
+  </noscript> 
+<script defer src="./app-max.js?v=max-2026-09-22"></script> 
+</body> 
+</html> 
