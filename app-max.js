@@ -5,7 +5,27 @@ var C=window.MIDAD_CONFIG,A=document.getElementById("app"),TG=function(){return 
 var I={dashboard:"◈",mission:"✦",automation:"⌁",trading:"↗",clients:"◎",terminal:"⌘",opportunities:"⌁",revenue:"◆",capital:"◌",wallets:"◇",mining:"⛏",intelligence:"⌬",alerts:"◍",personal:"●",settings:"⚙",health:"✺"};
 var R=[["dashboard","الرئيسية","NEURAL INDEX"],["mission","غرفة المهمة","MISSION"],["automation","الأتمتة والمهام","TASK MATRIX"],["trading","التداول المحاكى","PAPER TERMINAL"],["clients","العملاء ومساحات العمل","WORKSPACE HUB"],["terminal","الطرفية والسجلات","LIVE TERMINAL"],["opportunities","الفرص","OPPORTUNITY INTELLIGENCE"],["revenue","الإيرادات","REVENUE"],["capital","رأس المال","CAPITAL"],["wallets","المحافظ","WALLETS"],["mining","التعدين","MINING"],["intelligence","الذكاء وOSINT","OSINT"],["alerts","التنبيهات","ALERT ENGINE"],["personal","المساحة الشخصية","PRIVATE"],["settings","الإعدادات","CONTROL"],["health","صحة النظام","HEALTH"]];
 var G=[["COMMAND",["dashboard","mission","automation","terminal"]],["MARKETS",["trading","opportunities","intelligence"]],["REVENUE",["revenue","clients"]],["CAPITAL",["capital","wallets","mining"]],["SYSTEM",["alerts","personal","settings","health"]]];
-var S={route:(location.hash||"#dashboard").slice(1),connected:false,label:"DEGRADED / AWAITING VERIFY",live:null,user:{},logs:[],accessKey:"",sessionToken:"",modules:JSON.parse(localStorage.getItem("midad_ui_modules")||'["neural","metrics","market","activity","health","quick"]'),personal:JSON.parse(localStorage.getItem("midad_personal")||'{"income":[],"wallets":[],"trades":[],"clients":[],"notes":""}')};
+function safeStorageJSON(key,fallback){
+  try{
+    var raw=localStorage.getItem(key);
+    return raw?JSON.parse(raw):fallback;
+  }catch(e){
+    try{localStorage.removeItem(key)}catch(_){}
+    return fallback;
+  }
+}
+var S={
+  route:(location.hash||"#dashboard").slice(1),
+  connected:false,
+  label:"DEGRADED / AWAITING VERIFY",
+  live:null,
+  user:{},
+  logs:[],
+  accessKey:"",
+  sessionToken:"",
+  modules:safeStorageJSON("midad_ui_modules",["neural","metrics","market","activity","health","quick"]),
+  personal:safeStorageJSON("midad_personal",{"income":[],"wallets":[],"trades":[],"clients":[],"notes":""})
+};
 if(!R.some(function(x){return x[0]===S.route}))S.route="dashboard";
 var $=function(s){return document.querySelector(s)},esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]})};
 var num=function(v){return v==null||v===""?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2})};
@@ -116,6 +136,8 @@ function go(id){if(!R.some(function(r){return r[0]===id}))return;S.route=id;loca
 function bind(){document.querySelectorAll("[data-route]").forEach(function(x){x.onclick=function(){go(x.dataset.route)}});document.querySelectorAll("[data-action]").forEach(function(x){x.onclick=function(e){e.stopPropagation();action(x.dataset.action)}});document.querySelectorAll("[data-command]").forEach(function(x){x.onclick=function(){terminalCommand(x.dataset.command)}});document.querySelectorAll("[data-remove-wallet]").forEach(function(x){x.onclick=function(){S.personal.wallets.splice(Number(x.dataset.removeWallet),1);save();render();toast("Deleted.","good")}});document.querySelectorAll("[data-approval]").forEach(function(x){x.onclick=function(){api("approval_decide",{approval_id:x.dataset.approval,decision:x.dataset.decision,note:"Decision from MIDAD Neural UI"}).then(function(){toast("Approval updated.","good");connect(true)}).catch(function(e){toast(e.message,"bad")})}});var ti=$("#terminalInput");if(ti)ti.onkeydown=function(e){if(e.key==="Enter")action("terminalRun")};window.onkeydown=function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();commandOpen()}if(e.key==="Escape"){$("#command").classList.remove("open");$("#drawer").classList.remove("open")}}}
 function render(){shell();if(S.route==="dashboard")inject();bind()}
 window.addEventListener("hashchange",function(){var h=location.hash.slice(1);if(R.some(function(r){return r[0]===h})){S.route=h;render()}});
-if(TG())try{TG().ready();TG().expand()}catch(e){}
-render();log("MAXIMUM Neural UI v5 booted","ok");setInterval(function(){if(S.connected)connect(true)},30000);
+if(TG())try{TG().ready();TG().expand();if(TG().enableClosingConfirmation)TG().enableClosingConfirmation()}catch(e){}
+render();log("MAXIMUM Neural UI v5 booted","ok");
+window.__MIDAD_RUNTIME_READY=true;
+setInterval(function(){if(S.connected)connect(true)},30000);
 })();
