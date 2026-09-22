@@ -444,20 +444,22 @@
     injectAppearanceCard();
   }
 
-  var observer = new MutationObserver(function () {
-    try {
-      injectAppearanceCard();
-      updateLanguageLabels();
-      renderProfileState();
-    } catch (e) {}
-  });
-
+  /*
+   * IMPORTANT: Do not observe #app with a broad MutationObserver.
+   * app-max.js re-renders the entire shell on many actions; combining that
+   * with textContent updates here can create a mutation/render feedback loop
+   * that freezes Telegram WebViews.
+   */
   function boot() {
     enhance();
-    var target = document.getElementById("app") || document.body;
-    observer.observe(target, { childList: true, subtree: true });
     window.addEventListener("hashchange", function () {
-      setTimeout(function () { injectAppearanceCard(); updateLanguageLabels(); }, 0);
+      setTimeout(function () {
+        try {
+          injectAppearanceCard();
+          updateLanguageLabels();
+          renderProfileState();
+        } catch (e) {}
+      }, 0);
     });
     window.__MIDAD_APPEND_LOG = function (message, type) {
       try {
