@@ -90,9 +90,7 @@ function api(action,extra,retry){
 function connect(silent){
   S.accessKey=(($("#accessKey")&&$("#accessKey").value)||S.accessKey||"").trim();
   log("Connecting…");
-  S.sessionToken="";
-  S.connected=false;
-  return ensureSession().then(function(){return api(C.dashboardAction)}).then(function(j){
+  return api(C.dashboardAction).then(function(j){
     S.connected=true;
     S.label="CONNECTED / VERIFIED";
     S.live=j.dashboard||j.data||j;
@@ -102,7 +100,7 @@ function connect(silent){
     render();
   }).catch(function(e){
     S.connected=false;
-    S.sessionToken="";
+    if(e.message==="session_expired")S.sessionToken="";
     S.label="DEGRADED / AWAITING VERIFY";
     log("Connection failed: "+e.message,"warn");
     if(!silent)toast("تعذر التحقق: "+e.message,"warn");
