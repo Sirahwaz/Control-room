@@ -6,7 +6,7 @@
   var DEFAULTS = {
     theme: "neural",
     font: "system",
-    scale: 1,
+    scale: 1.2,
     density: "normal",
     accent: "#5be7d9",
     accent2: "#9b8cff",
@@ -138,6 +138,36 @@
     } catch (e) {}
   }
 
+
+  function applyRenderedTypography() {
+    var scale = Math.max(0.95, Math.min(1.8, Number(PROFILE.scale || 1.2)));
+    var roots = [];
+    var appRoot = document.getElementById("app");
+    var stylePanel = document.getElementById("midadAppearancePanel");
+    if (appRoot) roots.push(appRoot);
+    if (stylePanel) roots.push(stylePanel);
+    roots.forEach(function(root){
+      var nodes = [root].concat(Array.prototype.slice.call(root.querySelectorAll("*")));
+      /* Capture the original computed size before changing any descendant. */
+      nodes.forEach(function(el){
+        if (!el || !el.getAttribute) return;
+        if (el.matches("script,style,svg,svg *,path,rect,circle,line,polyline,polygon")) return;
+        if (!el.hasAttribute("data-midad-base-font")) {
+          var size = parseFloat(window.getComputedStyle(el).fontSize || "0");
+          if (size > 0 && isFinite(size)) el.setAttribute("data-midad-base-font", String(size));
+        }
+      });
+      nodes.forEach(function(el){
+        if (!el || !el.getAttribute) return;
+        if (el.matches("script,style,svg,svg *,path,rect,circle,line,polyline,polygon")) return;
+        var base = parseFloat(el.getAttribute("data-midad-base-font") || "0");
+        if (!base || !isFinite(base)) return;
+        var next = Math.max(12, base * scale);
+        el.style.fontSize = next.toFixed(2) + "px";
+      });
+    });
+  }
+
   var FONT_STACKS = {
     system: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     inter: 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif',
@@ -177,8 +207,9 @@
     cssVar("--midad-accent", PROFILE.accent || theme.accent);
     cssVar("--midad-accent-2", PROFILE.accent2 || theme.accent2);
     cssVar("--midad-font", FONT_STACKS[PROFILE.font] || FONT_STACKS.system);
-    cssVar("--midad-text-scale", String(PROFILE.scale || 1));
+    cssVar("--midad-text-scale", String(PROFILE.scale || 1.2));
     cssVar("--midad-glow", String(Math.max(0, Math.min(100, Number(PROFILE.glow || 0))) / 100));
+    applyRenderedTypography();
     cssVar("--midad-density", PROFILE.density === "compact" ? "0.86" : PROFILE.density === "relaxed" ? "1.12" : "1");
 
     updateLanguageLabels();
@@ -200,12 +231,13 @@
     intelligence:["الذكاء وOSINT","OSINT","Intelligence & OSINT","OSINT"],
     alerts:["التنبيهات","ALERT ENGINE","Alerts","ALERT ENGINE"],
     personal:["المساحة الشخصية","PRIVATE","Private Workspace","PRIVATE"],
+    digital:["لوحة الحالة الرقمية","DIGITAL DASHBOARD","Digital Dashboard","DIGITAL DASHBOARD"],
     settings:["الإعدادات","CONTROL","Settings","CONTROL"],
     health:["صحة النظام","HEALTH","System Health","HEALTH"]
   };
 
   var CORE_TEXT = {
-    "الرئيسية":"Home","غرفة المهمة":"Mission Control","الأتمتة والمهام":"Automation & Tasks",
+    "الرئيسية":"Home","لوحة الحالة الرقمية":"Digital Dashboard","غرفة المهمة":"Mission Control","الأتمتة والمهام":"Automation & Tasks",
     "التداول المحاكى":"Paper Trading","العملاء ومساحات العمل":"Clients & Workspaces",
     "الطرفية والسجلات":"Terminal & Logs","الفرص":"Opportunities","الإيرادات":"Revenue",
     "رأس المال":"Capital","المحافظ":"Wallets","التعدين":"Mining","الذكاء وOSINT":"Intelligence & OSINT",
@@ -286,9 +318,9 @@
       '<div class="midad-panel-head"><div><div class="midad-panel-kicker">MIDAD VISUAL SYSTEM</div><h3>Appearance Lab</h3><small>ثبّت الهوية البصرية للواجهة على هذا الجهاز.</small></div><button class="midad-panel-close" data-midad-close>×</button></div>' +
       '<div class="midad-panel-scroll">' +
         '<section class="midad-control-group"><div class="midad-control-title">THÈMES <span>THEMES</span></div><div class="midad-theme-grid">' + Object.keys(THEMES).map(themePreview).join("") + '</div></section>' +
-        '<section class="midad-control-group"><div class="midad-control-title">TYPOGRAPHY <span>الخط والقياس</span></div>' +
+        '<section class="midad-control-group"><div class="midad-control-title">TYPOGRAPHY <span>الخط والقياس</span></div><div class="midad-scale-hint">حجم النص يطبّق على صفحات النظام نفسها، وليس صفحة الإعدادات فقط.</div>' +
           '<div class="midad-control-row"><label>Font</label><select id="midadFont"><option value="system">System</option><option value="inter">Inter / UI</option><option value="arabic">Arabic Pro</option><option value="tahoma">Tahoma</option><option value="mono">Monospace</option></select></div>' +
-          '<div class="midad-control-row"><label>Text size <output id="midadScaleOut">100%</output></label><input id="midadScale" type="range" min="90" max="125" step="1" value="100"></div>' +
+          '<div class="midad-control-row"><label>Text size <output id="midadScaleOut">120%</output></label><input id="midadScale" type="range" min="100" max="180" step="5" value="120"></div><div class="midad-scale-presets"><button type="button" data-midad-scale-preset="120">Comfort</button><button type="button" data-midad-scale-preset="140">Large</button><button type="button" data-midad-scale-preset="160">XL</button><button type="button" data-midad-scale-preset="180">MAX</button></div>' +
           '<div class="midad-control-row"><label>Density <select id="midadDensity"><option value="compact">Compact</option><option value="normal">Normal</option><option value="relaxed">Relaxed</option></select></label></div>' +
         '</section>' +
         '<section class="midad-control-group"><div class="midad-control-title">COLOR ENGINE <span>الألوان</span></div>' +
@@ -321,7 +353,7 @@
       b.onclick = function () { mergeProfile({ theme: b.getAttribute("data-midad-set-theme") }); };
     });
     p.querySelector("#midadFont").onchange = function (e) { mergeProfile({ font: e.target.value }); };
-    p.querySelector("#midadScale").oninput = function (e) { mergeProfile({ scale: Number(e.target.value) / 100 }); };
+    p.querySelector("#midadScale").oninput = function (e) { mergeProfile({ scale: Number(e.target.value) / 100 }); }; p.querySelectorAll("[data-midad-scale-preset]").forEach(function(b){ b.onclick=function(){ mergeProfile({ scale:Number(b.getAttribute("data-midad-scale-preset"))/100 }); }; });
     p.querySelector("#midadDensity").onchange = function (e) { mergeProfile({ density: e.target.value }); };
     p.querySelector("#midadAccent").oninput = function (e) { mergeProfile({ accent: e.target.value }); };
     p.querySelector("#midadAccent2").oninput = function (e) { mergeProfile({ accent2: e.target.value }); };
@@ -351,7 +383,7 @@
     var font = p.querySelector("#midadFont"), scale = p.querySelector("#midadScale"), density = p.querySelector("#midadDensity");
     var accent = p.querySelector("#midadAccent"), accent2 = p.querySelector("#midadAccent2"), glow = p.querySelector("#midadGlow");
     if (font) font.value = PROFILE.font;
-    if (scale) scale.value = Math.round((PROFILE.scale || 1) * 100);
+    if (scale) scale.value = Math.round((PROFILE.scale || 1.2) * 100);
     if (density) density.value = PROFILE.density;
     if (accent) accent.value = PROFILE.accent;
     if (accent2) accent2.value = PROFILE.accent2;
