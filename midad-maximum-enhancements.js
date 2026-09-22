@@ -17,7 +17,13 @@
     language: "auto",
     focus: false
   };
-  var PROFILE = Object.assign({}, DEFAULTS, readProfile());
+  var SAVED_PROFILE = readProfile();
+  var PROFILE = Object.assign({}, DEFAULTS, SAVED_PROFILE);
+  if (!SAVED_PROFILE || !SAVED_PROFILE.__typography_v2) {
+    PROFILE.scale = Math.max(Number(PROFILE.scale || 1.2), 1.2);
+    PROFILE.__typography_v2 = true;
+    saveProfile();
+  }
   var NATIVE_FETCH = window.fetch.bind(window);
   var REQUEST_TIMEOUT = 25000;
 
@@ -164,6 +170,15 @@
         if (!base || !isFinite(base)) return;
         var next = Math.max(12, base * scale);
         el.style.fontSize = next.toFixed(2) + "px";
+      });
+      var svgTexts = root.querySelectorAll ? root.querySelectorAll("svg text") : [];
+      Array.prototype.forEach.call(svgTexts, function(el){
+        if (!el.hasAttribute("data-midad-base-font")) {
+          var size = parseFloat(window.getComputedStyle(el).fontSize || "0");
+          if (size > 0 && isFinite(size)) el.setAttribute("data-midad-base-font", String(size));
+        }
+        var base = parseFloat(el.getAttribute("data-midad-base-font") || "0");
+        if (base > 0 && isFinite(base)) el.style.fontSize = Math.max(12, base * scale).toFixed(2) + "px";
       });
     });
   }
@@ -389,7 +404,7 @@
     if (accent2) accent2.value = PROFILE.accent2;
     if (glow) glow.value = PROFILE.glow;
     var scaleOut = p.querySelector("#midadScaleOut"), glowOut = p.querySelector("#midadGlowOut");
-    if (scaleOut) scaleOut.textContent = Math.round((PROFILE.scale || 1) * 100) + "%";
+    if (scaleOut) scaleOut.textContent = Math.round((PROFILE.scale || 1.2) * 100) + "%";
     if (glowOut) glowOut.textContent = Math.round(PROFILE.glow) + "%";
     [["midadMotion",PROFILE.motion],["midadGlass",PROFILE.transparency],["midadContrast",PROFILE.contrast],["midadFocus",PROFILE.focus]].forEach(function (pair) {
       var x = p.querySelector("#" + pair[0]); if (x) x.checked = !!pair[1];
@@ -493,6 +508,7 @@
         } catch (e) {}
       }, 0);
     });
+    window.__MIDAD_APPLY_TYPOGRAPHY = applyRenderedTypography;
     window.__MIDAD_APPEND_LOG = function (message, type) {
       try {
         if (window.__MIDAD_LAST_RUNTIME_LOG === message) return;
