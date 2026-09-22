@@ -185,3 +185,7 @@ body[data-midad-theme="daylight"] .sub { filter:none; }
   .digital-banner h2{font-size:24px;}
   .digital-banner p{font-size:14px;}
 }
+
+.midad-scale-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:8px;}
+.midad-scale-presets button{border:1px solid var(--midad-border);background:var(--midad-panel-2);color:var(--midad-text);border-radius:10px;padding:8px 5px;cursor:pointer;font-size:12px;}
+.midad-scale-presets button:hover{border-color:var(--midad-accent);color:var(--midad-accent);}
