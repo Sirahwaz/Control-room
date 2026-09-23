@@ -234,3 +234,7 @@ body[data-midad-theme="daylight"] .sub { filter:none; }
 @media (max-width:560px){
   .cash-loop{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+.digital-money-strip{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:12px;padding:16px 18px;border:1px solid rgba(91,231,217,.18);border-radius:18px;background:linear-gradient(120deg,rgba(91,231,217,.08),rgba(155,140,255,.07));}
+.digital-money-strip>div:first-child{display:flex;flex-direction:column;gap:5px;min-width:0}.digital-money-strip>div:first-child b{font-size:1.05em}.digital-money-strip small{color:var(--muted,#91a0b6)}.digital-money-kpis{display:flex;gap:18px}.digital-money-kpis span{display:flex;flex-direction:column;gap:3px;min-width:80px}.digital-money-kpis b{font-size:1.1em}.digital-money-kpis small{font-size:.7em;letter-spacing:.08em}
+@media(max-width:900px){.digital-money-strip{flex-direction:column;align-items:stretch}.digital-money-kpis{justify-content:space-between}}

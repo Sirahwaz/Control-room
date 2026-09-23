@@ -58,6 +58,10 @@ function miniHealth(){return '<div class="stack">'+["Supabase","n8n","Telegram",
 function digitalDashboard(){
   var d=stats(), h=(S.live&&S.live.health)||{}, live=!!S.connected;
   var truth=live?"VERIFIED BACKEND CONTEXT":"UNVERIFIED / AWAITING VERIFY";
+  var cm=S.personal&&S.personal.money||{prospects:[],offers:[],followups:[],costs:[]};
+  var cashCollected=(S.personal&&S.personal.income||[]).reduce(function(a,x){return a+Number(x.amount||0)},0);
+  var cashPipeline=(cm.offers||[]).reduce(function(a,x){return a+Number(x.amount||0)},0);
+  var cashGap=Math.max(0,Number(C.emergencyTargetUsd||1000)-cashCollected);
   var atlas=[
     ["الرئيسية","النبض التنفيذي","تلخيص الحالة، المقاييس، التدفق، والتنبيهات السريعة.","signals → telemetry → actions"],
     ["لوحة الحالة الرقمية","الفهم والشفافية","خريطة تشغيلية تشرح الحالة، المصادر، الآليات، والحدود.","state → provenance → mechanics"],
@@ -107,6 +111,7 @@ function digitalDashboard(){
     card("Opportunities","TELEMETRY",'<div class="metric">'+num(d.opps)+'</div><div class="sub">مخرجات Opportunity Intelligence</div>')+
     card("Human Attention","CONTROL GATE",'<div class="metric">'+num(d.approvals)+'</div><div class="sub">approval records in current payload</div>')+
   '</div>'+
+  '<div class="digital-money-strip"><div><div class="eyebrow">CASH COMMAND / LOCAL</div><b>Money flow is now connected to the explainable surface.</b><small>Collected is user-recorded; pipeline is not cash; backend verification remains separate.</small></div><div class="digital-money-kpis"><span><b>'+money(cashCollected)+'</b><small>COLLECTED</small></span><span><b>'+money(cashPipeline)+'</b><small>PIPELINE</small></span><span><b>'+money(cashGap)+'</b><small>GAP</small></span></div><button class="btn primary" data-route="money">Open Cash Command →</button></div>'+
   '<section class="card digital-spine-card"><div class="card-head"><div><div class="eyebrow">OPERATING SPINE</div><div class="card-title">كيف تتحول الإشارة إلى فعل</div></div>'+pill("EXPLAINABLE","green")+'</div><div class="digital-spine">'+flow.map(function(x,i){return '<div class="digital-stage"><div class="digital-stage-top"><span>'+x[0]+'</span><i>'+ (i===flow.length-1?"◎":"→") +'</i></div><b>'+x[1]+'</b><p>'+x[2]+'</p><small>'+x[3]+'</small></div>'}).join("")+'</div></section>'+
   '<div class="grid g2 digital-main-grid">'+
     card("System Map","ARCHITECTURE",'<div class="digital-map"><div class="digital-layer source"><b>INPUTS</b><span>OSINT · Mining · Webhooks · Manual</span></div><div class="digital-connector">↓ normalize / fingerprint</div><div class="digital-layer evidence"><b>EVIDENCE</b><span>source · freshness · reliability · context</span></div><div class="digital-connector">↓ score / policy</div><div class="digital-layer decision"><b>INTELLIGENCE</b><span>value · confidence · risk · priority</span></div><div class="digital-connector">↓ gated execution</div><div class="digital-layer action"><b>ACTION</b><span>n8n · agents · Telegram · human approval</span></div><div class="digital-connector">↓ measure</div><div class="digital-layer outcome"><b>OUTCOME</b><span>result · cost · ROI · feedback</span></div></div>')+
