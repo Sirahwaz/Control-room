@@ -135,14 +135,13 @@ function cashCommand(){
   var costs=cost.reduce(function(a,x){return a+Number(x.amount||0)},0);
   var offered=o.reduce(function(a,x){return a+Number(x.amount||0)},0);
   var open=p.filter(function(x){return !["WON","LOST"].includes(String(x.stage||"").toUpperCase())});
-  var won=o.filter(function(x){return String(x.status||"").toUpperCase()==="WON"}).reduce(function(a,x){return a+Number(x.amount||0)},0);
-  var target=Number(C.emergencyTargetUsd||1000), gap=Math.max(0,target-income);
+    var target=Number(C.emergencyTargetUsd||1000), gap=Math.max(0,target-income);
   var next=!p.length?"أضف أول Prospect مؤهل":!o.length?"حوّل أفضل Prospect إلى Offer":!m.followups.length?"أنشئ Follow-up للعرض المفتوح":"نفّذ أقرب Follow-up ثم سجّل النتيجة";
   var truth=p.length||o.length||cost.length||income>0?"LOCAL LEDGER":"READY / NO LOCAL RECORDS";
   return title("Cash Command","محرك التدفق النقدي: من الإشارة التجارية إلى العرض ثم التحصيل — بدون ادعاء أن الـpipeline مال محقق.",'<button class="btn primary" data-action="lead">＋ Lead</button><button class="btn" data-action="offer">＋ Offer</button><button class="btn" data-action="followup">↻ Follow-up</button><button class="btn" data-action="recordIncome">＋ Paid</button><button class="btn" data-action="recordCost">− Cost</button>')+
   '<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
   '<div class="grid g4" style="margin-top:12px">'+
-    card("Cash Collected","VERIFIED / LOCAL",'<div class="metric">'+money(income)+'</div><div class="sub">payments you explicitly recorded</div>')+
+    card("Cash Collected","USER-RECORDED / LOCAL",'<div class="metric">'+money(income)+'</div><div class="sub">payments you explicitly recorded</div>')+
     card("Cash Gap","TARGET",'<div class="metric">'+money(gap)+'</div><div class="sub">to '+money(target)+' target</div>')+
     card("Offer Pipeline","PIPELINE",'<div class="metric">'+money(offered)+'</div><div class="sub">not collected</div>')+
     card("Net Recorded","LOCAL LEDGER",'<div class="metric">'+money(income-cost)+'</div><div class="sub">collected − recorded costs</div>')+
