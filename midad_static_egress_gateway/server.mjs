@@ -1,5 +1,6 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import { ProxyAgent } from "undici";
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 8788);
@@ -7,6 +8,19 @@ const API_BASE_URL = process.env.VIABTC_API_BASE_URL || "https://pool.viabtc.com
 const API_KEY = process.env.VIABTC_API_KEY;
 const GATEWAY_KEY = process.env.MIDAD_VIABTC_GATEWAY_KEY;
 const TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 8000);
+const EGRESS_PROXY_URL = String(process.env.MIDAD_VIABTC_PROXY_URL || "").trim();
+const REQUIRE_PROXY = /^(1|true|yes)$/i.test(String(process.env.MIDAD_VIABTC_PROXY_REQUIRED || ""));
+
+let proxyDispatcher = undefined;
+if (EGRESS_PROXY_URL) {
+  const proxyUrl = new URL(EGRESS_PROXY_URL);
+  if (!["http:", "https:"].includes(proxyUrl.protocol)) {
+    throw new Error("MIDAD_VIABTC_PROXY_URL must use http or https");
+  }
+  proxyDispatcher = new ProxyAgent(EGRESS_PROXY_URL);
+} else if (REQUIRE_PROXY) {
+  throw new Error("MIDAD_VIABTC_PROXY_URL is required when MIDAD_VIABTC_PROXY_REQUIRED=true");
+}
 
 if (!API_KEY) throw new Error("VIABTC_API_KEY is required");
 if (!GATEWAY_KEY) throw new Error("MIDAD_VIABTC_GATEWAY_KEY is required");
@@ -79,7 +93,8 @@ async function callViaBTC(path, query) {
         "x-api-key": API_KEY,
         "user-agent": "MIDAD-Static-Egress-Gateway/0.1"
       },
-      signal: controller.signal
+      signal: controller.signal,
+      ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
     });
 
     const text = await response.text();
@@ -107,6 +122,7 @@ async function route(req, res) {
       service: "midad-static-egress-gateway",
       provider: "viabtc",
       mode: "READ_ONLY",
+      egress: proxyDispatcher ? "proxy" : "direct",
       time: new Date().toISOString()
     });
   }
