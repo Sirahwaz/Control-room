@@ -172,3 +172,88 @@ Capital allocation must remain traceable. Every reinvestment is a ledger event w
 No MIDAD core feature may depend directly on one exchange, one wallet vendor, Telegram, n8n, or one AI provider.
 
 Adapters may change. Core schemas and policy contracts remain stable.
+
+## 13. /Loop+ emergency runtime doctrine
+
+`/Loop+` is an execution-mode directive for MIDAD engineering. It means:
+
+**DISCOVER → VERIFY → ATTACK-TEST → BUILD → MEASURE → MONETIZE → SECURE → LEARN**
+
+The system should expand the solution space, search for hidden dependencies and edge cases, test from an adversarial perspective, and convert useful findings into deployable modules.
+
+This does not authorize unauthorized access, credential theft, evasion of controls, market manipulation, fraud, or destructive activity. The objective is to break MIDAD's own assumptions and close its own gaps before an adversary or failure does.
+
+## 14. Agent mesh rule
+
+MIDAD prefers a mesh of bounded agents over one unrestricted agent.
+
+Each agent must have:
+- agent_id
+- capabilities
+- allowed_actions
+- risk_class
+- input_contract
+- output_contract
+- evidence_requirement
+- budget/time limits
+- approval requirement
+- audit trail
+- rollback or fail-safe behavior
+
+High-impact actions must not be delegated merely because an agent can technically perform them.
+
+## 15. Payment → settlement rule
+
+A verified payment may enter the treasury pipeline automatically.
+
+Required chain:
+
+**PAID + MATCHED EVIDENCE → SETTLEMENT INTENT → WALLET RESOLUTION → TREASURY RECONCILIATION → APPROVAL GATE (when movement is required) → PROVIDER ADAPTER**
+
+The Settlement Router records and routes state; it does not acquire unrestricted withdrawal authority.
+
+Current backend primitive:
+- `midad_payment_verifier`
+- `midad_settlement_router`
+- `midad_wallets`
+- `midad_payment_intents`
+- `midad_payment_events`
+- `midad_approvals`
+
+## 16. Autonomy rule
+
+The Autonomy Loop may:
+- collect market/OSINT evidence
+- monitor mining telemetry
+- measure outcomes
+- expire stale operational state
+- prepare verified settlement intents
+
+The Autonomy Loop may not silently:
+- withdraw funds
+- enable withdrawal permissions
+- bypass an approval
+- increase trading risk
+- convert an unverified signal into verified cash
+- claim revenue that has not been independently evidenced
+
+## 17. Security doctrine
+
+Treat security as a continuous pipeline, not a final review:
+
+**Functional → Authentication → Authorization → Business Logic → Race/Replay → Data-flow → Failure/Recovery → Provenance → Reconciliation**
+
+Internal financial tables use explicit deny-by-default browser policies when direct client access is not required. Backend secret/service credentials remain backend-only.
+
+## 18. Emergency financial objective
+
+The practical optimization target is not nominal “activity”. It is:
+
+**time-to-verified-value**
+
+Priority should be given to paths that can move from:
+opportunity → qualified demand → offer → payment intent → verified payment → settlement state
+
+with minimal manual work and without fabricating financial state.
+
+Pipeline is not cash. Preparation is not execution. Execution is not settlement. Settlement is not verified profit until evidence exists.
