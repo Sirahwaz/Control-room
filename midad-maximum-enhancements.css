@@ -189,3 +189,48 @@ body[data-midad-theme="daylight"] .sub { filter:none; }
 .midad-scale-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:8px;}
 .midad-scale-presets button{border:1px solid var(--midad-border);background:var(--midad-panel-2);color:var(--midad-text);border-radius:10px;padding:8px 5px;cursor:pointer;font-size:12px;}
 .midad-scale-presets button:hover{border-color:var(--midad-accent);color:var(--midad-accent);}
+
+
+/* CASH COMMAND — transparent money-flow surface */
+.cash-truth{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 16px;
+  margin-top:12px;
+  border:1px solid rgba(154,175,205,.16);
+  border-radius:16px;
+  background:linear-gradient(135deg,rgba(91,231,217,.07),rgba(155,140,255,.05));
+}
+.cash-truth > div{display:flex;align-items:center;gap:10px;min-width:0}
+.cash-truth b{font-size:.82em;letter-spacing:.12em}
+.cash-truth span{font-weight:700}
+.cash-truth small{color:var(--muted,#91a0b6)}
+.cash-loop{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  margin-top:14px;
+}
+.cash-loop > div{
+  min-height:64px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+  padding:10px 9px;
+  border:1px solid rgba(154,175,205,.13);
+  border-radius:13px;
+  text-align:center;
+  background:rgba(255,255,255,.025);
+  font-size:.78em;
+}
+.cash-loop b{letter-spacing:.06em}
+@media (max-width:900px){
+  .cash-loop{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cash-truth{align-items:flex-start;flex-direction:column}
+}
+@media (max-width:560px){
+  .cash-loop{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
