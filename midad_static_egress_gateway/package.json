@@ -1,0 +1,13 @@
+{
+  "name": "midad-static-egress-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Restricted fixed-egress ViaBTC read gateway for MIDAD",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
