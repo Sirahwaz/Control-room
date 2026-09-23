@@ -281,14 +281,14 @@ function connect(silent){
     S.user=j.user||S.live.user||{};
     log("Verified backend context","ok");
     toast("تم التحقق من الاتصال.","good");
-    render();
+    if(!silent && !isEditableTarget(document.activeElement)) render();
   }).catch(function(e){
     S.connected=false;
     if(e.message==="session_expired")S.sessionToken="";
     S.label="DEGRADED / AWAITING VERIFY";
     log("Connection failed: "+e.message,"warn");
     if(!silent)toast("تعذر التحقق: "+e.message,"warn");
-    render();
+    if(!silent && !isEditableTarget(document.activeElement)) render();
   });
 }
 function act(a,label){log("→ "+label);return api(a).then(function(j){if(j.dashboard)S.live=j.dashboard;else S.live=Object.assign({},S.live||{},j);log("✓ "+label+" completed","ok");toast(label+" تم تنفيذها.","good");render()}).catch(function(e){log("✕ "+label+": "+e.message,"err");toast(label+" فشلت: "+e.message,"bad")})}
