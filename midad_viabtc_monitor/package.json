@@ -1,0 +1,13 @@
+{
+  "name": "midad-viabtc-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MIDAD read-only ViaBTC mining monitor and provider adapter",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
