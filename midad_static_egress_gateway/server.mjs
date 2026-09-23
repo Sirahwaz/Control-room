@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 8788);
-const API_BASE_URL = process.env.VIABTC_API_BASE_URL || "https://www.viabtc.net";
+const API_BASE_URL = process.env.VIABTC_API_BASE_URL || "https://pool.viabtc.com";
 const API_KEY = process.env.VIABTC_API_KEY;
 const GATEWAY_KEY = process.env.MIDAD_VIABTC_GATEWAY_KEY;
 const TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 8000);
