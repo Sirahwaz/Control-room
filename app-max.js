@@ -140,13 +140,13 @@ function cashCommand(){
   var next=!p.length?"أضف أول Prospect مؤهل":!o.length?"حوّل أفضل Prospect إلى Offer":!m.followups.length?"أنشئ Follow-up للعرض المفتوح":"نفّذ أقرب Follow-up ثم سجّل النتيجة";
   var truth=p.length||o.length||cost.length||income>0?"LOCAL LEDGER":"READY / NO LOCAL RECORDS";
   return title("Cash Command","محرك التدفق النقدي: من الإشارة التجارية إلى العرض ثم التحصيل — بدون ادعاء أن الـpipeline مال محقق.",'<button class="btn primary" data-action="lead">＋ Lead</button><button class="btn" data-action="offer">＋ Offer</button><button class="btn" data-action="followup">↻ Follow-up</button><button class="btn" data-action="recordIncome">＋ Paid</button><button class="btn" data-action="recordCost">− Cost</button>')+
-  '<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+\
+  '<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
   '<div class="grid g4" style="margin-top:12px">'+
     card("Cash Collected","VERIFIED / LOCAL",'<div class="metric">'+money(income)+'</div><div class="sub">payments you explicitly recorded</div>')+
     card("Cash Gap","TARGET",'<div class="metric">'+money(gap)+'</div><div class="sub">to '+money(target)+' target</div>')+
     card("Offer Pipeline","PIPELINE",'<div class="metric">'+money(offered)+'</div><div class="sub">not collected</div>')+
     card("Net Recorded","LOCAL LEDGER",'<div class="metric">'+money(income-cost)+'</div><div class="sub">collected − recorded costs</div>')+
-  '</div>'+\
+  '</div>'+
   '<div class="grid g2" style="margin-top:12px">'+
     card("Next Best Money Action","EXECUTION QUEUE",'<div class="metric metric-sm">'+esc(next)+'</div><div class="sub" style="margin-top:8px">هدف الجولة: انتقال واحد فقط في كل مرة — Lead → Offer → Follow-up → Paid.</div><div class="command-bar" style="margin-top:12px"><button class="chip primary" data-action="lead">Capture Lead</button><button class="chip" data-action="offer">Make Offer</button><button class="chip" data-action="followup">Follow Up</button></div>')+
     card("Velocity Board","PIPELINE STATE",'<div class="stack">'+[
@@ -156,7 +156,7 @@ function cashCommand(){
       ["WON",o.filter(function(x){return String(x.status||"").toUpperCase()==="WON"}).length,"green"],
       ["OPEN",open.length,"amber"]
     ].map(function(x){return '<div class="rowbox"><div class="row-main"><b>'+x[0]+'</b><small>records in local ledger</small></div>'+pill(String(x[1]),x[2])+'</div>'}).join("")+'</div>')+
-  '</div>'+\
+  '</div>'+
   '<div class="grid g2" style="margin-top:12px">'+
     card("Offer Factory","REUSABLE SERVICES",'<div class="stack">'+[
       ["Quick Fix","$99","48h-ish scope; diagnose → fix → handoff"],
