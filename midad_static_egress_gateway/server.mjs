@@ -30,10 +30,10 @@ function json(res, status, body) {
 }
 
 function authOK(req) {
-  const value = req.headers.authorization || "";
-  const prefix = "Bearer ";
-  if (!value.startsWith(prefix)) return false;
-  const provided = Buffer.from(value.slice(prefix.length));
+  const bearer = req.headers.authorization || "";
+  const supplied = req.headers["x-midad-gateway-key"] || "";
+  const value = supplied || (bearer.startsWith("Bearer ") ? bearer.slice(7) : "");
+  const provided = Buffer.from(String(value));
   const expected = Buffer.from(GATEWAY_KEY);
   return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
@@ -134,6 +134,8 @@ async function route(req, res) {
     });
 
     const path = String(body.path || "");
+    if (body.url || body.base_url || body.host) throw new Error("Arbitrary upstream routing is forbidden");
+    if (body.headers) throw new Error("Caller-supplied upstream headers are forbidden");
     if (!isAllowedPath(path)) throw new Error("ViaBTC path not allowed");
 
     const query = sanitizeQuery(body.query || {});
