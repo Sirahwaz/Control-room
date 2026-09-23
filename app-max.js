@@ -27,7 +27,7 @@ var S={
   personal:safeStorageJSON("midad_personal",{"income":[],"wallets":[],"walletOps":[],"trades":[],"clients":[],"notes":"","executionProfile":{"mode":"PAPER","maxPositionUsd":100,"maxLossPct":2,"takeProfitPct":4,"maxSlippagePct":0.5,"maxOrderAgeMs":1500,"killSwitch":true,"requireHumanApproval":true},"money":{"prospects":[],"offers":[],"costs":[],"followups":[]}})
 };
 if(!R.some(function(x){return x[0]===S.route}))S.route="dashboard";
-var $=function(s){return document.querySelector(s)},esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]})};
+function isEditableTarget(el){return !!(el&&((el.tagName==="INPUT")||(el.tagName==="TEXTAREA")||(el.tagName==="SELECT")||el.isContentEditable));} var $=function(s){return document.querySelector(s)},esc=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]})};
 var num=function(v){return v==null||v===""?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2})};
 var money=function(v){return v==null?"—":"$"+Number(v||0).toLocaleString("en-US",{maximumFractionDigits:2})};
 var meta=function(id){return R.find(function(x){return x[0]===id})||R[0]};
@@ -303,5 +303,5 @@ window.addEventListener("hashchange",function(){var h=location.hash.slice(1);if(
 if(TG())try{TG().ready();TG().expand();if(TG().enableClosingConfirmation)TG().enableClosingConfirmation()}catch(e){}
 render();log("MAXIMUM Neural UI v6 booted","ok");
 window.__MIDAD_RUNTIME_READY=true;
-setInterval(function(){if(S.connected)connect(true)},30000);
+setInterval(function(){if(S.connected&&!isEditableTarget(document.activeElement))connect(true)},60000);
 })();
