@@ -1,4 +1,4 @@
-window.MIDAD_CONFIG={supabaseUrl:"https://froegigfmpmvtecztfbf.supabase.co",controlRoomFunction:"/functions/v1/midad_control_room",dashboardAction:"dashboard",buildVersion:"v7-truth-telemetry-2026-09-23",emergencyTargetUsd:1000,knownRuntimeSnapshot:{incidents:[{severity:"critical",title:"n8n execution quota",detail:"Execution capacity is a known runtime dependency.",source:"n8n"},{severity:"warning",title:"Agent credit dependency",detail:"Some agent actions depend on provider credits.",source:"OpenRouter"}],workflows:[{name:"Revenue Intelligence Scanner v2",id:"fChZsDbnsxP9dwwr"},{name:"Opportunity Intelligence Mesh v1",id:"5EqjQcaY0dq8SHTA"},{name:"Market Intelligence & New Assets v1",id:"h9IOP39SuVYaXnDP"},{name:"Intelligence Read v1",id:"4aBQunkIwgkwgfki"},{name:"AI Command Core v2",id:"LC3tTcFBEukB1R5u"}],agents:[{name:"Telegram Control Room Live",lifecycle:"published"},{name:"Telegram Control Room Agent",lifecycle:"published"},{name:"Financial Intelligence & Capital Agent v1",lifecycle:"draft"},{name:"Emergency Revenue Hunter v1",lifecycle:"draft"},{name:"Revenue & Outreach Copilot v1",lifecycle:"draft"}]}};
+window.MIDAD_CONFIG={supabaseUrl:"https://froegigfmpmvtecztfbf.supabase.co",controlRoomFunction:"/functions/v1/midad_control_room",dashboardAction:"dashboard",buildVersion:"v9-money-radar-priority-2026-09-25",emergencyTargetUsd:1000,knownRuntimeSnapshot:{incidents:[{severity:"critical",title:"n8n execution quota",detail:"Execution capacity is a known runtime dependency.",source:"n8n"},{severity:"warning",title:"Agent credit dependency",detail:"Some agent actions depend on provider credits.",source:"OpenRouter"}],workflows:[{name:"Revenue Intelligence Scanner v2",id:"fChZsDbnsxP9dwwr"},{name:"Opportunity Intelligence Mesh v1",id:"5EqjQcaY0dq8SHTA"},{name:"Market Intelligence & New Assets v1",id:"h9IOP39SuVYaXnDP"},{name:"Intelligence Read v1",id:"4aBQunkIwgkwgfki"},{name:"AI Command Core v2",id:"LC3tTcFBEukB1R5u"}],agents:[{name:"Telegram Control Room Live",lifecycle:"published"},{name:"Telegram Control Room Agent",lifecycle:"published"},{name:"Financial Intelligence & Capital Agent v1",lifecycle:"draft"},{name:"Emergency Revenue Hunter v1",lifecycle:"draft"},{name:"Revenue & Outreach Copilot v1",lifecycle:"draft"}]}};
 
 (()=>{"use strict";
 var C=window.MIDAD_CONFIG,A=document.getElementById("app"),TG=function(){return window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null};
@@ -158,17 +158,17 @@ function moneyRadarCard(){
   var fetched=S.moneyRadar&&S.moneyRadar.fetchedAt;
   var state=S.moneyRadar&&S.moneyRadar.state||"IDLE";
   var head='<div class="card" style="margin-top:12px"><div class="card-head"><div><div class="eyebrow">FUNDED WORK RADAR</div><div class="card-title">فرص ممولة قابلة للتحول إلى عمل</div></div><div style="display:flex;gap:6px;align-items:center">'+pill(state==="LIVE"?"LIVE TASKMARKET":"NOT VERIFIED",state==="LIVE"?"green":"amber")+'<button class="btn" data-action="moneyRadar">↻ Sync</button></div></div>';
-  if(!items.length)return head+empty("لا توجد فرصة ممولة موثقة في اللقطة الحالية","MIDAD لن يعرض رقمًا كدخل ما لم يأت من مصدر ممول. يمكنك فتح Taskmarket لإعادة الفحص اليدوي.")+(fetched?'<div class="sub" style="margin-top:8px">Last sync: '+esc(new Date(fetched).toLocaleString())+'</div>':'')+'</div>';
-  return head+'<div class="stack">'+items.slice(0,8).map(function(x){
-    var gross=Number(x.rewardUsd||0),net=Number(x.netRewardUsd||gross*0.925),deadline=x.expiryTime||x.deadline||"";
-    var mins=deadline?Math.max(0,Math.round((new Date(deadline).getTime()-Date.now())/60000)):null;
-    var urgency=mins!=null&&mins<360?"red":mins!=null&&mins<1440?"amber":"green";
-    return '<div class="rowbox"><div class="row-main"><b>'+esc(x.title||"Funded task")+'</b><small>'+money(net)+' net · '+esc(x.mode||"bounty")+' · '+esc(x.taskId||"")+'</small><small>'+esc(mins==null?"deadline unknown":(mins<60?mins+" min":Math.round(mins/60)+" h")+" remaining")+'</small></div><div style="display:flex;gap:6px;align-items:center"><span>'+pill("NET "+money(net),urgency)+'</span><a class="btn" href="'+esc(x.url||("https://taskmarket.dev/tasks/"+x.taskId))+'" target="_blank" rel="noopener">Open</a></div></div>';
-  }).join("")+'</div><div class="sub" style="margin-top:8px">Net estimate applies the documented 7.5% platform fee; award/settlement is still the source of truth.</div></div>';
+  if(!items.length)return head+empty("لا توجد فرصة ممولة موثقة في اللقطة الحالية","MIDAD لن يعرض رقمًا كدخل ما لم يأت من مصدر ممول.")+(fetched?'<div class="sub" style="margin-top:8px">Last sync: '+esc(new Date(fetched).toLocaleString())+'</div>':'')+'</div>';
+  var summary='<div class="sub" style="margin:-2px 0 10px">ترتيب MIDAD: صافي القيمة + المنافسة + الوقت المتبقي. الترتيب لا يعني ضمان الفوز أو الدفع.</div>';
+  return head+summary+'<div class="stack">'+items.slice(0,8).map(function(x){
+    var net=Number(x.netRewardUsd||0),deadline=x.expiryTime||x.deadline||"",mins=deadline?Math.max(0,Math.round((new Date(deadline).getTime()-Date.now())/60000)):null,cls=x.priorityClass||"WATCH";
+    var action=x.nextAction||"Review task";
+    return '<div class="rowbox"><div class="row-main"><b>'+esc(x.title||"Funded task")+'</b><small>'+money(net)+' net estimate · '+esc(cls)+' · '+esc(action)+'</small><small>'+esc(x.submissions==null?"submissions unknown":String(x.submissions)+" submissions")+' · '+esc(mins==null?"deadline unknown":(mins<60?mins+" min":Math.round(mins/60)+" h")+" remaining")+'</small></div><div style="display:flex;gap:6px;align-items:center">'+pill(cls,cls==="PRIORITY"?"green":cls==="LOW"?"blue":"amber")+'<a class="btn" href="'+esc(x.url||("https://taskmarket.dev/tasks/"+x.taskId))+'" target="_blank" rel="noopener">Open</a></div></div>';
+  }).join("")+'</div></div>';
 }
 function fetchMoneyRadar(quiet){
   var cfg=(window.MIDAD_CONFIG&&window.MIDAD_CONFIG.taskmarket)||{apiBase:"https://api.taskmarket.dev",feePct:7.5};
-  var url=cfg.apiBase+"/api/tasks?status=open&sort=reward_desc&limit=20";
+  var url=cfg.apiBase+"/api/tasks?status=open&sort=reward_desc&limit=50";
   S.moneyRadar=S.moneyRadar||{items:[],fetchedAt:0,state:"IDLE",error:""};
   S.moneyRadar.state="SYNCING";
   return fetch(url,{headers:{"Accept":"application/json"}}).then(function(r){
@@ -177,10 +177,15 @@ function fetchMoneyRadar(quiet){
   }).then(function(j){
     var tasks=Array.isArray(j&&j.tasks)?j.tasks:[];
     S.moneyRadar.items=tasks.filter(function(t){return Number(t.reward||0)>0}).map(function(t){
-      var gross=Number(t.reward||0)/1000000;
-      var net=gross*(1-Number(cfg.feePct||7.5)/100);
-      return {taskId:t.id||t.taskId,title:t.title||t.description||"Taskmarket task",description:t.description||"",mode:t.mode||"bounty",rewardUsd:gross,netRewardUsd:net,expiryTime:t.expiryTime||t.due,url:"https://taskmarket.dev/tasks/"+(t.id||t.taskId),status:t.status||"open"};
-    });
+      var gross=Number(t.reward||0)/1000000,net=gross*(1-Number(cfg.feePct||7.5)/100);
+      var submissions=Number(t.submissionCount||t.submissions||0),deadline=t.expiryTime||t.due||"";
+      var mins=deadline?Math.max(0,Math.round((new Date(deadline).getTime()-Date.now())/60000)):null;
+      var competition=Math.min(35,submissions*0.55),value=Math.min(45,Math.log10(Math.max(1,net))*18),urgency=mins==null?0:(mins<360?18:mins<1440?10:mins<4320?5:0);
+      var score=Math.max(0,value+urgency-competition);
+      var priorityClass=score>=28&&net>=10?"PRIORITY":score>=12?"WATCH":"LOW";
+      var nextAction=priorityClass==="PRIORITY"?"Inspect requirements":priorityClass==="WATCH"?"Monitor / qualify":"Deprioritize";
+      return {taskId:t.id||t.taskId,title:t.title||t.description||"Taskmarket task",description:t.description||"",mode:t.mode||"bounty",rewardUsd:gross,netRewardUsd:net,expiryTime:deadline,url:"https://taskmarket.dev/tasks/"+(t.id||t.taskId),status:t.status||"open",submissions:submissions,priorityScore:score,priorityClass:priorityClass,nextAction:nextAction};
+    }).sort(function(a,b){return b.priorityScore-a.priorityScore||b.netRewardUsd-a.netRewardUsd});
     S.moneyRadar.fetchedAt=Date.now();S.moneyRadar.state="LIVE";S.moneyRadar.error="";
     log("Taskmarket radar synced: "+S.moneyRadar.items.length+" funded open tasks","ok");
     if(!quiet&&(S.route==="opportunities"||S.route==="money"))render();
