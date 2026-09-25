@@ -1,4 +1,4 @@
-window.MIDAD_CONFIG={supabaseUrl:"https://froegigfmpmvtecztfbf.supabase.co",controlRoomFunction:"/functions/v1/midad_control_room",dashboardAction:"dashboard",buildVersion:"v10-one-click-receive-2026-09-25",emergencyTargetUsd:1000,knownRuntimeSnapshot:{incidents:[{severity:"critical",title:"n8n execution quota",detail:"Execution capacity is a known runtime dependency.",source:"n8n"},{severity:"warning",title:"Agent credit dependency",detail:"Some agent actions depend on provider credits.",source:"OpenRouter"}],workflows:[{name:"Revenue Intelligence Scanner v2",id:"fChZsDbnsxP9dwwr"},{name:"Opportunity Intelligence Mesh v1",id:"5EqjQcaY0dq8SHTA"},{name:"Market Intelligence & New Assets v1",id:"h9IOP39SuVYaXnDP"},{name:"Intelligence Read v1",id:"4aBQunkIwgkwgfki"},{name:"AI Command Core v2",id:"LC3tTcFBEukB1R5u"}],agents:[{name:"Telegram Control Room Live",lifecycle:"published"},{name:"Telegram Control Room Agent",lifecycle:"published"},{name:"Financial Intelligence & Capital Agent v1",lifecycle:"draft"},{name:"Emergency Revenue Hunter v1",lifecycle:"draft"},{name:"Revenue & Outreach Copilot v1",lifecycle:"draft"}]}};
+window.MIDAD_CONFIG={supabaseUrl:"https://froegigfmpmvtecztfbf.supabase.co",controlRoomFunction:"/functions/v1/midad_control_room",dashboardAction:"dashboard",buildVersion:"v11-money-unlock-2026-09-25",emergencyTargetUsd:1000,knownRuntimeSnapshot:{incidents:[{severity:"critical",title:"n8n execution quota",detail:"Execution capacity is a known runtime dependency.",source:"n8n"},{severity:"warning",title:"Agent credit dependency",detail:"Some agent actions depend on provider credits.",source:"OpenRouter"}],workflows:[{name:"Revenue Intelligence Scanner v2",id:"fChZsDbnsxP9dwwr"},{name:"Opportunity Intelligence Mesh v1",id:"5EqjQcaY0dq8SHTA"},{name:"Market Intelligence & New Assets v1",id:"h9IOP39SuVYaXnDP"},{name:"Intelligence Read v1",id:"4aBQunkIwgkwgfki"},{name:"AI Command Core v2",id:"LC3tTcFBEukB1R5u"}],agents:[{name:"Telegram Control Room Live",lifecycle:"published"},{name:"Telegram Control Room Agent",lifecycle:"published"},{name:"Financial Intelligence & Capital Agent v1",lifecycle:"draft"},{name:"Emergency Revenue Hunter v1",lifecycle:"draft"},{name:"Revenue & Outreach Copilot v1",lifecycle:"draft"}]}};
 
 (()=>{"use strict";
 var C=window.MIDAD_CONFIG,A=document.getElementById("app"),TG=function(){return window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null};
@@ -202,6 +202,32 @@ function cashState(){
   S.personal.money.prospects=S.personal.money.prospects||[];S.personal.money.offers=S.personal.money.offers||[];S.personal.money.costs=S.personal.money.costs||[];S.personal.money.followups=S.personal.money.followups||[];
   return S.personal.money;
 }
+function moneyUnlockCard(){
+  var tasks=(S.live&&S.live.human_tasks)||[];
+  var blocker=tasks.find(function(x){return String(x.title||"").toLowerCase().indexOf("yukon")>=0 || String(x.instruction||"").toLowerCase().indexOf("yukon")>=0;});
+  var items=(S.moneyRadar&&S.moneyRadar.items)||[];
+  var qsb=items.find(function(x){return String(x.taskId||"")=== "0x5f596b1a81417834a4366655bd4e6194819f5404a62c919c6953ae9bc92860bc" || String(x.title||"").toLowerCase().indexOf("quantum-safe bitcoin")>=0;});
+  var open=blocker?"BLOCKED / HUMAN ACTION":"MONITORING";
+  var cls=blocker?"danger":"blue";
+  var amount=qsb?money(Number(qsb.netRewardUsd||0)):"$184.08";
+  var state=blocker?"العائق معروف، ولا يوجد تنفيذ مزيف.":"لا يوجد عائق بشري ظاهر في السياق الحالي.";
+  var action=blocker
+    ? '<button class="btn primary" data-action="needs">Open Human Task</button>'
+    : '<button class="btn" data-action="moneyRadar">↻ Refresh Radar</button>';
+  var task=blocker
+    ? '<div class="rowbox"><div class="row-main"><b>'+esc(blocker.title||"Human action required")+'</b><small>'+esc(blocker.reason||"خطوة يدوية مطلوبة قبل متابعة المسار.")+'</small></div>'+pill(String(blocker.priority||95)+"/100",cls)+'</div>'
+    : '<div class="rowbox"><div class="row-main"><b>QSB settlement path</b><small>لا يُسجّل كدخل حتى يظهر award + settlementTxHash موثّقان.</small></div>'+pill("VERIFY FIRST","amber")+'</div>';
+  return '<div class="card cash-unlock" style="margin-top:12px;border-color:rgba(91,231,217,.24);background:linear-gradient(135deg,rgba(91,231,217,.06),rgba(155,140,255,.04))">'+
+    '<div class="card-head"><div><div class="eyebrow">MIDAD MONEY UNLOCK</div><div class="card-title">أقصر طريق نقدي ظاهر الآن</div></div>'+pill(open,cls)+'</div>'+
+    '<div class="grid g3">'+
+      '<div><div class="sub">Potential net</div><div class="metric">'+amount+'</div><div class="sub">تقدير بعد رسوم Taskmarket؛ ليس دخلاً محققاً.</div></div>'+
+      '<div><div class="sub">Blocking state</div><div class="metric metric-sm">'+(blocker?"YUKON ACCESS":"VERIFY")+'</div><div class="sub">'+esc(state)+'</div></div>'+
+      '<div><div class="sub">Next move</div><div style="margin-top:7px">'+action+'</div><div class="sub" style="margin-top:8px">MIDAD لا يضع private keys أو API secrets في المهام.</div></div>'+
+    '</div>'+
+    '<div style="margin-top:10px">'+task+'</div>'+
+    (qsb?'<div class="sub" style="margin-top:9px">QSB: <a href="'+esc(qsb.url||"https://taskmarket.dev/tasks/"+qsb.taskId)+'" target="_blank" rel="noopener">فتح المهمة الرسمية</a> · '+esc(qsb.submissions==null?"":String(qsb.submissions)+" submissions")+'</div>':"")+
+  '</div>';
+}
 function cashCommand(){
   var m=cashState(), p=m.prospects, o=m.offers, cost=m.costs;
   var income=(S.personal.income||[]).reduce(function(a,x){return a+Number(x.amount||0)},0);
@@ -212,7 +238,7 @@ function cashCommand(){
   var next=!p.length?"أضف أول Prospect مؤهل":!o.length?"حوّل أفضل Prospect إلى Offer":!m.followups.length?"أنشئ Follow-up للعرض المفتوح":"نفّذ أقرب Follow-up ثم سجّل النتيجة";
   var truth=p.length||o.length||cost.length||income>0?"LOCAL LEDGER":"READY / NO LOCAL RECORDS";
   return title("Cash Command","محرك التدفق النقدي: من الإشارة التجارية إلى العرض ثم التحصيل — بدون ادعاء أن الـpipeline مال محقق.",'<button class="btn primary" data-action="receiveNow">💰 RECEIVE NOW</button><button class="btn" data-action="lead">＋ Lead</button><button class="btn" data-action="offer">＋ Offer</button><button class="btn" data-action="followup">↻ Follow-up</button><button class="btn" data-action="recordIncome">＋ Paid</button><button class="btn" data-action="recordCost">− Cost</button>')+
-  moneyRadarCard()+'<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
+  moneyUnlockCard()+moneyRadarCard()+'<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
   '<div class="grid g4" style="margin-top:12px">'+
     card("Cash Collected","USER-RECORDED / LOCAL",'<div class="metric">'+money(income)+'</div><div class="sub">payments you explicitly recorded</div>')+
     card("Cash Gap","TARGET",'<div class="metric">'+money(gap)+'</div><div class="sub">to '+money(target)+' target</div>')+
