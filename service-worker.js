@@ -1,4 +1,4 @@
-const CACHE="midad-neural-command-v19-20260926p";
+const CACHE="midad-neural-command-v20-20260926r";
 const CORE=[
   "./","./index.html","./app-max.js","./styles-max.css",
   "./midad-maximum-enhancements.js","./midad-maximum-enhancements.css",
