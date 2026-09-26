@@ -26,12 +26,12 @@ async function authenticate(){
  if(!j.token)throw new Error("session_token_missing");
  S.token=j.token;S.connected=true;S.user={telegram_user_id:j.telegram_user_id||null};return j.token;
 }
-async function api(action,extra={},retry=true,timeout=20000){
+async function api(action,extra={},retry=true,timeout=30000){
  try{await authenticate();return await post({action,operation:action,token:S.token,client:"midad-cockpit",client_version:CFG.build,...extra},timeout)}
  catch(e){if(retry&&/session_expired|missing_session/.test(String(e.message))){S.token="";return api(action,extra,false,timeout)}throw e}
 }
 async function refresh(silent=false){
- try{const j=await api("dashboard");S.data=j;S.connected=true;S.error="";render();if(!silent)toast("تم تحديث النواة.","ok");return j}
+ try{const j=await api("dashboard",{},true,45000);S.data=j;S.connected=true;S.error="";render();if(!silent)toast("تم تحديث النواة.","ok");return j}
  catch(e){S.connected=false;S.error=String(e.message||e);render();if(!silent)toast("فشل الاتصال: "+S.error,"bad")}
 }
 function H(){return S.data?.health||{}}
@@ -51,8 +51,25 @@ function cockpitView(){
  const h=H(),ts=tasks(),aa=apps(),oo=opps(),ss=sigs(),ready=Math.round(Number(S.data?.capability_gate?.avg_delivery_confidence||0)*100);
  return '<div class="cr-page"><section class="cr-hero"><div class="hero-panel"><div class="eyebrow">MIDAD / COMMAND DECK</div><h1>المقود بيدك.<br>والنظام تحت عينيك.</h1><p>واجهة قيادة واحدة بدل طبقات متداخلة. AI منفصل، المال منفصل، الرصد منفصل، والقرارات الحساسة تبقى خلف بوابة بشرية.</p><div class="hero-actions"><button class="btn primary" data-view="ai">✦ افتح AI</button><button class="btn green" data-run="run_opportunity_scan">💰 ابحث عن مال</button><button class="btn" data-run="run_osint_scan">⌬ حدّث الرصد</button><button class="btn warn" data-run="run_autonomy_now">⚡ دورة التشغيل</button></div></div><div class="hero-panel" style="display:grid;place-items:center"><div class="orb"><div><b>MIDAD</b><small>'+(!S.error?(S.connected?"LIVE CORE":"LOCKED"):"ERROR")+'</small></div></div></div></section><div class="kpis"><div class="kpi"><span>OPPORTUNITIES</span><b>'+n(h.opportunities)+'</b><div class="sub">فرص النواة</div></div><div class="kpi"><span>SIGNALS</span><b>'+n(h.signals)+'</b><div class="sub">إشارات الرادار</div></div><div class="kpi"><span>HUMAN TASKS</span><b>'+n(h.pending_human_tasks)+'</b><div class="sub">تحتاج يدك</div></div><div class="kpi"><span>CASH PIPELINE</span><b>'+usd(pipeline())+'</b><div class="sub">قيمة متوقعة</div></div><div class="kpi"><span>READINESS</span><b>'+ready+'%</b><div class="sub">قابلية تسليم</div></div></div><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">NOW</div><h3>ماذا يحتاجني الآن؟</h3></div><button class="btn" data-view="tasks">كل المهام</button></div><div class="list">'+(ts.slice(0,5).map(rowTask).join("")||'<div class="empty">لا توجد مهمة بشرية مفتوحة.</div>')+'</div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">MONEY LANE</div><h3>الفرص التي تستحق النظر</h3></div><button class="btn" data-view="money">فتح المال</button></div><div class="list">'+(oo.slice(0,5).map(rowOpp).join("")||'<div class="empty">لا توجد فرص في اللقطة الحالية.</div>')+'</div></div></section><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">RADAR</div><h3>الرصد الحي</h3></div><button class="btn" data-view="intel">فتح الرصد</button></div><div class="stream">'+(ss.slice(0,8).map(x=>'<div class="item"><b>'+esc(x.type_label||x.signal_type||"Signal")+'</b> · '+esc(x.entity||"—")+' <span class="badge cyan">'+n(x.score)+'</span><p>'+esc(x.source||"source")+" · confidence "+(x.confidence==null?"—":Math.round(Number(x.confidence)*100)+"%")+"</p></div>").join("")||'<div class="empty">لا توجد إشارات.</div>')+'</div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">SYSTEM</div><h3>صحة التشغيل</h3></div><button class="btn" data-view="more">التفاصيل</button></div><div class="list"><div class="row"><div class="row-main"><b>Supabase Core</b><small>جلسة التحكم</small></div><span class="badge '+(S.connected?"green":"red")+'">'+(S.connected?"LIVE":"LOCKED")+'</span></div><div class="row"><div class="row-main"><b>Telegram</b><small>Web App identity</small></div><span class="badge '+(TG()?.initData?"green":"amber")+'">'+(TG()?.initData?"CONNECTED":"CONTEXT")+'</span></div><div class="row"><div class="row-main"><b>Opportunity Engine</b><small>'+esc(h.pipeline_note||"")+'</small></div><span class="badge '+(h.pipeline_ok?"green":"amber")+'">'+(h.pipeline_ok?"FLOW":"CHECK")+'</span></div></div></div></section></div>'
 }
+function formatAI(v){
+ let s=esc(v??"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+ s=s.replace(/^###?\s+(.+)$/gm,'<div class="md-h">$1</div>');
+ s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+ s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+ s=s.replace(/`([^\`]+)`/g,'<code>$1</code>');
+ s=s.replace(/^\s*[-•]\s+(.+)$/gm,'<div class="md-li">• $1</div>');
+ const lines=s.split("\n");
+ let out=[],table=[];
+ const flush=()=>{if(!table.length)return;out.push('<div class="md-table">'+table.map((row,i)=>{const cells=row.split("|").map(x=>x.trim()).filter(Boolean);if(cells.length<2)return "";if(cells.every(x=>/^[-: ]+$/.test(x)))return "";return '<div class="md-tr">'+cells.map(x=>'<span>'+x+'</span>').join("")+'</div>';}).join("")+'</div>');table=[];};
+ for(const line of lines){
+   if(line.includes("|")&&line.split("|").filter(Boolean).length>=2){table.push(line);continue;}
+   flush();out.push(line);
+ }
+ flush();
+ return out.join("\n").replace(/\n{2,}/g,"<br><br>").replace(/\n/g,"<br>");
+}
 function aiView(){
- const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+'</span>'+esc(m.text)+'</div>').join(""):'<div class="empty">هذا AI مستقل عن OSINT. اسأله عن القرار، المال، العوائق، أو إصلاح النظام.</div>';
+ const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+'</span><div class="bubble-body">'+(m.role==="ai"?formatAI(m.text):esc(m.text).replace(/\\n/g,"<br>"))+'</div></div>').join(""):'<div class="empty">هذا AI مستقل عن OSINT. اسأله عن القرار، المال، العوائق، أو إصلاح النظام.</div>';
  return '<div class="cr-page"><div class="ai-shell"><section class="panel ai-chat"><div class="panel-head"><div><div class="eyebrow">MIDAD AI / REASONING</div><h3>العقل هنا، وليس الرادار.</h3><small>AI يقرأ حالة MIDAD ويشرح القرار دون أن يتحول إلى OSINT.</small></div><button class="btn" data-cmd="aiClear">مسح</button></div><div class="ai-scroll" id="aiScroll">'+msgs+'</div><div class="ai-compose"><textarea id="aiInput" placeholder="اسأل MIDAD AI…"></textarea><button class="btn primary" data-cmd="aiSend">إرسال</button></div></section><aside class="panel"><div class="eyebrow">DIRECT QUESTIONS</div><h3>اضغط سؤالًا</h3><div class="prompt-grid"><button data-prompt="ما أهم شيء يحتاج تدخلي الآن؟">ما الذي يحتاجني الآن؟</button><button data-prompt="أين أقرب فرصة دخل قابلة للتنفيذ وما عائقها؟">أين أقرب فرصة دخل؟</button><button data-prompt="حلّل أعلى مهمة بشرية وقل لي ماذا أفعل خطوة بخطوة.">حلّل أعلى مهمة</button><button data-prompt="هل يوجد عطل في مسار تحويل الإشارات إلى فرص دخل؟">هل مسار المال متعطل؟</button><button data-prompt="افحص صحة النظام وما الذي يحتاج إصلاحًا؟">هل النظام سليم؟</button></div></aside></div></div>'
 }
 function moneyView(){
@@ -79,7 +96,7 @@ function bind(){
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
  $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
- $$("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus()}});
+ $("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
  $$("[data-cmd]").forEach(b=>b.onclick=()=>command(b.dataset.cmd));
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
@@ -94,7 +111,18 @@ function openTask(id){
  const m=$("#taskModal");m.querySelectorAll('[data-cmd="closeTask"]').forEach(b=>b.onclick=()=>m.remove());m.querySelectorAll("[data-task-update]").forEach(b=>b.onclick=async()=>{await taskUpdate(b.dataset.taskUpdate,b.dataset.status);m.remove()});
 }
 function openOpp(id){const o=(S.data?.opportunities||[]).find(x=>String(x.id)===String(id));if(!o)return;S.view="ai";render();setTimeout(()=>{const i=$("#aiInput");if(i){i.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ هل أستطيع تنفيذها وما الخطوة التالية؟";sendAI()}},50)}
-async function runAction(a){if(S.busy)return;S.busy=true;$$("[data-run]").forEach(b=>b.disabled=true);try{await api(a,{},true);await refresh(true);toast(({run_opportunity_scan:"مسح الفرص",run_osint_scan:"مسح OSINT",run_autonomy_now:"دورة التشغيل",run_mining_monitor:"فحص التعدين"})[a]||a+" تم.","ok")}catch(e){toast("فشل "+a+": "+e.message,"bad")}finally{S.busy=false;$$("[data-run]").forEach(b=>b.disabled=false)}}
+async function runAction(a){
+ if(S.busy)return;
+ S.busy=true;$("[data-run]").forEach(b=>b.disabled=true);
+ const limits={run_opportunity_scan:90000,run_osint_scan:75000,run_autonomy_now:90000,run_mining_monitor:60000};
+ try{
+   await api(a,{},true,limits[a]||45000);
+   await api("dashboard",{},true,45000);
+   await refresh(true);
+   toast(({run_opportunity_scan:"مسح الفرص",run_osint_scan:"مسح OSINT",run_autonomy_now:"دورة التشغيل",run_mining_monitor:"فحص التعدين"})[a]||a+" تم.","ok")
+ }catch(e){toast("فشل "+a+": "+e.message,"bad")}
+ finally{S.busy=false;$("[data-run]").forEach(b=>b.disabled=false)}
+}
 async function decide(id,decision){try{await api("approval_decide",{approval_id:id,decision,note:"Decision from MIDAD Cockpit"});await refresh(true);toast("تم تحديث الموافقة.","ok")}catch(e){toast("تعذر تحديث الموافقة: "+e.message,"bad")}}
 async function taskUpdate(id,status){try{await api("human_task_update",{task_id:id,status,response_data:{source:"midad-cockpit"}});await refresh(true);toast("تم تحديث المهمة.","ok")}catch(e){toast("تعذر تحديث المهمة: "+e.message,"bad")}}
 function command(cmd){
