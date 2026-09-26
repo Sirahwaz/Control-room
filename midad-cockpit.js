@@ -1,6 +1,7 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r7"};
+window.MIDAD_COCKPIT_LOADED=true;
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r8"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
