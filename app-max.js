@@ -580,6 +580,7 @@ window.addEventListener("hashchange",function(){var h=location.hash.slice(1);if(
 if(TG())try{TG().ready();TG().expand();if(TG().enableClosingConfirmation)TG().enableClosingConfirmation()}catch(e){}
 render();log("MAXIMUM Neural UI v6 booted","ok");
 window.__MIDAD_RUNTIME_READY=true;
+window.__MIDAD_CONTROL_ROOM_DIAG=function(){return api("dashboard").then(function(){return {ok:true}}).catch(function(e){return {ok:false,error:e.message}})};
 if(TG()&&TG().initData)setTimeout(function(){connect(true)},150);
 setInterval(function(){if(S.connected&&!isEditableTarget(document.activeElement))connect(true)},60000);
 })();
