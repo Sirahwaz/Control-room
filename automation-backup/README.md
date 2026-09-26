@@ -14,3 +14,8 @@ Migration principle:
 1. Preserve existing n8n workflow logic as portable backups.
 2. Prefer the already-running Supabase execution layer for core revenue, autonomy, approvals, and monitoring.
 3. Reintroduce n8n later only where its visual orchestration adds value that cannot be reproduced economically elsewhere.
+
+
+## Revenue source hardening
+
+As of the latest repair, Monetize Your Agent and WithAGI read calls are treated as optional revenue sources and are disabled by default because live reads returned HTTP 402/404 during verification. The core free/public sources remain active. Re-enable the optional sources only after separately verifying their current access model/endpoints.
