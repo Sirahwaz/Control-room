@@ -1,0 +1,1154 @@
+{
+  "exported_at": "2026-09-26T15:41:41.473Z",
+  "source": "MIDAD n8n",
+  "workflow": {
+    "id": "iBKys9b2FNEiaWqD",
+    "name": "MIDAD — Intelligence Orchestrator v3",
+    "active": true,
+    "isArchived": false,
+    "versionId": "e249dda7-ea72-4625-811f-46306269efb9",
+    "activeVersionId": "e249dda7-ea72-4625-811f-46306269efb9",
+    "triggerCount": 1,
+    "nodeCount": 30,
+    "createdAt": "2026-09-13T04:01:52.663Z",
+    "updatedAt": "2026-09-19T01:03:36.388Z",
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": true,
+      "saveExecutionProgress": true,
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "all",
+      "executionTimeout": 120
+    },
+    "tags": [],
+    "parentFolderId": null,
+    "description": "Public-chain intelligence, bounded graph analysis, opportunity detection, deduplication, and multi-channel alerting.",
+    "scopes": [
+      "execution:delete",
+      "execution:list",
+      "execution:read",
+      "execution:reveal",
+      "workflow:create",
+      "workflow:delete",
+      "workflow:disableRedaction",
+      "workflow:enableRedaction",
+      "workflow:execute",
+      "workflow:execute-chat",
+      "workflow:export",
+      "workflow:import",
+      "workflow:list",
+      "workflow:move",
+      "workflow:publish",
+      "workflow:read",
+      "workflow:share",
+      "workflow:unpublish",
+      "workflow:unshare",
+      "workflow:update"
+    ],
+    "canExecute": true,
+    "connections": {
+      "MIDAD Intelligence Webhook": {
+        "main": [
+          [
+            {
+              "node": "Validate & Normalize",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate & Normalize": {
+        "main": [
+          [
+            {
+              "node": "Is Valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Valid?": {
+        "main": [
+          [
+            {
+              "node": "Extract EVM Address",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond Rejected",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Fingerprint?": {
+        "main": [
+          [
+            {
+              "node": "Lookup Fingerprint",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Store Signal in Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lookup Fingerprint": {
+        "main": [
+          [
+            {
+              "node": "Decide Duplicate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide Duplicate": {
+        "main": [
+          [
+            {
+              "node": "Is Duplicate?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Duplicate?": {
+        "main": [
+          [
+            {
+              "node": "Respond Duplicate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Store Signal in Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Store Signal in Supabase": {
+        "main": [
+          [
+            {
+              "node": "Record Fingerprint",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Handle Storage Conflict",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Record Fingerprint": {
+        "main": [
+          [
+            {
+              "node": "MIDAD Opportunity Engine",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Handle Storage Conflict": {
+        "main": [
+          [
+            {
+              "node": "Respond Duplicate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract EVM Address": {
+        "main": [
+          [
+            {
+              "node": "Has EVM Address?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has EVM Address?": {
+        "main": [
+          [
+            {
+              "node": "Etherscan Enrichment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Has Fingerprint?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Etherscan Enrichment": {
+        "main": [
+          [
+            {
+              "node": "Normalize Etherscan Enrichment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Etherscan Enrichment": {
+        "main": [
+          [
+            {
+              "node": "Sanitize External Chain Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sanitize External Chain Metadata": {
+        "main": [
+          [
+            {
+              "node": "Has Fingerprint?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Opportunity Engine": {
+        "main": [
+          [
+            {
+              "node": "Select Multi-Hop Seeds",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Select Multi-Hop Seeds": {
+        "main": [
+          [
+            {
+              "node": "Multi-Hop Seed A",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Multi-Hop Seed B",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Multi-Hop Seed A": {
+        "main": [
+          [
+            {
+              "node": "Combine Multi-Hop Enrichment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Multi-Hop Seed B": {
+        "main": [
+          [
+            {
+              "node": "Combine Multi-Hop Enrichment",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Combine Multi-Hop Enrichment": {
+        "main": [
+          [
+            {
+              "node": "Graph Intelligence 3.0",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Telegram Alert Gate": {
+        "main": [
+          [
+            {
+              "node": "Send a text message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evidence Fusion Gate": {
+        "main": [
+          [
+            {
+              "node": "Whale Flow Heuristic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Whale Flow Heuristic": {
+        "main": [
+          [
+            {
+              "node": "MAXLOOP Correlation Engine",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MAXLOOP Correlation Engine": {
+        "main": [
+          [
+            {
+              "node": "Create a page",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Respond Accepted",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Telegram Alert Gate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Graph Intelligence 3.0": {
+        "main": [
+          [
+            {
+              "node": "Evidence Fusion Gate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "midad-intelligence-events-v3",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "8683ffb6-c7ba-4e31-b8b9-2fe2275e72ef",
+        "name": "MIDAD Intelligence Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -1680,
+          240
+        ],
+        "webhookId": "midad-intelligence-v3-webhook",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "X-MIDAD-KEY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const incoming=$input.first().json||{};const body=incoming.body&&typeof incoming.body==='object'?incoming.body:incoming;const errors=[];const source=typeof body.source==='string'?body.source.trim():'';const signal_type=typeof body.signal_type==='string'?body.signal_type.trim():'';const entity=body.entity;if(!source)errors.push('source is required');else if(source.length>200)errors.push('source is too long');if(!signal_type)errors.push('signal_type is required');else if(signal_type.length>200)errors.push('signal_type is too long');if(entity===undefined||entity===null||entity==='')errors.push('entity is required');function toNumber(v){if(typeof v==='number'&&Number.isFinite(v))return v;if(typeof v==='string'&&v.trim()!==''){const n=Number(v.replace(/,/g,'').replace(/[^0-9.\\-]/g,''));return Number.isFinite(n)?n:null}return null}const score=toNumber(body.score),confidence=toNumber(body.confidence);if(score===null)errors.push('score must be a number');if(confidence===null)errors.push('confidence must be a number');if(score!==null&&(score<0||score>100))errors.push('score must be between 0 and 100');if(confidence!==null&&(confidence<0||confidence>1))errors.push('confidence must be between 0 and 1');const payload=body.payload!==undefined&&body.payload!==null?body.payload:{};let payload_json='';try{payload_json=JSON.stringify(payload)}catch{errors.push('payload must be JSON serializable');payload_json='{}'}if(payload_json.length>100000)errors.push('payload is too large');const suppliedOccurredAt=typeof body.occurred_at==='string'?body.occurred_at.trim():'';const occurred_at=suppliedOccurredAt||new Date().toISOString();if(suppliedOccurredAt&&Number.isNaN(Date.parse(suppliedOccurredAt)))errors.push('occurred_at must be a valid date');const rawId=body.signal_id??body.id;const signal_id=rawId&&String(rawId).trim()?String(rawId).trim():`sig_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;const entity_str=typeof entity==='object'?JSON.stringify(entity):String(entity??'');if(entity_str.length>1000)errors.push('entity is too long');const suppliedFingerprint=body.fingerprint!==undefined&&body.fingerprint!==null?String(body.fingerprint).trim():'';if(suppliedFingerprint.length>256)errors.push('fingerprint is too long');const canonicalParts=[source,signal_type,entity_str,String(score??''),String(confidence??''),payload_json];if(suppliedOccurredAt)canonicalParts.push(occurred_at);const canonical=canonicalParts.join('|');let fingerprint=suppliedFingerprint;if(!fingerprint){let hash=1469598103934665603n;for(let i=0;i<canonical.length;i++){hash^=BigInt(canonical.charCodeAt(i));hash=BigInt.asUintN(64,hash*1099511628211n)}fingerprint=`auto_${hash.toString(16).padStart(16,'0')}`}return[{json:{valid:errors.length===0,error:errors.join('; '),source,signal_type,entity:entity??null,entity_str,score,confidence,payload,payload_json,occurred_at,fingerprint,has_fingerprint:Boolean(fingerprint),signal_id,lookup_key:fingerprint,received_at:new Date().toISOString(),fingerprint_generated:!suppliedFingerprint}}];"
+        },
+        "id": "8984023d-4c38-4de8-a7da-51ca065878ec",
+        "name": "Validate & Normalize",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1440,
+          240
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "valid",
+                "leftValue": "={{ $json.valid }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "e08a834d-c8e8-448f-bef0-7fa0e9f22fd7",
+        "name": "Is Valid?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -1360,
+          -80
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { accepted: false, reason: 'validation_error', signal_id: $json.signal_id, error: $json.error } }}",
+          "options": {
+            "responseCode": 400
+          }
+        },
+        "id": "c297c0b9-b910-4816-8302-2f018efe54eb",
+        "name": "Respond Rejected",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          -1424,
+          -352
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "fingerprint",
+                "leftValue": "={{ $json.has_fingerprint }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "39c33320-a587-4f98-ba3c-2b5daa64347e",
+        "name": "Has Fingerprint?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -960,
+          160
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "Xcuuh52TVZWR48cw",
+            "cachedResultName": "midad_event_fingerprints"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "fingerprint",
+                "keyValue": "={{ $json.fingerprint }}"
+              }
+            ]
+          },
+          "limit": 1
+        },
+        "id": "ebb62164-5b8f-4ed1-a6b8-a5534ed4f376",
+        "name": "Lookup Fingerprint",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          -464,
+          32
+        ],
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const rows = $input.all();\nconst norm = $('Normalize Etherscan Enrichment');\nconst original = norm.isExecuted ? norm.first().json : $('Validate & Normalize').first().json;\nconst duplicate = rows.some(item => {\n  const fp = item.json?.fingerprint;\n  return original.has_fingerprint === true && fp !== undefined && fp !== null && String(fp).trim() === String(original.fingerprint).trim();\n});\nreturn [{ json: { ...original, is_duplicate: duplicate } }];"
+        },
+        "id": "c7281c88-d33b-48e2-8599-dce9f78795e9",
+        "name": "Decide Duplicate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -480,
+          80
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "duplicate",
+                "leftValue": "={{ $json.is_duplicate }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "a7d99bb6-240b-4fa9-ad77-bce86cb1d22c",
+        "name": "Is Duplicate?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -208,
+          96
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { accepted: false, reason: 'duplicate', signal_id: $json.signal_id, score: $json.score, confidence: $json.confidence } }}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "id": "6c9ddbdd-4aa5-4337-8eb9-e53d2119f301",
+        "name": "Respond Duplicate",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "tableId": "signal_events",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "source",
+                "fieldValue": "={{ $json.source }}"
+              },
+              {
+                "fieldId": "signal_type",
+                "fieldValue": "={{ $json.signal_type }}"
+              },
+              {
+                "fieldId": "entity",
+                "fieldValue": "={{ $json.entity_str }}"
+              },
+              {
+                "fieldId": "score",
+                "fieldValue": "={{ $json.score }}"
+              },
+              {
+                "fieldId": "confidence",
+                "fieldValue": "={{ $json.confidence }}"
+              },
+              {
+                "fieldId": "payload",
+                "fieldValue": "={{ $json.payload }}"
+              },
+              {
+                "fieldId": "occurred_at",
+                "fieldValue": "={{ $json.occurred_at }}"
+              },
+              {
+                "fieldId": "fingerprint",
+                "fieldValue": "={{ $json.fingerprint }}"
+              }
+            ]
+          }
+        },
+        "id": "debc7145-0c9b-411f-aec9-4e4594be82cd",
+        "name": "Store Signal in Supabase",
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          224,
+          96
+        ],
+        "onError": "continueErrorOutput",
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 1000,
+        "credentials": {
+          "supabaseApi": {
+            "id": "eRy3qisYfdklNrHS",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const norm=$('Sanitize External Chain Metadata');\nconst e=norm.isExecuted?norm.first().json:$('Validate & Normalize').first().json;\nconst p=$('Validate & Normalize').first().json.payload||{};\nconst c=e.etherscan||{};\nconst corr=e.correlation||{};\nconst tx=Array.isArray(c.recent_transactions)?c.recent_transactions:[];\nconst tok=Array.isArray(c.token_transfers)?c.token_transfers:[];\nconst a=String(c.address||e.evm_address||'').toLowerCase();\nconst score=Number(e.score||0),conf=Number(e.confidence||0);\nconst type=String(e.signal_type||'').toLowerCase(),src=String(e.source||'').toLowerCase(),trustedRaw=JSON.stringify(p).toLowerCase();\nconst sourceCount=Number(corr.source_count||0), corrQuality=String(corr.quality||'').toLowerCase(), conflict=Boolean(corr.conflict_detected);\nlet category='monitor',priority='low',action='store_and_monitor',reason='Signal is below the execution threshold.',automation_ready=false;\nif(score>=85&&conf>=.8){category='high_value_signal';priority='critical';action='trigger_high_value_review';reason='High score and confidence.'}\nelse if(score>=70&&conf>=.7){category='opportunity';priority='high';action='queue_opportunity';reason='Strong signal suitable for opportunity processing.'}\nelse if(score>=50&&conf>=.55){category='candidate';priority='medium';action='watch_and_enrich';reason='Promising signal requiring enrichment.'}\nif(/anomaly|outflow|inflow|whale|wallet|transaction/.test(type+' '+src+' '+trustedRaw)&&score>=70){category='financial_signal';action=priority==='critical'?'trigger_high_value_review':'queue_financial_opportunity';automation_ready=true}\nconst cp=new Set(),edges=new Map();let incoming=0,outgoing=0,calls=0,valueIn=0,valueOut=0;\nconst edge=(f,t)=>{f=String(f||'').toLowerCase();t=String(t||'').toLowerCase();if(!f||!t||f===t)return;if(f===a||t===a){const k=f+'>'+t;edges.set(k,(edges.get(k)||0)+1)}if(f!==a)cp.add(f);if(t!==a)cp.add(t)};\nfor(const x of tx){const f=x.from,t=x.to;edge(f,t);if(String(t||'').toLowerCase()===a)incoming++;if(String(f||'').toLowerCase()===a)outgoing++;const v=Number(x.value||0);if(Number.isFinite(v)){if(String(t||'').toLowerCase()===a)valueIn+=v;if(String(f||'').toLowerCase()===a)valueOut+=v}if(x.input&&x.input!=='0x')calls++}\nfor(const x of tok)edge(x.from||x.fromAddress,x.to||x.toAddress);\nconst n=cp.size,total=incoming+outgoing,imb=total?Math.abs(incoming-outgoing)/total:0,ci=tx.length?calls/tx.length:0;\nconst td=Number(c.unique_token_contracts_sample||new Set(tok.map(x=>String(x.contractAddress||x.tokenAddress||'').toLowerCase()).filter(Boolean)).size);\nconst es=[...edges.entries()].map(([edge,count])=>({edge,count})).sort((x,y)=>y.count-x.count),et=es.reduce((s,x)=>s+x.count,0),tes=et?es[0].count/et:0;\nconst flags=[];\nif(total>=8&&imb>.75)flags.push('strong_flow_imbalance');\nif(tx.length>=6&&n<=2)flags.push('counterparty_concentration');\nif(tx.length>=6&&ci>=.75)flags.push('high_contract_interaction_intensity');\nif(tok.length>=8&&td>=5)flags.push('high_token_diversity');\nif(tx.length>=8&&n>=7)flags.push('broad_counterparty_activity');\nif(et>=6&&tes>=.5)flags.push('repeated_counterparty_edge');\nconst inv=flags.length>=2?'elevated':flags.length===1?'review':'normal';\nif(flags.length>=2&&conf>=.65){priority=priority==='critical'?'critical':priority==='low'?'medium':priority;reason+=' Behavioral review flags: '+flags.join(', ')+'.'}\nlet risk=Math.min(100,Math.round(Math.max(0,100-conf*100)+(flags.includes('counterparty_concentration')?8:0)+(flags.includes('strong_flow_imbalance')?6:0)+(flags.includes('high_contract_interaction_intensity')?5:0)+(flags.includes('repeated_counterparty_edge')?4:0)));\nconst cap=Number(p.capital_required_usd??p.capital_required),gross=Number(p.gross_value_usd??p.gross_usd??p.revenue_usd),fees=Number(p.fees_usd??p.total_fees_usd)||0,slip=Number(p.slippage_pct??p.slippage_percent)||0;\nlet net=Number(p.net_value_usd??p.net_profit_usd??p.expected_profit_usd);if(!Number.isFinite(net)&&Number.isFinite(gross))net=gross-fees-gross*slip/100;\nlet roi=Number(p.expected_return_pct??p.expected_roi_pct??p.roi_pct);if(!Number.isFinite(roi)&&Number.isFinite(net)&&cap>0)roi=net/cap*100;\nconst econ=Number.isFinite(net)||Number.isFinite(roi)||Number.isFinite(cap);let econScore=null;\nif(econ){const r=Number.isFinite(roi)?Math.max(0,Math.min(100,50+roi*5)):0;econScore=Math.round(r*.5+(100-risk)*.3+50*.2)}\nconst mining=/mining|miner|hashrate|th\\/s|asic|viabtc|pool|reward|btc mined/.test(type+' '+src+' '+trustedRaw);\nif(mining){category='mining_capital_signal';action=econ&&econScore>=70?'evaluate_capital_allocation':'enrich_mining_economics';reason=econ?'Mining-derived capital signal with economic inputs available.':'Mining-derived signal; waiting for profitability inputs.';automation_ready=econ}\nconst security=e.chain_metadata_security||{};\nconst graph={node_count:n+1,edge_count:et,unique_counterparties:n,top_edge_share:Math.round(tes*100)/100,top_edges:es.slice(0,5),network_scope:'bounded_recent_sample',interpretation:'heuristic public-chain indicator; requires validation'};\n// Correlation is evidence, not an automatic command. Conflicts or stale/weak evidence block autonomous action.\nconst evidenceGate={source_count:sourceCount,quality:corrQuality||'single_source',conflict_detected:conflict,automation_blocked:false};\nif(conflict){automation_ready=false; evidenceGate.automation_blocked=true; priority=priority==='critical'?'high':priority; action='hold_for_review'; reason+=' Cross-source conflict detected; autonomous action blocked.'}\nelse if(corrQuality==='stale'){automation_ready=false; evidenceGate.automation_blocked=true; priority=priority==='critical'?'high':priority; action='refresh_evidence'; reason+=' Evidence is stale; refresh required.'}\nelse if(corrQuality==='needs_more_evidence' && sourceCount<2){automation_ready=false; if(action!=='store_and_monitor')action='watch_and_enrich'; reason+=' More independent evidence is required.'}\nelse if(corrQuality==='corroborated' && sourceCount>=2 && conf>=.7){automation_ready=automation_ready&&true}\nconst opportunity={opportunity_id:'opp_'+Date.now(),category,priority,action,reason,score,confidence:conf,automation_ready,evidence_gate:evidenceGate,correlation:corr,economic:{available:econ,capital_required_usd:Number.isFinite(cap)?cap:null,gross_value_usd:Number.isFinite(gross)?gross:null,net_value_usd:Number.isFinite(net)?net:null,fees_usd:fees,slippage_pct:slip,expected_return_pct:Number.isFinite(roi)?roi:null,risk_score:risk,economic_score:econScore},chain_intelligence:c.provider?{provider:c.provider,chainid:c.chainid,address:c.address,balance_wei:c.balance_wei,transaction_count_sample:c.transaction_count_sample,incoming_sample:c.incoming_sample,outgoing_sample:c.outgoing_sample,contract_interactions_sample:c.contract_interactions_sample,token_transfer_count_sample:c.token_transfer_count_sample,unique_token_contracts_sample:c.unique_token_contracts_sample}:null,lawful_chain_intelligence:{behavioral_flags:flags,investigation_priority:inv,sampled_transactions:tx.length,unique_counterparties:n,incoming_count:incoming,outgoing_count:outgoing,flow_imbalance:Math.round(imb*100)/100,contract_interaction_ratio:Math.round(ci*100)/100,token_diversity:td,native_value_in_wei:valueIn,native_value_out_wei:valueOut,risk_score:risk,graph,metadata_security:security},capital_source:mining?'mining':(p.capital_source||'unknown'),next_channels:['telegram','notion']};\nreturn [{json:{...e,opportunity}}];",
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "parameters": {
+            "jsCode": "const norm=$('Sanitize External Chain Metadata');\nconst e=norm.isExecuted?norm.first().json:$('Validate & Normalize').first().json;\nconst p=$('Validate & Normalize').first().json.payload||{};\nconst c=e.etherscan||{};\nconst tx=Array.isArray(c.recent_transactions)?c.recent_transactions:[];\nconst tok=Array.isArray(c.token_transfers)?c.token_transfers:[];\nconst a=String(c.address||e.evm_address||'').toLowerCase();\nconst score=Number(e.score||0),conf=Number(e.confidence||0);\nconst type=String(e.signal_type||'').toLowerCase(),src=String(e.source||'').toLowerCase();\nconst trustedRaw=JSON.stringify(p).toLowerCase();\nlet category='monitor',priority='low',action='store_and_monitor',reason='Signal is below the execution threshold.',automation_ready=false;\nif(score>=85&&conf>=.8){category='high_value_signal';priority='critical';action='trigger_high_value_review';reason='High score and confidence.'}\nelse if(score>=70&&conf>=.7){category='opportunity';priority='high';action='queue_opportunity';reason='Strong signal suitable for opportunity processing.'}\nelse if(score>=50&&conf>=.55){category='candidate';priority='medium';action='watch_and_enrich';reason='Promising signal requiring enrichment.'}\nif(/anomaly|outflow|inflow|whale|wallet|transaction/.test(type+' '+src+' '+trustedRaw)&&score>=70){category='financial_signal';action=priority==='critical'?'trigger_high_value_review':'queue_financial_opportunity';automation_ready=true}\nconst cp=new Set(),edges=new Map();let incoming=0,outgoing=0,calls=0,valueIn=0,valueOut=0;\nconst edge=(f,t)=>{f=String(f||'').toLowerCase();t=String(t||'').toLowerCase();if(!f||!t||f===t)return;if(f===a||t===a){const k=f+'>'+t;edges.set(k,(edges.get(k)||0)+1)}if(f!==a)cp.add(f);if(t!==a)cp.add(t)};\nfor(const x of tx){const f=x.from,t=x.to;edge(f,t);if(String(t||'').toLowerCase()===a)incoming++;if(String(f||'').toLowerCase()===a)outgoing++;const v=Number(x.value||0);if(Number.isFinite(v)){if(String(t||'').toLowerCase()===a)valueIn+=v;if(String(f||'').toLowerCase()===a)valueOut+=v}if(x.input&&x.input!=='0x')calls++}\nfor(const x of tok)edge(x.from||x.fromAddress,x.to||x.toAddress);\nconst n=cp.size,total=incoming+outgoing,imb=total?Math.abs(incoming-outgoing)/total:0,ci=tx.length?calls/tx.length:0;\nconst td=Number(c.unique_token_contracts_sample||new Set(tok.map(x=>String(x.contractAddress||x.tokenAddress||'').toLowerCase()).filter(Boolean)).size);\nconst es=[...edges.entries()].map(([edge,count])=>({edge,count})).sort((x,y)=>y.count-x.count),et=es.reduce((s,x)=>s+x.count,0),tes=et?es[0].count/et:0;\nconst flags=[];\nif(total>=8&&imb>.75)flags.push('strong_flow_imbalance');\nif(tx.length>=6&&n<=2)flags.push('counterparty_concentration');\nif(tx.length>=6&&ci>=.75)flags.push('high_contract_interaction_intensity');\nif(tok.length>=8&&td>=5)flags.push('high_token_diversity');\nif(tx.length>=8&&n>=7)flags.push('broad_counterparty_activity');\nif(et>=6&&tes>=.5)flags.push('repeated_counterparty_edge');\nconst inv=flags.length>=2?'elevated':flags.length===1?'review':'normal';\nif(flags.length>=2&&conf>=.65){priority=priority==='critical'?'critical':priority==='low'?'medium':priority;reason+=' Behavioral review flags: '+flags.join(', ')+'.'}\nlet risk=Math.min(100,Math.round(Math.max(0,100-conf*100)+(flags.includes('counterparty_concentration')?8:0)+(flags.includes('strong_flow_imbalance')?6:0)+(flags.includes('high_contract_interaction_intensity')?5:0)+(flags.includes('repeated_counterparty_edge')?4:0)));\nconst cap=Number(p.capital_required_usd??p.capital_required),gross=Number(p.gross_value_usd??p.gross_usd??p.revenue_usd),fees=Number(p.fees_usd??p.total_fees_usd)||0,slip=Number(p.slippage_pct??p.slippage_percent)||0;\nlet net=Number(p.net_value_usd??p.net_profit_usd??p.expected_profit_usd);if(!Number.isFinite(net)&&Number.isFinite(gross))net=gross-fees-gross*slip/100;\nlet roi=Number(p.expected_return_pct??p.expected_roi_pct??p.roi_pct);if(!Number.isFinite(roi)&&Number.isFinite(net)&&cap>0)roi=net/cap*100;\nconst econ=Number.isFinite(net)||Number.isFinite(roi)||Number.isFinite(cap);let econScore=null;\nif(econ){const r=Number.isFinite(roi)?Math.max(0,Math.min(100,50+roi*5)):0;econScore=Math.round(r*.5+(100-risk)*.3+50*.2)}\nconst mining=/mining|miner|hashrate|th\\/s|asic|viabtc|pool|reward|btc mined/.test(type+' '+src+' '+trustedRaw);\nif(mining){category='mining_capital_signal';action=econ&&econScore>=70?'evaluate_capital_allocation':'enrich_mining_economics';reason=econ?'Mining-derived capital signal with economic inputs available.':'Mining-derived signal; waiting for profitability inputs.';automation_ready=econ}\nconst security=e.chain_metadata_security||{};\nconst graph={node_count:n+1,edge_count:et,unique_counterparties:n,top_edge_share:Math.round(tes*100)/100,top_edges:es.slice(0,5),network_scope:'bounded_recent_sample',interpretation:'heuristic public-chain indicator; requires validation'};\nreturn [{json:{...e,opportunity:{opportunity_id:'opp_'+Date.now(),category,priority,action,reason,score,confidence:conf,automation_ready,economic:{available:econ,capital_required_usd:Number.isFinite(cap)?cap:null,gross_value_usd:Number.isFinite(gross)?gross:null,net_value_usd:Number.isFinite(net)?net:null,fees_usd:fees,slippage_pct:slip,expected_return_pct:Number.isFinite(roi)?roi:null,risk_score:risk,economic_score:econScore},chain_intelligence:c.provider?{provider:c.provider,chainid:c.chainid,address:c.address,balance_wei:c.balance_wei,transaction_count_sample:c.transaction_count_sample,incoming_sample:c.incoming_sample,outgoing_sample:c.outgoing_sample,contract_interactions_sample:c.contract_interactions_sample,token_transfer_count_sample:c.token_transfer_count_sample,unique_token_contracts_sample:c.unique_token_contracts_sample}:null,lawful_chain_intelligence:{behavioral_flags:flags,investigation_priority:inv,sampled_transactions:tx.length,unique_counterparties:n,incoming_count:incoming,outgoing_count:outgoing,flow_imbalance:Math.round(imb*100)/100,contract_interaction_ratio:Math.round(ci*100)/100,token_diversity:td,native_value_in_wei:valueIn,native_value_out_wei:valueOut,risk_score:risk,graph,metadata_security:security},capital_source:mining?'mining':(p.capital_source||'unknown'),next_channels:['telegram','notion']}}}];"
+          }
+        },
+        "id": "f08502b5-e3ba-4c33-aa4d-7f3e71bf41ac",
+        "name": "MIDAD Opportunity Engine",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          464,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ (()=>{const x=$('MAXLOOP Correlation Engine').first().json||{};const o=x.opportunity||{};const g=o.evidence_gate||{};const li=o.lawful_chain_intelligence||{};const graph=li.graph||{};const ml=o.maxloop||{};return {accepted:true,signal_id:x.signal_id,score:x.score,confidence:x.confidence,opportunity:{category:o.category,priority:o.priority,action:o.action,automation_ready:o.automation_ready,graph_score:o.graph_score,maxloop:{score:ml.score??null,confidence:ml.confidence??null,classification:ml.classification??null,signal_count:ml.signal_count??0,next_action:x.maxloop_next_action??null},evidence_gate:{source_count:g.source_count??0,quality:g.quality??'single_source',conflict_detected:Boolean(g.conflict_detected),automation_blocked:Boolean(g.automation_blocked)},next_channels:o.next_channels||['telegram','notion'],graph:{node_count:graph.node_count??0,edge_count:graph.edge_count??0,multi_hop_score:graph.multi_hop?.multi_hop_score??null,partial_success:Boolean(graph.multi_hop?.partial_success)}}};})() }}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "id": "700afb6b-124c-4095-b105-b91d8d8bd85b",
+        "name": "Respond Accepted",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          624,
+          272
+        ]
+      },
+      {
+        "parameters": {
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "Xcuuh52TVZWR48cw"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "fingerprint": "={{ $('Validate & Normalize').first().json.fingerprint }}",
+              "signal_id": "={{ $('Validate & Normalize').first().json.signal_id }}",
+              "source": "={{ $('Validate & Normalize').first().json.source }}",
+              "signal_type": "={{ $('Validate & Normalize').first().json.signal_type }}",
+              "score": "={{ $('Validate & Normalize').first().json.score }}",
+              "confidence": "={{ $('Validate & Normalize').first().json.confidence }}",
+              "occurred_at": "={{ $('Validate & Normalize').first().json.occurred_at }}",
+              "received_at": "={{ $('Validate & Normalize').first().json.received_at }}"
+            }
+          },
+          "options": {}
+        },
+        "id": "3312844e-76e2-452a-9c4c-141d303977d5",
+        "name": "Record Fingerprint",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          96
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const original = $('Validate & Normalize').first().json || {};\nconst raw = JSON.stringify($input.first()?.json ?? {});\nconst isFingerprintConflict = /duplicate key|unique constraint|fingerprint_uidx|signal_events_fingerprint_uidx/i.test(raw);\nif (!isFingerprintConflict) {\n  throw new Error(`Supabase storage failure: ${raw}`);\n}\nreturn [{ json: {\n  accepted: false,\n  reason: 'duplicate',\n  signal_id: original.signal_id,\n  score: original.score,\n  confidence: original.confidence,\n  fingerprint: original.fingerprint,\n  race_condition: true\n} }];"
+        },
+        "id": "dc3f20ae-0ff0-4603-b90d-7b3b4d22f4ad",
+        "name": "Handle Storage Conflict",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          432,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "chatId": "5228167477",
+          "text": "={{ (()=>{const x=$('MAXLOOP Correlation Engine').first().json||{};const o=x.opportunity||{};const g=o.evidence_gate||{};const li=o.lawful_chain_intelligence||{};const c=o.correlation||{};const ml=o.maxloop||{};const esc=v=>String(v??'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');const level=o.priority==='critical'?'🚨 حرج':o.priority==='high'?'🟠 مرتفع':'🔔 تنبيه';const classMap={observe_only:'مراقبة فقط',multi_signal_high:'إشارات متعددة — أولوية عالية',multi_signal_review:'إشارات متعددة — مراجعة',candidate:'مرشّح للمراقبة',background:'خلفية'};const actionMap={hold_and_enrich:'إيقاف الإجراء وإكمال الأدلة',high_priority_review:'مراجعة عالية الأولوية',priority_review:'مراجعة ذات أولوية',watch_and_enrich:'مراقبة واستكمال الأدلة',monitor:'مراقبة'};const qualityMap={corroborated:'مدعوم بأكثر من مصدر',single_source:'مصدر واحد',stale:'قديم/غير محدث',conflict:'متعارض'};const behaviorMap={'strong_flow_imbalance':'اختلال قوي في التدفق','counterparty_concentration':'تركّز الأطراف المقابلة','high_contract_interaction_intensity':'تفاعل مرتفع مع العقود','high_token_diversity':'تنوع مرتفع في الرموز','broad_counterparty_activity':'نشاط واسع مع أطراف مقابلة','repeated_counterparty_edge':'تكرار العلاقة مع طرف مقابل'};const behavior=(li.behavioral_flags||[]).slice(0,6).map(v=>esc(behaviorMap[v]||v)).join('، ')||'لا توجد مؤشرات سلوكية بارزة';const quality=qualityMap[String(c.quality||g.quality||'').toLowerCase()]||(c.quality||g.quality||'غير محددة');const entity=typeof x.entity==='object'?JSON.stringify(x.entity):String(x.entity??'-');const classification=classMap[ml.classification]||ml.classification||'غير محدد';const nextAction=actionMap[x.maxloop_next_action]||x.maxloop_next_action||'غير محدد';let msg='🧠 <b>مِداد AI — تنبيه استخباراتي</b>\\\\n\\\\n'+level+' | '+esc(o.category||'إشارة')+'\\\\n\\\\n📌 <b>المصدر:</b> '+esc(x.source)+'\\\\n🔎 <b>نوع الإشارة:</b> '+esc(x.signal_type)+'\\\\n🎯 <b>الكيان:</b> '+esc(entity)+'\\\\n⭐ <b>الدرجة:</b> '+esc(x.score)+'/100\\\\n🧠 <b>الثقة:</b> '+((Number(x.confidence??0)*100).toFixed(0))+'%\\\\n🧬 <b>نتيجة MAXLOOP:</b> '+esc(ml.score??0)+'/100\\\\n🏷️ <b>التصنيف:</b> '+esc(classification)+'\\\\n🔬 <b>ثقة MAXLOOP:</b> '+((Number(ml.confidence??0)*100).toFixed(0))+'%\\\\n🧩 <b>جودة الأدلة:</b> '+esc(quality)+' | <b>عدد المصادر:</b> '+esc(g.source_count??c.source_count??0)+'\\\\n'+(g.conflict_detected?'⚠️ <b>تعارض بين المصادر — لا إجراء آلي</b>\\\\n':'')+'🧭 <b>الإجراء المقترح:</b> '+esc(o.action)+'\\\\n➡️ <b>خطوة MAXLOOP التالية:</b> '+esc(nextAction)+'\\\\n💡 <b>السبب:</b> '+esc(o.reason)+'\\\\n🧬 <b>السلوك:</b> '+behavior+'\\\\n🔐 <b>التشغيل الآلي:</b> '+(o.automation_ready?'مسموح مبدئيًا':'محجوب / يحتاج مراجعة')+'\\\\n\\\\n📚 التفاصيل الكاملة محفوظة في Notion.\\\\n🆔 <b>معرّف الإشارة:</b> '+esc(x.signal_id)+'\\\\n🤖 مِداد AI — استخبارات للمراجعة، وليست أمر شراء أو بيع.';return msg.length>3900?msg.slice(0,3880)+'\\\\n…':msg;})() }}",
+          "additionalFields": {
+            "parse_mode": "HTML"
+          }
+        },
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1850,
+          260
+        ],
+        "id": "63be9dd4-018d-4b7a-8bdf-c33efad6ba9c",
+        "name": "Send a text message",
+        "webhookId": "db0ad128-3d74-4410-adfe-c219657de99b",
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 750,
+        "credentials": {
+          "telegramApi": {
+            "id": "VRr3IOiWwKxbL4IA",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "authentication": "oAuth2",
+          "pageId": {
+            "__rl": true,
+            "mode": "url",
+            "value": "https://app.notion.com/p/3db3e44a51c280fea9c5f34c2a3643fe"
+          },
+          "title": "={{ 'MIDAD — ' + ($json.opportunity?.priority ?? 'normal') + ' — ' + ($json.opportunity?.category ?? 'Signal') + ' — ' + ($json.signal_id ?? '') }}",
+          "contentType": "markdown",
+          "markdown": "={{ (()=>{const o=$('MAXLOOP Correlation Engine').first().json||{};const opp=o.opportunity||{};const g=opp.evidence_gate||{};const c=opp.correlation||{};const ml=opp.maxloop||{};const li=opp.lawful_chain_intelligence||{};const econ=opp.economic||{};const graph=li.graph||{};const entity=typeof o.entity==='object'?JSON.stringify(o.entity):String(o.entity??'-');const bullets=a=>(a||[]).length?(a||[]).map(v=>'- '+v).join('\\n'):'- لا يوجد';return '## 🧠 MIDAD — سجل استخباراتي\\n\\n### 1. الملخص التنفيذي\\n- الفئة: '+(opp.category||'-')+'\\n- الأولوية: '+(opp.priority||'-')+'\\n- الدرجة: '+(o.score??'-')+'/100\\n- الثقة: '+((Number(o.confidence??0)*100).toFixed(0))+'%\\n- الإجراء: '+(opp.action||'-')+'\\n- جاهزية التشغيل الآلي: '+(opp.automation_ready?'نعم':'لا')+'\\n- السبب: '+(opp.reason||'-')+'\\n\\n### 2. MAXLOOP Correlation\\n- الدرجة: '+(ml.score??'-')+'/100\\n- الثقة: '+((Number(ml.confidence??0)*100).toFixed(0))+'%\\n- التصنيف: '+(ml.classification||'-')+'\\n- عدد الإشارات: '+(ml.signal_count??0)+'\\n- الإجراء التالي: '+(o.maxloop_next_action||'-')+'\\n\\n### 3. جودة الأدلة والتعارض\\n- عدد المصادر: '+(g.source_count??c.source_count??0)+'\\n- الجودة: '+(g.quality??c.quality??'-')+'\\n- تعارض: '+(g.conflict_detected?'نعم — يتطلب مراجعة':'لا')+'\\n- مصادر الارتباط: '+((c.sources||[]).join('، ')||'-')+'\\n- عدد الإشارات المرتبطة: '+(c.related_signal_count??0)+'\\n\\n### 4. السلوك والتحليل\\n- أولوية التحقيق: '+(li.investigation_priority||'-')+'\\n- علامات السلوك:\\n'+bullets(li.behavioral_flags)+'\\n- الأطراف المقابلة: '+(li.unique_counterparties??0)+'\\n- الوارد/الصادر: '+(li.incoming_count??0)+' / '+(li.outgoing_count??0)+'\\n- عدم توازن التدفقات: '+(li.flow_imbalance??0)+'\\n- كثافة تفاعل العقود: '+(li.contract_interaction_ratio??0)+'\\n- تنوع التوكنات: '+(li.token_diversity??0)+'\\n- درجة المخاطر: '+(li.risk_score??'-')+'\\n\\n### 5. الرسم البياني المحدود\\n- العقد: '+(graph.node_count??0)+'\\n- الحواف: '+(graph.edge_count??0)+'\\n- حصة أعلى حافة: '+(((graph.top_edge_share??0)*100).toFixed(0))+'%\\n- النطاق: '+(graph.network_scope||'-')+'\\n- تفسير: '+(graph.interpretation||'-')+'\\n- التحليل متعدد القفزات: '+JSON.stringify(graph.multi_hop||{})+'\\n\\n### 6. الاقتصاد\\n- متاح: '+(econ.available?'نعم':'لا')+'\\n- رأس المال المطلوب: '+(econ.capital_required_usd??'-')+'\\n- القيمة الإجمالية: '+(econ.gross_value_usd??'-')+'\\n- القيمة الصافية: '+(econ.net_value_usd??'-')+'\\n- العائد المتوقع: '+(econ.expected_return_pct??'-')+'\\n- درجة الاقتصاد: '+(econ.economic_score??'-')+'\\n- درجة المخاطر: '+(econ.risk_score??'-')+'\\n\\n### 7. سلسلة المصدر\\n- المصدر: '+(o.source||'-')+'\\n- النوع: '+(o.signal_type||'-')+'\\n- الكيان: '+entity+'\\n- Signal ID: '+(o.signal_id||'-')+'\\n- Fingerprint: '+(o.fingerprint||'-')+'\\n\\n### 8. البيانات الخام\\n'+JSON.stringify(o.payload??{},null,2)+'\\n\\n> MAXLOOP يقدّم ارتباطًا استخباراتيًا للمراجعة؛ لا يحوّل إشارة واحدة إلى أمر شراء/بيع أو تنفيذ تلقائي.';})() }}",
+          "options": {
+            "icon": "🧠"
+          },
+          "parameters": {
+            "markdown": "={{ '## MIDAD Opportunity\\n\\n**Category:** '+($json.opportunity?.category??'-')+'\\n**Priority:** '+($json.opportunity?.priority??'-')+'\\n**Score:** '+($json.score??'-')+'\\n**Confidence:** '+($json.confidence??'-')+'\\n**Action:** '+($json.opportunity?.action??'-')+'\\n**Reason:** '+($json.opportunity?.reason??'-')+'\\n\\n### Wallet Graph Intelligence\\n- Nodes: '+($json.opportunity?.lawful_chain_intelligence?.graph?.node_count??0)+'\\n- Edges: '+($json.opportunity?.lawful_chain_intelligence?.graph?.edge_count??0)+'\\n- Unique counterparties: '+($json.opportunity?.lawful_chain_intelligence?.graph?.unique_counterparties??0)+'\\n- Top edge share: '+((($json.opportunity?.lawful_chain_intelligence?.graph?.top_edge_share??0)*100).toFixed(0))+'%\\n- Investigation priority: '+($json.opportunity?.lawful_chain_intelligence?.investigation_priority??'-')+'\\n- Behavioral flags: '+(($json.opportunity?.lawful_chain_intelligence?.behavioral_flags??[]).join(', ')||'-')+'\\n\\n### Payload\\n```json\\n'+JSON.stringify($json.payload??{},null,2)+'\\n```\\n' }}"
+          }
+        },
+        "type": "n8n-nodes-base.notion",
+        "typeVersion": 3,
+        "position": [
+          1620,
+          500
+        ],
+        "id": "a39212ab-f3e9-4351-97a4-dc133c013f9a",
+        "name": "Create a page",
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 750,
+        "credentials": {
+          "notionOAuth2Api": {
+            "id": "ZWdxXOSRaGWcgm8M",
+            "name": "Notion account"
+          }
+        }
+      },
+      {
+        "id": "6e3e9484-448f-4c9d-9fe4-1dbdfd024b11",
+        "name": "Extract EVM Address",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1180,
+          -80
+        ],
+        "parameters": {
+          "jsCode": "const x = $input.first().json || {};\nconst text = [x.entity_str, typeof x.entity === 'string' ? x.entity : JSON.stringify(x.entity ?? ''), JSON.stringify(x.payload ?? {})].join(' ');\nconst match = text.match(/0x[a-fA-F0-9]{40}/);\nconst address = match ? match[0] : '';\nconst payload = x.payload && typeof x.payload === 'object' ? x.payload : {};\nconst chainid = String(payload.chainid ?? payload.chain_id ?? payload.chainId ?? x.chainid ?? x.chain_id ?? '1');\nreturn [{ json: { ...x, evm_address: address, evm_chainid: /^\\d+$/.test(chainid) ? chainid : '1', has_evm_address: Boolean(address) } }];"
+        }
+      },
+      {
+        "id": "d96da3ad-9950-4987-b062-50ae595b31dd",
+        "name": "Has EVM Address?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -980,
+          -80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "evm",
+                "leftValue": "={{ $json.has_evm_address }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "0ab49ace-931b-44e9-b7c7-e5f3658fd02e",
+        "name": "Etherscan Enrichment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          -760,
+          -160
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_chain_intelligence",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { action: 'profile', address: $json.evm_address, chainid: $json.evm_chainid, offset: 10 } }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": true
+              }
+            },
+            "timeout": 20000
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 500,
+        "credentials": {
+          "supabaseApi": {
+            "id": "eRy3qisYfdklNrHS",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "id": "283d95c1-6704-4b05-b380-c37a5de3def6",
+        "name": "Normalize Etherscan Enrichment",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -540,
+          -160
+        ],
+        "parameters": {
+          "jsCode": "const base = $('Extract EVM Address').first().json || {};\nconst api = $input.first().json || {};\nconst p = api.profile && typeof api.profile === 'object' ? api.profile : {};\nconst enrichment = { provider: api.provider ?? 'etherscan', api_version: api.api_version ?? 'v2', chainid: api.chainid ?? base.evm_chainid, address: base.evm_address, balance_wei: p.balance_wei ?? null, transaction_count_sample: p.transaction_count_sample ?? 0, incoming_sample: p.incoming_sample ?? 0, outgoing_sample: p.outgoing_sample ?? 0, contract_interactions_sample: p.contract_interactions_sample ?? 0, token_transfer_count_sample: p.token_transfer_count_sample ?? 0, unique_token_contracts_sample: p.unique_token_contracts_sample ?? 0, recent_transactions: Array.isArray(p.recent_transactions) ? p.recent_transactions.slice(0,10) : [], token_transfers: Array.isArray(p.token_transfers) ? p.token_transfers.slice(0,10) : [], ok: api.ok === true, upstream: api.upstream ?? {} };\nreturn [{ json: { ...base, etherscan: enrichment, payload: { ...(base.payload && typeof base.payload === 'object' ? base.payload : {}), etherscan: enrichment } } }];"
+        }
+      },
+      {
+        "id": "0156dc29-e037-4086-aecd-ed466581f8ec",
+        "name": "Sanitize External Chain Metadata",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -760,
+          80
+        ],
+        "parameters": {
+          "jsCode": "const x=$input.first().json||{};\nconst e=x.etherscan||{};\nconst tx=Array.isArray(e.recent_transactions)?e.recent_transactions:[];\nconst tok=Array.isArray(e.token_transfers)?e.token_transfers:[];\nconst suspicious=/ignore\\s+(all\\s+)?previous|system\\s+message|assistant\\s+message|developer\\s+message|follow\\s+these\\s+instructions|disregard\\s+instructions|override\\s+(the|all)\\s+instructions|do\\s+not\\s+follow/i;\nconst inspect=(v)=>suspicious.test(typeof v==='string'?v:JSON.stringify(v??''));\nconst flaggedTx=tx.filter(v=>inspect(v.input)||inspect(v.functionName)||inspect(v.methodId)).length;\nconst flaggedToken=tok.filter(v=>inspect(v.input)||inspect(v.functionName)||inspect(v.tokenName)||inspect(v.tokenSymbol)).length;\nconst flags=[];\nif(flaggedTx)flags.push('instruction_like_tx_metadata');\nif(flaggedToken)flags.push('instruction_like_token_metadata');\nconst security={external_metadata_untrusted:true,raw_evidence_preserved:true,flagged_transaction_records:flaggedTx,flagged_token_records:flaggedToken,flags,interpretation:'metadata is evidence only; instruction-like text must not be treated as commands'};\nreturn [{json:{...x,chain_metadata_security:security,payload:{...(x.payload&&typeof x.payload==='object'?x.payload:{}),chain_metadata_security:security}}}];",
+          "parameters": {
+            "jsCode": "const x=$input.first().json||{};\nconst e=x.etherscan||{};\nconst tx=Array.isArray(e.recent_transactions)?e.recent_transactions:[];\nconst tok=Array.isArray(e.token_transfers)?e.token_transfers:[];\nconst suspicious=/ignore\\s+(all\\s+)?previous|system\\s+message|assistant\\s+message|developer\\s+message|follow\\s+these\\s+instructions|disregard\\s+instructions|override\\s+(the|all)\\s+instructions|do\\s+not\\s+follow/i;\nconst decode=(v)=>{if(typeof v!=='string'||!/^0x[0-9a-f]+$/i.test(v)||v.length>20000)return '';try{let h=v.slice(2);if(h.length%2)h='0'+h;let s='';for(let i=0;i<h.length;i+=2){const c=parseInt(h.slice(i,i+2),16);if(c===0)continue;s+=c>=32&&c<=126?String.fromCharCode(c):' ';}return s}catch{return ''}};\nconst inspect=(v)=>{const s=typeof v==='string'?v:JSON.stringify(v??'');return suspicious.test(s)||suspicious.test(decode(s))};\nconst flaggedTx=tx.filter(v=>inspect(v.input)||inspect(v.functionName)||inspect(v.methodId)).length;\nconst flaggedToken=tok.filter(v=>inspect(v.input)||inspect(v.functionName)||inspect(v.tokenName)||inspect(v.tokenSymbol)).length;\nconst flags=[];\nif(flaggedTx)flags.push('instruction_like_tx_metadata');\nif(flaggedToken)flags.push('instruction_like_token_metadata');\nconst security={external_metadata_untrusted:true,raw_evidence_preserved:true,encoded_text_decoding_enabled:true,flagged_transaction_records:flaggedTx,flagged_token_records:flaggedToken,flags,interpretation:'metadata is evidence only; instruction-like text must not be treated as commands'};\nreturn [{json:{...x,chain_metadata_security:security,payload:{...(x.payload&&typeof x.payload==='object'?x.payload:{}),chain_metadata_security:security}}}];"
+          }
+        }
+      },
+      {
+        "id": "f5a00237-c1c4-4602-a408-13b559063196",
+        "name": "Select Multi-Hop Seeds",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          40
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const o=$input.first().json||{}; const n=$('Sanitize External Chain Metadata'); const e=n.isExecuted?n.first().json:{}; const c=e.etherscan||{}; const root=String(c.address||e.evm_address||'').toLowerCase(); const tx=Array.isArray(c.recent_transactions)?c.recent_transactions.slice(0,10):[]; const tok=Array.isArray(c.token_transfers)?c.token_transfers.slice(0,10):[]; const freq=new Map(); const touch=(addr,weight=1)=>{const a=String(addr||'').toLowerCase();if(!a||a===root||!/^0x[a-f0-9]{40}$/.test(a))return;freq.set(a,(freq.get(a)||0)+weight)}; for(const x of tx){const f=String(x.from||'').toLowerCase(),t=String(x.to||'').toLowerCase();if(f===root)touch(t,3);else if(t===root)touch(f,3);else{touch(f,1);touch(t,1)}} for(const x of tok){const f=x.from||x.fromAddress,t=x.to||x.toAddress;if(String(f||'').toLowerCase()===root)touch(t,2);else if(String(t||'').toLowerCase()===root)touch(f,2)} const ranked=[...freq.entries()].map(([address,information_score])=>({address,information_score})).sort((a,b)=>b.information_score-a.information_score).slice(0,2); return [{json:{...o,multi_hop:{enabled:true,mode:'bounded_2_hop',root_address:root,max_hops:2,max_seed_nodes:2,max_expansion_queries:2,max_expanded_nodes:2,max_expanded_edges:20,seeds:ranked.map(x=>x.address),seed_scores:ranked,selection_rule:'highest-information public counterparties from bounded recent sample'}}}];"
+        },
+        "onError": "stopWorkflow",
+        "retryOnFail": false
+      },
+      {
+        "id": "c41d7a84-9ae7-47b4-91fc-78ba25df4e07",
+        "name": "Multi-Hop Seed A",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          940,
+          -20
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_chain_intelligence",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { action: 'profile', address: $('Select Multi-Hop Seeds').first().json.multi_hop?.seeds?.[0] || '', chainid: $('Extract EVM Address').first().json.evm_chainid || '1', offset: 5 } }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": true
+              }
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 500,
+        "credentials": {
+          "supabaseApi": {
+            "id": "eRy3qisYfdklNrHS",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "id": "77ad06c3-6206-45de-9c8f-cadf48cb15a0",
+        "name": "Multi-Hop Seed B",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          940,
+          100
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_chain_intelligence",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { action: 'profile', address: $('Select Multi-Hop Seeds').first().json.multi_hop?.seeds?.[1] || '', chainid: $('Extract EVM Address').first().json.evm_chainid || '1', offset: 5 } }}",
+          "options": {
+            "redirect": {
+              "redirect": {
+                "followRedirects": true
+              }
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 500,
+        "credentials": {
+          "supabaseApi": {
+            "id": "eRy3qisYfdklNrHS",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "id": "9ddd9c6f-11ef-40d4-8e1d-602972af279b",
+        "name": "Combine Multi-Hop Enrichment",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          1160,
+          40
+        ],
+        "parameters": {
+          "mode": "combine",
+          "combineBy": "combineByPosition",
+          "numberInputs": 2,
+          "options": {
+            "clashHandling": {
+              "values": {
+                "resolveClash": "addSuffix",
+                "mergeMode": "shallowMerge",
+                "overrideEmpty": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "b65f77b1-0e20-45b9-b124-f506854f6976",
+        "name": "Graph Intelligence 3.0",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1380,
+          40
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const o=$('MIDAD Opportunity Engine').first().json||{};\nconst seedCtx=$('Select Multi-Hop Seeds').first().json||{};\nconst a=$('Multi-Hop Seed A').isExecuted?$('Multi-Hop Seed A').first().json||{}:{};\nconst b=$('Multi-Hop Seed B').isExecuted?$('Multi-Hop Seed B').first().json||{}:{};\nconst seeds=seedCtx.multi_hop||{};\nconst profiles=[a,b].filter(x=>x&&Object.keys(x).length>0).map((x,i)=>({seed:seeds.seeds?.[i]||null,ok:x.ok===true,provider:x.provider||null,chainid:x.chainid||null,profile:x.profile||{},upstream:x.upstream||{}}));\nlet secondHopNodes=0,secondHopEdges=0,secondHopTx=0,secondHopCounterparties=new Set(),secondHopFlags=[];\nfor(const p of profiles){\n  const r=p.profile||{};\n  const tx=Array.isArray(r.recent_transactions)?r.recent_transactions.slice(0,5):[];\n  secondHopTx+=tx.length;\n  const seed=String(p.seed||'').toLowerCase();\n  const local=new Set();\n  for(const x of tx){\n    const f=String(x.from||'').toLowerCase(),t=String(x.to||'').toLowerCase();\n    if(f&&t){\n      secondHopEdges++;\n      const other=f===seed?t:f;\n      if(other&&other!==seed){local.add(other);secondHopCounterparties.add(other)}\n    }\n  }\n  secondHopNodes+=local.size+(tx.length?1:0);\n  if(local.size>=4)secondHopFlags.push('seed_has_broad_counterparty_activity');\n  if(tx.length>=5){\n    const counts=new Map();\n    for(const x of tx){\n      const f=String(x.from||'').toLowerCase(),t=String(x.to||'').toLowerCase();\n      const other=f===seed?t:f;\n      if(other)counts.set(other,(counts.get(other)||0)+1);\n    }\n    const top=Math.max(0,...counts.values());\n    if(top>=3)secondHopFlags.push('seed_has_repeated_counterparty_edge');\n  }\n}\nconst seedCount=Array.isArray(seeds.seeds)?seeds.seeds.length:0;\nconst successful=profiles.filter(x=>x.ok).length;\nconst expansionCoverage=seedCount?successful/seedCount:0;\nconst multiScore=Math.max(0,Math.min(100,Math.round(\n  expansionCoverage*25+\n  Math.min(secondHopCounterparties.size/8,1)*25+\n  Math.min(secondHopEdges/10,1)*20+\n  Math.min(secondHopTx/10,1)*15+\n  Math.min(secondHopFlags.length/2,1)*15\n)));\nconst li=o.opportunity?.lawful_chain_intelligence||{};\nconst bg=li.graph||{};\nconst baseSignals={\n  counterparties:Number(li.unique_counterparties??bg.unique_counterparties??0),\n  edgeShare:Number(bg.top_edge_share??0),\n  flowImbalance:Number(li.flow_imbalance??0),\n  contractRatio:Number(li.contract_interaction_ratio??0),\n  tokenDiversity:Number(li.token_diversity??0)\n};\nconst baseScore=Math.round(Math.min(100,\n  20*Math.min(baseSignals.counterparties/5,1)+\n  20*Math.max(0,Math.min(baseSignals.edgeShare,1))+\n  20*Math.max(0,Math.min(baseSignals.flowImbalance,1))+\n  15*Math.max(0,Math.min(baseSignals.contractRatio,1))+\n  15*Math.min(baseSignals.tokenDiversity/5,1)\n));\nconst finalGraphScore=Math.round(baseScore*0.65+multiScore*0.35);\nconst graph={...bg,multi_hop:{\n  enabled:true,mode:'bounded_2_hop',max_hops:2,max_seed_nodes:2,max_expansion_queries:2,max_expanded_nodes:20,max_expanded_edges:20,\n  seeds:seeds.seeds||[],seed_scores:seeds.seed_scores||[],successful_seed_enrichments:successful,\n  expansion_coverage:Math.round(expansionCoverage*100)/100,second_hop_transactions:secondHopTx,\n  second_hop_nodes:secondHopNodes,second_hop_edges:secondHopEdges,second_hop_unique_counterparties:secondHopCounterparties.size,\n  second_hop_flags:[...new Set(secondHopFlags)],multi_hop_score:multiScore,base_graph_score:baseScore,\n  final_graph_score:finalGraphScore,query_budget_used:seedCount,query_budget_max:2,\n  partial_success:successful<seedCount,network_scope:'bounded_2_hop_recent_sample',\n  interpretation:'heuristic public-chain indicator; bounded expansion; requires validation'\n}};\nconst opp={...(o.opportunity||{}),graph_score:finalGraphScore,lawful_chain_intelligence:{...li,graph}};\nreturn [{json:{...o,opportunity:opp}}];"
+        },
+        "onError": "stopWorkflow",
+        "retryOnFail": false
+      },
+      {
+        "id": "f9d708a3-a378-4201-b96c-444d8264c535",
+        "name": "Telegram Alert Gate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1620,
+          260
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const x=$input.first().json||{};const o=x.opportunity||{};const g=o.evidence_gate||{};const li=o.lawful_chain_intelligence||{};const urgent=o.priority==='critical'||o.priority==='high'||li.investigation_priority==='elevated'||g.conflict_detected===true;return urgent?[{json:{...x,telegram_dispatch:{urgent:true,reason:g.conflict_detected?'تعارض بين المصادر':li.investigation_priority==='elevated'?'سلوك يستحق تنبيهًا عاجلًا':'أولوية مرتفعة'}}}]:[];"
+        }
+      },
+      {
+        "id": "6f97d9b6-1e59-4dba-91ad-c34afcc2cc44",
+        "name": "Evidence Fusion Gate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          420
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const x=$input.first().json||{};const o=x.opportunity||{};const eg=o.evidence_gate||{};const corr=o.correlation||{};const sources=Array.isArray(corr.sources)?corr.sources:[];const sourceCount=Math.max(0,Number(eg.source_count??corr.source_count??sources.length)||0);const conflict=Boolean(eg.conflict_detected||corr.conflict_detected);const quality=String(eg.quality||corr.quality||'single_source').toLowerCase();const independenceScore=Math.round(Math.min(100,sourceCount/3*100));const fusionQuality=conflict?'conflicted':quality==='corroborated'&&sourceCount>=2?'corroborated':sourceCount>=2?'multi_source':'single_source';const blocked=conflict||quality==='stale'||quality==='needs_more_evidence'||sourceCount<2;const reasons=[];if(conflict)reasons.push('source_conflict');if(quality==='stale')reasons.push('stale_evidence');if(quality==='needs_more_evidence')reasons.push('insufficient_corroboration');if(sourceCount<2)reasons.push('single_source');const baseEq=Number(o.evidence_quality_score??x.evidence_quality_score??0);const fused=Math.round(Math.max(0,Math.min(100,baseEq*.7+independenceScore*.3)));return[{json:{...x,opportunity:{...o,evidence_fusion:{version:'1.0',source_count:sourceCount,independence_score:independenceScore,quality:fusionQuality,conflict_detected:conflict,automation_blocked:blocked,blocking_reasons:reasons,fused_evidence_quality:fused,policy:'Independent corroboration improves evidence quality; conflicts, stale, or single-source evidence never grants autonomous execution.'},automation_ready:blocked?false:Boolean(o.automation_ready)}}}];"
+        }
+      },
+      {
+        "id": "7721b9fe-05cf-4dc4-8372-d623a2e313c2",
+        "name": "Whale Flow Heuristic",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          520
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const x=$input.first().json||{};\nconst o=x.opportunity||{};\nconst c=x.etherscan||{};\nconst tx=Array.isArray(c.recent_transactions)?c.recent_transactions:[];\nconst tok=Array.isArray(c.token_transfers)?c.token_transfers:[];\nconst weiPerEth=1e18;\nconst values=tx.map(t=>Number(t.value)).filter(v=>Number.isFinite(v)&&v>0);\nconst maxNative=values.length?Math.max(...values)/weiPerEth:0;\nconst totalNative=values.reduce((s,v)=>s+v,0)/weiPerEth;\nconst largeTxCount=values.filter(v=>v/weiPerEth>=10).length;\nconst tokenValueHints=tok.map(t=>Number(t.value)).filter(v=>Number.isFinite(v)&&v>0);\nconst flags=[];\nif(maxNative>=10)flags.push('large_native_transfer_candidate');\nif(largeTxCount>=2)flags.push('repeated_large_native_transfers');\nif(tx.length>=8&&largeTxCount/Math.max(1,tx.length)>=0.25)flags.push('high_large_transfer_ratio');\nconst status=flags.length>=2?'whale_flow_review':flags.length===1?'large_holder_flow_watch':'no_large_flow_signal';\nconst current=o.lawful_chain_intelligence||{};\nconst riskBoost=flags.length>=2?6:flags.length===1?3:0;\nconst baseRisk=Number(current.risk_score||0);\nconst graph={...(current.graph||{}),whale_flow:{\n  version:'1.0',\n  status,\n  flags,\n  heuristic:true,\n  not_identity_proof:true,\n  not_manipulation_proof:true,\n  sampled_transactions:tx.length,\n  max_native_transfer_eth:Math.round(maxNative*1e6)/1e6,\n  sampled_native_transfer_total_eth:Math.round(totalNative*1e6)/1e6,\n  large_native_transfer_count:largeTxCount,\n  token_transfer_sample_count:tok.length,\n  note:'Public-chain flow heuristic only; thresholds flag candidates for review and do not establish whale identity, intent, or manipulation.'\n}};\nreturn [{json:{...x,opportunity:{...o,lawful_chain_intelligence:{...current,graph},whale_flow_watch:{status,flags,large_native_transfer_count:largeTxCount,max_native_transfer_eth:Math.round(maxNative*1e6)/1e6,risk_score:Math.min(100,baseRisk+riskBoost)}}}}];"
+        }
+      },
+      {
+        "id": "2c10fccc-7150-4a9d-ac58-9ce23c2ddeea",
+        "name": "MAXLOOP Correlation Engine",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1540,
+          520
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const x=$input.first().json||{};\nconst o=x.opportunity||{};\nconst li=o.lawful_chain_intelligence||{};\nconst g=li.graph||{};\nconst wf=x.whale_flow_watch||{};\nconst eg=o.evidence_gate||{};\nconst ef=o.evidence_fusion||{};\nconst corr=o.correlation||{};\nconst sec=li.metadata_security||o.lawful_chain_intelligence?.metadata_security||x.chain_metadata_security||{};\n\nconst signals=[];\nconst add=(name,active,weight,detail)=>{if(active)signals.push({name,weight,detail})};\n\nadd('whale_flow',Boolean(wf.status&&wf.status!=='no_large_flow_signal'),25,wf.status||'none');\nadd('flow_imbalance',Number(li.flow_imbalance||0)>=0.75,15,li.flow_imbalance??0);\nadd('counterparty_concentration',Array.isArray(li.behavioral_flags)&&li.behavioral_flags.includes('counterparty_concentration'),15,'bounded graph heuristic');\nadd('repeated_counterparty_edge',Array.isArray(li.behavioral_flags)&&li.behavioral_flags.includes('repeated_counterparty_edge'),10,'bounded graph heuristic');\nadd('multi_hop_activity',Number(g.multi_hop?.final_graph_score||0)>=60,15,g.multi_hop?.final_graph_score??0);\nadd('corroborated_evidence',String(ef.quality||eg.quality||corr.quality||'').toLowerCase()==='corroborated' && Number(ef.source_count||eg.source_count||corr.source_count||0)>=2,20,'independent corroboration');\nconst securityFlag=Array.isArray(sec.flags)&&sec.flags.length>0;\nconst externalEnrichmentFailed=Boolean(x.evm_address)&&Boolean(x.etherscan)&&x.etherscan.ok!==true;\n// Security findings and failed external enrichment are blockers, never positive score signals.\nif(securityFlag)signals.push({name:'security_block',weight:0,detail:sec.flags||[]});\nif(externalEnrichmentFailed)signals.push({name:'external_enrichment_block',weight:0,detail:'chain intelligence enrichment did not return ok=true'});\n\nconst rawScore=signals.reduce((s,a)=>s+a.weight,0);\nconst conflict=Boolean(eg.conflict_detected||ef.conflict_detected||corr.conflict_detected);\nconst blocked=conflict||securityFlag||externalEnrichmentFailed||Boolean(ef.automation_blocked)||String(ef.quality||'').toLowerCase()==='single_source'||String(ef.quality||'').toLowerCase()==='stale';\nconst finalScore=Math.max(0,Math.min(100,Math.round(rawScore)));\nconst baseConf=Math.max(0,Math.min(1,Number(o.confidence??x.confidence??0)));\nconst confidence=blocked?Math.min(baseConf,0.69):Math.min(1,Math.max(baseConf,finalScore/100));\nconst classification=\n  blocked?'observe_only':\n  finalScore>=80?'multi_signal_high':\n  finalScore>=60?'multi_signal_review':\n  finalScore>=35?'candidate':'background';\n\nconst correlation={\n  version:'1.0',\n  engine:'MAXLOOP',\n  score:finalScore,\n  confidence,\n  classification,\n  signal_count:signals.length,\n  active_signals:signals,\n  evidence:{\n    source_count:Number(ef.source_count??eg.source_count??corr.source_count??0),\n    quality:String(ef.quality??eg.quality??corr.quality??'single_source'),\n    conflict_detected:conflict,\n    automation_blocked:blocked\n  },\n  policy:'A single transfer never establishes buy/sell intent. Correlation is an intelligence score for review, not an execution command.',\n  generated_at:new Date().toISOString()\n};\n\nconst nextAction=blocked?'hold_and_enrich':\n  classification==='multi_signal_high'?'high_priority_review':\n  classification==='multi_signal_review'?'priority_review':\n  classification==='candidate'?'watch_and_enrich':'monitor';\n\nreturn [{json:{...x,opportunity:{...o,maxloop:correlation,correlation:{...corr,maxloop:correlation},automation_ready:Boolean(o.automation_ready)&&!blocked},maxloop_next_action:nextAction}}];"
+        }
+      }
+    ],
+    "nodeGroups": [],
+    "activeVersion": {
+      "sameAsDraft": true
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp",
+      "templateCredsSetupCompleted": true
+    }
+  }
+}
