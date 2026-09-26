@@ -228,6 +228,22 @@ function moneyUnlockCard(){
     (qsb?'<div class="sub" style="margin-top:9px">QSB: <a href="'+esc(qsb.url||"https://taskmarket.dev/tasks/"+qsb.taskId)+'" target="_blank" rel="noopener">فتح المهمة الرسمية</a> · '+esc(qsb.submissions==null?"":String(qsb.submissions)+" submissions")+'</div>':"")+
   '</div>';
 }
+function capabilityGateCard(){
+  var g=(S.live&&S.live.capability_gate)||{};
+  var ready=Number(g.eligible||0), review=Number(g.human_review||0), hold=Number(g.hold||0), reject=Number(g.reject||0);
+  var avg=Number(g.avg_delivery_confidence||0);
+  var pct=avg?Math.round(avg*100):0;
+  return '<div class="card" style="margin-top:12px;border-color:rgba(91,231,217,.24);background:linear-gradient(135deg,rgba(91,231,217,.045),rgba(155,140,255,.035))">'+
+    '<div class="card-head"><div><div class="eyebrow">MIAE+ DELIVERY GATE</div><div class="card-title">هل نستطيع فعلاً إنجاز المهمة وتسليمها؟</div></div>'+pill('GATE ACTIVE','green')+'</div>'+
+    '<div class="grid g4">'+
+      card("Eligible","READY TO REVIEW",'<div class="metric">'+num(ready)+'</div><div class="sub">اجتازت فحص القدرة الأولي</div>')+
+      card("Human Review","REVIEW",'<div class="metric">'+num(review)+'</div><div class="sub">تحتاج تحققاً بشرياً قبل القبول</div>')+
+      card("Hold / Reject","BLOCKED",'<div class="metric">'+num(hold+reject)+'</div><div class="sub">لا تدخل مسار القبول التلقائي</div>')+
+      card("Delivery Confidence","QUALITY",'<div class="metric">'+pct+'%</div><div class="sub">متوسط آخر تقييمات القدرة</div>')+
+    '</div>'+
+    '<div class="sub" style="margin-top:9px">'+esc(g.note||'القدرة لا تضمن الفوز أو التسليم؛ هي بوابة جاهزية، والموافقة البشرية تبقى مطلوبة.')+'</div>'+
+  '</div>';
+}
 function cashCommand(){
   var m=cashState(), p=m.prospects, o=m.offers, cost=m.costs;
   var income=(S.personal.income||[]).reduce(function(a,x){return a+Number(x.amount||0)},0);
@@ -238,7 +254,7 @@ function cashCommand(){
   var next=!p.length?"أضف أول Prospect مؤهل":!o.length?"حوّل أفضل Prospect إلى Offer":!m.followups.length?"أنشئ Follow-up للعرض المفتوح":"نفّذ أقرب Follow-up ثم سجّل النتيجة";
   var truth=p.length||o.length||cost.length||income>0?"LOCAL LEDGER":"READY / NO LOCAL RECORDS";
   return title("Cash Command","محرك التدفق النقدي: من الإشارة التجارية إلى العرض ثم التحصيل — بدون ادعاء أن الـpipeline مال محقق.",'<button class="btn primary" data-action="receiveNow">💰 RECEIVE NOW</button><button class="btn" data-action="lead">＋ Lead</button><button class="btn" data-action="offer">＋ Offer</button><button class="btn" data-action="followup">↻ Follow-up</button><button class="btn" data-action="recordIncome">＋ Paid</button><button class="btn" data-action="recordCost">− Cost</button>')+
-  moneyUnlockCard()+moneyRadarCard()+'<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
+  moneyUnlockCard()+capabilityGateCard()+moneyRadarCard()+'<div class="cash-truth"><div><b>CASH TRUTH</b><span>'+truth+'</span></div><small>Revenue = recorded payment only • Pipeline ≠ Cash</small></div>'+
   '<div class="grid g4" style="margin-top:12px">'+
     card("Cash Collected","USER-RECORDED / LOCAL",'<div class="metric">'+money(income)+'</div><div class="sub">payments you explicitly recorded</div>')+
     card("Cash Gap","TARGET",'<div class="metric">'+money(gap)+'</div><div class="sub">to '+money(target)+' target</div>')+
