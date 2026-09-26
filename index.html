@@ -13,20 +13,22 @@
 <link rel="stylesheet" href="./styles-max.css?v=20260926n">
 <link rel="stylesheet" href="./midad-maximum-enhancements.css?v=20260926n">
 <link rel="stylesheet" href="./midad-command-v2.css?v=20260926n">
-<link rel="stylesheet" href="./midad-apex.css?v=20260926n">
+<link rel="stylesheet" href="./midad-apex.css?v=20260926p">
+<link rel="stylesheet" href="./midad-mesh.css?v=20260926p">
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
 <noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
 <script src="./midad-maximum-enhancements.js?v=20260926n"></script>
 <script src="./app-max.js?v=20260926n"></script>
-<script src="./midad-apex.js?v=20260926n"></script>
+<script src="./midad-apex.js?v=20260926p"></script>
 <script>
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./service-worker.js?v=20260926n").catch(function(){});
+    navigator.serviceWorker.register("./service-worker.js?v=20260926p").catch(function(){});
   });
 }
 </script>
+<script src="./midad-mesh.js?v=20260926p"></script>
 </body>
 </html>
