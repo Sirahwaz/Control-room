@@ -10,19 +10,21 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./midad-pwa-icon.svg">
 <title>MIDAD — Neural Command Center</title>
-<link rel="stylesheet" href="./styles-max.css?v=20260926m">
-<link rel="stylesheet" href="./midad-maximum-enhancements.css?v=20260926m">
-<link rel="stylesheet" href="./midad-command-v2.css?v=20260926m">
+<link rel="stylesheet" href="./styles-max.css?v=20260926n">
+<link rel="stylesheet" href="./midad-maximum-enhancements.css?v=20260926n">
+<link rel="stylesheet" href="./midad-command-v2.css?v=20260926n">
+<link rel="stylesheet" href="./midad-apex.css?v=20260926n">
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
 <noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
-<script src="./midad-maximum-enhancements.js?v=20260926m"></script>
-<script src="./app-max.js?v=20260926m"></script>
+<script src="./midad-maximum-enhancements.js?v=20260926n"></script>
+<script src="./app-max.js?v=20260926n"></script>
+<script src="./midad-apex.js?v=20260926n"></script>
 <script>
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./service-worker.js?v=20260926m").catch(function(){});
+    navigator.serviceWorker.register("./service-worker.js?v=20260926n").catch(function(){});
   });
 }
 </script>
