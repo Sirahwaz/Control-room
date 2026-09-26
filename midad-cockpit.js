@@ -97,7 +97,8 @@ function bind(){
  $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
- $("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));\n $("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
+ $("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
+ $("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
  $("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
  $$("[data-cmd]").forEach(b=>b.onclick=()=>command(b.dataset.cmd));
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
