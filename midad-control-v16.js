@@ -1,19 +1,33 @@
 (()=>{"use strict";
 const C={base:"https://froegigfmpmvtecztfbf.supabase.co",legacy:"/functions/v1/midad_control_room",surface:"/functions/v1/midad_control_surface"};
 const T=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
-const S={token:localStorage.getItem("m16_token")||"",lang:localStorage.getItem("m16_lang")||"ar",view:"home",data:null,busy:false,error:"",selected:null,answer:"",blueprint:null};
+const S={token:localStorage.getItem("m16_token")||"",lang:localStorage.getItem("m16_lang")||"ar",view:"home",data:null,busy:false,error:"",selected:null,answer:"",blueprint:null,authRequired:false};
 const $=s=>document.querySelector(s), esc=v=>String(v==null?"":v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const tx=(a,e)=>S.lang==="en"?e:a, usd=v=>v==null?"—":"$"+Number(v||0).toLocaleString("en-US",{maximumFractionDigits:2}), n=v=>v==null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2}), pct=v=>Math.round(Number(v||0)*100)+"%";
 function chip(x,c){return '<span class="m16-chip '+(c||"cyan")+'">'+esc(x)+"</span>"}
 function toast(x){let b=$("#m16Toast"),d=document.createElement("div");d.textContent=x;b.appendChild(d);setTimeout(()=>d.remove(),3200)}
 function err(){return S.error?'<div class="m16-error"><b>'+esc(tx("تعذر تنفيذ العملية","Action failed"))+'</b><br>'+esc(S.error)+'</div>':""}
-async function auth(){
+async function auth(accessKey=""){
  if(S.token)return S.token;
- let body={client:"midad-control-surface-v16",access_key:"",telegram_init_data:T()?.initData||""};
- let r=await fetch(C.base+C.legacy,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));
- if(!r.ok||!j.ok){let key=prompt(tx("أدخل مفتاح الوصول لغرفة التحكم:","Enter the Control Room access key:"));if(!key)throw Error(tx("لم يتم إدخال مفتاح الوصول.","No access key entered."));r=await fetch(C.base+C.legacy,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({client:"midad-control-surface-v16",access_key:key})});j=await r.json().catch(()=>({}));}
- if(!r.ok||!j.ok||!j.token)throw Error(j.error||"Authentication failed");
- S.token=j.token;localStorage.setItem("m16_token",S.token);return S.token;
+ const initData=T()?.initData||"";
+ let r=null,j=null;
+ if(initData){
+  r=await fetch(C.base+C.legacy,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({client:"midad-control-surface-v16",access_key:"",telegram_init_data:initData})});
+  j=await r.json().catch(()=>({}));
+ }
+ if((!r||!r.ok||!j?.ok)&&accessKey){
+  r=await fetch(C.base+C.legacy,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({client:"midad-control-surface-v16",access_key:String(accessKey).trim()})});
+  j=await r.json().catch(()=>({}));
+ }
+ if(!r||!r.ok||!j?.ok||!j.token){
+  const e=new Error(accessKey?tx("مفتاح الوصول غير صحيح أو انتهت الجلسة.","Invalid access key or expired session."):"AUTH_REQUIRED");
+  e.code=accessKey?"AUTH_FAILED":"AUTH_REQUIRED";
+  throw e;
+ }
+ S.token=j.token;
+ localStorage.setItem("m16_token",S.token);
+ S.authRequired=false;
+ return S.token;
 }
 async function api(action,extra={}){
  let token=await auth(),r=await fetch(C.base+C.surface,{method:"POST",headers:{"content-type":"application/json","x-midad-client":"midad-control-surface-v16"},body:JSON.stringify({token,action,operation:action,...extra})}),j=await r.json().catch(()=>({}));
@@ -80,7 +94,10 @@ function system(){let d=S.data||{},h=d.health||{},g=d.capability_gate||{};return
 function answerBox(){return S.answer?'<section class="m16-panel" style="margin-top:12px"><div class="m16-head"><div><h2>'+esc(tx("شرح MIDAD","MIDAD explanation"))+'</h2><p>'+esc(tx("تفسير العنصر الذي طلبت شرحه.","Explanation for the item you asked about."))+'</p></div>'+chip("AI","green")+'</div><div class="m16-body"><div class="m16-answer">'+esc(S.answer)+'</div></div></section>':""}
 async function walletList(){let token=await auth();let r=await fetch(C.base+"/functions/v1/midad_control_wallets",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}),j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw Error(j.error||j.detail||("HTTP "+r.status));return (j.wallets||[])[0]||null}
 function screen(){return answerBox()+(S.view==="home"?home():S.view==="money"?money():S.view==="tasks"?tasksView():S.view==="intel"?intel():system())}
-function render(){let root=$("#m16Root");root.innerHTML='<div class="m16-shell">'+top()+nav()+screen()+'</div>'+mobile()+'<div class="m16-toast" id="m16Toast"></div>';bind()}
+function authView(){
+ return '<div class="m16-auth-wrap"><section class="m16-auth"><div class="m16-mark">M</div><div class="m16-kicker">MIDAD / SECURE ACCESS</div><h1>'+esc(tx("دخول غرفة التحكم","Control Room access"))+'</h1><p>'+esc(tx("الموقع يعمل، لكن الوصول المباشر من المتصفح يحتاج مفتاح الوصول. داخل Telegram سيُستخدم التحقق الخاص بالـWeb App تلقائيًا.","The site is live. Direct browser access requires the Control Room access key; inside Telegram, Web App verification is used automatically."))+'</p><label for="m16AccessKey">'+esc(tx("مفتاح الوصول","Access key"))+'</label><input id="m16AccessKey" type="password" autocomplete="current-password" placeholder="'+esc(tx("أدخل المفتاح هنا","Enter access key"))+'"><div class="m16-action"><button class="m16-btn primary" data-a="login">'+esc(tx("دخول آمن","Secure sign in"))+'</button><button class="m16-btn" data-a="retryAuth">'+esc(tx("إعادة التحقق","Retry verification"))+'</button></div>'+(S.error?'<div class="m16-error">'+esc(S.error)+'</div>':'')+'<div class="m16-auth-note">'+esc(tx("لا نضع المفتاح داخل الكود أو الرابط. يُخزن رمز الجلسة فقط بعد نجاح التحقق.","The access key is never embedded in the code or URL; only the verified session token is stored."))+'</div></section></div>';
+}
+function render(){let root=$("#m16Root");root.innerHTML=S.authRequired?authView():'<div class="m16-shell">'+top()+nav()+screen()+'</div>'+mobile()+'<div class="m16-toast" id="m16Toast"></div>';bind()}
 function bind(){
  document.querySelectorAll("[data-go]").forEach(x=>x.onclick=()=>{S.view=x.dataset.go;render()});
  document.querySelectorAll("[data-a]").forEach(x=>x.onclick=()=>doAction(x.dataset.a));
@@ -91,8 +108,17 @@ document.querySelectorAll("[data-blueprint]").forEach(x=>x.onclick=e=>{e.stopPro
  document.querySelectorAll("[data-recover]").forEach(x=>x.onclick=e=>{e.stopPropagation();recoverOpportunity(x.dataset.recover)});
  let i=$("#aiIn");if(i)i.onkeydown=e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter")doAction("ai")};
 }
+async function submitAuth(){
+ const key=$("#m16AccessKey")?.value||"";
+ if(!key.trim()){S.error=tx("أدخل مفتاح الوصول أولًا.","Enter the access key first.");render();return}
+ S.busy=true;S.error="";render();
+ try{await auth(key.trim());S.data=await api("overview");S.blueprint=(S.data?.income_blueprints||[])[0]||null;S.authRequired=false;S.busy=false;render();toast(tx("تم التحقق وفتح غرفة التحكم.","Verified. Control Room is open."))}
+ catch(e){S.busy=false;S.authRequired=true;S.error=e.message;render();toast(e.message)}
+}
 async function doAction(a){
  if(a==="lang"){S.lang=S.lang==="ar"?"en":"ar";localStorage.setItem("m16_lang",S.lang);return render()}
+ if(a==="login")return submitAuth();
+ if(a==="retryAuth"){S.authRequired=true;S.error="";return render()}
  if(a==="cmd"){let q=prompt(tx("أمر: home / money / tasks / intel / system / scan / autonomy","Command: home / money / tasks / intel / system / scan / autonomy"));if(q==="home"||q==="money"||q==="tasks"||q==="intel"||q==="system"){S.view=q;return render()}if(q==="scan")return run("run_opportunity_scan",tx("تم تحديث الفرص","Opportunities refreshed"));
 if(q==="recover")return run("run_recovery_scan",tx("تم فحص الاستعادة","Recovery scan completed"));if(q==="autonomy")return run("run_autonomy_now",tx("تم تشغيل الاستقلالية","Autonomy started"));return}
  if(a==="refresh")return run("overview",tx("تم تحديث البيانات","Data refreshed"));
@@ -112,7 +138,7 @@ async function explain(item,p){
 }
 async function boot(){
  try{if(T()){T().ready();T().expand()}await auth();S.data=await api("overview");S.blueprint=(S.data?.income_blueprints||[])[0]||null;render()}
- catch(e){S.error=e.message;render()}
+ catch(e){if(e?.code==="AUTH_REQUIRED"){S.authRequired=true;S.error="";render()}else{S.error=e?.message||String(e);S.authRequired=false;render()}}
  finally{window.__MIDAD_V16_READY=true}
 }
 (function(){var p=document.createElement("script");p.src="./midad-control-v16-interactions.js?v=20260926a";document.head.appendChild(p)})();
