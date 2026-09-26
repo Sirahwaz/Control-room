@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r3"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r4"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -100,7 +100,7 @@ function bind(){
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
  $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
  $$("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
- $$("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
+ $("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
  $$("[data-cmd]").forEach(b=>b.onclick=()=>command(b.dataset.cmd));
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
@@ -119,7 +119,26 @@ function openBlueprint(id){
  S.view="ai";render();
  setTimeout(()=>{const i=$("#aiInput");if(i){i.value="راجع هذا الـBlueprint: "+(b.title||"")+"؛ هل هو جاهز للتنفيذ الآن؟ اذكر المتطلبات والعوائق والخطوة التالية والتحصيل المتوقع.";sendAI()}},50);
 }
-function openOpp(id){const o=[...(S.data?.money_opportunities||[]),...(S.data?.opportunities||[])].find(x=>String(x.id)===String(id));if(!o)return;S.view="ai";render();setTimeout(()=>{const i=$("#aiInput");if(i){i.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ هل أستطيع تنفيذها وما الخطوة التالية؟";sendAI()}},50)}
+function openOpp(id){
+ const o=[...(S.data?.money_opportunities||[]),...(S.data?.opportunities||[])].find(x=>String(x.id)===String(id));
+ if(!o)return;
+ const old=$("#oppModal");if(old)old.remove();
+ const url=o.action_url||o.offer?.action_url||o.offer?.url||o.evidence?.action_url||o.evidence?.url||"";
+ const expected=o.expected_value==null?"—":usd(o.expected_value);
+ const risk=o.risk_class||o.metadata?.risk_class||"—";
+ const readiness=o.readiness||o.status||"—";
+ const html='<div id="oppModal" style="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:95;padding:6vh 6vw;overflow:auto"><div class="panel" style="max-width:980px;margin:auto"><div class="panel-head"><div><div class="eyebrow">OPPORTUNITY / CASH PATH</div><h3>'+esc(o.title||"Opportunity")+'</h3><small>'+esc(o.source||"")+" · score "+n(o.score)+" · confidence "+(o.confidence==null?"—":Math.round(Number(o.confidence)*100)+"%")+'</small></div><button class="btn" data-cmd="closeOpp">إغلاق</button></div><div class="kpis"><div class="kpi"><span>EXPECTED</span><b>'+expected+'</b></div><div class="kpi"><span>STATUS</span><b style="font-size:18px">'+esc(readiness)+'</b></div><div class="kpi"><span>RISK</span><b style="font-size:18px">'+esc(risk)+'</b></div><div class="kpi"><span>HOURS</span><b>'+esc(o.estimated_hours==null?"—":o.estimated_hours)+'</b></div><div class="kpi"><span>DELIVERY CONF.</span><b>'+esc(o.delivery_confidence==null?"—":Math.round(Number(o.delivery_confidence)*100)+"%")+'</b></div></div><section class="panel section-gap"><div class="eyebrow">DESCRIPTION</div><p style="color:#c1cad7;line-height:1.8">'+esc(o.description||"لا يوجد وصف محفوظ.")+'</p><div class="hero-actions"><button class="btn green" data-opp-blueprint="'+esc(o.id)+'">⚙ أنشئ حزمة تنفيذ</button><button class="btn primary" data-opp-ai="'+esc(o.id)+'">✦ حلّل بالـAI</button>'+(url?'<a class="btn" href="'+esc(url)+'" target="_blank" rel="noopener">↗ افتح الفرصة</a>':"")+'</div><div id="oppResult" class="sub" style="margin-top:14px">الحزمة لا تبدأ تنفيذًا خارجيًا؛ تنشئ فقط Blueprint داخليًا قابلًا للمراجعة.</div></section></div></div>';
+ document.body.insertAdjacentHTML("beforeend",html);
+ const m=$("#oppModal");
+ const close=m.querySelector('[data-cmd="closeOpp"]');if(close)close.onclick=()=>m.remove();
+ const bp=m.querySelector("[data-opp-blueprint]");
+ if(bp)bp.onclick=async()=>{
+   bp.disabled=true;const out=$("#oppResult");if(out)out.textContent="جارٍ بناء حزمة التنفيذ…";
+   try{const j=await api("prepare_income_blueprint",{opportunity_id:o.id},true,45000);if(out)out.textContent=j.ok?"تم إنشاء Blueprint ويمكن مراجعته من صفحة المال.":"تعذر إنشاء Blueprint: "+(j.error||"غير مؤهل");await refresh(true)}catch(e){if(out)out.textContent="تعذر إنشاء Blueprint: "+String(e.message||e)}finally{bp.disabled=false}
+ };
+ const ai=m.querySelector("[data-opp-ai]");
+ if(ai)ai.onclick=()=>{m.remove();S.view="ai";render();setTimeout(()=>{const input=$("#aiInput");if(input){input.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ قيّم قابلية التنفيذ، العوائق، وما يجب فعله قبل التقديم.";sendAI()}},50)};
+}
 async function runAction(a){
  if(S.busy)return;
  S.busy=true;$$("[data-run]").forEach(b=>b.disabled=true);
