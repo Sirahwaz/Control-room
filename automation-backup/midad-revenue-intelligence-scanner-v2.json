@@ -1,0 +1,478 @@
+{
+  "exported_at": "2026-09-26T15:41:55.896Z",
+  "source": "MIDAD n8n",
+  "workflow": {
+    "id": "fChZsDbnsxP9dwwr",
+    "name": "MIDAD — Revenue Intelligence Scanner v2",
+    "active": true,
+    "isArchived": false,
+    "versionId": "113784cb-bad6-41a2-b9c1-797210256d0c",
+    "activeVersionId": "113784cb-bad6-41a2-b9c1-797210256d0c",
+    "triggerCount": 2,
+    "nodeCount": 14,
+    "createdAt": "2026-09-18T07:54:05.073Z",
+    "updatedAt": "2026-09-19T00:32:42.567Z",
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "tags": [],
+    "parentFolderId": null,
+    "description": "Crypto-settlement-first revenue opportunity scanner with source tagging, deduplication, safety gating, and authenticated on-demand triggering.",
+    "scopes": [
+      "execution:delete",
+      "execution:list",
+      "execution:read",
+      "execution:reveal",
+      "workflow:create",
+      "workflow:delete",
+      "workflow:disableRedaction",
+      "workflow:enableRedaction",
+      "workflow:execute",
+      "workflow:execute-chat",
+      "workflow:export",
+      "workflow:import",
+      "workflow:list",
+      "workflow:move",
+      "workflow:publish",
+      "workflow:read",
+      "workflow:share",
+      "workflow:unpublish",
+      "workflow:unshare",
+      "workflow:update"
+    ],
+    "canExecute": true,
+    "connections": {
+      "Revenue Opportunity Scanner — Every 6 Hours": {
+        "main": [
+          [
+            {
+              "node": "Source — Zealy Earn",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Source — Galxe Quest Discovery",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Source — Immunefi Bug Bounties",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Combine Revenue Sources": {
+        "main": [
+          [
+            {
+              "node": "MIDAD Revenue Opportunity Intelligence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Revenue Opportunity Scanner — On Demand": {
+        "main": [
+          [
+            {
+              "node": "Source — Zealy Earn",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Source — Galxe Quest Discovery",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Source — Immunefi Bug Bounties",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Revenue Opportunity Intelligence": {
+        "main": [
+          [
+            {
+              "node": "Format Revenue Alerts",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Bundle Revenue Opportunities",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Revenue Alerts": {
+        "main": [
+          [
+            {
+              "node": "Revenue Alert — Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Source — Zealy Earn": {
+        "main": [
+          [
+            {
+              "node": "Tag — Zealy Source",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tag — Zealy Source": {
+        "main": [
+          [
+            {
+              "node": "Combine Revenue Sources",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Source — Galxe Quest Discovery": {
+        "main": [
+          [
+            {
+              "node": "Tag — Galxe Source",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tag — Galxe Source": {
+        "main": [
+          [
+            {
+              "node": "Combine Revenue Sources",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Source — Immunefi Bug Bounties": {
+        "main": [
+          [
+            {
+              "node": "Tag — Immunefi Source",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tag — Immunefi Source": {
+        "main": [
+          [
+            {
+              "node": "Combine Revenue Sources",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Bundle Revenue Opportunities": {
+        "main": [
+          [
+            {
+              "node": "Send Revenue to Opportunity Mesh",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "2d999ba1-eb2b-4069-bb86-256e2b68f172",
+        "name": "Revenue Opportunity Scanner — Every 6 Hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 6
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "02fe51f5-7bb0-4c45-993b-5996436f98b0",
+        "name": "Source — Zealy Earn",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://zealy.io/earn",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            },
+            "timeout": 20000
+          }
+        }
+      },
+      {
+        "id": "cd651599-e32e-4261-93d5-a4e35c64e0ec",
+        "name": "Combine Revenue Sources",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          448,
+          176
+        ],
+        "parameters": {
+          "mode": "append",
+          "numberInputs": 3
+        }
+      },
+      {
+        "id": "499bde0b-ad0e-4778-9e0b-f2ecf4097fe7",
+        "name": "Source — Galxe Quest Discovery",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://app.galxe.com/quest/explore",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            },
+            "timeout": 20000
+          }
+        }
+      },
+      {
+        "id": "57e7e608-7146-4cb2-bae6-eeb3a713795e",
+        "name": "Source — Immunefi Bug Bounties",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          224,
+          384
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://immunefi.com/bug-bounty/",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            },
+            "timeout": 20000
+          }
+        }
+      },
+      {
+        "id": "7138c94c-8280-49d7-bab4-144dcb567bef",
+        "name": "Revenue Opportunity Scanner — On Demand",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          384
+        ],
+        "parameters": {
+          "path": "midad-revenue-opportunities",
+          "httpMethod": "POST",
+          "responseMode": "onReceived",
+          "authentication": "headerAuth"
+        },
+        "webhookId": "72ca9629-371d-45ec-b97d-bd8ff5094e51",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "X-MIDAD-KEY"
+          }
+        }
+      },
+      {
+        "id": "31611a2e-1a8d-4bef-ba65-ad6fd78a4d1a",
+        "name": "MIDAD Revenue Opportunity Intelligence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const items=$input.all();const out=[];const now=new Date().toISOString();\nconst SOURCE_RULES={'Source — Zealy Earn':{source:'zealy',category:'quests_rewards',trust:'primary'},'Source — Galxe Quest Discovery':{source:'galxe',category:'quests_airdrops',trust:'primary'},'Source — Immunefi Bug Bounties':{source:'immunefi',category:'bug_bounty',trust:'primary'}};\nconst BASES={zealy:'https://zealy.io',galxe:'https://app.galxe.com',immunefi:'https://immunefi.com'};\nfunction clean(s){return String(s||'').replace(/<script[\\\\s\\\\S]*?<\\\\/script>/gi,' ').replace(/<style[\\\\s\\\\S]*?<\\\\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\\\\s+/g,' ').trim();}\nfunction absUrl(h,source){try{return new URL(String(h||''),BASES[source]||'https://example.invalid').toString()}catch{return String(h||'')}}\nfunction links(html){const a=[];const re=/<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>([\\\\s\\\\S]*?)<\\\\/a>/gi;let m;while((m=re.exec(html))&&a.length<300){const text=clean(m[2]);if(text)a.push({href:m[1],text})}return a}\nfunction candidates(meta,html){const text=clean(html),ls=links(html),rows=[],seen=new Set();\nconst payout=/\\\\b(?:payout|paid|payment|reward|bounty|prize|earn|receive|claim|distribution|allocation|incentive|grant)\\\\b[^.\\\\n]{0,180}\\\\b(?:USDC|USDT|DAI|BTC|ETH|SOL|crypto|token|stablecoin|on[- ]?chain|wallet)\\\\b|\\\\b(?:USDC|USDT|DAI|BTC|ETH|SOL|crypto|token|stablecoin)\\\\b[^.\\\\n]{0,180}\\\\b(?:payout|paid|payment|reward|bounty|prize|earn|receive|claim|distribution|allocation)\\\\b/ig;\nconst cryptoTerm=/\\\\b(?:USDC|USDT|DAI|BTC|ETH|SOL|crypto|token|stablecoin)\\\\b/ig;\nconst money=/\\\\$\\\\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\\\\.[0-9]+)?)/g;\nfor(const l of ls){const blob=(l.text+' '+l.href).slice(0,1200);if(!/(quest|reward|bounty|bug|campaign|earn|airdrop|grant|hack|challenge|incentive|points|USDC|USDT|DAI|BTC|ETH|SOL|crypto|token)/i.test(blob))continue;\nconst idx=text.indexOf(l.text), surrounding=idx>=0?text.slice(Math.max(0,idx-500),idx+1200):blob;\nconst payoutMatches=[...surrounding.matchAll(payout)].map(x=>x[0]);const cryptoTerms=[...surrounding.matchAll(cryptoTerm)].map(x=>x[0]);const amounts=[...surrounding.matchAll(money)].map(x=>Number(x[1].replace(/,/g,''))).slice(0,5);\nconst cryptoPay=payoutMatches.length>0;const capital=/(stake|deposit|bridge|swap|lock|buy|invest|capital|required|gas fee|fee)/i.test(surrounding);\nconst kyc=/(KYC|know your customer|identity verification)/i.test(surrounding);const antiSybil=/(anti.?sybil|proof of humanity|human verification)/i.test(surrounding);const captcha=/(captcha|turnstile|recaptcha)/i.test(surrounding);const raffle=/(raffle|lottery|winner|winners|chance)/i.test(surrounding);const deadline=/(deadline|ends|ending|expires|until)/i.test(surrounding);\nconst url=absUrl(l.href,meta.source),key=meta.source+'|'+url.split('#')[0];if(seen.has(key))continue;seen.add(key);\nlet score=30;if(cryptoPay)score+=28;if(amounts.length)score+=Math.min(18,Math.log10(Math.max(...amounts)+1)*7);if(!capital)score+=8;if(!raffle)score+=5;if(!captcha&&!antiSybil)score+=3;if(deadline)score+=2;if(kyc)score-=3;\nrows.push({source:meta.source,category:meta.category,source_trust:meta.trust,title:l.text.slice(0,180),url,detected_at:now,payment_crypto:cryptoPay,crypto_methods:[...new Set(cryptoTerms)].slice(0,8),payout_evidence:payoutMatches.slice(0,3),reward_usd_mentions:amounts,capital_required:capital,raffle_or_winner_based:raffle,kyc_mentioned:kyc,anti_sybil_or_human_verification:antiSybil,captcha_or_automation_constraint:captcha,evidence_quality:cryptoPay?'source_page_payout_signal':'unverified',opportunity_score:Math.max(0,Math.min(100,Math.round(score))),eligibility_status:cryptoPay?'candidate':'blocked_until_crypto_payout_verified',automation_status:(captcha||antiSybil)?'assist_or_manual':'candidate_for_automation_review',review_required:true})}return rows}\nfor(const item of items){const j=item.json||{};const meta=SOURCE_RULES[j.__source_node]||{source:j.source||'unknown',category:'unknown',trust:'unknown'};const html=String(j.body??j.data??j.response??'');if(html)out.push(...candidates(meta,html))}\nconst dedup=new Map();for(const x of out){const k=(x.url||'').split('#')[0];if(!dedup.has(k)||x.opportunity_score>dedup.get(k).opportunity_score)dedup.set(k,x)}\nreturn [...dedup.values()].filter(x=>x.payment_crypto).sort((a,b)=>b.opportunity_score-a.opportunity_score).slice(0,50).map(x=>({json:x}));"
+        }
+      },
+      {
+        "id": "c7535691-d502-4738-976b-8c5b5b88a0f2",
+        "name": "Format Revenue Alerts",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const xs=$input.all().map(x=>x.json||{});if(!xs.length)return [];\nconst top=xs.slice(0,8);const lines=['💰 <b>MIDAD Revenue Intelligence</b>','','مرشحون بالدفع/الاستلام الرقمي: '+xs.length,''];\nfor(const x of top){lines.push('━━━━━━━━━━━━');lines.push('<b>'+String(x.title||'Opportunity').replace(/[<>]/g,'')+'</b>');lines.push('الفئة: '+x.category+' | Score: '+x.opportunity_score+'/100');lines.push('المصدر: '+x.source+' | الدفع الرقمي: '+((x.crypto_methods||[]).join(', ')||'مذكور'));lines.push('رأس مال: '+(x.capital_required?'مطلوب/تحقق':'غير ظاهر')+' | KYC: '+(x.kyc_mentioned?'نعم/تحقق':'غير ظاهر'));lines.push('Anti-Sybil/CAPTCHA: '+((x.anti_sybil_or_human_verification||x.captcha_or_automation_constraint)?'نعم — مساعد/يدوي':'غير ظاهر'));lines.push('⚠️ مراجعة قبل التنفيذ: مطلوبة');lines.push('<a href=\"'+x.url+'\">المصدر</a>');}\nlines.push('','🛡️ MIDAD لا يتجاوز KYC/CAPTCHA/Anti-Sybil ولا ينفذ Claim أو استثمار تلقائيًا.');return [{json:{alert_text:lines.join('\\\\n'),count:xs.length,candidates:top}}];"
+        }
+      },
+      {
+        "id": "53129dd6-1683-4f15-a43b-52eae7df58d9",
+        "name": "Revenue Alert — Telegram",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1120,
+          192
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "sendMessage",
+          "chatId": "5228167477",
+          "text": "={{ $json.alert_text }}",
+          "additionalFields": {
+            "parse_mode": "HTML",
+            "disable_web_page_preview": true,
+            "appendAttribution": false
+          }
+        },
+        "webhookId": "484f9659-07c2-4cff-b7e1-2eacf73aeba7",
+        "credentials": {
+          "telegramApi": {
+            "id": "VRr3IOiWwKxbL4IA",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "id": "fd345ee2-378e-4c70-a109-acd515e9435a",
+        "name": "Tag — Zealy Source",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          -220
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "return $input.all().map(i=>({json:{...i.json,__source_node:'Source — Zealy Earn'}}));"
+        }
+      },
+      {
+        "id": "52d2ba93-8170-4d3a-8cd6-731a0cec18b7",
+        "name": "Tag — Galxe Source",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "return $input.all().map(i=>({json:{...i.json,__source_node:'Source — Galxe Quest Discovery'}}));"
+        }
+      },
+      {
+        "id": "087e7a6b-4ebf-4301-9a5f-5f159e5eda9c",
+        "name": "Tag — Immunefi Source",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          220
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "return $input.all().map(i=>({json:{...i.json,__source_node:'Source — Immunefi Bug Bounties'}}));"
+        }
+      },
+      {
+        "id": "fedcd265-dc2f-4a53-9c92-cc8adbb343ef",
+        "name": "Bundle Revenue Opportunities",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          520,
+          220
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const items=$input.all().map(i=>i.json||{});const opportunities=items.filter(x=>x && x.url && x.title).slice(0,50);if(!opportunities.length)return [];return [{json:{opportunities,source_pipeline:'revenue-intelligence-scanner',evidence_purpose:'discovery_only',human_approval_required:true,execution_permission:'unchanged',external_submission:false}}];"
+        }
+      },
+      {
+        "id": "0712ad84-415e-44f7-9b3b-349debaef805",
+        "name": "Send Revenue to Opportunity Mesh",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          760,
+          220
+        ],
+        "parameters": {
+          "mode": "once",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5EqjQcaY0dq8SHTA"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      }
+    ],
+    "nodeGroups": [],
+    "activeVersion": {
+      "sameAsDraft": true
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    }
+  }
+}
