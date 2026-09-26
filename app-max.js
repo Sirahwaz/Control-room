@@ -577,10 +577,20 @@ function bind(){
 document.querySelectorAll("[data-action]").forEach(function(x){x.onclick=function(e){e.stopPropagation();action(x.dataset.action)}});document.querySelectorAll("[data-command]").forEach(function(x){x.onclick=function(){terminalCommand(x.dataset.command)}});document.querySelectorAll("[data-promote-opportunity]").forEach(function(x){x.onclick=function(e){e.stopPropagation();action("promoteOpportunity",x.dataset.promoteOpportunity)}});document.querySelectorAll("[data-offer-template]").forEach(function(x){x.onclick=function(){var parts=x.dataset.offerTemplate.split("|"),amount=String(parts[1]||"").replace("$","").replace("+","");cashState().offers.push({title:parts[0],prospect:"",amount:Number(amount||0),status:"OFFERED",created:new Date().toISOString()});save();render();toast("Offer template added locally.","good")}});document.querySelectorAll("[data-remove-wallet]").forEach(function(x){x.onclick=function(){S.personal.wallets.splice(Number(x.dataset.removeWallet),1);save();render();toast("Deleted.","good")}});document.querySelectorAll("[data-wallet-receive]").forEach(function(x){x.onclick=function(){var w=walletState().wallets[Number(x.dataset.walletReceive)];if(!w)return;modal("Receive into "+(w.label||"wallet"),[["asset","Asset","text"],["amount","Amount","number"],["source","From: client / mining / exchange"],["tx","TX hash / reference (optional)"]],function(v){walletState().ops.push({direction:"RECEIVE",wallet:w.label,asset:v("asset")||w.asset,amount:Number(v("amount")||0),destination:w.address,source:v("source"),tx:v("tx"),status:"PREPARED",created:new Date().toISOString()})})}});document.querySelectorAll("[data-wallet-withdraw]").forEach(function(x){x.onclick=function(){var w=walletState().wallets[Number(x.dataset.walletWithdraw)];if(!w)return;modal("Send from "+(w.label||"wallet"),[["asset","Asset","text"],["amount","Amount","number"],["destination","Destination public address"],["purpose","Purpose: INVEST / TRADE / SERVICE / PERSONAL"],["memo","Memo / reference"]],function(v){walletState().ops.push({direction:"SEND",wallet:w.label,asset:v("asset")||w.asset,amount:Number(v("amount")||0),destination:v("destination"),network:w.network,purpose:v("purpose"),memo:v("memo"),status:"PENDING_HUMAN_APPROVAL",created:new Date().toISOString()})})}});document.querySelectorAll("[data-approval]").forEach(function(x){x.onclick=function(){api("approval_decide",{approval_id:x.dataset.approval,decision:x.dataset.decision,note:"Decision from MIDAD Neural UI"}).then(function(){toast("Approval updated.","good");connect(true)}).catch(function(e){toast(e.message,"bad")})}});document.querySelectorAll("[data-human-task]").forEach(function(x){x.onclick=function(){api("human_task_update",{task_id:x.dataset.humanTask,status:x.dataset.taskStatus}).then(function(){toast("Human task updated.","good");connect(true)}).catch(function(e){toast(e.message,"bad")})}});var ti=$("#terminalInput");if(ti)ti.onkeydown=function(e){if(e.key==="Enter")action("terminalRun")};window.onkeydown=function(e){var editable=isEditableTarget(document.activeElement);if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){if(editable)return;e.preventDefault();commandOpen();return}if(e.key==="Escape"){$("#command").classList.remove("open");$("#drawer").classList.remove("open")}}}
 function render(){shell();if(S.route==="dashboard")inject();if(S.route==="focus"){}bind();if(typeof window.__MIDAD_APPLY_TYPOGRAPHY==="function")window.__MIDAD_APPLY_TYPOGRAPHY();if((S.route==="opportunities"||S.route==="money")&&(!S.moneyRadar||!S.moneyRadar.fetchedAt||Date.now()-S.moneyRadar.fetchedAt>120000))fetchMoneyRadar(true)}
 window.addEventListener("hashchange",function(){var h=location.hash.slice(1);if(R.some(function(r){return r[0]===h})){S.route=h;render()}});
-if(TG())try{TG().ready();TG().expand();if(TG().enableClosingConfirmation)TG().enableClosingConfirmation()}catch(e){}
-render();log("MAXIMUM Neural UI v6 booted","ok");
+function bootTelegramAuth(){
+  var t=TG(); if(!t)return;
+  try{t.ready();t.expand();if(t.enableClosingConfirmation)t.enableClosingConfirmation()}catch(e){}
+  var tries=0;
+  function attempt(){
+    tries++;
+    if(t.initData){connect(true);return}
+    if(tries<10)setTimeout(attempt,300);
+  }
+  attempt();
+}
+bootTelegramAuth();
+render();log("MAXIMUM Neural UI v7 auth-recovery booted","ok");
 window.__MIDAD_RUNTIME_READY=true;
 window.__MIDAD_CONTROL_ROOM_DIAG=function(){return api("dashboard").then(function(){return {ok:true}}).catch(function(e){return {ok:false,error:e.message}})};
-if(TG()&&TG().initData)setTimeout(function(){connect(true)},150);
 setInterval(function(){if(S.connected&&!isEditableTarget(document.activeElement))connect(true)},60000);
 })();
