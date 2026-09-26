@@ -94,6 +94,7 @@ async function explain(item,p){
 async function boot(){
  try{if(T()){T().ready();T().expand()}await auth();S.data=await api("overview");render()}
  catch(e){S.error=e.message;render()}
+ finally{window.__MIDAD_V16_READY=true}
 }
 window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();doAction("cmd")}});
 boot();
