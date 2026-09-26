@@ -1,0 +1,675 @@
+{
+  "exported_at": "2026-09-26T15:41:59.922Z",
+  "source": "MIDAD n8n",
+  "workflow": {
+    "id": "LC3tTcFBEukB1R5u",
+    "name": "MIDAD — AI Command Core v2",
+    "active": true,
+    "isArchived": false,
+    "versionId": "5fdc2985-a028-4ccf-a9b5-3d9b76b8c48b",
+    "activeVersionId": "5fdc2985-a028-4ccf-a9b5-3d9b76b8c48b",
+    "triggerCount": 0,
+    "nodeCount": 15,
+    "createdAt": "2026-09-18T09:41:41.907Z",
+    "updatedAt": "2026-09-18T14:15:01.354Z",
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "tags": [],
+    "parentFolderId": null,
+    "description": "Portable AI command core called by the Telegram control room; no Telegram trigger inside this subworkflow.",
+    "scopes": [
+      "execution:delete",
+      "execution:list",
+      "execution:read",
+      "execution:reveal",
+      "workflow:create",
+      "workflow:delete",
+      "workflow:disableRedaction",
+      "workflow:enableRedaction",
+      "workflow:execute",
+      "workflow:execute-chat",
+      "workflow:export",
+      "workflow:import",
+      "workflow:list",
+      "workflow:move",
+      "workflow:publish",
+      "workflow:read",
+      "workflow:share",
+      "workflow:unpublish",
+      "workflow:unshare",
+      "workflow:update"
+    ],
+    "canExecute": true,
+    "connections": {
+      "MIDAD AI Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD AI — Conversation Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD AI Command Input": {
+        "main": [
+          [
+            {
+              "node": "MIDAD AI — Intent Router",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD AI — Intent Router": {
+        "main": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Revenue Opportunities": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Correlate Signals": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Intelligence Signals": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Mining Status": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Learning Status": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Behavior Graph": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Freelance Delivery Engine": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Automation Manager": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Decision Fabric Kernel": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MIDAD Tool — Intelligence Evaluation": {
+        "ai_tool": [
+          [
+            {
+              "node": "MIDAD AI Command Brain",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "a55b71e0-7236-4800-8a5c-c0dfe1f248fd",
+        "name": "MIDAD AI Command Input",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          112
+        ],
+        "parameters": {
+          "inputSource": "workflowInputs",
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "command",
+                "type": "string"
+              },
+              {
+                "name": "chatId",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "cb6460d8-08f3-4741-9680-855fc3a367f0",
+        "name": "MIDAD AI Command Brain",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          224,
+          112
+        ],
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ 'Intent: '+($json.intent||'general')+'\\nCommand: '+($json.command||'')+'\\n'+($json.router_note||'') }}",
+          "options": {
+            "systemMessage": "أنت العقل الحواري التشغيلي لمِداد AI. استخدم أقل عدد من الأدوات اللازمة. الأدوات الحالية: الفرص والإيرادات، الارتباط، الإشارات، التعدين، التعلّم، السلوك، Freelance Delivery Engine، وAutomation Manager عبر طبقة الأتمتة. لم يعد هناك Tool مستقل لـAutomation Status أو Freelance Opportunity Hunter داخل هذا العقل؛ التحليل المركزي للأتمتة يتم عبر Automation Manager، وتحليل الفرص الحرة يمكن طلبه عبر طبقة Opportunity/Freelance المناسبة. لا تدّعي تصفح منصة خاصة أو إرسال عرض أو تنفيذ تغيير لم يحدث فعلياً. لا تتجاوز KYC أو CAPTCHA أو Anti-Sybil أو الحواجز الأمنية. لا ترسل رسائل خارجية تلقائياً ولا أوامر مالية حقيقية. في الفرص احسب الاقتصاديات وقيمة الدقيقة البشرية وقابلية الأتمتة والتكرار والمخاطر. في التسليم حوّل الطلب إلى نطاق واضح، deliverables، خطة أتمتة، QA، معايير قبول ومراجعة بشرية. في الأتمتة افحص ثم اقترح ثم اطلب الموافقة قبل التغيير. الهدف: اكتشاف قانوني → تقييم → اختيار بشري → إنتاج → QA → تسليم → قياس → تعلم → إعادة استخدام."
+          },
+          "parameters": {
+            "options": {
+              "systemMessage": "أنت العقل التشغيلي المركزي لمِداد AI: نظام ذكاء اصطناعي متعدد الأدوات، وليس مجرد chatbot. مهمتك تنسيق الأدوات والمعلومات ضمن حدود الصلاحيات، مع الحفاظ على قابلية النقل بين المزودين.\n\nمبادئ التشغيل:\n1) افهم الهدف ثم خطط أقل عدد لازم من الخطوات.\n2) استخدم الأدوات بالتسلسل عندما تعتمد خطوة على نتيجة سابقة، وبالتوازي عندما تكون مستقلة.\n3) اجمع الأدلة قبل الاستنتاج، وميّز بين حقيقة موثقة واستنتاج واحتمال.\n4) افحص حداثة البيانات وموثوقية المصدر والتعارضات.\n5) احسب الاقتصاديات وقيمة الوقت البشري وقابلية الأتمتة والتكرار عند التعامل مع الفرص.\n6) قبل أي فعل خارجي حساس: طبّق Legal Boundary Gate؛ GREEN يمكن أتمتته ضمن الصلاحية، AMBER يحتاج مراجعة بشرية، RED لا يُنفذ.\n7) لا تتجاوز KYC أو CAPTCHA أو Anti-Sybil أو تسجيل الدخول أو ضوابط المنصات، ولا تستخرج أسراراً أو بيانات خاصة.\n8) لا ترسل رسائل خارجية أو تقدم أوامر مالية أو تغيّر حسابات حساسة تلقائياً. جهّز مسودة/خطة وانتظر الموافقة البشرية حيث يلزم.\n9) عند فشل أداة، استخدم مساراً بديلاً آمناً إن توفر، وسجّل أن النتيجة جزئية بدلاً من اختلاقها.\n10) بعد كل عملية مهمة نفّذ self-check: المدخلات، الأدلة، القيود، المخرجات، وما إذا كان هناك ادعاء غير مثبت.\n11) تعلم من النتائج الفعلية، لكن لا تعدّل القواعد الأمنية أو الصلاحيات تلقائياً.\n12) فضّل الحلول القابلة لإعادة الاستخدام: workflow، template، schema، QA checklist، service product.\n13) لا تدّعي تنفيذ شيء لم يحدث فعلياً، ولا تدّعي وصولاً إلى مصدر خاص.\n14) إذا كانت البيانات الحالية مطلوبة، استخدم أداة توفر مصدراً فعلياً؛ لا تخترع أرقاماً حديثة.\n\nأدواتك تشمل: الفرص والإيرادات، استخبارات الإشارات والارتباط، التعدين، التعلم، حالة الأتمتة، السلوك، Freelance Opportunity Hunter، Freelance Delivery Engine. استخدم Intent لتحديد نقطة البداية، ثم كوّن سلسلة أدوات عند الحاجة.\n\nفي العمل الحر: اكتشاف قانوني → إثراء عميق → Freshness/Novelty → تقييم اقتصادي → مطابقة قالب → Blueprint → إنتاج → QA → موافقة بشرية → تسليم → قياس → تعلم.\n\nفي الأتمتة: افحص الحالة → حدد الهدف → اقترح أقل تغيير آمن → تحقق من الاعتماديات → نفّذ فقط ضمن الصلاحيات المتاحة → راقب النتيجة → سجّل ما تغير.\n\nأجب بالعربية المهنية الواضحة والمختصرة، وكن صريحاً بشأن حدود البيانات والتنفيذ."
+            }
+          }
+        }
+      },
+      {
+        "id": "aaa4dbb0-9cc2-479d-8f75-f300744b3475",
+        "name": "MIDAD AI Model",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          304,
+          336
+        ],
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-5-mini"
+          },
+          "responsesApiEnabled": true,
+          "options": {
+            "reasoningEffort": "medium",
+            "temperature": 0.3
+          }
+        }
+      },
+      {
+        "id": "b4ff8ad8-a260-49ee-9333-d472b1776e2d",
+        "name": "MIDAD AI — Conversation Memory",
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.4,
+        "position": [
+          220,
+          180
+        ],
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $('MIDAD AI Command Input').item.json.chatId }}",
+          "contextWindowLength": 10
+        }
+      },
+      {
+        "id": "ab51759d-0e44-44a0-8837-36443de40ffe",
+        "name": "MIDAD AI — Intent Router",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const input=$input.first().json||{};const command=String(input.command||'').trim();const s=command.toLowerCase();let intent='general';if(/(تقييم ذكاء|تقييم النموذج|evaluate|evaluation|benchmark|مرجع|reference model|probability fidelity|اختبار الذكاء)/i.test(s))intent='evaluation';else if(/(freelance|فريلانس|فريلانسر|مشروع حر|مشاريع حرة|عميل|proposal|عرض عمل|gig)/i.test(s))intent='freelance';else if(/(فرص|opportunit|revenue|دخل|أرباح|airdrops?|إيردروب)/i.test(s))intent='opportunities';else if(/(رادار|signal|إشارة|market|سوق|asset|أصل)/i.test(s))intent='intelligence';else if(/(تعلم|learning|outcome|نتائج|أداء الإشارات)/i.test(s))intent='learning';else if(/(تعدين|mining|viabtc|hashrate|worker)/i.test(s))intent='mining';else if(/(تداول|trade|paper|أمر|order)/i.test(s))intent='trading_safe';else if(/(أتمة|automation|workflow|workflows|تشغيل)/i.test(s))intent='automation';else if(/(سلوك|graph|رسم|wallet|محفظة|address|عنوان)/i.test(s))intent='behavior';return [{json:{...input,command,intent,router_note:'Intent classification only; no external action is executed by this router.'}}];"
+        }
+      },
+      {
+        "id": "midad-tool-revenue-01",
+        "name": "MIDAD Tool — Revenue Opportunities",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          560,
+          -40
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-revenue-opportunities",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "midad-tool-correlation-01",
+        "name": "MIDAD Tool — Correlate Signals",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          760,
+          -40
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-correlation-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { signals: $fromAI('signals','JSON array of MIDAD signals to correlate','string') } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "7122f2ae-27bc-45b7-83fa-43e71538b4b7",
+        "name": "MIDAD Tool — Intelligence Signals",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          220,
+          260
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-intelligence-read-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { limit: Math.max(1, Math.min(50, Number($fromAI('limit','عدد الإشارات الأخيرة المطلوب قراءتها من 1 إلى 50','number')) || 10)) } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "5e9e5599-80e1-4775-9ea1-aa29d7142194",
+        "name": "MIDAD Tool — Mining Status",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          220,
+          420
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-mining-status-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "4e210002-7d0c-4cb2-983a-f2f12c51f2b6",
+        "name": "MIDAD Tool — Learning Status",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          220,
+          580
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-learning-status-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { limit: Math.max(1, Math.min(50, Number($fromAI('limit','عدد سجلات التعلّم الأخيرة من 1 إلى 50','number')) || 10)) } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "9a96b5e4-de7f-4caf-be50-e03a8fd08db0",
+        "name": "MIDAD Tool — Behavior Graph",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          660,
+          580
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-behavior-status-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { limit: Math.max(1, Math.min(50, Number($fromAI('limit','عدد سجلات السلوك الأخيرة من 1 إلى 50','number')) || 10)) } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "9fbe828f-af19-41de-8837-8cc5b5d56b86",
+        "name": "MIDAD Tool — Freelance Delivery Engine",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          1080,
+          120
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-freelance-intake",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { title: $fromAI('title','عنوان المشروع','string'), description: $fromAI('description','وصف ومتطلبات المشروع','string'), client: $fromAI('client','اسم العميل إن وجد','string'), budget: $fromAI('budget','الميزانية إن وجدت','string'), deadline: $fromAI('deadline','الموعد النهائي إن وجد','string') } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          },
+          "optimizeResponse": true,
+          "responseType": "json",
+          "fieldsToInclude": "all"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "69006324-d7cc-4578-b5eb-3cf7b8fd8082",
+        "name": "MIDAD Tool — Automation Manager",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          860,
+          420
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-automation-manager",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { action: $fromAI('action','inspect أو recommend أو plan أو propose','string'), workflow_id: $fromAI('workflow_id','معرّف workflow عند توفره','string'), goal: $fromAI('goal','هدف الفحص أو التخطيط','string') } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "ad60f4a9-da8b-4f5b-ab75-2711b8bfa800",
+        "name": "MIDAD Tool — Decision Fabric Kernel",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          520
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-decision-kernel",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({domain:$fromAI('domain','decision domain'),entity:$fromAI('entity','entity'),source:$fromAI('source','source'),signal_type:$fromAI('signal_type','signal type'),score:$fromAI('score','score 0-100'),confidence:$fromAI('confidence','confidence 0-1'),risk:$fromAI('risk','risk level'),evidence_gate:$fromAI('evidence_gate','evidence state'),economic_score:$fromAI('economic_score','economic score'),graph_score:$fromAI('graph_score','graph score'),freshness_score:$fromAI('freshness_score','freshness score'),automation_fit:$fromAI('automation_fit','automation fit'),repeatable:$fromAI('repeatable','repeatability')}) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "id": "9f61168b-2469-4133-b0fe-d0caee20bfaf",
+        "name": "MIDAD Tool — Intelligence Evaluation",
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.5,
+        "position": [
+          1180,
+          680
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://midad.app.n8n.cloud/webhook/midad-intelligence-evaluate-v1",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { evaluation_mode:'frozen', suite_id:$fromAI('suite_id','evaluation suite id','string'), workflow_id:$fromAI('workflow_id','frozen workflow id','string'), workflow_version:$fromAI('workflow_version','frozen workflow version','string'), workflow_hash:$fromAI('workflow_hash','frozen workflow hash','string'), model_id:$fromAI('model_id','evaluated model id','string'), model_config_hash:$fromAI('model_config_hash','frozen model config hash','string'), reference_model_id:$fromAI('reference_model_id','external reference model id','string'), reference_version:$fromAI('reference_version','reference version','string'), task_type:$fromAI('task_type','evaluation task type','string'), cases:$fromAI('cases','JSON array containing model_probs, reference_probs and optional workflow_fidelity','string') } }}",
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "Header Auth account"
+          }
+        }
+      }
+    ],
+    "nodeGroups": [],
+    "activeVersion": {
+      "sameAsDraft": true
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    }
+  }
+}
