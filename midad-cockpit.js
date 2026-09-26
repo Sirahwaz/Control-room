@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r6"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r7"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -96,9 +96,25 @@ let renderGuard=false;
 function render(){
  if(renderGuard)return;
  renderGuard=true;
- try{\n  shell();\n  const v=$("#views");\n  if(!S.connected&&!S.token){v.innerHTML=lockView()}\n  else if(S.view==="ai")v.innerHTML=aiView();\n  else if(S.view==="money")v.innerHTML=moneyView();\n  else if(S.view==="intel")v.innerHTML=intelView();\n  else if(S.view==="tasks")v.innerHTML=tasksView();\n  else if(S.view==="more")v.innerHTML=moreView();\n  else v.innerHTML=cockpitView();\n  bind();
+ try{
+  shell();
+  const v=$("#views");
+  if(!S.connected&&!S.token)v.innerHTML=lockView();
+  else if(S.view==="ai")v.innerHTML=aiView();
+  else if(S.view==="money")v.innerHTML=moneyView();
+  else if(S.view==="intel")v.innerHTML=intelView();
+  else if(S.view==="tasks")v.innerHTML=tasksView();
+  else if(S.view==="more")v.innerHTML=moreView();
+  else v.innerHTML=cockpitView();
+  bind();
  }catch(e){
-  console.error("[MIDAD cockpit render]",e);\n  const app=$("#app");\n  if(app)app.innerHTML="<div class=\"lock\"><div class=\"box\"><div class=\"eyebrow\">MIDAD / UI RECOVERY</div><h2>الواجهة دخلت وضع الاسترداد</h2><p>حدث خطأ داخل الواجهة، لكن النواة لم تُمسح. أعد التحميل بعد حفظ الحالة الحالية.</p><pre style=\"white-space:pre-wrap;color:#ff9cab;font:11px var(--mono)\">"+esc(e?.message||e)+"</pre><button class=\"btn primary\" onclick=\"location.reload()\">إعادة تحميل</button></div></div>";\n }finally{renderGuard=false}\n}
+  console.error("[MIDAD cockpit render]",e);
+  const app=$("#app");
+  if(app)app.innerHTML="<div class=\"lock\"><div class=\"box\"><div class=\"eyebrow\">MIDAD / UI RECOVERY</div><h2>الواجهة دخلت وضع الاسترداد</h2><p>حدث خطأ داخل الواجهة، لكن النواة لم تُمسح. أعد التحميل بعد حفظ الحالة الحالية.</p><pre style=\"white-space:pre-wrap;color:#ff9cab;font:11px var(--mono)\">"+esc(e?.message||e)+"</pre><button class=\"btn primary\" onclick=\"location.reload()\">إعادة تحميل</button></div></div>";
+ }finally{
+  renderGuard=false;
+ }
+}
 function bind(){
  $$("[data-view]").forEach(b=>b.onclick=()=>{S.view=b.dataset.view;render()});
  $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
