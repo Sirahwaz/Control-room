@@ -3,7 +3,7 @@
 if(window.__MIDAD_APEX_V1__)return;
 window.__MIDAD_APEX_V1__=true;
 
-var state={open:false,connected:false,last:null,log:[],seqBusy:false};
+var state={open:false,connected:false,last:null,lastHealth:null,log:[],seqBusy:false};
 function esc(v){return String(v==null?"":v).replace(/[&<>"]/g,function(m){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[m]})}
 function q(s){return document.querySelector(s)}
 function fireAction(name){
@@ -173,6 +173,7 @@ function hookFetch(){
             if(j&&j.ok){
               state.connected=true;
               state.last=j;
+              state.lastHealth=j.health||j.dashboard&&j.dashboard.health||j.data&&j.data.health||null;
               note("backend verified · "+(j.generated_at||j.health?"snapshot":"response"));
               renderState();renderStats();
             }
