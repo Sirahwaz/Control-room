@@ -1,8 +1,8 @@
-const CACHE="midad-neural-command-v18-20260926n";
+const CACHE="midad-neural-command-v19-20260926p";
 const CORE=[
   "./","./index.html","./app-max.js","./styles-max.css",
   "./midad-maximum-enhancements.js","./midad-maximum-enhancements.css",
-  "./midad-command-v2.css","./midad-apex.css","./midad-apex.js",
+  "./midad-command-v2.css","./midad-apex.css","./midad-apex.js","./midad-mesh.css","./midad-mesh.js",
   "./manifest.webmanifest","./midad-pwa-icon.svg"
 ];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
