@@ -10,25 +10,26 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./midad-pwa-icon.svg">
 <title>MIDAD — Neural Command Center</title>
-<link rel="stylesheet" href="./styles-max.css?v=20260926n">
-<link rel="stylesheet" href="./midad-maximum-enhancements.css?v=20260926n">
-<link rel="stylesheet" href="./midad-command-v2.css?v=20260926n">
-<link rel="stylesheet" href="./midad-apex.css?v=20260926p">
-<link rel="stylesheet" href="./midad-mesh.css?v=20260926p">
+<link rel="stylesheet" href="./styles-max.css?v=20260926r">
+<link rel="stylesheet" href="./midad-maximum-enhancements.css?v=20260926r">
+<link rel="stylesheet" href="./midad-command-v2.css?v=20260926r">
+<link rel="stylesheet" href="./midad-apex.css?v=20260926r">
+<link rel="stylesheet" href="./midad-mesh.css?v=20260926r">
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
 <noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
-<script src="./midad-maximum-enhancements.js?v=20260926n"></script>
-<script src="./app-max.js?v=20260926n"></script>
-<script src="./midad-apex.js?v=20260926p"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="./midad-maximum-enhancements.js?v=20260926r"></script>
+<script src="./app-max.js?v=20260926r"></script>
+<script src="./midad-apex.js?v=20260926r"></script>
 <script>
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./service-worker.js?v=20260926p").catch(function(){});
+    navigator.serviceWorker.register("./service-worker.js?v=20260926r").catch(function(){});
   });
 }
 </script>
-<script src="./midad-mesh.js?v=20260926p"></script>
+<script src="./midad-mesh.js?v=20260926r"></script>
 </body>
 </html>
