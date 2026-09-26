@@ -8,19 +8,19 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./midad-pwa-icon.svg">
 <title>MIDAD — Neural Control Deck</title>
-<link rel="stylesheet" href="./midad-cockpit.css?v=20260926c14">
+<link rel="stylesheet" href="./midad-cockpit.css?v=20260926c15">
 </head>
 <body>
-<div id="app" aria-live="polite"></div>
+<div id="app" aria-live="polite"><div id="bootFallback" style="min-height:100vh;display:grid;place-items:center;padding:32px;background:#05070c;color:#e7edf5;font-family:system-ui,sans-serif"><div style="max-width:760px;text-align:center"><div style="font-size:14px;letter-spacing:.18em;opacity:.7">MIDAD / NEURAL CONTROL DECK</div><h1 style="font-size:34px;margin:14px 0">جاري تشغيل غرفة التحكم…</h1><p style="color:#9aa7b7;line-height:1.8">إذا بقيت هذه الشاشة أكثر من بضع ثوانٍ، فسيظهر وضع الاسترداد تلقائيًا.</p></div></div></div>
 <noscript><div style="padding:30px;color:#fff;background:#05070c">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="./midad-cockpit.js?v=20260926c14"></script>
+<script defer src="https://telegram.org/js/telegram-web-app.js"></script>
+<script defer src="./midad-cockpit.js?v=20260926c15"></script>
 <script>
 if("serviceWorker" in navigator){
  window.addEventListener("load",function(){
-  navigator.serviceWorker.register("./service-worker.js?v=20260926c14").catch(function(){});
+  navigator.serviceWorker.register("./service-worker.js?v=20260926c15").catch(function(){});
  });
 }
 </script>
-</body>
+<script>setTimeout(function(){if(!window.MIDAD_COCKPIT_LOADED){var a=document.getElementById("app");if(a)a.innerHTML="<div style=\"min-height:100vh;display:grid;place-items:center;padding:32px;background:#05070c;color:#e7edf5;font-family:system-ui,sans-serif\"><div style=\"max-width:760px;text-align:center\"><div style=\"font-size:14px;letter-spacing:.18em;opacity:.7\">MIDAD / UI RECOVERY</div><h1 style=\"font-size:32px;margin:14px 0\">لم يتم تحميل محرك الواجهة</h1><p style=\"color:#9aa7b7;line-height:1.8\">تم إيقاف الانتظار الصامت. أعد فتح الغرفة أو استخدم زر إعادة التحميل.</p><button onclick=\"location.reload()\" style=\"padding:12px 18px;border-radius:10px;border:1px solid #445;color:#fff;background:#111827\">إعادة تحميل</button></div></div>";}},6000);</script></body>
 </html>
