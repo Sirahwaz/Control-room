@@ -1,0 +1,30 @@
+name: Repair MIDAD cockpit
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-cockpit.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair bind selector and bump cache
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('midad-cockpit.js')
+          s=p.read_text()
+          s=s.replace('$("[data-prompt]")','$$("[data-prompt]")')
+          s=s.replace('build:"cockpit-2026-09-26-r4"','build:"cockpit-2026-09-26-r5"')
+          p.write_text(s)
+          for name in ('index.html','service-worker.js'):
+              p=Path(name); s=p.read_text().replace('20260926c12','20260926c13'); p.write_text(s)
+          Path('.github/workflows/repair-cockpit.yml').unlink()
+          PY
+          git config user.name 'MIDAD Repair Bot'
+          git config user.email 'midad-repair@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet || git commit -m 'Repair cockpit render crash and refresh cache'
+          git push
