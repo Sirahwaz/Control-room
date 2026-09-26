@@ -1,0 +1,795 @@
+{
+  "exported_at": "2026-09-26T15:41:43.680Z",
+  "source": "MIDAD n8n",
+  "workflow": {
+    "id": "5EqjQcaY0dq8SHTA",
+    "name": "MIDAD — Opportunity Intelligence Mesh v1",
+    "active": true,
+    "isArchived": false,
+    "versionId": "7ddb3af7-0301-483b-832b-281a4ef951e1",
+    "activeVersionId": "bbeb3fca-88b9-4a16-a5f9-3283adb3dcbe",
+    "triggerCount": 1,
+    "nodeCount": 12,
+    "createdAt": "2026-09-18T13:30:09.931Z",
+    "updatedAt": "2026-09-20T01:34:59.090Z",
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "tags": [],
+    "parentFolderId": null,
+    "scopes": [
+      "execution:delete",
+      "execution:list",
+      "execution:read",
+      "execution:reveal",
+      "workflow:create",
+      "workflow:delete",
+      "workflow:disableRedaction",
+      "workflow:enableRedaction",
+      "workflow:execute",
+      "workflow:execute-chat",
+      "workflow:export",
+      "workflow:import",
+      "workflow:list",
+      "workflow:move",
+      "workflow:publish",
+      "workflow:read",
+      "workflow:share",
+      "workflow:unpublish",
+      "workflow:unshare",
+      "workflow:update"
+    ],
+    "canExecute": true,
+    "connections": {
+      "Opportunity Intelligence Intake": {
+        "main": [
+          [
+            {
+              "node": "Opportunity Intelligence Normalizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Opportunity Intelligence Normalizer": {
+        "main": [
+          [
+            {
+              "node": "Opportunity Research Planner",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Opportunity Research Planner": {
+        "main": [
+          [
+            {
+              "node": "Opportunity Memory Read",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Opportunity Memory Read": {
+        "main": [
+          [
+            {
+              "node": "Attach Opportunity Memory",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Attach Opportunity Memory": {
+        "main": [
+          [
+            {
+              "node": "Economic ROI Gate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Economic ROI Gate": {
+        "main": [
+          [
+            {
+              "node": "Monetization Router",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Monetization Router": {
+        "main": [
+          [
+            {
+              "node": "High-Risk Opportunity Triage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Revenue Internal Trigger": {
+        "main": [
+          [
+            {
+              "node": "Opportunity Intelligence Normalizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "High-Risk Opportunity Triage": {
+        "main": [
+          [
+            {
+              "node": "Persist Opportunity",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Persist Opportunity": {
+        "main": [
+          [
+            {
+              "node": "Prepare Opportunity Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Opportunity Response": {
+        "main": [
+          [
+            {
+              "node": "Return Opportunity Intelligence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "778cc2cb-04c9-4e0d-b3db-906ed23a361a",
+        "name": "Opportunity Intelligence Intake",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "midad-opportunity-intelligence",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "d75f2479-e28f-4e01-a249-2c43269f7069",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "BYNQqcwbZBNRGbjw",
+            "name": "X-MIDAD-KEY"
+          }
+        }
+      },
+      {
+        "id": "b6e8e628-babd-4386-9822-0ec0e8a05a4c",
+        "name": "Opportunity Intelligence Normalizer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const x=$input.first().json||{};const b=x.body||x;const items=Array.isArray(b.opportunities)?b.opportunities:[b];const now=Date.now();const clean=v=>String(v||'').trim();const ageDays=d=>{const t=Date.parse(d||'');return Number.isFinite(t)?Math.max(0,(now-t)/86400000):null};return items.slice(0,100).map(o=>{const title=clean(o.title||o.project).slice(0,300);const description=clean(o.description||o.brief).slice(0,12000);const text=(title+' '+description).toLowerCase();const source=clean(o.source||'unknown').slice(0,200);const url=clean(o.url||o.link).slice(0,1000);const riskTerms=/(bypass|captcha|kyc|anti-sybil|malware|exploit|fraud|stolen|counterfeit|impersonat|credential|password|session token)/i;const risk=riskTerms.test(text);const ambiguity=/(scrap|scrape|crawl|bot|automated access|terms unclear|private|login required)/i.test(text);const recurring=/(monthly|weekly|recurring|ongoing|bulk|batch|catalog|maintenance|retainer)/i.test(text);const automation=/(ai|automation|api|workflow|n8n|integration|data|dashboard|report|chatbot|spreadsheet|pdf)/i.test(text);const deepSignals=(text.match(/api|integration|workflow|automation|data|dashboard|report|chatbot|batch|catalog|maintenance/g)||[]).length;const budget=Number(o.budget||o.max_budget||0);const hours=Number(o.hours_estimate||o.estimated_hours||0);const hourly=hours>0&&budget>0?budget/hours:0;const publishedAt=clean(o.published_at||o.created_at||o.date);const age=ageDays(publishedAt);const freshness=age===null?55:Math.max(0,Math.min(100,100-age*4));const sourceReliability=Number.isFinite(Number(o.source_reliability))?Math.max(0,Math.min(100,Number(o.source_reliability))):55;const evidenceConfidence=Math.round((sourceReliability*0.55+freshness*0.25+(url?10:0)+(publishedAt?10:0))*100)/100;const canonical=(source+'|'+title.toLowerCase()+'|'+url).slice(0,1600);let h=2166136261;for(let i=0;i<canonical.length;i++){h^=canonical.charCodeAt(i);h=Math.imul(h,16777619)>>>0}const fingerprint='opp_'+h.toString(16);const novelty=Number.isFinite(Number(o.novelty_score))?Number(o.novelty_score):Math.min(100,40+deepSignals*8+(recurring?15:0)+(freshness>75?15:0));const economic=Math.round(Math.max(0,Math.min(100,(automation?30:12)+(recurring?20:0)+(hourly?Math.min(30,hourly/2):8)+(freshness/10)+(source!=='unknown'?8:0)+(novelty/10)-(risk?65:0)-(ambiguity?15:0))));const route=risk?'reject_review':ambiguity?'human_source_review':economic>=75?'priority':economic>=50?'review':'watch';return {json:{fingerprint,title,description,budget,hours_estimate:hours,currency:clean(o.currency||'USD').toUpperCase(),source,url,published_at:publishedAt||null,observed_at:new Date(now).toISOString(),signals:{automation_fit:automation,recurring_fit:recurring,deep_intelligence_score:Math.min(100,40+deepSignals*8),risk,ambiguity},freshness:{age_days:age,freshness_score:Math.round(freshness),source_reliability:sourceReliability,evidence_confidence:evidenceConfidence},novelty:{novelty_score:Math.round(novelty),new_signal:novelty>=75},economics:{implied_hourly_rate:hourly?Math.round(hourly*100)/100:null},economic_score:economic,route,human_approval_required:true,external_submission:false,legal_boundary:{mode:risk?'RED':ambiguity?'AMBER':'GREEN',action:risk?'do_not_automate':ambiguity?'human_verify_source_terms':'automation_allowed_within_authorized_source',reason:risk?'Potentially prohibited or unsafe activity detected':ambiguity?'Source access or automation conditions are unclear':'No prohibited pattern detected'}}});});"
+        }
+      },
+      {
+        "id": "0f0d9a67-96be-4764-ab2c-efb422649b25",
+        "name": "Return Opportunity Intelligence",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($input.all().map(i=>i.json)) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "b689129a-d689-4552-9b1a-7a5f2224cf58",
+        "name": "Opportunity Research Planner",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const x=$input.item.json||{}; const gaps=[]; const seen=[]; const source=String(x.source||\"unknown\"); const url=String(x.url||\"\").trim(); const publishedAt=x.published_at||null; const freshness=Number(x.freshness?.freshness_score); const reliability=Number(x.freshness?.source_reliability); const evidenceConfidence=Number(x.freshness?.evidence_confidence); if(source===\"unknown\") gaps.push(\"identify_source\"); else seen.push(\"source_identity\"); if(!url) gaps.push(\"source_url\"); else seen.push(\"source_reference\"); if(!publishedAt) gaps.push(\"publication_timestamp\"); else seen.push(\"publication_timestamp\"); if(!Number.isFinite(reliability)||reliability<60) gaps.push(\"source_reliability_verification\"); if(!Number.isFinite(freshness)||freshness<60) gaps.push(\"freshness_recheck\"); if(!Number.isFinite(evidenceConfidence)||evidenceConfidence<65) gaps.push(\"evidence_quality_recheck\"); if(x.signals?.ambiguity) gaps.push(\"source_terms_and_access_review\"); if(x.signals?.risk) gaps.push(\"safety_and_legal_review\"); if(x.economics?.implied_hourly_rate===null&&Number(x.budget||0)<=0) gaps.push(\"economic_terms\"); if(x.signals?.recurring_fit) seen.push(\"recurring_work_signal\"); if(x.signals?.automation_fit) seen.push(\"automation_fit_signal\"); const route=String(x.route||\"watch\"); const hours=route===\"priority\"?6:route===\"review\"||route===\"human_source_review\"?24:route===\"reject_review\"?4:72; const next=new Date(Date.now()+hours*3600000).toISOString(); const status=gaps.length?\"needs_evidence\":route===\"watch\"?\"monitor\":\"open\"; return {json:{...x,research_plan:{status,evidence_seen:seen,evidence_gaps:gaps,research_priority:gaps.length>=3?\"high\":gaps.length?\"medium\":\"low\",next_verification_at:next,verification_window_hours:hours,provenance:{derived_from:\"opportunity_normalizer\",memory_write:false},execution_permission:\"unchanged\"},memory_contract:{version:\"research-memory-1.0\",opportunity_fingerprint:x.fingerprint||null,persistence:\"adapter_required\",fail_safe:true,must_not_grant_execution:true}}};"
+        }
+      },
+      {
+        "id": "42db9c41-b4cc-4509-bede-6cad7f70daa0",
+        "name": "Opportunity Memory Read",
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          700,
+          0
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "getAll",
+          "tableId": "midad_opportunity_evidence",
+          "returnAll": false,
+          "limit": 20,
+          "filterType": "manual",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "fingerprint",
+                "condition": "eq",
+                "keyValue": "={{ $json.fingerprint }}"
+              }
+            ]
+          },
+          "orderBy": "last_seen_at.desc"
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "supabaseApi": {
+            "id": "eRy3qisYfdklNrHS",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "id": "712700cf-c76b-4d93-8e4f-f2b3de5f87be",
+        "name": "Attach Opportunity Memory",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          940,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const plans=$(\"Opportunity Research Planner\").all().map(i=>i.json); const rows=$input.all().map(i=>i.json); const byFp=new Map(); for(const r of rows){const fp=String(r.fingerprint??''); if(fp){if(!byFp.has(fp)) byFp.set(fp,[]); byFp.get(fp).push(r);}} return plans.map(p=>{const m=byFp.get(String(p.fingerprint??''))||[]; return {json:{...p,memory:{contract_version:'research-memory-1.0',found:m.length>0,count:m.length,records:m.slice(0,20),persistence:'supabase_via_adapter_interface',must_not_grant_execution:true}}};});"
+        }
+      },
+      {
+        "id": "d471456f-389f-4c02-b6ee-be993568ff5a",
+        "name": "Economic ROI Gate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1140,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const x=$input.item.json||{};const num=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const budget=Math.max(0,num(x.budget));const hours=Math.max(0,num(x.hours_estimate));const rate=hours>0&&budget>0?budget/hours:null;const feePct=clamp(num(x.economics?.platform_fee_pct,0),0,100);const fixedFees=Math.max(0,num(x.economics?.fixed_fees,0));const gross=budget;const fees=gross*(feePct/100)+fixedFees;const net=Math.max(0,gross-fees);const targetMargin=clamp(num(x.economics?.target_margin_pct,30),0,90);const minNet=gross*(1-targetMargin/100);const capital=Math.max(0,num(x.economics?.capital_required,0));const risk=x.legal_boundary?.mode||'UNKNOWN';const evidence=Number(x.freshness?.evidence_confidence||0);const economicScore=clamp(num(x.economic_score,0),0,100);const viable=net>0&&(capital<=0||net>capital)&&risk==='GREEN'&&evidence>=65;const roiPct=capital>0?((net-capital)/capital)*100:null;const pay=String(x.economics?.payment_method||'').trim();const paymentReady=/crypto|stablecoin|usdc|usdt|bank|paypal|stripe|invoice/i.test(pay);const verdict=viable?'economically_viable':risk!=='GREEN'?'blocked_by_risk':evidence<65?'needs_evidence':net<=0?'not_viable':'needs_review';return {json:{...x,economics:{...(x.economics||{}),gross_budget:gross,platform_fee_pct:feePct,fixed_fees:fixedFees,estimated_fees:Math.round(fees*100)/100,estimated_net:Math.round(net*100)/100,capital_required:capital,implied_hourly_rate:rate?Math.round(rate*100)/100:null,net_after_capital:Math.round((net-capital)*100)/100,roi_pct:roiPct===null?null:Math.round(roiPct*100)/100,payment_method:pay||null,payment_ready:paymentReady},economic_gate:{version:'roi-gate-1.0',verdict,viable,checks:{positive_net:net>0,capital_covered:capital<=0||net>capital,risk_green:risk==='GREEN',evidence_sufficient:evidence>=65,economic_score:economicScore},min_net_reference:Math.round(minNet*100)/100},execution_permission:'unchanged',human_approval_required:true}};"
+        }
+      },
+      {
+        "id": "cb69ddfa-de0c-4621-b1f5-31be799f9be8",
+        "name": "Monetization Router",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1260,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const x=$input.item.json||{};const s=x.signals||{};const e=x.economics||{};const text=((x.title||'')+' '+(x.description||'')).toLowerCase();const risk=x.legal_boundary?.mode||'UNKNOWN';const payment=String(e.payment_method||'').trim();const paymentReady=Boolean(e.payment_ready);let route='service';if(/freelance|client|contract|retainer|proposal|gig/.test(text)) route='freelance';else if(s.automation_fit||/api|automation|workflow|integration|dashboard|report|chatbot/.test(text)) route='automation';else if(/airdrop|quest|reward|bounty|grant|incentive/.test(text)) route='opportunity_reward';else if(/template|dataset|digital product|license|asset/.test(text)) route='digital_asset';const repeatability=s.recurring_fit?'recurring':'one_off';const net=Number(e.estimated_net||0);const capital=Number(e.capital_required||0);const hours=Number(x.hours_estimate||0);const timeToCash=hours>0?hours:(route==='opportunity_reward'?24:72);const evidenceGaps=x.research_plan?.evidence_gaps||[];const monetizationReady=risk==='GREEN'&&evidenceGaps.length===0&&net>0;return {json:{...x,monetization_plan:{version:'monetization-router-1.0',route,service_type:route==='automation'?'automation_delivery':route==='freelance'?'client_delivery':route==='digital_asset'?'digital_product':route==='opportunity_reward'?'reward_or_bounty':'service_delivery',delivery_model:repeatability,payment_methods:payment?[payment]:(paymentReady?['verified_method']:[]),payment_ready:paymentReady,capital_required:capital,estimated_revenue:Number(e.gross_budget||x.budget||0),estimated_fees:Number(e.estimated_fees||0),estimated_net:net,time_to_cash_hours:timeToCash,repeatability,risk_level:risk,evidence_requirements:evidenceGaps,human_approval_required:true,monetization_ready:monetizationReady,execution_permission:'unchanged',external_submission:false,provenance:'derived_from_opportunity_intelligence'}}};"
+        }
+      },
+      {
+        "id": "29ca6eb0-b452-4b85-a721-9a7cd6f4ddc5",
+        "name": "High-Risk Opportunity Triage",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1480,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const x=$input.item.json||{};\nconst t=((x.title||'')+' '+(x.description||'')+' '+JSON.stringify(x.economics||{})).toLowerCase();\nconst flags=[];\nconst add=(f,rx)=>{if(rx.test(t))flags.push(f)};\nadd('custody_or_withdrawal_risk',/custody|withdraw|withdrawal|lock|locked|vesting|cliff|claim/);\nadd('capital_at_risk',/deposit|stake|staking|borrow|leverage|margin|liquidat|collateral|investment|capital|required/);\nadd('market_liquidity_risk',/low liquidity|thin liquidity|illiquid|slippage|volatile|volatility/);\nadd('counterparty_risk',/unknown issuer|anonymous team|counterparty|escrow|unverified seller/);\nadd('scam_or_impersonation_signal',/guaranteed profit|double your|send .*receive|seed phrase|private key|password|impersonat|fake support|wallet connect/);\nadd('security_exploit_signal',/exploit|drainer|malware|phishing|credential|session token/);\nadd('regulatory_or_eligibility_review',/kyc|restricted jurisdiction|sanction|regulated|license|accredited|eligibility/);\nadd('automation_barrier',/captcha|anti.?sybil|proof of humanity|human verification|login required/);\n\nconst hardBlock=flags.some(f=>['scam_or_impersonation_signal','security_exploit_signal'].includes(f));\nconst highRisk=flags.length>=2||flags.includes('capital_at_risk')||flags.includes('custody_or_withdrawal_risk');\nconst riskTier=hardBlock?'RED':highRisk?'HIGH':flags.length?'AMBER':'GREEN';\nconst evidence=x.research_plan?.evidence_gaps||[];\nconst withdrawalCheck=flags.includes('custody_or_withdrawal_risk')||flags.includes('capital_at_risk');\n\nconst econ=x.economic_score??x.economics?.economic_score??0;\nconst budget=Number(x.economics?.budget??x.gross_budget??x.reward_usd??0)||0;\nconst effort=Number(x.economics?.hours??x.estimated_hours??x.hours??0)||0;\nconst urgency=/deadline|ends|ending|expires|expir|limited time|first come|closing soon|today|24h|48h|72h/i.test(t);\nconst rare=/exclusive|rare|limited|invite.?only|early access|undervalued|mispriced|uncrowded|few slots|first come/i.test(t);\nconst collectible=/claim|payout|paid|payment|reward|bounty|grant|allocation|distribution|withdraw/i.test(t);\nconst paymentReady=/usdc|usdt|dai|btc|eth|sol|crypto|stablecoin|on.?chain|wallet|bank transfer|paypal/i.test(t);\nconst sourceReliability=Math.max(0,Math.min(100,Number(x.source_reliability??(x.evidence?.source_reliability||0))||0));\nconst evidenceQuality=Math.max(0,Math.min(100,Number(x.evidence_quality_score??x.evidence?.fused_evidence_quality??x.evidence?.evidence_quality??0)||0));\nconst capital=Math.max(0,Number(x.capital_required??x.economics?.capital_required??0)||0);\n\nlet value=Math.max(0,Math.min(100,Number(econ)||0));\nif(budget>0)value+=Math.min(18,Math.log10(budget+1)*6);\nif(urgency)value+=8;\nif(rare)value+=7;\nif(collectible)value+=7;\nif(paymentReady)value+=5;\nif(sourceReliability>=70)value+=5;\nif(evidenceQuality>=70)value+=5;\nif(effort>0)value-=Math.min(10,effort/10);\nif(capital>0)value-=Math.min(15,Math.log10(capital+1)*4);\nif(riskTier==='HIGH')value-=10;\nif(riskTier==='RED')value-=35;\nif(flags.includes('automation_barrier'))value-=5;\nconst huntPriority=Math.round(Math.max(0,Math.min(100,value)));\nconst eliteCandidate=huntPriority>=85&&!hardBlock;\nconst fastLane=eliteCandidate&&riskTier==='GREEN'?'standard_review':eliteCandidate?'paper_or_manual_review':'normal_review';\n\nreturn {json:{...x,high_risk_triage:{version:'high-risk-triage-1.1',risk_tier:riskTier,flags:[...new Set(flags)],hard_block:hardBlock,requires_human_review:riskTier!=='GREEN'||evidence.length>0,withdrawal_and_settlement_check:withdrawalCheck?'required':'not_indicated',source_verification_required:riskTier!=='GREEN'||evidence.length>0,allowed_mode:hardBlock?'research_only':riskTier==='HIGH'?'paper_or_manual_review':riskTier==='AMBER'?'assisted_review':'standard_review',must_not_bypass_controls:true,execution_permission:'unchanged',human_approval_required:true,hunt_priority_score:huntPriority,priority_band:eliteCandidate?'ELITE_CANDIDATE':huntPriority>=70?'HIGH_VALUE':huntPriority>=50?'WATCH':'LOW_SIGNAL',fast_lane_mode:fastLane,priority_factors:{economic_score:Number(econ)||0,budget_signal:budget>0,urgency_signal:urgency,rarity_signal:rare,collectability_signal:collectible,payment_ready_signal:paymentReady,evidence_quality:evidenceQuality,source_reliability:sourceReliability,estimated_effort_hours:effort,capital_required:capital,risk_tier:riskTier},note:'100x target is a prioritization ceiling, not a profit guarantee; no bypass, unauthorized access, auto-claim, or autonomous fund movement.'}}};"
+        }
+      },
+      {
+        "id": "808b895d-50d1-4245-a5db-64b94b2bf146",
+        "name": "Revenue Internal Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          220
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "252b4653-2b1a-4cfc-b3f9-f570714e3b56",
+        "name": "Persist Opportunity",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          860,
+          420
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "CGyvISDlrbWLwoUr"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "opportunity_id": "={{ $json.fingerprint || ('opp_' + Date.now()) }}",
+              "fingerprint": "={{ $json.fingerprint || '' }}",
+              "category": "={{ $json.high_risk_triage?.priority_band || $json.route || 'watch' }}",
+              "priority": "={{ $json.high_risk_triage?.priority_band || 'WATCH' }}",
+              "score": "={{ Number($json.score || 0) }}",
+              "confidence": "={{ Number($json.confidence || 0) }}",
+              "action": "={{ $json.route || 'watch' }}",
+              "reason": "={{ $json.high_risk_triage?.note || $json.reason || '' }}",
+              "automation_ready": "={{ Boolean($json.automation_ready) }}",
+              "source": "={{ $json.source || 'unknown' }}",
+              "signal_type": "={{ $json.signal_type || 'unknown' }}",
+              "entity": "={{ typeof $json.entity === 'object' ? JSON.stringify($json.entity) : String($json.entity || '') }}",
+              "observed_at": "={{ $json.observed_at || new Date().toISOString() }}",
+              "status": "open",
+              "evidence_quality": "={{ Number($json.freshness?.evidence_confidence || 0) }}"
+            },
+            "schema": [
+              {
+                "id": "opportunity_id",
+                "displayName": "opportunity_id",
+                "type": "string"
+              },
+              {
+                "id": "fingerprint",
+                "displayName": "fingerprint",
+                "type": "string"
+              },
+              {
+                "id": "category",
+                "displayName": "category",
+                "type": "string"
+              },
+              {
+                "id": "priority",
+                "displayName": "priority",
+                "type": "string"
+              },
+              {
+                "id": "score",
+                "displayName": "score",
+                "type": "number"
+              },
+              {
+                "id": "confidence",
+                "displayName": "confidence",
+                "type": "number"
+              },
+              {
+                "id": "action",
+                "displayName": "action",
+                "type": "string"
+              },
+              {
+                "id": "reason",
+                "displayName": "reason",
+                "type": "string"
+              },
+              {
+                "id": "automation_ready",
+                "displayName": "automation_ready",
+                "type": "boolean"
+              },
+              {
+                "id": "source",
+                "displayName": "source",
+                "type": "string"
+              },
+              {
+                "id": "signal_type",
+                "displayName": "signal_type",
+                "type": "string"
+              },
+              {
+                "id": "entity",
+                "displayName": "entity",
+                "type": "string"
+              },
+              {
+                "id": "observed_at",
+                "displayName": "observed_at",
+                "type": "date"
+              },
+              {
+                "id": "status",
+                "displayName": "status",
+                "type": "string"
+              },
+              {
+                "id": "evidence_quality",
+                "displayName": "evidence_quality",
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "218a7efe-094f-4b62-8d5d-ad579180e696",
+        "name": "Prepare Opportunity Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          420
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const original=$(\"High-Risk Opportunity Triage\").first().json||{};const stored=$input.first().json||{};return [{json:{...original,opportunity_store:{persisted:true,row_id:stored.id??null,created_at:stored.createdAt??null}}}];"
+        }
+      }
+    ],
+    "nodeGroups": [
+      {
+        "id": "58cca122-0537-4018-84bf-6b3f850cc817",
+        "name": "Opportunity Intelligence Pipeline",
+        "nodeNames": [
+          "Opportunity Intelligence Normalizer",
+          "Opportunity Research Planner",
+          "Opportunity Memory Read",
+          "Attach Opportunity Memory",
+          "Economic ROI Gate",
+          "Monetization Router",
+          "High-Risk Opportunity Triage"
+        ],
+        "description": "Normalization, research, memory, economics, monetization, and high-risk triage stages."
+      }
+    ],
+    "activeVersion": {
+      "sameAsDraft": false,
+      "nodes": [
+        {
+          "id": "778cc2cb-04c9-4e0d-b3db-906ed23a361a",
+          "name": "Opportunity Intelligence Intake",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2.1,
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "midad-opportunity-intelligence",
+            "responseMode": "responseNode",
+            "options": {}
+          },
+          "webhookId": "d75f2479-e28f-4e01-a249-2c43269f7069",
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "BYNQqcwbZBNRGbjw",
+              "name": "X-MIDAD-KEY"
+            }
+          }
+        },
+        {
+          "id": "b6e8e628-babd-4386-9822-0ec0e8a05a4c",
+          "name": "Opportunity Intelligence Normalizer",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            224,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const x=$input.first().json||{};const b=x.body||x;const items=Array.isArray(b.opportunities)?b.opportunities:[b];const now=Date.now();const clean=v=>String(v||'').trim();const ageDays=d=>{const t=Date.parse(d||'');return Number.isFinite(t)?Math.max(0,(now-t)/86400000):null};return items.slice(0,100).map(o=>{const title=clean(o.title||o.project).slice(0,300);const description=clean(o.description||o.brief).slice(0,12000);const text=(title+' '+description).toLowerCase();const source=clean(o.source||'unknown').slice(0,200);const url=clean(o.url||o.link).slice(0,1000);const riskTerms=/(bypass|captcha|kyc|anti-sybil|malware|exploit|fraud|stolen|counterfeit|impersonat|credential|password|session token)/i;const risk=riskTerms.test(text);const ambiguity=/(scrap|scrape|crawl|bot|automated access|terms unclear|private|login required)/i.test(text);const recurring=/(monthly|weekly|recurring|ongoing|bulk|batch|catalog|maintenance|retainer)/i.test(text);const automation=/(ai|automation|api|workflow|n8n|integration|data|dashboard|report|chatbot|spreadsheet|pdf)/i.test(text);const deepSignals=(text.match(/api|integration|workflow|automation|data|dashboard|report|chatbot|batch|catalog|maintenance/g)||[]).length;const budget=Number(o.budget||o.max_budget||0);const hours=Number(o.hours_estimate||o.estimated_hours||0);const hourly=hours>0&&budget>0?budget/hours:0;const publishedAt=clean(o.published_at||o.created_at||o.date);const age=ageDays(publishedAt);const freshness=age===null?55:Math.max(0,Math.min(100,100-age*4));const sourceReliability=Number.isFinite(Number(o.source_reliability))?Math.max(0,Math.min(100,Number(o.source_reliability))):55;const evidenceConfidence=Math.round((sourceReliability*0.55+freshness*0.25+(url?10:0)+(publishedAt?10:0))*100)/100;const canonical=(source+'|'+title.toLowerCase()+'|'+url).slice(0,1600);let h=2166136261;for(let i=0;i<canonical.length;i++){h^=canonical.charCodeAt(i);h=Math.imul(h,16777619)>>>0}const fingerprint='opp_'+h.toString(16);const novelty=Number.isFinite(Number(o.novelty_score))?Number(o.novelty_score):Math.min(100,40+deepSignals*8+(recurring?15:0)+(freshness>75?15:0));const economic=Math.round(Math.max(0,Math.min(100,(automation?30:12)+(recurring?20:0)+(hourly?Math.min(30,hourly/2):8)+(freshness/10)+(source!=='unknown'?8:0)+(novelty/10)-(risk?65:0)-(ambiguity?15:0))));const route=risk?'reject_review':ambiguity?'human_source_review':economic>=75?'priority':economic>=50?'review':'watch';return {json:{fingerprint,title,description,budget,hours_estimate:hours,currency:clean(o.currency||'USD').toUpperCase(),source,url,published_at:publishedAt||null,observed_at:new Date(now).toISOString(),signals:{automation_fit:automation,recurring_fit:recurring,deep_intelligence_score:Math.min(100,40+deepSignals*8),risk,ambiguity},freshness:{age_days:age,freshness_score:Math.round(freshness),source_reliability:sourceReliability,evidence_confidence:evidenceConfidence},novelty:{novelty_score:Math.round(novelty),new_signal:novelty>=75},economics:{implied_hourly_rate:hourly?Math.round(hourly*100)/100:null},economic_score:economic,route,human_approval_required:true,external_submission:false,legal_boundary:{mode:risk?'RED':ambiguity?'AMBER':'GREEN',action:risk?'do_not_automate':ambiguity?'human_verify_source_terms':'automation_allowed_within_authorized_source',reason:risk?'Potentially prohibited or unsafe activity detected':ambiguity?'Source access or automation conditions are unclear':'No prohibited pattern detected'}}});});"
+          }
+        },
+        {
+          "id": "0f0d9a67-96be-4764-ab2c-efb422649b25",
+          "name": "Return Opportunity Intelligence",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "typeVersion": 1.4,
+          "position": [
+            448,
+            0
+          ],
+          "parameters": {
+            "respondWith": "json",
+            "responseBody": "={{ JSON.stringify($input.all().map(i=>i.json)) }}",
+            "options": {}
+          }
+        },
+        {
+          "id": "b689129a-d689-4552-9b1a-7a5f2224cf58",
+          "name": "Opportunity Research Planner",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            448,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": "const x=$input.item.json||{}; const gaps=[]; const seen=[]; const source=String(x.source||\"unknown\"); const url=String(x.url||\"\").trim(); const publishedAt=x.published_at||null; const freshness=Number(x.freshness?.freshness_score); const reliability=Number(x.freshness?.source_reliability); const evidenceConfidence=Number(x.freshness?.evidence_confidence); if(source===\"unknown\") gaps.push(\"identify_source\"); else seen.push(\"source_identity\"); if(!url) gaps.push(\"source_url\"); else seen.push(\"source_reference\"); if(!publishedAt) gaps.push(\"publication_timestamp\"); else seen.push(\"publication_timestamp\"); if(!Number.isFinite(reliability)||reliability<60) gaps.push(\"source_reliability_verification\"); if(!Number.isFinite(freshness)||freshness<60) gaps.push(\"freshness_recheck\"); if(!Number.isFinite(evidenceConfidence)||evidenceConfidence<65) gaps.push(\"evidence_quality_recheck\"); if(x.signals?.ambiguity) gaps.push(\"source_terms_and_access_review\"); if(x.signals?.risk) gaps.push(\"safety_and_legal_review\"); if(x.economics?.implied_hourly_rate===null&&Number(x.budget||0)<=0) gaps.push(\"economic_terms\"); if(x.signals?.recurring_fit) seen.push(\"recurring_work_signal\"); if(x.signals?.automation_fit) seen.push(\"automation_fit_signal\"); const route=String(x.route||\"watch\"); const hours=route===\"priority\"?6:route===\"review\"||route===\"human_source_review\"?24:route===\"reject_review\"?4:72; const next=new Date(Date.now()+hours*3600000).toISOString(); const status=gaps.length?\"needs_evidence\":route===\"watch\"?\"monitor\":\"open\"; return {json:{...x,research_plan:{status,evidence_seen:seen,evidence_gaps:gaps,research_priority:gaps.length>=3?\"high\":gaps.length?\"medium\":\"low\",next_verification_at:next,verification_window_hours:hours,provenance:{derived_from:\"opportunity_normalizer\",memory_write:false},execution_permission:\"unchanged\"},memory_contract:{version:\"research-memory-1.0\",opportunity_fingerprint:x.fingerprint||null,persistence:\"adapter_required\",fail_safe:true,must_not_grant_execution:true}}};"
+          }
+        },
+        {
+          "id": "42db9c41-b4cc-4509-bede-6cad7f70daa0",
+          "name": "Opportunity Memory Read",
+          "type": "n8n-nodes-base.supabase",
+          "typeVersion": 1,
+          "position": [
+            700,
+            0
+          ],
+          "parameters": {
+            "resource": "row",
+            "operation": "getAll",
+            "tableId": "midad_opportunity_evidence",
+            "returnAll": false,
+            "limit": 20,
+            "filterType": "manual",
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "fingerprint",
+                  "condition": "eq",
+                  "keyValue": "={{ $json.fingerprint }}"
+                }
+              ]
+            },
+            "orderBy": "last_seen_at.desc"
+          },
+          "alwaysOutputData": true,
+          "credentials": {
+            "supabaseApi": {
+              "id": "eRy3qisYfdklNrHS",
+              "name": "Supabase account"
+            }
+          }
+        },
+        {
+          "id": "712700cf-c76b-4d93-8e4f-f2b3de5f87be",
+          "name": "Attach Opportunity Memory",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            940,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForAllItems",
+            "language": "javaScript",
+            "jsCode": "const plans=$(\"Opportunity Research Planner\").all().map(i=>i.json); const rows=$input.all().map(i=>i.json); const byFp=new Map(); for(const r of rows){const fp=String(r.fingerprint??''); if(fp){if(!byFp.has(fp)) byFp.set(fp,[]); byFp.get(fp).push(r);}} return plans.map(p=>{const m=byFp.get(String(p.fingerprint??''))||[]; return {json:{...p,memory:{contract_version:'research-memory-1.0',found:m.length>0,count:m.length,records:m.slice(0,20),persistence:'supabase_via_adapter_interface',must_not_grant_execution:true}}};});"
+          }
+        },
+        {
+          "id": "d471456f-389f-4c02-b6ee-be993568ff5a",
+          "name": "Economic ROI Gate",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            1140,
+            300
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": "const x=$input.item.json||{};const num=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const budget=Math.max(0,num(x.budget));const hours=Math.max(0,num(x.hours_estimate));const rate=hours>0&&budget>0?budget/hours:null;const feePct=clamp(num(x.economics?.platform_fee_pct,0),0,100);const fixedFees=Math.max(0,num(x.economics?.fixed_fees,0));const gross=budget;const fees=gross*(feePct/100)+fixedFees;const net=Math.max(0,gross-fees);const targetMargin=clamp(num(x.economics?.target_margin_pct,30),0,90);const minNet=gross*(1-targetMargin/100);const capital=Math.max(0,num(x.economics?.capital_required,0));const risk=x.legal_boundary?.mode||'UNKNOWN';const evidence=Number(x.freshness?.evidence_confidence||0);const economicScore=clamp(num(x.economic_score,0),0,100);const viable=net>0&&(capital<=0||net>capital)&&risk==='GREEN'&&evidence>=65;const roiPct=capital>0?((net-capital)/capital)*100:null;const pay=String(x.economics?.payment_method||'').trim();const paymentReady=/crypto|stablecoin|usdc|usdt|bank|paypal|stripe|invoice/i.test(pay);const verdict=viable?'economically_viable':risk!=='GREEN'?'blocked_by_risk':evidence<65?'needs_evidence':net<=0?'not_viable':'needs_review';return {json:{...x,economics:{...(x.economics||{}),gross_budget:gross,platform_fee_pct:feePct,fixed_fees:fixedFees,estimated_fees:Math.round(fees*100)/100,estimated_net:Math.round(net*100)/100,capital_required:capital,implied_hourly_rate:rate?Math.round(rate*100)/100:null,net_after_capital:Math.round((net-capital)*100)/100,roi_pct:roiPct===null?null:Math.round(roiPct*100)/100,payment_method:pay||null,payment_ready:paymentReady},economic_gate:{version:'roi-gate-1.0',verdict,viable,checks:{positive_net:net>0,capital_covered:capital<=0||net>capital,risk_green:risk==='GREEN',evidence_sufficient:evidence>=65,economic_score:economicScore},min_net_reference:Math.round(minNet*100)/100},execution_permission:'unchanged',human_approval_required:true}};"
+          }
+        },
+        {
+          "id": "cb69ddfa-de0c-4621-b1f5-31be799f9be8",
+          "name": "Monetization Router",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            1260,
+            300
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": "const x=$input.item.json||{};const s=x.signals||{};const e=x.economics||{};const text=((x.title||'')+' '+(x.description||'')).toLowerCase();const risk=x.legal_boundary?.mode||'UNKNOWN';const payment=String(e.payment_method||'').trim();const paymentReady=Boolean(e.payment_ready);let route='service';if(/freelance|client|contract|retainer|proposal|gig/.test(text)) route='freelance';else if(s.automation_fit||/api|automation|workflow|integration|dashboard|report|chatbot/.test(text)) route='automation';else if(/airdrop|quest|reward|bounty|grant|incentive/.test(text)) route='opportunity_reward';else if(/template|dataset|digital product|license|asset/.test(text)) route='digital_asset';const repeatability=s.recurring_fit?'recurring':'one_off';const net=Number(e.estimated_net||0);const capital=Number(e.capital_required||0);const hours=Number(x.hours_estimate||0);const timeToCash=hours>0?hours:(route==='opportunity_reward'?24:72);const evidenceGaps=x.research_plan?.evidence_gaps||[];const monetizationReady=risk==='GREEN'&&evidenceGaps.length===0&&net>0;return {json:{...x,monetization_plan:{version:'monetization-router-1.0',route,service_type:route==='automation'?'automation_delivery':route==='freelance'?'client_delivery':route==='digital_asset'?'digital_product':route==='opportunity_reward'?'reward_or_bounty':'service_delivery',delivery_model:repeatability,payment_methods:payment?[payment]:(paymentReady?['verified_method']:[]),payment_ready:paymentReady,capital_required:capital,estimated_revenue:Number(e.gross_budget||x.budget||0),estimated_fees:Number(e.estimated_fees||0),estimated_net:net,time_to_cash_hours:timeToCash,repeatability,risk_level:risk,evidence_requirements:evidenceGaps,human_approval_required:true,monetization_ready:monetizationReady,execution_permission:'unchanged',external_submission:false,provenance:'derived_from_opportunity_intelligence'}}};"
+          }
+        },
+        {
+          "id": "29ca6eb0-b452-4b85-a721-9a7cd6f4ddc5",
+          "name": "High-Risk Opportunity Triage",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            1480,
+            300
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": "const x=$input.item.json||{};\nconst t=((x.title||'')+' '+(x.description||'')+' '+JSON.stringify(x.economics||{})).toLowerCase();\nconst flags=[];\nconst add=(f,rx)=>{if(rx.test(t))flags.push(f)};\nadd('custody_or_withdrawal_risk',/custody|withdraw|withdrawal|lock|locked|vesting|cliff|claim/);\nadd('capital_at_risk',/deposit|stake|staking|borrow|leverage|margin|liquidat|collateral|investment|capital|required/);\nadd('market_liquidity_risk',/low liquidity|thin liquidity|illiquid|slippage|volatile|volatility/);\nadd('counterparty_risk',/unknown issuer|anonymous team|counterparty|escrow|unverified seller/);\nadd('scam_or_impersonation_signal',/guaranteed profit|double your|send .*receive|seed phrase|private key|password|impersonat|fake support|wallet connect/);\nadd('security_exploit_signal',/exploit|drainer|malware|phishing|credential|session token/);\nadd('regulatory_or_eligibility_review',/kyc|restricted jurisdiction|sanction|regulated|license|accredited|eligibility/);\nadd('automation_barrier',/captcha|anti.?sybil|proof of humanity|human verification|login required/);\n\nconst hardBlock=flags.some(f=>['scam_or_impersonation_signal','security_exploit_signal'].includes(f));\nconst highRisk=flags.length>=2||flags.includes('capital_at_risk')||flags.includes('custody_or_withdrawal_risk');\nconst riskTier=hardBlock?'RED':highRisk?'HIGH':flags.length?'AMBER':'GREEN';\nconst evidence=x.research_plan?.evidence_gaps||[];\nconst withdrawalCheck=flags.includes('custody_or_withdrawal_risk')||flags.includes('capital_at_risk');\n\nconst econ=x.economic_score??x.economics?.economic_score??0;\nconst budget=Number(x.economics?.budget??x.gross_budget??x.reward_usd??0)||0;\nconst effort=Number(x.economics?.hours??x.estimated_hours??x.hours??0)||0;\nconst urgency=/deadline|ends|ending|expires|expir|limited time|first come|closing soon|today|24h|48h|72h/i.test(t);\nconst rare=/exclusive|rare|limited|invite.?only|early access|undervalued|mispriced|uncrowded|few slots|first come/i.test(t);\nconst collectible=/claim|payout|paid|payment|reward|bounty|grant|allocation|distribution|withdraw/i.test(t);\nconst paymentReady=/usdc|usdt|dai|btc|eth|sol|crypto|stablecoin|on.?chain|wallet|bank transfer|paypal/i.test(t);\nconst sourceReliability=Math.max(0,Math.min(100,Number(x.source_reliability??(x.evidence?.source_reliability||0))||0));\nconst evidenceQuality=Math.max(0,Math.min(100,Number(x.evidence_quality_score??x.evidence?.fused_evidence_quality??x.evidence?.evidence_quality??0)||0));\nconst capital=Math.max(0,Number(x.capital_required??x.economics?.capital_required??0)||0);\n\nlet value=Math.max(0,Math.min(100,Number(econ)||0));\nif(budget>0)value+=Math.min(18,Math.log10(budget+1)*6);\nif(urgency)value+=8;\nif(rare)value+=7;\nif(collectible)value+=7;\nif(paymentReady)value+=5;\nif(sourceReliability>=70)value+=5;\nif(evidenceQuality>=70)value+=5;\nif(effort>0)value-=Math.min(10,effort/10);\nif(capital>0)value-=Math.min(15,Math.log10(capital+1)*4);\nif(riskTier==='HIGH')value-=10;\nif(riskTier==='RED')value-=35;\nif(flags.includes('automation_barrier'))value-=5;\nconst huntPriority=Math.round(Math.max(0,Math.min(100,value)));\nconst eliteCandidate=huntPriority>=85&&!hardBlock;\nconst fastLane=eliteCandidate&&riskTier==='GREEN'?'standard_review':eliteCandidate?'paper_or_manual_review':'normal_review';\n\nreturn {json:{...x,high_risk_triage:{version:'high-risk-triage-1.1',risk_tier:riskTier,flags:[...new Set(flags)],hard_block:hardBlock,requires_human_review:riskTier!=='GREEN'||evidence.length>0,withdrawal_and_settlement_check:withdrawalCheck?'required':'not_indicated',source_verification_required:riskTier!=='GREEN'||evidence.length>0,allowed_mode:hardBlock?'research_only':riskTier==='HIGH'?'paper_or_manual_review':riskTier==='AMBER'?'assisted_review':'standard_review',must_not_bypass_controls:true,execution_permission:'unchanged',human_approval_required:true,hunt_priority_score:huntPriority,priority_band:eliteCandidate?'ELITE_CANDIDATE':huntPriority>=70?'HIGH_VALUE':huntPriority>=50?'WATCH':'LOW_SIGNAL',fast_lane_mode:fastLane,priority_factors:{economic_score:Number(econ)||0,budget_signal:budget>0,urgency_signal:urgency,rarity_signal:rare,collectability_signal:collectible,payment_ready_signal:paymentReady,evidence_quality:evidenceQuality,source_reliability:sourceReliability,estimated_effort_hours:effort,capital_required:capital,risk_tier:riskTier},note:'100x target is a prioritization ceiling, not a profit guarantee; no bypass, unauthorized access, auto-claim, or autonomous fund movement.'}}};"
+          }
+        },
+        {
+          "id": "808b895d-50d1-4245-a5db-64b94b2bf146",
+          "name": "Revenue Internal Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "typeVersion": 1.2,
+          "position": [
+            0,
+            220
+          ],
+          "parameters": {
+            "inputSource": "passthrough"
+          }
+        }
+      ],
+      "connections": {
+        "Opportunity Intelligence Intake": {
+          "main": [
+            [
+              {
+                "node": "Opportunity Intelligence Normalizer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Opportunity Intelligence Normalizer": {
+          "main": [
+            [
+              {
+                "node": "Opportunity Research Planner",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Opportunity Research Planner": {
+          "main": [
+            [
+              {
+                "node": "Opportunity Memory Read",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Opportunity Memory Read": {
+          "main": [
+            [
+              {
+                "node": "Attach Opportunity Memory",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Attach Opportunity Memory": {
+          "main": [
+            [
+              {
+                "node": "Economic ROI Gate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Economic ROI Gate": {
+          "main": [
+            [
+              {
+                "node": "Monetization Router",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Monetization Router": {
+          "main": [
+            [
+              {
+                "node": "High-Risk Opportunity Triage",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "High-Risk Opportunity Triage": {
+          "main": [
+            [
+              {
+                "node": "Return Opportunity Intelligence",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Revenue Internal Trigger": {
+          "main": [
+            [
+              {
+                "node": "Opportunity Intelligence Normalizer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      },
+      "nodeGroups": [
+        {
+          "id": "58cca122-0537-4018-84bf-6b3f850cc817",
+          "name": "Opportunity Intelligence Pipeline",
+          "nodeNames": [
+            "Opportunity Intelligence Normalizer",
+            "Opportunity Research Planner",
+            "Opportunity Memory Read",
+            "Attach Opportunity Memory",
+            "Economic ROI Gate",
+            "Monetization Router",
+            "High-Risk Opportunity Triage"
+          ],
+          "description": "Normalization, research, memory, economics, monetization, and high-risk triage stages."
+        }
+      ]
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    }
+  }
+}
