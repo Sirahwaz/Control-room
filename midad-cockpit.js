@@ -26,9 +26,9 @@ async function authenticate(){
  if(!j.token)throw new Error("session_token_missing");
  S.token=j.token;S.connected=true;S.user={telegram_user_id:j.telegram_user_id||null};return j.token;
 }
-async function api(action,extra={},retry=true){
- try{await authenticate();return await post({action,operation:action,token:S.token,client:"midad-cockpit",client_version:CFG.build,...extra})}
- catch(e){if(retry&&/session_expired|missing_session/.test(String(e.message))){S.token="";return api(action,extra,false)}throw e}
+async function api(action,extra={},retry=true,timeout=20000){
+ try{await authenticate();return await post({action,operation:action,token:S.token,client:"midad-cockpit",client_version:CFG.build,...extra},timeout)}
+ catch(e){if(retry&&/session_expired|missing_session/.test(String(e.message))){S.token="";return api(action,extra,false,timeout)}throw e}
 }
 async function refresh(silent=false){
  try{const j=await api("dashboard");S.data=j;S.connected=true;S.error="";render();if(!silent)toast("تم تحديث النواة.","ok");return j}
@@ -103,7 +103,15 @@ function command(cmd){
  if(cmd==="refresh")refresh();else if(cmd==="aiClear"){S.aiMessages=[];render()}else if(cmd==="keyConnect"){const k=$("#keyInput")?.value?.trim();if(!k)return toast("أدخل مفتاح الوصول.","bad");saveKey(k);refresh()}else if(cmd==="closeTask")$("#taskModal")?.remove();else if(cmd==="wallets")toast("عدد المحافظ المسجلة: "+n((S.data?.wallets||[]).length));else if(cmd==="telegram"){api("telegram_webhook_info").then(j=>{S.telegram=j;render();toast("تم فحص Telegram.","ok")}).catch(e=>toast("Telegram: "+e.message,"bad"))}else if(cmd==="system"){api("dashboard").then(()=>toast("النواة تعمل.","ok")).catch(e=>toast("النواة: "+e.message,"bad"))}else if(cmd==="focusCommand"){const v=window.prompt("أدخل أمر MIDAD");if(v){const q=$("#quick");if(q)q.value=v;command("quick")}}}
 async function sendAI(){
  const i=$("#aiInput");if(!i||S.aiBusy)return;const prompt=i.value.trim();if(!prompt)return;
- S.aiMessages.push({role:"user",text:prompt});i.value="";S.aiBusy=true;render();try{const j=await api("ai_assist",{prompt,route:"ai"});S.aiMessages.push({role:"ai",text:j.answer||"لم يصل رد."})}catch(e){S.aiMessages.push({role:"ai",text:"فشل MIDAD AI: "+e.message})}finally{S.aiBusy=false;render()}
+ const mode=/^حلّل هذه الفرصة[:：]/.test(prompt)||/فرصة|opportunity/i.test(prompt)?"opportunity":/مال|دخل|cash|payment|pipeline|client/i.test(prompt)?"money":/مهم|تدخل|approval|موافقة|task/i.test(prompt)?"tasks":/osint|رصد|إشارات|signal|radar|sentinel/i.test(prompt)?"osint":"system";
+ S.aiMessages.push({role:"user",text:prompt});i.value="";S.aiBusy=true;render();
+ try{
+   const j=await api("ai_assist",{prompt,route:"ai",ai_mode:mode},true,75000);
+   S.aiMessages.push({role:"ai",text:j.answer||"لم يصل رد."});
+ }catch(e){
+   const m=String(e?.message||e);
+   S.aiMessages.push({role:"ai",text:/aborted|abort/i.test(m)?"فشل MIDAD AI: انتهت مهلة الرد قبل وصول النتيجة.":"فشل MIDAD AI: "+m});
+ }finally{S.aiBusy=false;render()}
 }
 function bootTelegram(){const t=TG();if(!t)return;try{t.ready();t.expand()}catch{}let tries=0;(function a(){tries++;if(t.initData){refresh(true);return}if(tries<20)setTimeout(a,250)})()}
 async function boot(){render();bootTelegram();if(!S.connected&&!TG()?.initData&&savedKey())refresh(true);setInterval(()=>{if(S.connected&&S.view!=="ai")refresh(true)},90000)}
