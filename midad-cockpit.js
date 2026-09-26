@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r1"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r2"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -97,8 +97,8 @@ function bind(){
  $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
- $("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
- $("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
+ $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
+ $$("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
  $("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
  $$("[data-cmd]").forEach(b=>b.onclick=()=>command(b.dataset.cmd));
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
@@ -121,15 +121,15 @@ function openBlueprint(id){
 function openOpp(id){const o=[...(S.data?.money_opportunities||[]),...(S.data?.opportunities||[])].find(x=>String(x.id)===String(id));if(!o)return;S.view="ai";render();setTimeout(()=>{const i=$("#aiInput");if(i){i.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ هل أستطيع تنفيذها وما الخطوة التالية؟";sendAI()}},50)}
 async function runAction(a){
  if(S.busy)return;
- S.busy=true;$("[data-run]").forEach(b=>b.disabled=true);
- const limits={run_opportunity_scan:90000,run_osint_scan:75000,run_autonomy_now:90000,run_mining_monitor:60000};
+ S.busy=true;$$("[data-run]").forEach(b=>b.disabled=true);
+ const limits={run_opportunity_scan:90000,run_money_scan:90000,run_osint_scan:75000,run_autonomy_now:90000,run_mining_monitor:60000};
  try{
    await api(a,{},true,limits[a]||45000);
    await api("dashboard",{},true,45000);
    await refresh(true);
-   toast(({run_opportunity_scan:"مسح الفرص",run_osint_scan:"مسح OSINT",run_autonomy_now:"دورة التشغيل",run_mining_monitor:"فحص التعدين"})[a]||a+" تم.","ok")
+   toast(({run_opportunity_scan:"مسح الفرص",run_money_scan:"مسح مالي مباشر",run_osint_scan:"مسح OSINT",run_autonomy_now:"دورة التشغيل",run_mining_monitor:"فحص التعدين"})[a]||a+" تم.","ok")
  }catch(e){toast("فشل "+a+": "+e.message,"bad")}
- finally{S.busy=false;$("[data-run]").forEach(b=>b.disabled=false)}
+ finally{S.busy=false;$$("[data-run]").forEach(b=>b.disabled=false)}
 }
 async function decide(id,decision){try{await api("approval_decide",{approval_id:id,decision,note:"Decision from MIDAD Cockpit"});await refresh(true);toast("تم تحديث الموافقة.","ok")}catch(e){toast("تعذر تحديث الموافقة: "+e.message,"bad")}}
 async function taskUpdate(id,status){try{await api("human_task_update",{task_id:id,status,response_data:{source:"midad-cockpit"}});await refresh(true);toast("تم تحديث المهمة.","ok")}catch(e){toast("تعذر تحديث المهمة: "+e.message,"bad")}}
