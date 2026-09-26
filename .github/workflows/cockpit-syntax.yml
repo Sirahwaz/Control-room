@@ -1,0 +1,12 @@
+name: Cockpit Syntax Check
+on:
+  push:
+    paths:
+      - "midad-cockpit.js"
+      - ".github/workflows/cockpit-syntax.yml"
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --check midad-cockpit.js
