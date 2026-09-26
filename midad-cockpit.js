@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r4"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-26-r5"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -100,7 +100,7 @@ function bind(){
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
  $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
  $$("[data-blueprint]").forEach(b=>b.onclick=()=>openBlueprint(b.dataset.blueprint));
- $("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
+ $$("[data-prompt]").forEach(b=>b.onclick=()=>{const i=$("#aiInput");if(i){i.value=b.dataset.prompt;i.focus();sendAI()}});
  $$("[data-cmd]").forEach(b=>b.onclick=()=>command(b.dataset.cmd));
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
