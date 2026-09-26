@@ -37,7 +37,7 @@ async function refresh(silent=false){
 function H(){return S.data?.health||{}}
 function tasks(){return (S.data?.human_tasks||[]).filter(x=>["OPEN","ACKNOWLEDGED"].includes(String(x.status||"").toUpperCase()))}
 function apps(){return S.data?.approvals||[]}
-function opps(){return (S.data?.opportunities||[]).slice().sort((a,b)=>Number(b.score||0)-Number(a.score||0)}
+function opps(){return (S.data?.opportunities||[]).slice().sort((a,b)=>Number(b.score||0)-Number(a.score||0))}
 function sigs(){return S.data?.signals||[]}
 function pipeline(){return opps().reduce((s,o)=>s+Number(o.expected_value||0),0)}
 function nav(id,icon,label){return '<button data-view="'+id+'"><b>'+icon+'</b><span>'+label+'</span></button>'}
