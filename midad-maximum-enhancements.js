@@ -232,6 +232,7 @@
   }
 
   var ROUTE_LABELS = {
+    focus:["مركز التركيز","FOCUS CENTER","Focus Center","FOCUS CENTER"],
     dashboard:["الرئيسية","NEURAL INDEX","Command Center","NEURAL INDEX"],
     mission:["غرفة المهمة","MISSION","Mission Control","MISSION"],
     automation:["الأتمتة والمهام","TASK MATRIX","Automation & Tasks","TASK MATRIX"],
@@ -431,41 +432,26 @@
     checks.push(document.getElementById("app") ? "ui-root:OK" : "ui-root:MISSING");
     checks.push(window.fetch ? "fetch:OK" : "fetch:MISSING");
     try {
-      localStorage.setItem("midad_diag_ping", "1");
-      localStorage.removeItem("midad_diag_ping");
-      checks.push("storage:OK");
-    } catch (e) { checks.push("storage:BLOCKED"); }
+      sessionStorage.setItem("midad_diag_ping","1");
+      sessionStorage.removeItem("midad_diag_ping");
+      checks.push("session-storage:OK");
+    } catch (e) { checks.push("session-storage:BLOCKED"); }
     checks.push(window.Telegram && window.Telegram.WebApp ? "telegram:DETECTED" : "telegram:BROWSER");
-    var url = window.MIDAD_CONFIG && window.MIDAD_CONFIG.supabaseUrl;
-    var fn = window.MIDAD_CONFIG && window.MIDAD_CONFIG.controlRoomFunction;
-    if (url && fn) {
-      try {
-        var input = JSON.stringify({
-          operation: "dashboard",
-          action: "dashboard",
-          telegram_init_data: window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp.initData || "" : "",
-          access_key: (document.querySelector("#accessKey") || {}).value || "",
-          request_id: uid("diag"),
-          client: "midad-control-room"
-        });
-        var res = await window.fetch(url + fn, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: input
-        });
-        checks.push("backend:" + res.status);
-        if (!res.ok) {
-          var body = await res.clone().json().catch(function(){return{};});
-          checks.push("error:" + extractError(body, res.status));
-        }
-      } catch (e2) {
-        checks.push("backend:" + (e2.message || "FAIL"));
+    try {
+      // Reuse the Control Room's authenticated client path instead of issuing
+      // an unauthenticated POST that always produces "missing_access_key".
+      if (window.__MIDAD_CONTROL_ROOM_DIAG && typeof window.__MIDAD_CONTROL_ROOM_DIAG === "function") {
+        var result = await window.__MIDAD_CONTROL_ROOM_DIAG();
+        checks.push(result && result.ok ? "backend:OK" : "backend:" + String(result && (result.error || result.status) || "FAIL"));
+      } else {
+        checks.push("backend:CLIENT_NOT_EXPOSED");
       }
-    } else {
-      checks.push("backend:CONFIG_MISSING");
+    } catch (e2) {
+      checks.push("backend:" + (e2.message || "FAIL"));
     }
-    showDiagnostic(checks.join(" • "), !checks.some(function(x){return /MISSING|BLOCKED|backend:(4|5|[A-Z])/i.test(x);}));
+    showDiagnostic(checks.join(" • "), !checks.some(function(x){return /MISSING|BLOCKED|CLIENT_NOT|backend:(4|5|[A-Z])/i.test(x);}));
   }
+
 
   function injectAppearanceCard() {
     if (!window.location.hash || window.location.hash.slice(1) !== "settings") return;
