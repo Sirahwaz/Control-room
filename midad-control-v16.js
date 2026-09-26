@@ -101,6 +101,7 @@ async function boot(){
  catch(e){S.error=e.message;render()}
  finally{window.__MIDAD_V16_READY=true}
 }
+(function(){var p=document.createElement("script");p.src="./midad-control-v16-interactions.js?v=20260926a";document.head.appendChild(p)})();
 window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();doAction("cmd")}});
 boot();
 })();
