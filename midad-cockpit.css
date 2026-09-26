@@ -29,3 +29,25 @@ button,input,textarea{font:inherit}button{cursor:pointer}
 .toastbox{position:fixed;left:22px;bottom:22px;z-index:100;display:grid;gap:8px}.toast{padding:11px 13px;border:1px solid #2a3949;background:#101821;border-radius:13px;color:#dfe8f2;font-size:11px;box-shadow:var(--shadow);max-width:360px}.toast.bad{border-color:#572936}.toast.ok{border-color:#285540}
 @media(max-width:1100px){#cr{grid-template-columns:72px 1fr}.cr-main{padding:0 14px 28px}.cr-hero,.ai-shell{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,1fr)}.more-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){#cr{grid-template-columns:1fr}.cr-rail{position:fixed;bottom:0;top:auto;height:64px;width:100%;border-left:0;border-top:1px solid var(--line);flex-direction:row;padding:8px 10px}.cr-mark,.cr-rail-spacer{display:none}.cr-nav{display:flex;gap:6px}.cr-nav button,.cr-more{aspect-ratio:auto;height:48px;flex:1}.cr-nav button span,.cr-more span{font-size:8px}.cr-main{padding:0 10px 84px}.cr-top{height:70px}.cr-command{min-width:0;flex:1}.cr-command .btn{display:none}.hero-panel h1{font-size:39px}.kpis{grid-template-columns:repeat(2,1fr)}.g2,.g3{grid-template-columns:1fr}.more-grid{grid-template-columns:1fr}.ai-chat{min-height:calc(100dvh - 170px)}}
+
+
+/* AI readability layer */
+.bubble-body{line-height:1.9;font-size:15px;overflow-wrap:anywhere}
+.bubble.ai .bubble-body{white-space:normal}
+.md-h{font-weight:800;font-size:18px;margin:10px 0 6px}
+.md-li{padding-inline-start:8px;margin:4px 0}
+.md-table{margin:12px 0;border:1px solid rgba(120,150,190,.16);border-radius:12px;overflow:hidden;background:rgba(8,14,24,.42)}
+.md-tr{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0;border-bottom:1px solid rgba(120,150,190,.12)}
+.md-tr:last-child{border-bottom:0}
+.md-tr span{padding:8px 10px;border-inline-start:1px solid rgba(120,150,190,.10)}
+.md-tr span:first-child{border-inline-start:0}
+.bubble code{font-family:var(--mono);font-size:.9em;padding:2px 5px;border-radius:5px;background:rgba(120,150,190,.12)}
+.ai-compose textarea{min-height:110px;line-height:1.8}
+.btn:disabled{opacity:.5;cursor:wait}
+@media (max-width:700px){
+  .bubble-body{font-size:14px;line-height:1.85}
+  .md-h{font-size:16px}
+  .md-tr{display:block}
+  .md-tr span{display:block;border-inline-start:0;border-top:1px solid rgba(120,150,190,.08)}
+  .md-tr span:first-child{border-top:0}
+}
