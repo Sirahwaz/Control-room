@@ -51,3 +51,6 @@ button,input,textarea{font:inherit}button{cursor:pointer}
   .md-tr span{display:block;border-inline-start:0;border-top:1px solid rgba(120,150,190,.08)}
   .md-tr span:first-child{border-top:0}
 }
+
+.blueprint-card{cursor:pointer;border-color:rgba(90,210,180,.22);background:linear-gradient(135deg,rgba(20,40,38,.52),rgba(8,14,24,.72))}
+.blueprint-card:hover{transform:translateY(-2px);border-color:rgba(90,210,180,.42)}
