@@ -46,8 +46,11 @@ function aiBox(){
  return '<section class="m16-panel m16-ai"><div class="m16-head"><div><h2>'+esc(tx("MIDAD يشرح لك","MIDAD explains"))+'</h2><p>'+esc(tx("اسأل بعبارة طبيعية: ماذا يعني هذا؟ ماذا أفعل؟ ماذا أتوقع؟","Ask naturally: What does this mean? What should I do? What should I expect?"))+'</p></div>'+chip("AI","green")+'</div><div class="m16-body"><div class="m16-truth"><b>'+esc(tx("قاعدة المترجم","Interpreter rule"))+'</b><p>'+esc(tx("لن نترك رقمًا أو إشارة بلا معنى عملي.","No number or signal is shown without practical meaning."))+'</p></div><textarea id="aiIn" placeholder="'+esc(tx("مثال: اشرح الإشارة، لماذا تهمني، ماذا أفعل الآن، ماذا أتوقع، وما العائق؟","Example: explain the signal, why it matters, what I should do, what to expect, and what blocks me."))+'"></textarea><div class="m16-action"><button class="m16-btn primary" data-a="ai">'+esc(tx("اسأل MIDAD","Ask MIDAD"))+'</button><button class="m16-btn" data-a="aiExplain">'+esc(tx("اشرح المحدد","Explain selected"))+'</button></div><div id="aiOut"></div></div></section>'
 }
 async function explain(item,prompt){
- try{S.busy=true;render();let j=await api("ai_assist",{prompt:prompt||tx("اشرح لي هذا العنصر عمليًا: ماذا يعني؟ لماذا يهم؟ ماذا أفعل الآن؟ ماذا أتوقع؟ وما العائق؟","Explain this item practically: what does it mean, why does it matter, what should I do now, what should I expect, and what blocks it?"),selected_item:item});render();let o=$("#aiOut");if(o)o.innerHTML='<div class="m16-answer">'+esc(j.answer||"")+'</div>'}catch(e){S.error=e.message;toast(e.message);S.busy=false;render()}
- finally{S.busy=false}
+ try{
+  S.busy=true;S.error="";render();
+  let j=await api("ai_assist",{prompt:prompt||tx("اشرح لي هذا العنصر عمليًا: ماذا يعني؟ لماذا يهم؟ ماذا أفعل الآن؟ ماذا أتوقع؟ وما العائق؟","Explain this item practically: what does it mean, why does it matter, what should I do now, what should I expect, and what blocks it?"),selected_item:item});
+  S.answer=j.answer||"";S.selected=item||null;S.busy=false;render();toast(tx("تم وضع الشرح في لوحة القرار","Explanation added to the decision panel"));
+ }catch(e){S.error=e.message;S.busy=false;toast(e.message);render()}
 }
 async function run(a,label,extra){
  if(S.busy)return;S.busy=true;S.error="";render();try{let j=await api(a,extra);S.data=j.health?j:await api("overview");toast(label)}catch(e){S.error=e.message;toast(label+": "+e.message)}S.busy=false;render()
