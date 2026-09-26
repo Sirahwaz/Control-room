@@ -1,0 +1,16 @@
+{
+  "name":"MIDAD — Neural Command Center",
+  "short_name":"MIDAD",
+  "description":"MIDAD intelligent control room and revenue operations.",
+  "lang":"ar",
+  "dir":"rtl",
+  "start_url":"./?source=pwa",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#05070c",
+  "theme_color":"#070b14",
+  "orientation":"portrait-primary",
+  "icons":[
+    {"src":"./midad-pwa-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
