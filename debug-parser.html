@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><body style="background:#111;color:#fff;font:14px monospace;padding:20px"><pre id="x">checking…</pre><script>
+fetch("./midad-cockpit.js?debug=1").then(r=>r.text()).then(c=>{
+ try{new Function(c);document.querySelector("#x").textContent="PARSE_OK"}
+ catch(e){document.querySelector("#x").textContent=String(e.stack||e)}
+}).catch(e=>document.querySelector("#x").textContent=String(e))
+</script>
