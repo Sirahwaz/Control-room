@@ -4,9 +4,7 @@ window.MIDAD_COCKPIT_BOOTING=true;
 const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-27-neural"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
-const $=(s,r=document)=>r.querySelector(s),$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-window.addEventListener("error",e=>{window.MIDAD_COCKPIT_ERROR=String(e?.error?.message||e?.message||e);const a=$("#app");if(a&&!a.querySelector("#cr"))a.innerHTML="<div style=\"min-height:100vh;display:grid;place-items:center;padding:32px;background:#05070c;color:#e7edf5;font-family:system-ui,sans-serif\"><div style=\"max-width:760px;text-align:center\"><div style=\"font-size:14px;letter-spacing:.18em;opacity:.7\">MIDAD / UI RECOVERY</div><h1 style=\"font-size:32px;margin:14px 0\">حدث خطأ في محرك الواجهة</h1><p style=\"color:#9aa7b7;line-height:1.8\">تم التقاط الخطأ بدل عرض شاشة بيضاء.</p><pre style=\"white-space:pre-wrap;color:#ff9cab;text-align:left;direction:ltr;max-width:720px;margin:18px auto;overflow:auto\">"+esc(window.MIDAD_COCKPIT_ERROR)+"</pre><button onclick=\"location.reload()\" style=\"padding:12px 18px;border-radius:10px;border:1px solid #445;color:#fff;background:#111827\">إعادة تحميل</button></div></div>"}});
-window.addEventListener("unhandledrejection",e=>{window.dispatchEvent(new ErrorEvent("error",{message:String(e?.reason?.message||e?.reason||"Unhandled rejection"),error:e?.reason}))});
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=v=>String(v??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 const n=v=>v==null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
 const usd=v=>v==null?"—":"$"+Number(v||0).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -204,5 +202,5 @@ async function sendAI(){
 }
 function bootTelegram(){const t=TG();if(!t)return;try{t.ready();t.expand()}catch{}let tries=0;(function a(){tries++;if(t.initData){refresh(true);return}if(tries<20)setTimeout(a,250)})()}
 async function boot(){render();bootTelegram();if(!S.connected&&!TG()?.initData&&savedKey())refresh(true);setInterval(()=>{if(S.connected&&S.view!=="ai")refresh(true)},90000)}
-boot().then(()=>{window.MIDAD_COCKPIT_LOADED=true;window.MIDAD_COCKPIT_BOOTING=false}).catch(e=>{window.MIDAD_COCKPIT_BOOTING=false;window.MIDAD_COCKPIT_ERROR=String(e?.message||e);throw e});
+boot().then(()=>{window.MIDAD_COCKPIT_BOOTING=true;window.MIDAD_COCKPIT_BOOTING=false}).catch(e=>{window.MIDAD_COCKPIT_BOOTING=false;window.MIDAD_COCKPIT_ERROR=String(e?.message||e);throw e});
 })();
