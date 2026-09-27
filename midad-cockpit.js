@@ -3,7 +3,7 @@
 window.MIDAD_COCKPIT_BOOTING=true;
 const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-27-neural"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
-const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:""};
+const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=v=>String(v??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 const n=v=>v==null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -45,7 +45,7 @@ function sigs(){return S.data?.signals||[]}
 function pipeline(){const v=H().money_expected_value;return v==null?moneyOpps().reduce((s,o)=>s+Number(o.expected_value||0),0):Number(v)}
 function nav(id,icon,label){return '<button data-view="'+id+'"><b>'+icon+'</b><span>'+label+'</span></button>'}
 function shell(){
- $("#app").innerHTML='<div id="cr"><aside class="cr-rail"><div class="cr-mark '+(S.connected?"live":"")+'">M</div><div class="cr-nav">'+nav("cockpit","⌂","المقود")+nav("ai","✦","AI")+nav("money","◆","المال")+nav("intel","⌬","الرصد")+nav("tasks","✓","المهام")+'</div><div class="cr-rail-spacer"></div><button class="cr-more" data-view="more"><span>☷</span><span>المزيد</span></button></aside><main class="cr-main"><header class="cr-top"><div class="cr-titlebar"><b>MIDAD</b><small>NEURAL CONTROL DECK</small></div><div class="cr-command"><input id="quick" placeholder="اكتب أمرًا: AI / فرص / OSINT / مهام / تعدين / دورة"><button class="btn primary" data-cmd="quick">نفّذ</button></div><div class="cr-actions"><div class="cr-status"><i class="dot '+(S.connected?"live":"")+'"></i><span>'+(S.connected?"VERIFIED":"LOCKED")+'</span></div><button class="iconbtn" data-cmd="refresh">↻</button></div></header><div id="views"></div></main></div><div class="toastbox" id="crToast"></div>';
+ $("#app").innerHTML='<div id="cr"><aside class="cr-rail"><div class="cr-mark '+(S.connected?"live":"")+'">M</div><div class="cr-nav">'+nav("cockpit","⌂","المقود")+nav("ai","✦","AI")+nav("money","◆","المال")+nav("intel","⌬","الرصد")+nav("tasks","✓","المهام")+nav("ugig","◎","uGig")+'</div><div class="cr-rail-spacer"></div><button class="cr-more" data-view="more"><span>☷</span><span>المزيد</span></button></aside><main class="cr-main"><header class="cr-top"><div class="cr-titlebar"><b>MIDAD</b><small>NEURAL CONTROL DECK</small></div><div class="cr-command"><input id="quick" placeholder="اكتب أمرًا: AI / فرص / OSINT / مهام / تعدين / دورة"><button class="btn primary" data-cmd="quick">نفّذ</button></div><div class="cr-actions"><div class="cr-status"><i class="dot '+(S.connected?"live":"")+'"></i><span>'+(S.connected?"VERIFIED":"LOCKED")+'</span></div><button class="iconbtn" data-cmd="refresh">↻</button></div></header><div id="views"></div></main></div><div class="toastbox" id="crToast"></div>';
  $$("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===S.view));
 }
 function rowTask(x){return '<div class="row click" data-task="'+esc(x.id)+'"><div class="row-main"><b>'+esc(x.title||"Human task")+'</b><small>أولوية '+n(x.priority)+' · '+esc(x.risk_class||"—")+' · '+esc(x.instruction||x.reason||"")+'</small></div><span class="badge '+(x.blocking?"red":"amber")+'">'+esc(x.status||"OPEN")+'</span></div>'}
@@ -87,6 +87,12 @@ function tasksView(){
  const ts=tasks(),aa=apps();
  return '<div class="cr-page"><section class="hero-panel"><div class="eyebrow">HUMAN CONTROL</div><h1 style="font-size:48px">المهام التي تحتاج يدك.</h1><p>هنا فقط القرارات التي تنتظر تدخلك. لا نخلطها مع الإشارات أو الذكاء.</p></section><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">TASK QUEUE</div><h3>المهام</h3></div><span class="badge amber">'+n(ts.length)+' مفتوحة</span></div><div class="list">'+(ts.map(rowTask).join("")||'<div class="empty">لا توجد مهام.</div>')+'</div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">APPROVAL GATE</div><h3>الموافقات</h3></div><span class="badge red">'+n(aa.length)+' بانتظارك</span></div><div class="list">'+(aa.map(x=>'<div class="row"><div class="row-main"><b>'+esc(x.reason||x.action||"Approval")+'</b><small>Risk: '+esc(x.risk_class||"—")+' · '+esc(x.subject_type||"—")+'</small><div class="hero-actions"><button class="btn green" data-approval="'+esc(x.id)+'" data-decision="approved">موافقة</button><button class="btn danger" data-approval="'+esc(x.id)+'" data-decision="rejected">رفض</button></div></div></div>').join("")||'<div class="empty">لا توجد موافقات.</div>')+'</div></div></section></div>'
 }
+function ugigView(){
+ const p=S.ugigProfile||{}, a=S.ugigApps||[];
+ const skills=Array.isArray(p.skills)?p.skills.join(", "):(p.skills||"");
+ const tools=Array.isArray(p.ai_tools)?p.ai_tools.join(", "):(p.ai_tools||"");
+ return '<div class="cr-page"><section class="hero-panel"><div class="eyebrow">uGIG / DIRECT CONTROL</div><h1 style="font-size:48px">uGig داخل غرفة التحكم.</h1><p>الملف الشخصي والطلبات تُقرأ وتُحدّث عبر MIDAD Core مباشرة. لا نعتمد على واجهة الموقع لتشغيل المسار.</p><div class="hero-actions"><button class="btn primary" data-cmd="ugigLoad">↻ مزامنة Profile + Applications</button><button class="btn" data-cmd="ugigBest">⌬ أفضل فرصة</button></div></section><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">PROFILE</div><h3>الملف المهني</h3><small>التحديث يذهب مباشرة إلى UGIG API عبر gateway.</small></div><span class="badge '+(S.ugigProfile?"green":"amber")+'">'+(S.ugigProfile?"SYNCED":"NOT LOADED")+'</span></div><div class="form-grid"><label>Username<input id="ugUsername" value="'+esc(p.username||"")+'"></label><label>Full name<input id="ugFullName" value="'+esc(p.full_name||"")+'"></label><label>Hourly rate<input id="ugRate" type="number" min="0" step="1" value="'+esc(p.hourly_rate??"")+'"></label><label>Timezone<input id="ugTimezone" value="'+esc(p.timezone||"")+'"></label><label style="grid-column:1/-1">Bio<textarea id="ugBio" rows="5">'+esc(p.bio||"")+'</textarea></label><label style="grid-column:1/-1">Skills<input id="ugSkills" value="'+esc(skills)+'"></label><label style="grid-column:1/-1">AI Tools<input id="ugTools" value="'+esc(tools)+'"></label><label>Available<select id="ugAvailable"><option value="true" '+(p.is_available===false?"":"selected")+'>نعم</option><option value="false" '+(p.is_available===false?"selected":"")+'>لا</option></select></label></div><div class="hero-actions"><button class="btn green" data-cmd="ugigSave">حفظ Profile</button></div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">APPLICATIONS</div><h3>تقديماتي</h3><small>الحالة تُقرأ مباشرة من UGIG.</small></div><span class="badge cyan">'+n(a.length)+'</span></div><div class="list">'+(a.map(x=>'<div class="row"><div class="row-main"><b>'+esc(x.gig?.title||x.gig_title||x.title||x.gig_id||"Application")+'</b><small>'+esc(x.status||"—")+' · '+esc(x.proposed_rate!=null?("$"+x.proposed_rate):"rate —")+' · '+esc(x.proposed_timeline||"")+'</small></div><span class="badge '+(String(x.status).toLowerCase()==="accepted"?"green":"amber")+'">'+esc(x.status||"—")+'</span></div>').join("")||'<div class="empty">اضغط مزامنة Profile + Applications لجلب التقديمات.</div>')+'</div><div class="note">التقديمات الجديدة تبقى خلف بوابة الموافقة البشرية؛ هذه الصفحة لا ترسل طلبًا مدفوعًا أو نهائيًا تلقائيًا.</div></div></section></div>'
+}
 function moreView(){
  const h=H(),t=S.telegram?.result||S.telegram||{},r=S.data?.runtime?.money_hunter||null;
  const moneyState=r?.status?("الحالة: "+r.status+" · آخر تشغيل "+(r.completed_at||r.created_at||"—")):"لم يُسجّل تشغيل بعد";
@@ -105,6 +111,7 @@ function render(){
   else if(S.view==="money")v.innerHTML=moneyView();
   else if(S.view==="intel")v.innerHTML=intelView();
   else if(S.view==="tasks")v.innerHTML=tasksView();
+  else if(S.view==="ugig")v.innerHTML=ugigView();
   else if(S.view==="more")v.innerHTML=moreView();
   else v.innerHTML=cockpitView();
   bind();
@@ -128,6 +135,9 @@ function bind(){
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
  const ac=$("#aiClear");if(ac)ac.onclick=()=>{S.aiMessages=[];render()};
+ const ul=$("[data-cmd=\"ugigLoad\"]");if(ul)ul.onclick=loadUgig;
+ const ub=$("[data-cmd=\"ugigBest\"]");if(ub)ub.onclick=ugigBest;
+ const us=$("[data-cmd=\"ugigSave\"]");if(us)us.onclick=saveUgigProfile;
  const p=$("[data-prefill]");if(p&&S.view==="ai"){const i=$("#aiInput");if(i)i.value=p.dataset.prefill}
 }
 function openTask(id){
@@ -162,6 +172,48 @@ function openOpp(id){
  const ai=m.querySelector("[data-opp-ai]");
  if(ai)ai.onclick=()=>{m.remove();S.view="ai";render();setTimeout(()=>{const input=$("#aiInput");if(input){input.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ قيّم قابلية التنفيذ، العوائق، وما يجب فعله قبل التقديم.";sendAI()}},50)};
 }
+async function loadUgig(){
+ if(S.ugigBusy)return; S.ugigBusy=true; render();
+ try{
+   const [p,a]=await Promise.all([
+     api("ugig",{ugig_action:"profile"},true,30000),
+     api("ugig",{ugig_action:"applications"},true,30000)
+   ]);
+   S.ugigProfile=p; S.ugigApps=Array.isArray(a?.applications)?a.applications:(Array.isArray(a?.data)?a.data:(a?.items||[]));
+   toast("تمت مزامنة uGig.","ok");
+ }catch(e){toast("uGig: "+e.message,"bad")}
+ finally{S.ugigBusy=false;render()}
+}
+async function ugigBest(){
+ try{
+   const p=S.ugigProfile||{};
+   const wanted=Array.isArray(p.skills)?p.skills:[];
+   const j=await api("ugig",{ugig_action:"best_opportunity",wanted_skills:wanted,limit:50},true,45000);
+   const top=(j.ranked||[])[0];
+   if(!top)return toast("لم تُرجع UGIG فرصة من نتيجة البحث الحالية.","bad");
+   toast("أفضل نتيجة حالية: "+(top.title||top.id||"Opportunity")+" · score "+(top.midad_score?.score??"—"),"ok");
+   console.log("[MIDAD UGIG best]",top);
+ }catch(e){toast("تعذر فحص uGig: "+e.message,"bad")}
+}
+async function saveUgigProfile(){
+ const split=v=>String(v||"").split(",").map(x=>x.trim()).filter(Boolean);
+ const profile={
+   username:$("#ugUsername")?.value?.trim()||"",
+   full_name:$("#ugFullName")?.value?.trim()||"",
+   hourly_rate:Number($("#ugRate")?.value||0),
+   timezone:$("#ugTimezone")?.value?.trim()||"",
+   bio:$("#ugBio")?.value||"",
+   skills:split($("#ugSkills")?.value),
+   ai_tools:split($("#ugTools")?.value),
+   is_available:$("#ugAvailable")?.value!=="false"
+ };
+ try{
+   const j=await api("ugig",{ugig_action:"profile_update",profile},true,45000);
+   S.ugigProfile=j.verified_profile||j.result||S.ugigProfile;
+   toast(j.verification_ok===false?"تم الحفظ لكن تعذر التحقق بعده.":"تم تحديث Profile والتحقق منه.","ok");
+   render();
+ }catch(e){toast("فشل تحديث Profile: "+e.message,"bad")}
+}
 async function runAction(a){
  if(S.busy)return;
  S.busy=true;$$("[data-run]").forEach(b=>b.disabled=true);
@@ -186,8 +238,8 @@ function showWallets(){
 }
 function command(cmd){
  if(cmd==="aiSend")return sendAI();
- if(cmd==="quick"){const s=String($("#quick")?.value||"").trim().toLowerCase();if(!s)return;if(/ai|ذكاء|مساعد/.test(s)){S.view="ai";render();return}if(/فرص|مال|دخل/.test(s)){S.view="money";render();return}if(/osint|رصد|إشارات/.test(s)){S.view="intel";render();return}if(/مهم|task|approval|مواف/.test(s)){S.view="tasks";render();return}if(/تعدين|mining/.test(s)){runAction("run_mining_monitor");return}if(/دورة|autonomy/.test(s)){runAction("run_autonomy_now");return}if(/مسح/.test(s)){runAction("run_osint_scan");return}return toast("الأمر غير واضح. جرّب AI، مال، رصد، مهام، تعدين، دورة.","bad")}
- if(cmd==="refresh")refresh();else if(cmd==="aiClear"){S.aiMessages=[];render()}else if(cmd==="keyConnect"){const k=$("#keyInput")?.value?.trim();if(!k)return toast("أدخل مفتاح الوصول.","bad");saveKey(k);refresh()}else if(cmd==="closeTask")$("#taskModal")?.remove();else if(cmd==="wallets")showWallets();else if(cmd==="closeWallets")$("#walletModal")?.remove();else if(cmd==="telegram"){api("telegram_webhook_info").then(j=>{S.telegram=j;render();toast("تم فحص Telegram.","ok")}).catch(e=>toast("Telegram: "+e.message,"bad"))}else if(cmd==="system"){api("dashboard").then(()=>toast("النواة تعمل.","ok")).catch(e=>toast("النواة: "+e.message,"bad"))}else if(cmd==="focusCommand"){const v=window.prompt("أدخل أمر MIDAD");if(v){const q=$("#quick");if(q)q.value=v;command("quick")}}}
+ if(cmd==="quick"){const s=String($("#quick")?.value||"").trim().toLowerCase();if(!s)return;if(/ai|ذكاء|مساعد/.test(s)){S.view="ai";render();return}if(/فرص|مال|دخل/.test(s)){S.view="money";render();return}if(/osint|رصد|إشارات/.test(s)){S.view="intel";render();return}if(/مهم|task|approval|مواف/.test(s)){S.view="tasks";render();return}if(/ugig|uGig|يوجيج|بروفايل/.test(s)){S.view="ugig";render();return}if(/تعدين|mining/.test(s)){runAction("run_mining_monitor");return}if(/دورة|autonomy/.test(s)){runAction("run_autonomy_now");return}if(/مسح/.test(s)){runAction("run_osint_scan");return}return toast("الأمر غير واضح. جرّب AI، مال، رصد، مهام، تعدين، دورة.","bad")}
+ if(cmd==="ugigLoad")return loadUgig(); if(cmd==="ugigBest")return ugigBest(); if(cmd==="ugigSave")return saveUgigProfile(); if(cmd==="refresh")refresh();else if(cmd==="aiClear"){S.aiMessages=[];render()}else if(cmd==="keyConnect"){const k=$("#keyInput")?.value?.trim();if(!k)return toast("أدخل مفتاح الوصول.","bad");saveKey(k);refresh()}else if(cmd==="closeTask")$("#taskModal")?.remove();else if(cmd==="wallets")showWallets();else if(cmd==="closeWallets")$("#walletModal")?.remove();else if(cmd==="telegram"){api("telegram_webhook_info").then(j=>{S.telegram=j;render();toast("تم فحص Telegram.","ok")}).catch(e=>toast("Telegram: "+e.message,"bad"))}else if(cmd==="system"){api("dashboard").then(()=>toast("النواة تعمل.","ok")).catch(e=>toast("النواة: "+e.message,"bad"))}else if(cmd==="focusCommand"){const v=window.prompt("أدخل أمر MIDAD");if(v){const q=$("#quick");if(q)q.value=v;command("quick")}}}
 async function sendAI(){
  const i=$("#aiInput");if(!i||S.aiBusy)return;const prompt=i.value.trim();if(!prompt)return;
  const mode=/^حلّل هذه الفرصة[:：]/.test(prompt)||/فرصة|opportunity/i.test(prompt)?"opportunity":/مال|دخل|cash|payment|pipeline|client/i.test(prompt)?"money":/مهم|تدخل|approval|موافقة|task/i.test(prompt)?"tasks":/osint|رصد|إشارات|signal|radar|sentinel/i.test(prompt)?"osint":"system";
