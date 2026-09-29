@@ -1,0 +1,205 @@
+name: MIDAD Forge Worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: midad-forge-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  MIDAD_SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
+  MIDAD_FORGE_FUNCTION: /functions/v1/midad_forge
+  MIDAD_FORGE_REPO: Sirahwaz/Control-room
+
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    outputs:
+      claimed: ${{ steps.claim.outputs.claimed }}
+      run_id: ${{ steps.claim.outputs.run_id }}
+    steps:
+      - name: Claim next Forge run
+        id: claim
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(curl -fsSL             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://midad-ai" | jq -r .value)"
+          response="$(curl -fsSL -X POST             -H "Authorization: bearer ${token}"             -H "Content-Type: application/json"             "${MIDAD_SUPABASE_URL}${MIDAD_FORGE_FUNCTION}"             -d '{"action":"claim","repo_full_name":"Sirahwaz/Control-room"}')"
+          echo "claimed=$(jq -r '.claimed // false' <<<"${response}")" >> "$GITHUB_OUTPUT"
+          echo "run_id=$(jq -r '.run.id // empty' <<<"${response}")" >> "$GITHUB_OUTPUT"
+          echo "Forge claim: ${response}"
+
+  prepare:
+    needs: claim
+    if: needs.claim.outputs.claimed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.prepare.outputs.run_id }}
+    steps:
+      - name: Generate safe application manifest
+        id: prepare
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(curl -fsSL             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://midad-ai" | jq -r .value)"
+          response="$(curl -fsSL -X POST             -H "Authorization: bearer ${token}"             -H "Content-Type: application/json"             "${MIDAD_SUPABASE_URL}${MIDAD_FORGE_FUNCTION}"             -d '{"action":"prepare","run_id":"${{ needs.claim.outputs.run_id }}"}')"
+          jq -e '.ok == true and .status == "READY" and (.manifest.files | length > 0)' <<<"${response}" >/dev/null
+          printf '%s' "${response}" > forge.json
+          echo "run_id=$(jq -r '.run_id' forge.json)" >> "$GITHUB_OUTPUT"
+      - name: Upload Forge manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-forge-manifest
+          path: forge.json
+          if-no-files-found: error
+          retention-days: 3
+
+  build:
+    needs: [claim, prepare]
+    if: needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download Forge manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: midad-forge-manifest
+          path: .
+
+      - name: Materialize generated files
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_dir="$(jq -r '.manifest.target_dir' forge.json)"
+          mkdir -p "$target_dir"
+          jq -r '.manifest.files[] | @base64' forge.json | while IFS= read -r row; do
+            obj="$(printf '%s' "$row" | base64 --decode)"
+            path="$(jq -r '.path' <<<"$obj")"
+            content="$(jq -r '.content' <<<"$obj")"
+            case "$path" in
+              /*|*..*|.github/*|*/.env|*/.env.*|*.pem|*.key|*.p12|*.pfx) echo "Unsafe path: $path"; exit 1 ;;
+            esac
+            mkdir -p "$(dirname "$path")"
+            printf '%s' "$content" > "$path"
+          done
+
+      - name: Build and test generated app
+        id: verify
+        shell: bash
+        run: |
+          set +e
+          target_dir="$(jq -r '.manifest.target_dir' forge.json)"
+          report='{}'
+          install=0; lint=0; test=0; build=0
+          if [ -f "$target_dir/package.json" ]; then
+            (cd "$target_dir" && npm install --ignore-scripts --no-audit --no-fund) > install.log 2>&1 || install=1
+            (cd "$target_dir" && npm run lint --if-present) > lint.log 2>&1 || lint=1
+            (cd "$target_dir" && npm run test --if-present) > test.log 2>&1 || test=1
+            (cd "$target_dir" && npm run build --if-present) > build.log 2>&1 || build=1
+          fi
+          report="$(jq -n             --argjson install "$install"             --argjson lint "$lint"             --argjson test "$test"             --argjson build "$build"             --arg target "$target_dir"             '{target_dir:$target,install_failed:($install==1),lint_failed:($lint==1),test_failed:($test==1),build_failed:($build==1)}')"
+          printf '%s' "$report" > forge-build-report.json
+          mkdir -p forge-output
+          cp forge.json forge-output/
+          cp forge-build-report.json forge-output/
+          if [ -f "$target_dir/package.json" ]; then
+            cp -R "$target_dir" forge-output/
+          fi
+          if [ "$install" -ne 0 ] || [ "$lint" -ne 0 ] || [ "$test" -ne 0 ] || [ "$build" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload Forge build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-forge-build
+          path: forge-output/
+          if-no-files-found: warn
+          retention-days: 3
+
+  finalize:
+    needs: [claim, prepare, build]
+    if: always() && needs.claim.outputs.claimed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Download Forge artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: midad-forge-build
+          path: forge-output
+        continue-on-error: true
+
+      - name: Checkout repository for publish
+        if: needs.build.result == 'success'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Publish branch and pull request
+        if: needs.build.result == 'success'
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f forge-output/forge.json
+          target_dir="$(jq -r '.manifest.target_dir' forge-output/forge.json)"
+          branch="$(jq -r '.manifest.branch_name' forge-output/forge.json)"
+          app="$(jq -r '.manifest.app_name' forge-output/forge.json)"
+          summary="$(jq -r '.manifest.summary // ""' forge-output/forge.json)"
+          rm -f forge-output/forge.json forge-output/forge-build-report.json
+          mkdir -p "$(dirname "$target_dir")"
+          cp -R "forge-output/$target_dir" "$(dirname "$target_dir")/"
+          test -d "$target_dir"
+          git config user.name "MIDAD Forge"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add "$target_dir"
+          git commit -m "feat(forge): build $app"
+          git push --set-upstream origin "$branch"
+          pr_url="$(gh pr create             --base main             --head "$branch"             --title "Forge: $app"             --body "Generated by MIDAD Forge run ${{ needs.claim.outputs.run_id }}.
+
+Summary: $summary
+
+The branch passed the Forge validation pipeline. Merge remains a human-controlled gate.")"
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Complete Forge run
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(curl -fsSL             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://midad-ai" | jq -r .value)"
+          status="FAILED"
+          commit_sha=""
+          pr_url=""
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            status="BUILT"
+            commit_sha="${{ steps.publish.outputs.commit_sha }}"
+            pr_url="${{ steps.publish.outputs.pr_url }}"
+          fi
+          report='{}'
+          if [ -f forge-output/forge-build-report.json ]; then report="$(cat forge-output/forge-build-report.json)"; fi
+          body="$(jq -n             --arg action "complete"             --arg run_id "${{ needs.claim.outputs.run_id }}"             --arg status "$status"             --arg commit_sha "$commit_sha"             --arg pr_url "$pr_url"             --argjson build_report "$report"             '{action:$action,run_id:$run_id,status:$status,commit_sha:($commit_sha|if .=="" then null else . end),pr_url:($pr_url|if .=="" then null else . end),build_report:$build_report}')"
+          curl -fsSL -X POST             -H "Authorization: bearer ${token}"             -H "Content-Type: application/json"             "${MIDAD_SUPABASE_URL}${MIDAD_FORGE_FUNCTION}"             -d "${body}"
