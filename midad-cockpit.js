@@ -376,8 +376,8 @@ function render(){
 function bind(){
  $$("[data-view]").forEach(b=>b.onclick=()=>{S.view=b.dataset.view;render()});
  $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
- $("[data-bot-action]").forEach(b=>b.onclick=()=>botAction(b.dataset.botAction));
- $("[data-bot-context]").forEach(b=>b.onclick=()=>setBotContext(b.dataset.botContext,b.dataset.botView||"cockpit"));
+ $( "[data-bot-action]" ).forEach(b=>b.onclick=()=>botAction(b.dataset.botAction));
+ $( "[data-bot-context]" ).forEach(b=>b.onclick=()=>setBotContext(b.dataset.botContext,b.dataset.botView||"cockpit"));
  const tr=$("[data-cmd=\"tradeRun\"]");if(tr)tr.onclick=runTradingLab;
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
