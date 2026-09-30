@@ -28,7 +28,7 @@ jobs:
         run: node -e "const fs=require('fs'); new Function(fs.readFileSync('midad-cockpit.js','utf8')); console.log('JS_SYNTAX_OK');"
 
       - name: Required UI assets
-        run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-cockpit.css','midad-cockpit.js','Telegram WebApp']) if(!h.includes(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
+        run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-cockpit.css','midad-cockpit.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
 
       - name: Bot Fabric surface
         run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
