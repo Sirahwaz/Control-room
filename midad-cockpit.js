@@ -50,9 +50,64 @@ function shell(){
 }
 function rowTask(x){return '<div class="row click" data-task="'+esc(x.id)+'"><div class="row-main"><b>'+esc(x.title||"Human task")+'</b><small>أولوية '+n(x.priority)+' · '+esc(x.risk_class||"—")+' · '+esc(x.instruction||x.reason||"")+'</small></div><span class="badge '+(x.blocking?"red":"amber")+'">'+esc(x.status||"OPEN")+'</span></div>'}
 function rowOpp(x){return '<div class="row click" data-opp="'+esc(x.id)+'"><div class="row-main"><b>'+esc(x.title||"Opportunity")+'</b><small>'+esc(x.source||"")+" · score "+n(x.score)+" · "+(x.confidence==null?"—":Math.round(Number(x.confidence)*100)+"%")+'</small></div><span class="badge cyan">'+usd(x.expected_value)+'</span></div>'}
+function neuralState(){
+ const h=H(), r=S.data?.runtime?.money_hunter||null, cg=S.data?.capability_gate||{};
+ const blockers=[];
+ if(!S.connected) blockers.push({state:"BLOCKED",label:"الجلسة",detail:"غرفة التحكم غير موثقة"});
+ if(Number(h.pending_human_tasks||0)>0) blockers.push({state:"PENDING",label:"مهام بشرية",detail:n(h.pending_human_tasks)+" تحتاج تدخلك"});
+ if(Number(h.pending_approvals||0)>0) blockers.push({state:"PENDING",label:"موافقات",detail:n(h.pending_approvals)+" بانتظار القرار"});
+ if(r?.status==="failed") blockers.push({state:"FAILED",label:"Money Hunter",detail:r.error||"آخر تشغيل فشل"});
+ if(Number(h.money_opportunities||0)>0) blockers.push({state:"VERIFIED",label:"مسار المال",detail:n(h.money_opportunities)+" فرصة paid_work"});
+ if(Number(cg.avg_delivery_confidence||0)>0) blockers.push({state:"VERIFIED",label:"جاهزية التسليم",detail:Math.round(Number(cg.avg_delivery_confidence)*100)+"%"});
+ if(!blockers.length) blockers.push({state:"VERIFIED",label:"النواة",detail:"لا توجد عوائق مسجلة الآن"});
+ return blockers.slice(0,4);
+}
+function stateBadge(x){
+ const cls={VERIFIED:"green",INFERRED:"cyan",PENDING:"amber",FAILED:"red",BLOCKED:"red"}[x]||"cyan";
+ return '<span class="state-chip '+cls+'"><i></i>'+esc(x)+'</span>';
+}
 function cockpitView(){
- const h=H(),ts=tasks(),aa=apps(),oo=opps(),mo=moneyOpps(),ss=sigs(),ready=Math.round(Number(S.data?.capability_gate?.avg_delivery_confidence||0)*100);
- return '<div class="cr-page"><section class="cr-hero"><div class="hero-panel"><div class="eyebrow">MIDAD / COMMAND DECK</div><h1>المقود بيدك.<br>والنظام تحت عينيك.</h1><p>واجهة قيادة واحدة بدل طبقات متداخلة. AI منفصل، المال منفصل، الرصد منفصل، والقرارات الحساسة تبقى خلف بوابة بشرية.</p><div class="hero-actions"><button class="btn primary" data-view="ai">✦ افتح AI</button><button class="btn green" data-run="run_opportunity_scan">💰 ابحث عن مال</button><button class="btn" data-run="run_osint_scan">⌬ حدّث الرصد</button><button class="btn warn" data-run="run_autonomy_now">⚡ دورة التشغيل</button></div></div><div class="hero-panel" style="display:grid;place-items:center"><div class="orb"><div><b>MIDAD</b><small>'+(!S.error?(S.connected?"LIVE CORE":"LOCKED"):"ERROR")+'</small></div></div></div></section><div class="kpis"><div class="kpi"><span>MONEY OPPS</span><b>'+n(h.money_opportunities??mo.length)+'</b><div class="sub">فرص عمل قابلة للتحويل</div></div><div class="kpi"><span>SIGNALS</span><b>'+n(h.signals)+'</b><div class="sub">إشارات الرادار</div></div><div class="kpi"><span>HUMAN TASKS</span><b>'+n(h.pending_human_tasks)+'</b><div class="sub">تحتاج يدك</div></div><div class="kpi"><span>CASH PIPELINE</span><b>'+usd(pipeline())+'</b><div class="sub">قيمة متوقعة</div></div><div class="kpi"><span>READINESS</span><b>'+ready+'%</b><div class="sub">قابلية تسليم</div></div></div><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">NOW</div><h3>ماذا يحتاجني الآن؟</h3></div><button class="btn" data-view="tasks">كل المهام</button></div><div class="list">'+(ts.slice(0,5).map(rowTask).join("")||'<div class="empty">لا توجد مهمة بشرية مفتوحة.</div>')+'</div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">MONEY LANE</div><h3>الفرص التي تستحق النظر</h3></div><button class="btn" data-view="money">فتح المال</button></div><div class="list">'+(mo.slice(0,5).map(rowOpp).join("")||'<div class="empty">لا توجد حاليًا فرصة paid_work في مسار المال.</div>')+'</div></div></section><section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">RADAR</div><h3>الرصد الحي</h3></div><button class="btn" data-view="intel">فتح الرصد</button></div><div class="stream">'+(ss.slice(0,8).map(x=>'<div class="item"><b>'+esc(x.type_label||x.signal_type||"Signal")+'</b> · '+esc(x.entity||"—")+' <span class="badge cyan">'+n(x.score)+'</span><p>'+esc(x.source||"source")+" · confidence "+(x.confidence==null?"—":Math.round(Number(x.confidence)*100)+"%")+"</p></div>").join("")||'<div class="empty">لا توجد إشارات.</div>')+'</div></div><div class="panel"><div class="panel-head"><div><div class="eyebrow">SYSTEM</div><h3>صحة التشغيل</h3></div><button class="btn" data-view="more">التفاصيل</button></div><div class="list"><div class="row"><div class="row-main"><b>Supabase Core</b><small>جلسة التحكم</small></div><span class="badge '+(S.connected?"green":"red")+'">'+(S.connected?"LIVE":"LOCKED")+'</span></div><div class="row"><div class="row-main"><b>Telegram</b><small>Web App identity</small></div><span class="badge '+(TG()?.initData?"green":"amber")+'">'+(TG()?.initData?"CONNECTED":"CONTEXT")+'</span></div><div class="row"><div class="row-main"><b>Opportunity Engine</b><small>'+esc(h.pipeline_note||"")+'</small></div><span class="badge '+(h.pipeline_ok?"green":"amber")+'">'+(h.pipeline_ok?"FLOW":"CHECK")+'</span></div></div></div></section></div>'
+ const h=H(),ts=tasks(),mo=moneyOpps(),ss=sigs(),ready=Math.round(Number(S.data?.capability_gate?.avg_delivery_confidence||0)*100);
+ const ns=neuralState();
+ const topTask=ts[0]||null, topOpp=mo[0]||null;
+ const next=topTask
+   ? {k:"NOW",title:topTask.title||"مهمة بشرية",detail:topTask.instruction||topTask.reason||"راجع المهمة",state:"PENDING",action:"tasks"}
+   : topOpp
+     ? {k:"NEXT",title:topOpp.title||"فرصة دخل",detail:"تحقق من الجاهزية والعوائق قبل التقديم.",state:"VERIFIED",action:"money"}
+     : {k:"NEXT",title:"لا توجد خطوة حرجة",detail:"شغّل مسح المال أو اطلب من MIDAD AI قراءة الحالة.",state:"VERIFIED",action:"ai"};
+ return '<div class="cr-page">'+
+ '<section class="neural-stage">'+
+   '<div class="stage-copy">'+
+     '<div class="eyebrow">MIDAD / NEURAL COMMAND CENTER</div>'+
+     '<div class="stage-title">المقود بيدك.<br><span>والنواة تشرح لك لماذا.</span></div>'+
+     '<p>ليست لوحة أرقام: هذه طبقة قرار حيّة تربط <b>الحالة → الدليل → الخطوة التالية → العائق</b> مع إبقاء الأفعال الحساسة خلف موافقة بشرية.</p>'+
+     '<div class="hero-actions"><button class="btn primary" data-view="ai">✦ اسأل النواة</button><button class="btn green" data-run="run_money_scan">💰 اصطد فرصة دخل</button><button class="btn" data-run="run_osint_scan">⌬ حدّث الرادار</button><button class="btn warn" data-run="run_autonomy_now">⚡ شغّل الدورة</button></div>'+
+   '</div>'+
+   '<div class="neural-core" aria-label="MIDAD Neural Core">'+
+     '<div class="core-orbit orbit-a"></div><div class="core-orbit orbit-b"></div><div class="core-orbit orbit-c"></div>'+
+     '<div class="core-pulse"><span></span><b>MIDAD</b><small>'+esc(S.connected?"LIVE CORE":"LOCKED")+'</small></div>'+
+     '<div class="core-readout"><span>STATE</span><strong>'+esc(S.error?"FAILED":S.connected?"VERIFIED":"BLOCKED")+'</strong></div>'+
+   '</div>'+
+ '</section>'+
+ '<section class="state-strip">'+
+   '<div class="state-main"><div class="eyebrow">NEURAL STATE / NOW</div><div class="state-chips">'+ns.map(x=>stateBadge(x.state)+'<span class="state-detail"><b>'+esc(x.label)+'</b> '+esc(x.detail)+'</span>').join("")).join("")+'</div></div>'+
+   '<div class="state-next"><div class="eyebrow">'+next.k+'</div><b>'+esc(next.title)+'</b><span>'+esc(next.detail)+'</span><button class="btn" data-view="'+next.action+'">افتح المسار →</button></div>'+
+ '</section>'+
+ '<div class="kpis"><div class="kpi"><span>MONEY OPPS</span><b>'+n(h.money_opportunities??mo.length)+'</b><div class="sub">فرص paid_work في المسار</div></div><div class="kpi"><span>SIGNALS</span><b>'+n(h.signals)+'</b><div class="sub">إشارات الرادار</div></div><div class="kpi"><span>HUMAN TASKS</span><b>'+n(h.pending_human_tasks)+'</b><div class="sub">تحتاج يدك</div></div><div class="kpi"><span>CASH PIPELINE</span><b>'+usd(pipeline())+'</b><div class="sub">قيمة متوقعة</div></div><div class="kpi"><span>READINESS</span><b>'+ready+'%</b><div class="sub">قابلية تسليم</div></div></div>'+
+ '<section class="decision-grid section-gap">'+
+   '<div class="panel decision-panel"><div class="panel-head"><div><div class="eyebrow">DECISION STREAM</div><h3>ما الذي يحدث الآن؟</h3></div><span class="badge cyan">LIVE</span></div>'+
+     '<div class="decision-flow"><div class="flow-node active"><i>01</i><b>DETECT</b><small>'+n(h.signals)+' إشارات</small></div><div class="flow-line"></div><div class="flow-node"><i>02</i><b>QUALIFY</b><small>'+n(h.money_opportunities)+' فرص</small></div><div class="flow-line"></div><div class="flow-node"><i>03</i><b>ACT</b><small>'+n(h.pending_human_tasks)+' مهام</small></div><div class="flow-line"></div><div class="flow-node"><i>04</i><b>DELIVER</b><small>'+ready+'% جاهزية</small></div></div>'+
+     '<div class="decision-footer"><span>'+stateBadge(topTask?"PENDING":topOpp?"VERIFIED":"VERIFIED")+'</span><b>'+esc(topTask?("تدخلك مطلوب: "+(topTask.title||"مهمة")):topOpp?("أقرب مسار مالي: "+(topOpp.title||"فرصة")):"النظام لا يطلب تدخلاً عاجلاً.")+'</b></div>'+
+   '</div>'+
+   '<div class="panel action-panel"><div class="panel-head"><div><div class="eyebrow">ACTION MATRIX</div><h3>من الفكرة إلى النتيجة</h3></div><button class="btn" data-view="ai">AI →</button></div>'+
+     '<div class="action-matrix"><button data-view="money"><span>◆</span><b>INCOME</b><small>'+n(h.money_actionable||0)+' قابلة للمراجعة</small></button><button data-view="tasks"><span>✓</span><b>HUMAN</b><small>'+n(h.pending_human_tasks||0)+' تنتظر</small></button><button data-view="intel"><span>⌬</span><b>RADAR</b><small>'+n(h.osint_events||0)+' أحداث</small></button><button data-view="more"><span>⛏</span><b>MINING</b><small>ViaBTC monitor</small></button></div>'+
+   '</div>'+
+ '</section>'+
+ '<section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">NOW</div><h3>ماذا يحتاجني الآن؟</h3></div><button class="btn" data-view="tasks">كل المهام</button></div><div class="list">'+(ts.slice(0,5).map(rowTask).join("")||'<div class="empty">لا توجد مهمة بشرية مفتوحة.</div>')+'</div></div>'+
+ '<div class="panel"><div class="panel-head"><div><div class="eyebrow">MONEY LANE</div><h3>الفرص التي يمكن تحويلها إلى عمل</h3></div><button class="btn" data-view="money">فتح المال</button></div><div class="list">'+(mo.slice(0,5).map(rowOpp).join("")||'<div class="empty">لا توجد حاليًا فرصة paid_work في مسار المال.</div>')+'</div></div></section>'+
+ '<section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">RADAR</div><h3>الرصد الحي</h3></div><button class="btn" data-view="intel">فتح الرصد</button></div><div class="stream">'+(ss.slice(0,8).map(x=>'<div class="item"><b>'+esc(x.type_label||x.signal_type||"Signal")+'</b> · '+esc(x.entity||"—")+' <span class="badge cyan">'+n(x.score)+'</span><p>'+esc(x.source||"source")+" · confidence "+(x.confidence==null?"—":Math.round(Number(x.confidence)*100)+"%")+"</p></div>").join("")||'<div class="empty">لا توجد إشارات.</div>')+'</div></div>'+
+ '<div class="panel"><div class="panel-head"><div><div class="eyebrow">SYSTEM</div><h3>صحة التشغيل</h3></div><button class="btn" data-view="more">التفاصيل</button></div><div class="list"><div class="row"><div class="row-main"><b>Supabase Core</b><small>جلسة التحكم</small></div><span class="badge '+(S.connected?"green":"red")+'">'+(S.connected?"LIVE":"LOCKED")+'</span></div><div class="row"><div class="row-main"><b>Telegram</b><small>Web App identity</small></div><span class="badge '+(TG()?.initData?"green":"amber")+'">'+(TG()?.initData?"CONNECTED":"CONTEXT")+'</span></div><div class="row"><div class="row-main"><b>Opportunity Engine</b><small>'+esc(h.pipeline_note||"")+'</small></div><span class="badge '+(h.pipeline_ok?"green":"amber")+'">'+(h.pipeline_ok?"FLOW":"CHECK")+'</span></div></div></div></section>'+
+ '</div>';
 }
 function formatAI(v){
  let s=esc(v??"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
