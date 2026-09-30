@@ -217,6 +217,20 @@ function botSurfacePrompt(prompt,view="ai"){
  S.view=view;render();
  if(view==="ai")setTimeout(()=>{const i=$("#aiInput");if(i){i.value=prompt;i.focus();sendAI()}},60);
 }
+function botAction(id){
+ const map={
+  neural:()=>botSurfacePrompt("افحص Neural Core: ما أهم حالة معرفية تحتاج اهتمامًا الآن؟ اذكر الدليل والعائق والخطوة التالية.","ai"),
+  research:()=>botSurfacePrompt("جهّز لي إطار بحث قرارّي لمهمة مدفوعة: ما البيانات المطلوبة، مصادرها، ومخرجات التسليم؟","ai"),
+  money:()=>{S.view="money";render()},
+  income:()=>botSurfacePrompt("راجع أفضل مسار دخل مؤهل حاليًا: هل توجد حزمة تنفيذ جاهزة؟ وما المطلوب مني قبل البدء؟","ai"),
+  keys:()=>window.open("https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_keys_bot?webapp=addkey&v=1","_blank","noopener"),
+  telegram:()=>command("telegram"),
+  ugig:()=>{S.view="ugig";render()},
+  mining:()=>runAction("run_mining_monitor"),
+  recovery:()=>botSurfacePrompt("راجع حالات Revenue Recovery الحالية: ما الذي يمكن استعادته، وما الدليل والعائق والخطوة التالية؟","ai")
+ };
+ return map[id]?map[id]():toast("واجهة البوت غير معرفة بعد.","bad");
+}
 function botsView(){
  const h=H(),cg=S.data?.capability_gate||{};
  const cards=[
@@ -258,8 +272,8 @@ function render(){
 }
 function bind(){
  $$("[data-view]").forEach(b=>b.onclick=()=>{S.view=b.dataset.view;render()});
- $("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
- $("[data-bot-action]").forEach(b=>b.onclick=()=>{const id=b.dataset.botAction;const el=document.querySelector(".bot-card [data-bot-action=""+CSS.escape(id)+""]");});
+ $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
+ $$("[data-bot-action]").forEach(b=>b.onclick=()=>botAction(b.dataset.botAction));
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
  $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
@@ -269,9 +283,9 @@ function bind(){
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
  const ac=$("#aiClear");if(ac)ac.onclick=()=>{S.aiMessages=[];render()};
- const ul=$("[data-cmd=\"ugigLoad\"]");if(ul)ul.onclick=loadUgig;
- const ub=$("[data-cmd=\"ugigBest\"]");if(ub)ub.onclick=ugigBest;
- const us=$("[data-cmd=\"ugigSave\"]");if(us)us.onclick=saveUgigProfile;
+ const ul=$("[data-cmd="ugigLoad"]");if(ul)ul.onclick=loadUgig;
+ const ub=$("[data-cmd="ugigBest"]");if(ub)ub.onclick=ugigBest;
+ const us=$("[data-cmd="ugigSave"]");if(us)us.onclick=saveUgigProfile;
  const p=$("[data-prefill]");if(p&&S.view==="ai"){const i=$("#aiInput");if(i)i.value=p.dataset.prefill}
 }
 function openTask(id){
