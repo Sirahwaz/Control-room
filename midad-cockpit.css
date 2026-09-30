@@ -393,3 +393,73 @@ body{overflow-x:hidden}
 @media(prefers-reduced-motion:reduce){.core-orbit,.core-pulse:before,.core-pulse:after,.core-pulse span{animation:none!important}}
 @media(max-width:900px){.neural-stage{grid-template-columns:1fr;padding:28px}.neural-core{height:280px}.state-strip,.decision-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.neural-stage{min-height:auto;padding:24px 18px;border-radius:24px}.stage-title{font-size:43px}.neural-core{height:250px}.orbit-a{width:190px;height:190px}.orbit-b{width:155px;height:155px}.orbit-c{width:230px;height:230px}.core-pulse{width:118px;height:118px}.decision-flow{overflow:auto;justify-content:flex-start;padding-bottom:18px}.flow-node{min-width:72px}.flow-line{min-width:22px}.state-strip{margin-top:10px}.action-matrix button{min-height:66px}}
+
+
+/* =========================================================
+   NEURAL++ AI COMMAND CONSOLE
+   ========================================================= */
+.ai-command-page{padding-top:4px}
+.ai-neural-header{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 170px minmax(360px,.8fr);
+  gap:20px;
+  align-items:center;
+  min-height:210px;
+  padding:28px 30px;
+  margin-bottom:14px;
+  overflow:hidden;
+  border:1px solid rgba(103,232,249,.14);
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 18% 20%,rgba(103,232,249,.08),transparent 30%),
+    radial-gradient(circle at 86% 50%,rgba(167,139,250,.08),transparent 34%),
+    linear-gradient(135deg,rgba(11,20,31,.9),rgba(5,10,16,.94));
+  box-shadow:0 28px 90px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.04);
+}
+.ai-neural-header:before{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:repeating-linear-gradient(90deg,transparent 0 80px,rgba(103,232,249,.018) 81px,transparent 82px);
+}
+.ai-neural-header h1{position:relative;margin:7px 0;font-size:clamp(32px,4vw,56px);letter-spacing:-.055em}
+.ai-neural-header p{position:relative;margin:0;color:#8e9eb2;line-height:1.7;font-size:12px}
+.ai-live-orbit{
+ width:128px;height:128px;border:1px solid rgba(103,232,249,.25);border-radius:50%;
+ display:grid;place-items:center;align-content:center;gap:3px;position:relative;
+ background:radial-gradient(circle,rgba(103,232,249,.17),rgba(7,14,21,.9) 60%);
+ box-shadow:0 0 60px rgba(103,232,249,.1),inset 0 0 30px rgba(103,232,249,.07);
+}
+.ai-live-orbit:before,.ai-live-orbit:after{content:"";position:absolute;border:1px solid rgba(167,139,250,.18);border-radius:50%;inset:-12px;animation:aiOrbit 9s linear infinite}
+.ai-live-orbit:after{inset:12px;border-color:rgba(110,231,183,.16);animation-duration:5s;animation-direction:reverse}
+.ai-live-orbit i{width:8px;height:8px;border-radius:50%;background:var(--aurora-mint);box-shadow:0 0 22px 5px rgba(110,231,183,.35)}
+.ai-live-orbit b{font-size:10px;letter-spacing:.16em}
+.ai-live-orbit small{font:8px var(--mono);color:#7f94a9}
+.ai-state-mini{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;position:relative}
+.ai-state-mini span,.contract-row{
+ display:flex;justify-content:space-between;gap:10px;padding:9px 10px;
+ border:1px solid rgba(128,164,195,.1);border-radius:11px;background:rgba(5,11,17,.58);
+ color:#687c91;font:8px var(--mono);letter-spacing:.06em;
+}
+.ai-state-mini b{color:#d6e2ed;font-size:10px}
+.ai-command-side{display:grid;gap:14px}
+.ai-command-side .panel{height:max-content}
+.ai-contract{padding:16px}
+.ai-contract .contract-row{margin-top:7px;font-size:8px}
+.ai-contract .contract-row b{font-family:inherit;color:#aebdca;font-size:9px}
+.ai-chat{min-height:calc(100dvh - 390px)}
+@keyframes aiOrbit{to{transform:rotate(360deg)}}
+@media(max-width:1050px){
+ .ai-neural-header{grid-template-columns:1fr 140px}
+ .ai-state-mini{grid-column:1/-1}
+}
+@media(max-width:900px){
+ .ai-neural-header{grid-template-columns:1fr}
+ .ai-live-orbit{margin-inline:auto}
+ .ai-state-mini{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:700px){
+ .ai-neural-header{padding:22px 18px;border-radius:22px}
+ .ai-state-mini{grid-template-columns:repeat(2,1fr)}
+ .ai-chat{min-height:calc(100dvh - 360px)}
+}
+@media(prefers-reduced-motion:reduce){.ai-live-orbit:before,.ai-live-orbit:after{animation:none!important}}
