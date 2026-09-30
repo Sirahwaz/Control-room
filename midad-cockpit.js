@@ -45,7 +45,7 @@ function sigs(){return S.data?.signals||[]}
 function pipeline(){const v=H().money_expected_value;return v==null?moneyOpps().reduce((s,o)=>s+Number(o.expected_value||0),0):Number(v)}
 function nav(id,icon,label){return '<button data-view="'+id+'"><b>'+icon+'</b><span>'+label+'</span></button>'}
 function shell(){
- $("#app").innerHTML='<div id="cr"><aside class="cr-rail"><div class="cr-mark '+(S.connected?"live":"")+'">M</div><div class="cr-nav">'+nav("cockpit","⌂","المقود")+nav("ai","✦","AI")+nav("money","◆","المال")+nav("intel","⌬","الرصد")+nav("tasks","✓","المهام")+nav("ugig","◎","uGig")+'</div><div class="cr-rail-spacer"></div><button class="cr-more" data-view="more"><span>☷</span><span>المزيد</span></button></aside><main class="cr-main"><header class="cr-top"><div class="cr-titlebar"><b>MIDAD</b><small>NEURAL CONTROL DECK</small><span class="badge green">NEW$WAY · CASH FIRST</span></div><div class="cr-command"><input id="quick" placeholder="اكتب أمرًا: AI / فرص / OSINT / مهام / تعدين / دورة"><button class="btn primary" data-cmd="quick">نفّذ</button></div><div class="cr-actions"><div class="cr-status"><i class="dot '+(S.connected?"live":"")+'"></i><span>'+(S.connected?"VERIFIED":"LOCKED")+'</span></div><button class="iconbtn" data-cmd="refresh">↻</button></div></header><div id="views"></div></main></div><div class="toastbox" id="crToast"></div>';
+ $("#app").innerHTML='<div id="cr"><aside class="cr-rail"><div class="cr-mark '+(S.connected?"live":"")+'">M</div><div class="cr-nav">'+nav("cockpit","⌂","المقود")+nav("ai","✦","AI")+nav("money","◆","المال")+nav("intel","⌬","الرصد")+nav("tasks","✓","المهام")+nav("ugig","◎","uGig")+nav("bots","⬡","البوتات")+'</div><div class="cr-rail-spacer"></div><button class="cr-more" data-view="more"><span>☷</span><span>المزيد</span></button></aside><main class="cr-main"><header class="cr-top"><div class="cr-titlebar"><b>MIDAD</b><small>NEURAL CONTROL DECK</small><span class="badge green">NEW$WAY · CASH FIRST</span></div><div class="cr-command"><input id="quick" placeholder="اكتب أمرًا: AI / فرص / OSINT / مهام / تعدين / دورة"><button class="btn primary" data-cmd="quick">نفّذ</button></div><div class="cr-actions"><div class="cr-status"><i class="dot '+(S.connected?"live":"")+'"></i><span>'+(S.connected?"VERIFIED":"LOCKED")+'</span></div><button class="iconbtn" data-cmd="refresh">↻</button></div></header><div id="views"></div></main></div><div class="toastbox" id="crToast"></div>';
  $$("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===S.view));
 }
 function rowTask(x){return '<div class="row click" data-task="'+esc(x.id)+'"><div class="row-main"><b>'+esc(x.title||"Human task")+'</b><small>أولوية '+n(x.priority)+' · '+esc(x.risk_class||"—")+' · '+esc(x.instruction||x.reason||"")+'</small></div><span class="badge '+(x.blocking?"red":"amber")+'">'+esc(x.status||"OPEN")+'</span></div>'}
@@ -283,9 +283,9 @@ function bind(){
  const q=$("#quick");if(q)q.onkeydown=e=>{if(e.key==="Enter")command("quick")};
  const ai=$("#aiSend");if(ai)ai.onclick=sendAI;
  const ac=$("#aiClear");if(ac)ac.onclick=()=>{S.aiMessages=[];render()};
- const ul=$("[data-cmd="ugigLoad"]");if(ul)ul.onclick=loadUgig;
- const ub=$("[data-cmd="ugigBest"]");if(ub)ub.onclick=ugigBest;
- const us=$("[data-cmd="ugigSave"]");if(us)us.onclick=saveUgigProfile;
+ const ul=$('[data-cmd="ugigLoad"]');if(ul)ul.onclick=loadUgig;
+ const ub=$('[data-cmd="ugigBest"]');if(ub)ub.onclick=ugigBest;
+ const us=$('[data-cmd="ugigSave"]');if(us)us.onclick=saveUgigProfile;
  const p=$("[data-prefill]");if(p&&S.view==="ai"){const i=$("#aiInput");if(i)i.value=p.dataset.prefill}
 }
 function openTask(id){
