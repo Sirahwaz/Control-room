@@ -213,6 +213,25 @@ function moreView(){
 }
 function lockView(){return '<div class="lock"><div class="box"><div class="eyebrow">MIDAD / SECURE CONTROL</div><h2>الغرفة مقفلة حتى نعرف من أنت.</h2><p>داخل Telegram يتم أخذ هوية Web App تلقائيًا. من المتصفح العادي يمكنك استخدام مفتاح الوصول المحلي إن كان لديك.</p><div class="key-row"><input id="keyInput" type="password" placeholder="Access key"><button class="btn primary" data-cmd="keyConnect">دخول</button></div><div style="margin-top:12px;color:#69788b;font-size:10px">لا تدخل seed phrase أو private key.</div></div></div>'}
 let renderGuard=false;
+function botSurfacePrompt(prompt,view="ai"){
+ S.view=view;render();
+ if(view==="ai")setTimeout(()=>{const i=$("#aiInput");if(i){i.value=prompt;i.focus();sendAI()}},60);
+}
+function botsView(){
+ const h=H(),cg=S.data?.capability_gate||{};
+ const cards=[
+  {id:"neural",icon:"✦",name:"MIDAD Neural Core",type:"REASONING",state:"VERIFIED",detail:"دمج البحث، الفرضيات، الروابط والتعلّم.",action:"تحليل النواة",run:()=>botSurfacePrompt("افحص Neural Core: ما أهم حالة معرفية تحتاج اهتمامًا الآن؟ اذكر الدليل والعائق والخطوة التالية.","ai")},
+  {id:"research",icon:"⌬",name:"Research Center",type:"RESEARCH",state:"READY",detail:"بحث موثق بالمصادر وحزمة قابلة للتسليم.",action:"فتح البحث",run:()=>botSurfacePrompt("جهّز لي إطار بحث قرارّي لمهمة مدفوعة: ما البيانات المطلوبة، مصادرها، ومخرجات التسليم؟","ai")},
+  {id:"money",icon:"◆",name:"Money Hunter",type:"INCOME",state:Number(h.money_opportunities||0)>0?"VERIFIED":"PENDING",detail:n(h.money_opportunities||0)+" فرصة مالية في الحالة الحالية.",action:"مسار المال",run:()=>{S.view="money";render()}},
+  {id:"income",icon:"↗",name:"Income Factory",type:"DELIVERY",state:cg.eligible>0?"VERIFIED":"REVIEW",detail:"تحويل الفرصة المؤهلة إلى Blueprint وخطة تسليم.",action:"جاهزية التنفيذ",run:()=>botSurfacePrompt("راجع أفضل مسار دخل مؤهل حاليًا: هل توجد حزمة تنفيذ جاهزة؟ وما المطلوب مني قبل البدء؟","ai")},
+  {id:"keys",icon:"🛡",name:"MIDADKeys",type:"IDENTITY",state:"DEPLOYED",detail:"إدارة الهويات، القدرات، leases، والموافقات الحساسة.",action:"واجهة المفاتيح",run:()=>window.open("https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_keys_bot?webapp=addkey&v=1","_blank","noopener")},
+  {id:"telegram",icon:"✈",name:"Telegram Fabric",type:"ROUTING",state:"ACTIVE",detail:"Router + Owner Bot + Poller يعملون كطبقة اتصال.",action:"فحص Telegram",run:()=>command("telegram")},
+  {id:"ugig",icon:"◎",name:"uGig Worker",type:"DELIVERY",state:"READY",detail:"Profile، التطبيقات، المحافظ، والفواتير عبر Gateway.",action:"فتح uGig",run:()=>{S.view="ugig";render()}},
+  {id:"mining",icon:"₿",name:"ViaBTC Monitor",type:"TELEMETRY",state:(h.live_mining||0)>0?"VERIFIED":"REVIEW",detail:(h.live_mining||0)+" حساب تعدين حي في الحالة.",action:"فحص التعدين",run:()=>runAction("run_mining_monitor")},
+  {id:"recovery",icon:"♻",name:"Revenue Recovery",type:"RECOVERY",state:(S.data?.recovery_cases||[]).length?"PENDING":"READY",detail:(S.data?.recovery_cases||[]).length+" حالات استرداد غير مغلقة.",action:"فحص الاسترداد",run:()=>botSurfacePrompt("راجع حالات Revenue Recovery الحالية: ما الذي يمكن استعادته، وما الدليل والعائق والخطوة التالية؟","ai")}
+ ];
+ return '<div class="cr-page bots-page"><section class="bots-hero"><div><div class="eyebrow">MIDAD / BOT FABRIC</div><h1>شبكة البوتات.</h1><p>كل وظيفة لها واجهة واضحة، مصدر بيانات محدد، وبوابة قبل أي فعل حساس.</p></div><div class="bots-pulse"><i></i><b>FABRIC ONLINE</b><small>'+n(cards.length)+' SERVICES / '+(S.connected?"SESSION VERIFIED":"LOCKED")+'</small></div></section><section class="bot-grid">'+cards.map(x=>'<article class="bot-card"><div class="bot-card-head"><span class="bot-icon">'+x.icon+'</span><div><div class="eyebrow">'+esc(x.type)+'</div><h3>'+esc(x.name)+'</h3></div><span class="badge '+(x.state==="VERIFIED"||x.state==="READY"||x.state==="ACTIVE"||x.state==="DEPLOYED"?"green":x.state==="PENDING"?"amber":"red")+'">'+esc(x.state)+'</span></div><p>'+esc(x.detail)+'</p><div class="bot-meta"><span>CONTROL</span><span>OBSERVABLE</span><span>GATED</span></div><button class="btn primary" data-bot-action="'+esc(x.id)+'">'+esc(x.action)+' ↗</button></article>').join("")+'</section><section class="panel bot-principles"><div class="eyebrow">FABRIC RULES</div><div class="bot-principle-grid"><div><b>1</b><span>Evidence-first</span><small>لا ادعاء بلا سجل أو حالة مثبتة.</small></div><div><b>2</b><span>Lifecycle-aware</span><small>لا يبدأ التنفيذ قبل قبول المهمة.</small></div><div><b>3</b><span>Human-gated</span><small>المعاملات الحساسة خلف موافقة.</small></div><div><b>4</b><span>Portable</span><small>Telegram قناة وليست نقطة فشل للنواة.</small></div></div></section></div>';
+}
 function render(){
  if(renderGuard)return;
  renderGuard=true;
@@ -225,6 +244,7 @@ function render(){
   else if(S.view==="intel")v.innerHTML=intelView();
   else if(S.view==="tasks")v.innerHTML=tasksView();
   else if(S.view==="ugig")v.innerHTML=ugigView();
+  else if(S.view==="bots")v.innerHTML=botsView();
   else if(S.view==="more")v.innerHTML=moreView();
   else v.innerHTML=cockpitView();
   bind();
@@ -238,7 +258,8 @@ function render(){
 }
 function bind(){
  $$("[data-view]").forEach(b=>b.onclick=()=>{S.view=b.dataset.view;render()});
- $$("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
+ $("[data-run]").forEach(b=>b.onclick=()=>runAction(b.dataset.run));
+ $("[data-bot-action]").forEach(b=>b.onclick=()=>{const id=b.dataset.botAction;const el=document.querySelector(".bot-card [data-bot-action=""+CSS.escape(id)+""]");});
  $$("[data-approval]").forEach(b=>b.onclick=()=>decide(b.dataset.approval,b.dataset.decision));
  $$("[data-task]").forEach(b=>b.onclick=()=>openTask(b.dataset.task));
  $$("[data-opp]").forEach(b=>b.onclick=()=>openOpp(b.dataset.opp));
