@@ -126,9 +126,44 @@ function formatAI(v){
  flush();
  return out.join("\n").replace(/\n{2,}/g,"<br><br>").replace(/\n/g,"<br>");
 }
+function aiContextLabel(v){
+ const map={now:"NOW / ما يحتاجك الآن",money:"MONEY / مسار الدخل",opportunity:"OPPORTUNITY / فرصة محددة",blueprint:"BLUEPRINT / جاهزية التنفيذ",tasks:"TASKS / تدخل بشري",osint:"OSINT / الرصد",system:"SYSTEM / صحة النواة"};
+ return map[String(v||"").toLowerCase()]||"NEURAL CONTEXT";
+}
+function aiStateSnapshot(){
+ const h=H(),cg=S.data?.capability_gate||{},ts=tasks(),mo=moneyOpps();
+ return {
+   state:S.error?"FAILED":S.connected?"VERIFIED":"BLOCKED",
+   money:moneyOpps().length,
+   tasks:ts.length,
+   approvals:apps().length,
+   readiness:Math.round(Number(cg.avg_delivery_confidence||0)*100),
+   pipeline:usd(pipeline())
+ };
+}
 function aiView(){
- const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+'</span><div class="bubble-body">'+(m.role==="ai"?formatAI(m.text):esc(m.text).replace(/\\n/g,"<br>"))+'</div></div>').join(""):'<div class="empty">هذا AI مستقل عن OSINT. اسأله عن القرار، المال، العوائق، أو إصلاح النظام.</div>';
- return '<div class="cr-page"><div class="ai-shell"><section class="panel ai-chat"><div class="panel-head"><div><div class="eyebrow">MIDAD AI / REASONING</div><h3>العقل هنا، وليس الرادار.</h3><small>AI يقرأ حالة MIDAD ويشرح القرار دون أن يتحول إلى OSINT.</small></div><button class="btn" data-cmd="aiClear">مسح</button></div><div class="ai-scroll" id="aiScroll">'+msgs+'</div><div class="ai-compose"><textarea id="aiInput" placeholder="اسأل MIDAD AI…"></textarea><button class="btn primary" data-cmd="aiSend">إرسال</button></div></section><aside class="panel"><div class="eyebrow">DIRECT QUESTIONS</div><h3>اضغط سؤالًا</h3><div class="prompt-grid"><button data-prompt="ما أهم شيء يحتاج تدخلي الآن؟">ما الذي يحتاجني الآن؟</button><button data-prompt="أين أقرب فرصة دخل قابلة للتنفيذ وما عائقها؟">أين أقرب فرصة دخل؟</button><button data-prompt="حلّل أعلى مهمة بشرية وقل لي ماذا أفعل خطوة بخطوة.">حلّل أعلى مهمة</button><button data-prompt="هل يوجد عطل في مسار تحويل الإشارات إلى فرص دخل؟">هل مسار المال متعطل؟</button><button data-prompt="افحص صحة النظام وما الذي يحتاج إصلاحًا؟">هل النظام سليم؟</button></div></aside></div></div>'
+ const snap=aiStateSnapshot();
+ const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+'</span><div class="bubble-body">'+(m.role==="ai"?formatAI(m.text):esc(m.text).replace(/\\n/g,"<br>"))+'</div></div>').join(""):'<div class="empty">النواة جاهزة. اسألها عن <b>NOW / MONEY / OPPORTUNITY / BLUEPRINT / SYSTEM</b> وستعرض الحالة، الدليل، العائق والخطوة التالية.</div>';
+ return '<div class="cr-page ai-command-page">'+
+ '<section class="ai-neural-header">'+
+   '<div><div class="eyebrow">MIDAD AI / NEURAL++ REASONING</div><h1>العقل التشغيلي.</h1><p>من <b>الحالة</b> إلى <b>الدليل</b> ثم <b>القرار</b> والخطوة التالية — بدون خلط بين الرصد والتنفيذ.</p></div>'+
+   '<div class="ai-live-orbit"><i></i><b>AI CORE</b><small>'+esc(snap.state)+'</small></div>'+
+   '<div class="ai-state-mini"><span>STATE <b>'+esc(snap.state)+'</b></span><span>MONEY <b>'+n(snap.money)+'</b></span><span>TASKS <b>'+n(snap.tasks)+'</b></span><span>APPROVALS <b>'+n(snap.approvals)+'</b></span><span>READINESS <b>'+snap.readiness+'%</b></span><span>PIPELINE <b>'+snap.pipeline+'</b></span></div>'+
+ '</section>'+
+ '<div class="ai-shell">'+
+   '<section class="panel ai-chat"><div class="panel-head"><div><div class="eyebrow">DECISION CONSOLE</div><h3>اسأل النواة — وسترى لماذا</h3><small>AI يقرأ الحالة التشغيلية المباشرة ويُبقي الأفعال الحساسة خلف بوابة الإنسان.</small></div><button class="btn" data-cmd="aiClear">مسح</button></div><div class="ai-scroll" id="aiScroll">'+msgs+'</div><div class="ai-compose"><textarea id="aiInput" placeholder="مثال: ما الذي يحتاجني الآن؟ أو حلّل أعلى فرصة دخل وما يمنع التقديم."></textarea><button class="btn primary" data-cmd="aiSend">إرسال</button></div></section>'+
+   '<aside class="ai-command-side">'+
+     '<section class="panel"><div class="eyebrow">NEURAL MODES</div><h3>اسأل حسب المسار</h3><div class="prompt-grid">'+
+       '<button data-prompt="ما أهم شيء يحتاج تدخلي الآن؟">◉ NOW — ماذا أفعل الآن؟</button>'+
+       '<button data-prompt="أين أقرب فرصة دخل قابلة للتنفيذ وما عائقها؟">◆ MONEY — أين أقرب دخل؟</button>'+
+       '<button data-prompt="حلّل أعلى فرصة مالية الآن: الجاهزية، الدليل، العائق، والخطوة التالية.">◇ OPPORTUNITY — حلّل فرصة</button>'+
+       '<button data-prompt="راجع أعلى Blueprint جاهز: هل هو قابل للتنفيذ الآن؟ اذكر المتطلبات والعوائق والخطوة التالية.">▣ BLUEPRINT — جاهزية التنفيذ</button>'+
+       '<button data-prompt="حلّل أعلى مهمة بشرية وقل لي ماذا أفعل خطوة بخطوة.">✓ TASKS — تدخلي</button>'+
+       '<button data-prompt="افحص صحة النظام وما الذي يحتاج إصلاحًا؟">⌘ SYSTEM — صحة النواة</button>'+
+     '</div></section>'+
+     '<section class="panel ai-contract"><div class="eyebrow">NEURAL CONTRACT</div><div class="contract-row"><span>FACT</span><b>بيانات مثبتة</b></div><div class="contract-row"><span>INFERENCE</span><b>استنتاج معلّم</b></div><div class="contract-row"><span>BLOCKER</span><b>ما يمنع الخطوة</b></div><div class="contract-row"><span>NEXT</span><b>خطوة عملية</b></div><div class="contract-row"><span>APPROVAL</span><b>قرار بشري عند الحاجة</b></div></section>'+
+   '</aside>'+
+ '</div></div>';
 }
 function moneyView(){
  const h=H(),oo=moneyOpps(),bp=blueprints();
