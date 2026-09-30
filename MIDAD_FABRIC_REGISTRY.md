@@ -5,15 +5,15 @@ Generated from the live Supabase Edge Function inventory on 2026-09-30. This is 
 | Function | Status | Version | JWT | Layer |
 |---|---|---:|:---:|---|
 | generate_campaign | ACTIVE | 33 | ON | Core service |
-| telegram_bot | ACTIVE | 72 | CUSTOM/OPEN | Telegram transport / routing |
+| telegram_bot | ACTIVE | 74 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_orchestrator | ACTIVE | 29 | CUSTOM/OPEN | Policy / orchestration / autonomy |
 | midad_chain_intelligence | ACTIVE | 18 | ON | Telemetry / chain |
 | midad_measure_outcomes | ACTIVE | 19 | ON | Measurement / feedback |
 | midad_market_ingest | ACTIVE | 24 | CUSTOM/OPEN | OSINT / market telemetry |
-| midad_control_room | ACTIVE | 62 | CUSTOM/OPEN | Control plane / UI API |
+| midad_control_room | ACTIVE | 64 | CUSTOM/OPEN | Control plane / UI API |
 | midad_telegram_repair_once | ACTIVE | 14 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_opportunity_engine | ACTIVE | 21 | CUSTOM/OPEN | Opportunity qualification |
-| midad_viabtc_monitor | ACTIVE | 20 | CUSTOM/OPEN | Telemetry / chain |
+| midad_viabtc_monitor | ACTIVE | 21 | CUSTOM/OPEN | Telemetry / chain |
 | midad_viabtc_monitor_bot | ACTIVE | 7 | CUSTOM/OPEN | Telegram transport / trading intelligence |
 | midad_telegram_bootstrap_once | ACTIVE | 11 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_client_gateway | ACTIVE | 15 | CUSTOM/OPEN | Client / worker delivery |
@@ -76,3 +76,12 @@ Supabase Security Advisor currently reports 28 RLS-enabled public tables without
 - Market fallback currently verified from Supabase runtime: CoinEx + Kraken + OKX reachable; Binance/Bybit/CoinGecko returned transport blocks (451/403).
 - midad_viabtc_monitor_bot v7: dedicated @viabtc_monitor Telegram bot. Secret source is VIABTC_MONITOR_BOT_TOKEN; commands/menu/webhook bootstrap verified. /trade and /mysun route to the non-copy engine.
 - Paper-trade table: public.midad_paper_trades, RLS enabled, service-role internal writes only.
+
+
+## Emergency++ Bot Command Surfaces
+
+- Control Room now supports bot-scoped URLs: `bot=viabtc`, `bot=ahwaz`, `bot=aimidad`.
+- ViaBTC context opens a dedicated Trading Lab with Evidence → Signal → Risk Gate → Paper Trade → MYSUN segmentation.
+- Bot Ops exposes management contexts for @viabtc_monitor, @ahwazai_bot, and @aimidad_bot without exposing secrets.
+- @aimidad_bot control menu now links to its scoped Control Room, Bot Ops, and the ViaBTC Trading Lab; /trade and /mysun route to the non-copy engine.
+- GitHub Actions `MIDAD Control Room Verify` succeeded on the latest UI cache-bust commit.
