@@ -90,7 +90,7 @@ function cockpitView(){
    '</div>'+
  '</section>'+
  '<section class="state-strip">'+
-   '<div class="state-main"><div class="eyebrow">NEURAL STATE / NOW</div><div class="state-chips">'+ns.map(x=>stateBadge(x.state)+'<span class="state-detail"><b>'+esc(x.label)+'</b> '+esc(x.detail)+'</span>').join("")).join("")+'</div></div>'+
+   '<div class="state-main"><div class="eyebrow">NEURAL STATE / NOW</div><div class="state-chips">'+ns.map(x=>stateBadge(x.state)+'<span class="state-detail"><b>'+esc(x.label)+'</b> '+esc(x.detail)+'</span>' ).join("")+'</div></div>'+
    '<div class="state-next"><div class="eyebrow">'+next.k+'</div><b>'+esc(next.title)+'</b><span>'+esc(next.detail)+'</span><button class="btn" data-view="'+next.action+'">افتح المسار →</button></div>'+
  '</section>'+
  '<div class="kpis"><div class="kpi"><span>MONEY OPPS</span><b>'+n(h.money_opportunities??mo.length)+'</b><div class="sub">فرص paid_work في المسار</div></div><div class="kpi"><span>SIGNALS</span><b>'+n(h.signals)+'</b><div class="sub">إشارات الرادار</div></div><div class="kpi"><span>HUMAN TASKS</span><b>'+n(h.pending_human_tasks)+'</b><div class="sub">تحتاج يدك</div></div><div class="kpi"><span>CASH PIPELINE</span><b>'+usd(pipeline())+'</b><div class="sub">قيمة متوقعة</div></div><div class="kpi"><span>READINESS</span><b>'+ready+'%</b><div class="sub">قابلية تسليم</div></div></div>'+
