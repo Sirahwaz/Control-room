@@ -156,7 +156,7 @@ function aiEvidenceCard(e){
  const next=o?.next_action||o?.recommended_next_action||b?.next_action||b?.next_step||"تحديد الخطوة التالية من البيانات المثبتة";
  const fact=o?.description||b?.money_thesis||"الحالة التشغيلية الحالية";
  const approval=(o?.requires_human_approval||b?.requires_human_approval)?"مطلوبة":"غير مطلوبة/غير مثبتة";
- return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="decision-card"><div><i>FACT</i><b>'+esc(fact)+'</b></div><div><i>STATE</i><b>'+esc(state)+'</b></div><div><i>BLOCKER</i><b>'+esc(blockers.length?blockers.slice(0,2).join(" · "):"لا يوجد عائق مثبت")+'</b></div><div><i>NEXT</i><b>'+esc(next)+'</b></div><div><i>APPROVAL</i><b>'+esc(approval)+'</b></div></div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
+ return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="decision-card"><div><i>FACT</i><b>'+esc(fact)+'</b></div><div><i>STATE</i><b>'+esc(state)+'</b></div><div><i>BLOCKER</i><b>'+esc(blockers.length?blockers.slice(0,2).join(" · "):"لا يوجد عائق مثبت")+'</b></div><div><i>NEXT</i><b>'+esc(next)+'</b></div><div><i>APPROVAL</i><b>'+esc(approval)+'</b></div></div><div class="decision-action-wrap">'+decisionAction(e)+'</div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
 }
 function aiView(){
  const snap=aiStateSnapshot();
@@ -347,7 +347,18 @@ function command(cmd){
  if(cmd==="aiSend")return sendAI();
  if(cmd==="quick"){const s=String($("#quick")?.value||"").trim().toLowerCase();if(!s)return;if(/ai|ذكاء|مساعد/.test(s)){S.view="ai";render();return}if(/فرص|مال|دخل/.test(s)){S.view="money";render();return}if(/osint|رصد|إشارات/.test(s)){S.view="intel";render();return}if(/مهم|task|approval|مواف/.test(s)){S.view="tasks";render();return}if(/new\$way|new way|cash first|دخل أولاً|طريق جديد/.test(s)){S.view="money";render();toast("NEW$WAY فعال: الأولوية للدخل المقبوض.","ok");return}if(/ugig|uGig|يوجيج|بروفايل/.test(s)){S.view="ugig";render();return}if(/تعدين|mining/.test(s)){runAction("run_mining_monitor");return}if(/دورة|autonomy/.test(s)){runAction("run_autonomy_now");return}if(/مسح/.test(s)){runAction("run_osint_scan");return}return toast("الأمر غير واضح. جرّب AI، مال، رصد، مهام، تعدين، دورة.","bad")}
  if(cmd==="ugigLoad")return loadUgig(); if(cmd==="ugigBest")return ugigBest(); if(cmd==="ugigSave")return saveUgigProfile(); if(cmd==="refresh")refresh();else if(cmd==="aiClear"){S.aiMessages=[];render()}else if(cmd==="keyConnect"){const k=$("#keyInput")?.value?.trim();if(!k)return toast("أدخل مفتاح الوصول.","bad");saveKey(k);refresh()}else if(cmd==="closeTask")$("#taskModal")?.remove();else if(cmd==="wallets")showWallets();else if(cmd==="closeWallets")$("#walletModal")?.remove();else if(cmd==="telegram"){api("telegram_webhook_info").then(j=>{S.telegram=j;render();toast("تم فحص Telegram.","ok")}).catch(e=>toast("Telegram: "+e.message,"bad"))}else if(cmd==="system"){api("dashboard").then(()=>toast("النواة تعمل.","ok")).catch(e=>toast("النواة: "+e.message,"bad"))}else if(cmd==="focusCommand"){const v=window.prompt("أدخل أمر MIDAD");if(v){const q=$("#quick");if(q)q.value=v;command("quick")}}}
-async function sendAI(){
+async function decisionAction(e){
+ const o=e?.selected_opportunity||null,b=e?.selected_blueprint||null,entity=o||b;
+ if(!entity)return "";
+ const state=String(entity.status||entity.state||"").toLowerCase();
+ const blocked=/blocked|failed|technical_blocked|cancel|closed/.test(state);
+ const actionable=/accepted|delivery|in_progress|ready|approved/.test(state);
+ const label=b?"فتح حزمة التنفيذ":"فتح الفرصة";
+ if(blocked)return '<div class="decision-action locked"><span>⛔ BLOCKED</span><b>لا يوجد تنفيذ تلقائي</b><small>العائق يجب معالجته أولًا.</small></div>';
+ if(actionable)return '<div class="decision-action ready"><span>● READY</span><b>'+label+'</b><small>متاح كمسار متابعة؛ التنفيذ الحساس يحتاج موافقة الإنسان.</small></div>';
+ return '<div class="decision-action review"><span>◌ REVIEW</span><b>مراجعة بشرية مطلوبة</b><small>الحالة الحالية لا تثبت صلاحية التنفيذ المباشر.</small></div>';
+}
+function sendAI(){
  const i=$("#aiInput");if(!i||S.aiBusy)return;const prompt=i.value.trim();if(!prompt)return;
  const mode=/ما\s*(?:أهم|اهم)\s*شي.*(?:تدخل|يحتاجني).*الآن|شنو.*يحتاجني|what\s+needs\s+me|my\s+intervention/i.test(prompt)?"now":/blueprint|بلوپرنت|مخطط تنفيذ|جاهز للتنفيذ|راجع.*حزمة/i.test(prompt)?"blueprint":/^حلّل هذه الفرصة[:：]/.test(prompt)||/فرصة|opportunity/i.test(prompt)?"opportunity":/مال|دخل|cash|payment|pipeline|client/i.test(prompt)?"money":/مهم|تدخل|approval|موافقة|task/i.test(prompt)?"tasks":/osint|رصد|إشارات|signal|radar|sentinel/i.test(prompt)?"osint":"system";
  S.aiMessages.push({role:"user",text:prompt});i.value="";S.aiBusy=true;render();
