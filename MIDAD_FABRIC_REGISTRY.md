@@ -49,13 +49,14 @@ Generated from the live Supabase Edge Function inventory on 2026-09-30. This is 
 
 ## Verified control surfaces
 
-- Control Room: midad_control_room v61
+- Control Room: midad_control_room v62
 - Telegram owner bot: telegram_bot v70
-- MIDADKeys bot/poller: midad_keys_bot / midad_keys_poller
+- MIDADKeys bot/poller: midad_keys_bot v9 / midad_keys_poller v8
 - Research/Neural: midad_research_center, midad_neural_core, midad_neural_status, midad_hypothesis_lab, midad_neural_evolution, midad_curiosity_engine
 - Income: midad_money_hunt, midad_money_hunter, midad_income_factory, midad_revenue_recovery, midad_payment_verifier, midad_settlement_router
 - Delivery: midad_ugig_gateway, midad_client_gateway
 - Build: midad_forge, midad_forge_coordinator
+- Bot Fabric UI surfaces: 15
 
 ## Active verified blocker
 
