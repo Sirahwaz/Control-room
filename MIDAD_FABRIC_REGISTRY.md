@@ -5,15 +5,16 @@ Generated from the live Supabase Edge Function inventory on 2026-09-30. This is 
 | Function | Status | Version | JWT | Layer |
 |---|---|---:|:---:|---|
 | generate_campaign | ACTIVE | 33 | ON | Core service |
-| telegram_bot | ACTIVE | 70 | CUSTOM/OPEN | Telegram transport / routing |
+| telegram_bot | ACTIVE | 72 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_orchestrator | ACTIVE | 29 | CUSTOM/OPEN | Policy / orchestration / autonomy |
 | midad_chain_intelligence | ACTIVE | 18 | ON | Telemetry / chain |
 | midad_measure_outcomes | ACTIVE | 19 | ON | Measurement / feedback |
 | midad_market_ingest | ACTIVE | 24 | CUSTOM/OPEN | OSINT / market telemetry |
-| midad_control_room | ACTIVE | 61 | CUSTOM/OPEN | Control plane / UI API |
+| midad_control_room | ACTIVE | 62 | CUSTOM/OPEN | Control plane / UI API |
 | midad_telegram_repair_once | ACTIVE | 14 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_opportunity_engine | ACTIVE | 21 | CUSTOM/OPEN | Opportunity qualification |
-| midad_viabtc_monitor | ACTIVE | 17 | CUSTOM/OPEN | Telemetry / chain |
+| midad_viabtc_monitor | ACTIVE | 20 | CUSTOM/OPEN | Telemetry / chain |
+| midad_viabtc_monitor_bot | ACTIVE | 7 | CUSTOM/OPEN | Telegram transport / trading intelligence |
 | midad_telegram_bootstrap_once | ACTIVE | 11 | CUSTOM/OPEN | Telegram transport / routing |
 | midad_client_gateway | ACTIVE | 15 | CUSTOM/OPEN | Client / worker delivery |
 | midad_osint_router | ACTIVE | 12 | CUSTOM/OPEN | OSINT / market telemetry |
@@ -22,6 +23,7 @@ Generated from the live Supabase Edge Function inventory on 2026-09-30. This is 
 | midad_policy_engine | ACTIVE | 12 | CUSTOM/OPEN | Policy / orchestration / autonomy |
 | midad_autonomy_loop | ACTIVE | 16 | CUSTOM/OPEN | Policy / orchestration / autonomy |
 | midad_market_edge | ACTIVE | 10 | CUSTOM/OPEN | OSINT / market telemetry |
+| midad_noncopy_trading_engine | ACTIVE | 4 | CUSTOM/OPEN | Trading intelligence / paper execution |
 | midad_settlement_router | ACTIVE | 10 | CUSTOM/OPEN | Income / payment / settlement |
 | midad_human_task_router | ACTIVE | 10 | CUSTOM/OPEN | Core service |
 | midad_money_hunter | ACTIVE | 19 | CUSTOM/OPEN | Income / payment / settlement |
@@ -50,7 +52,7 @@ Generated from the live Supabase Edge Function inventory on 2026-09-30. This is 
 ## Verified control surfaces
 
 - Control Room: midad_control_room v62
-- ViaBTC monitor: midad_viabtc_monitor v19 (hash/s → TH/s normalization + IP whitelist diagnostics)
+- ViaBTC monitor: midad_viabtc_monitor v20 (hash/s → TH/s normalization + IP whitelist diagnostics)
 - Telegram owner bot: telegram_bot v72
 - MIDADKeys bot/poller: midad_keys_bot v9 / midad_keys_poller v8
 - Research/Neural: midad_research_center, midad_neural_core, midad_neural_status, midad_hypothesis_lab, midad_neural_evolution, midad_curiosity_engine
@@ -67,3 +69,10 @@ MIDADKeys token source is currently unavailable. The live midad_keys_poller test
 ## Security notes
 
 Supabase Security Advisor currently reports 28 RLS-enabled public tables without policies, pg_net in public, and leaked-password protection disabled. These are audit findings; this registry does not automatically change them.
+
+## Non-copy trading intelligence
+
+- midad_noncopy_trading_engine v4: multi-venue independent BTC signal engine with paper-only output, no live order execution.
+- Market fallback currently verified from Supabase runtime: CoinEx + Kraken + OKX reachable; Binance/Bybit/CoinGecko returned transport blocks (451/403).
+- midad_viabtc_monitor_bot v7: dedicated @viabtc_monitor Telegram bot. Secret source is VIABTC_MONITOR_BOT_TOKEN; commands/menu/webhook bootstrap verified. /trade and /mysun route to the non-copy engine.
+- Paper-trade table: public.midad_paper_trades, RLS enabled, service-role internal writes only.
