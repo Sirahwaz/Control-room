@@ -151,7 +151,12 @@ function aiEvidenceCard(e){
    ["READINESS",Math.round(Number(cg.avg_delivery_confidence||0)*100)+"%"]
  ];
  const subject=o?esc(o.title||o.id):b?esc(b.title||b.id):"الحالة التشغيلية";
- return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
+ const state=o?.status||b?.state||b?.status||"—";
+ const blockers=Array.isArray(o?.blockers)?o.blockers:(Array.isArray(b?.blockers)?b.blockers:[]);
+ const next=o?.next_action||o?.recommended_next_action||b?.next_action||b?.next_step||"تحديد الخطوة التالية من البيانات المثبتة";
+ const fact=o?.description||b?.money_thesis||"الحالة التشغيلية الحالية";
+ const approval=(o?.requires_human_approval||b?.requires_human_approval)?"مطلوبة":"غير مطلوبة/غير مثبتة";
+ return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="decision-card"><div><i>FACT</i><b>'+esc(fact)+'</b></div><div><i>STATE</i><b>'+esc(state)+'</b></div><div><i>BLOCKER</i><b>'+esc(blockers.length?blockers.slice(0,2).join(" · "):"لا يوجد عائق مثبت")+'</b></div><div><i>NEXT</i><b>'+esc(next)+'</b></div><div><i>APPROVAL</i><b>'+esc(approval)+'</b></div></div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
 }
 function aiView(){
  const snap=aiStateSnapshot();
