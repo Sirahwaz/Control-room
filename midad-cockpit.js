@@ -3,7 +3,7 @@
 window.MIDAD_COCKPIT_BOOTING=true;
 const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-27-newway"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
-const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,miningAccounts:[],busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false,botContext:null,tradeData:null,tradeBusy:false};
+const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,miningAccounts:[],busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false,botContext:null,botStatus:null,tradeData:null,tradeBusy:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=v=>String(v??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 const n=v=>v==null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -32,7 +32,7 @@ async function api(action,extra={},retry=true,timeout=30000){
  catch(e){if(retry&&/session_expired|missing_session/.test(String(e.message))){S.token="";return api(action,extra,false,timeout)}throw e}
 }
 async function refresh(silent=false){
- try{const j=await api("dashboard",{},true,45000);S.data=j;S.connected=true;S.error="";render();if(!silent)toast("تم تحديث النواة.","ok");return j}
+ try{const j=await api("dashboard",{},true,45000);S.data=j;try{S.botStatus=await api("bot_fabric_status",{},true,20000)}catch{S.botStatus=null}S.connected=true;S.error="";render();if(!silent)toast("تم تحديث النواة.","ok");return j}
  catch(e){S.connected=false;S.error=String(e.message||e);render();if(!silent)toast("فشل الاتصال: "+S.error,"bad")}
 }
 function H(){return S.data?.health||{}}
