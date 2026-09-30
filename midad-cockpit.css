@@ -481,3 +481,15 @@ body{overflow-x:hidden}
 .decision-card>div:nth-child(4){border-color:rgba(103,232,249,.16);box-shadow:inset 2px 0 rgba(103,232,249,.45)}
 .decision-card>div:nth-child(5){border-color:rgba(255,209,102,.14)}
 @media(max-width:600px){.decision-card{grid-template-columns:1fr}}
+
+.decision-action-wrap{margin-top:8px}
+.decision-action{display:grid;grid-template-columns:auto 1fr;gap:4px 9px;align-items:center;padding:10px 11px;border:1px solid rgba(128,164,195,.12);border-radius:11px;background:rgba(4,9,15,.72)}
+.decision-action span{grid-row:span 2;font:700 8px var(--mono);letter-spacing:.08em}
+.decision-action b{font-size:10px}
+.decision-action small{font-size:8px;color:#718598;line-height:1.4}
+.decision-action.ready{border-color:rgba(94,230,161,.22)}
+.decision-action.ready span{color:#5ee6a1}
+.decision-action.review{border-color:rgba(255,209,102,.2)}
+.decision-action.review span{color:#ffd166}
+.decision-action.locked{border-color:rgba(255,100,124,.2)}
+.decision-action.locked span{color:#ff647c}
