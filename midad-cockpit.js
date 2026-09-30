@@ -217,34 +217,54 @@ function botSurfacePrompt(prompt,view="ai"){
  S.view=view;render();
  if(view==="ai")setTimeout(()=>{const i=$("#aiInput");if(i){i.value=prompt;i.focus();sendAI()}},60);
 }
+function showKeysStatus(j){
+ const rows=["الهويات: "+(j.identities||[]).length,"الـAgents: "+(j.agents||[]).length,"الطلبات النشطة: "+(j.requests||[]).length];
+ const old=$("#keysStatusModal");if(old)old.remove();
+ const details=(j.identities||[]).slice(0,8).map(x=>'<div class="row"><div class="row-main"><b>'+esc(x.account_label||x.provider||"Identity")+'</b><small>'+esc(x.identity_type||"—")+' · '+esc(x.status||"—")+'</small></div><span class="badge cyan">'+esc(x.provider||"—")+'</span></div>').join("");
+ const html='<div id="keysStatusModal" style="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:96;padding:7vh 7vw;overflow:auto"><div class="panel" style="max-width:920px;margin:auto"><div class="panel-head"><div><div class="eyebrow">MIDADKEYS / GATEWAY STATUS</div><h3>حالة الهوية والقدرات</h3><small>'+rows.join(" · ")+'</small></div><button class="btn" data-cmd="closeKeysStatus">إغلاق</button></div><div class="list">'+(details||'<div class="empty">لا توجد هويات محفوظة.</div>')+'</div><div class="sub" style="margin-top:12px">حالة Bot Token منفصلة عن Gateway: التوكن غير متاح حاليًا، ولا يتم عرض أي سر هنا.</div></div></div>';
+ document.body.insertAdjacentHTML("beforeend",html);
+ const m=$("#keysStatusModal");const b=m.querySelector('[data-cmd="closeKeysStatus"]');if(b)b.onclick=()=>m.remove();
+}
 function botAction(id){
  const map={
   neural:()=>botSurfacePrompt("افحص Neural Core: ما أهم حالة معرفية تحتاج اهتمامًا الآن؟ اذكر الدليل والعائق والخطوة التالية.","ai"),
   research:()=>botSurfacePrompt("جهّز لي إطار بحث قرارّي لمهمة مدفوعة: ما البيانات المطلوبة، مصادرها، ومخرجات التسليم؟","ai"),
   money:()=>{S.view="money";render()},
   income:()=>botSurfacePrompt("راجع أفضل مسار دخل مؤهل حاليًا: هل توجد حزمة تنفيذ جاهزة؟ وما المطلوب مني قبل البدء؟","ai"),
-  keys:()=>window.open("https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_keys_bot?webapp=addkey&v=1","_blank","noopener"),
+  keys:async()=>{try{const j=await api("keys_status",{},true,30000);showKeysStatus(j)}catch(e){toast("MIDADKeys: "+e.message,"bad")}},
   telegram:()=>command("telegram"),
   ugig:()=>{S.view="ugig";render()},
   mining:()=>runAction("run_mining_monitor"),
-  recovery:()=>botSurfacePrompt("راجع حالات Revenue Recovery الحالية: ما الذي يمكن استعادته، وما الدليل والعائق والخطوة التالية؟","ai")
+  recovery:()=>botSurfacePrompt("راجع حالات Revenue Recovery الحالية: ما الذي يمكن استعادته، وما الدليل والعائق والخطوة التالية؟","ai"),
+  osint:()=>runAction("run_osint_scan"),
+  autonomy:()=>runAction("run_autonomy_now"),
+  tasks:()=>{S.view="tasks";render()},
+  learning:()=>botSurfacePrompt("راجع آخر تعلّم في MIDAD: ما الذي تغيّر وما الدليل والخطوة التالية؟","ai"),
+  payments:()=>botSurfacePrompt("افحص مسار التحقق من الدفع والتسوية: ما الحالة المثبتة والعائق والخطوة التالية؟","ai"),
+  chain:()=>botSurfacePrompt("افحص Chain Intelligence: ما البيانات المثبتة وما قيمتها التشغيلية الآن؟","ai")
  };
  return map[id]?map[id]():toast("واجهة البوت غير معرفة بعد.","bad");
 }
 function botsView(){
- const h=H(),cg=S.data?.capability_gate||{};
+ const h=H(),cg=S.data?.capability_gate||{},recovery=(S.data?.recovery_cases||[]).length;
  const cards=[
-  {id:"neural",icon:"✦",name:"MIDAD Neural Core",type:"REASONING",state:"VERIFIED",detail:"دمج البحث، الفرضيات، الروابط والتعلّم.",action:"تحليل النواة",run:()=>botSurfacePrompt("افحص Neural Core: ما أهم حالة معرفية تحتاج اهتمامًا الآن؟ اذكر الدليل والعائق والخطوة التالية.","ai")},
-  {id:"research",icon:"⌬",name:"Research Center",type:"RESEARCH",state:"READY",detail:"بحث موثق بالمصادر وحزمة قابلة للتسليم.",action:"فتح البحث",run:()=>botSurfacePrompt("جهّز لي إطار بحث قرارّي لمهمة مدفوعة: ما البيانات المطلوبة، مصادرها، ومخرجات التسليم؟","ai")},
-  {id:"money",icon:"◆",name:"Money Hunter",type:"INCOME",state:Number(h.money_opportunities||0)>0?"VERIFIED":"PENDING",detail:n(h.money_opportunities||0)+" فرصة مالية في الحالة الحالية.",action:"مسار المال",run:()=>{S.view="money";render()}},
-  {id:"income",icon:"↗",name:"Income Factory",type:"DELIVERY",state:cg.eligible>0?"VERIFIED":"REVIEW",detail:"تحويل الفرصة المؤهلة إلى Blueprint وخطة تسليم.",action:"جاهزية التنفيذ",run:()=>botSurfacePrompt("راجع أفضل مسار دخل مؤهل حاليًا: هل توجد حزمة تنفيذ جاهزة؟ وما المطلوب مني قبل البدء؟","ai")},
-  {id:"keys",icon:"🛡",name:"MIDADKeys",type:"IDENTITY",state:"BLOCKED",detail:"Backend موجود، لكن مصدر توكن MIDADKeys غير متاح حاليًا في Vault/Env حسب آخر تحقق.",action:"واجهة المفاتيح / تشخيص",run:()=>window.open("https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_keys_bot?webapp=addkey&v=1","_blank","noopener")},
-  {id:"telegram",icon:"✈",name:"Telegram Fabric",type:"ROUTING",state:"ACTIVE",detail:"Router + Owner Bot + Poller يعملون كطبقة اتصال.",action:"فحص Telegram",run:()=>command("telegram")},
-  {id:"ugig",icon:"◎",name:"uGig Worker",type:"DELIVERY",state:"READY",detail:"Profile، التطبيقات، المحافظ، والفواتير عبر Gateway.",action:"فتح uGig",run:()=>{S.view="ugig";render()}},
-  {id:"mining",icon:"₿",name:"ViaBTC Monitor",type:"TELEMETRY",state:(h.live_mining||0)>0?"VERIFIED":"REVIEW",detail:(h.live_mining||0)+" حساب تعدين حي في الحالة.",action:"فحص التعدين",run:()=>runAction("run_mining_monitor")},
-  {id:"recovery",icon:"♻",name:"Revenue Recovery",type:"RECOVERY",state:(S.data?.recovery_cases||[]).length?"PENDING":"READY",detail:(S.data?.recovery_cases||[]).length+" حالات استرداد غير مغلقة.",action:"فحص الاسترداد",run:()=>botSurfacePrompt("راجع حالات Revenue Recovery الحالية: ما الذي يمكن استعادته، وما الدليل والعائق والخطوة التالية؟","ai")}
+  {id:"neural",icon:"✦",name:"MIDAD Neural Core",type:"REASONING",state:"VERIFIED",detail:"دمج البحث، الفرضيات، الروابط والتعلّم.",action:"تحليل النواة"},
+  {id:"research",icon:"⌬",name:"Research Center",type:"RESEARCH",state:"READY",detail:"بحث موثق بالمصادر وحزمة قابلة للتسليم.",action:"فتح البحث"},
+  {id:"money",icon:"◆",name:"Money Hunter",type:"INCOME",state:Number(h.money_opportunities||0)>0?"VERIFIED":"PENDING",detail:n(h.money_opportunities||0)+" فرصة مالية في الحالة الحالية.",action:"مسار المال"},
+  {id:"income",icon:"↗",name:"Income Factory",type:"DELIVERY",state:cg.eligible>0?"VERIFIED":"REVIEW",detail:"تحويل الفرصة المؤهلة إلى Blueprint وخطة تسليم.",action:"جاهزية التنفيذ"},
+  {id:"keys",icon:"🛡",name:"MIDADKeys",type:"IDENTITY",state:"BLOCKED",detail:"Gateway موجود؛ Bot Token غير متاح حاليًا.",action:"تشخيص الهوية"},
+  {id:"telegram",icon:"✈",name:"Telegram Fabric",type:"ROUTING",state:"ACTIVE",detail:"Owner Bot + Router + Pollers.",action:"فحص Telegram"},
+  {id:"ugig",icon:"◎",name:"uGig Worker",type:"DELIVERY",state:"READY",detail:"Profile، التطبيقات، المحافظ، والفواتير عبر Gateway.",action:"فتح uGig"},
+  {id:"mining",icon:"₿",name:"ViaBTC Monitor",type:"TELEMETRY",state:(h.live_mining||0)>0?"VERIFIED":"REVIEW",detail:(h.live_mining||0)+" حساب تعدين حي.",action:"فحص التعدين"},
+  {id:"recovery",icon:"♻",name:"Revenue Recovery",type:"RECOVERY",state:recovery?"PENDING":"READY",detail:recovery+" حالات استرداد غير مغلقة.",action:"فحص الاسترداد"},
+  {id:"osint",icon:"📡",name:"OSINT Router",type:"RADAR",state:"READY",detail:"تحويل الرصد إلى بيانات قابلة للتحقق.",action:"تشغيل الرصد"},
+  {id:"autonomy",icon:"⚡",name:"Autonomy Loop",type:"AUTONOMY",state:"GATED",detail:"دورة تشغيل محكومة بالـpolicy والـgates.",action:"تشغيل الدورة"},
+  {id:"tasks",icon:"✓",name:"Human Task Router",type:"HUMAN",state:(h.pending_human_tasks||0)>0?"PENDING":"READY",detail:(h.pending_human_tasks||0)+" مهام بشرية مفتوحة.",action:"تدخلي"},
+  {id:"payments",icon:"₿",name:"Payment / Settlement",type:"MONEY",state:"GATED",detail:"تحقق وتسوية دون ادعاء تحصيل.",action:"فحص الدفع"},
+  {id:"learning",icon:"♻",name:"Learning Engine",type:"LEARNING",state:"ACTIVE",detail:"تعلم من النتائج والعمليات.",action:"آخر تعلّم"},
+  {id:"chain",icon:"⛓",name:"Chain Intelligence",type:"CHAIN",state:"READY",detail:"تحليل بيانات السلسلة وربطها بالقرار.",action:"فحص السلسلة"}
  ];
- return '<div class="cr-page bots-page"><section class="bots-hero"><div><div class="eyebrow">MIDAD / BOT FABRIC</div><h1>شبكة البوتات.</h1><p>كل وظيفة لها واجهة واضحة، مصدر بيانات محدد، وبوابة قبل أي فعل حساس.</p></div><div class="bots-pulse"><i></i><b>FABRIC ONLINE</b><small>'+n(cards.length)+' SERVICES / '+(S.connected?"SESSION VERIFIED":"LOCKED")+'</small></div></section><section class="bot-grid">'+cards.map(x=>'<article class="bot-card"><div class="bot-card-head"><span class="bot-icon">'+x.icon+'</span><div><div class="eyebrow">'+esc(x.type)+'</div><h3>'+esc(x.name)+'</h3></div><span class="badge '+(x.state==="VERIFIED"||x.state==="READY"||x.state==="ACTIVE"||x.state==="DEPLOYED"?"green":x.state==="PENDING"?"amber":"red")+'">'+esc(x.state)+'</span></div><p>'+esc(x.detail)+'</p><div class="bot-meta"><span>CONTROL</span><span>OBSERVABLE</span><span>GATED</span></div><button class="btn primary" data-bot-action="'+esc(x.id)+'">'+esc(x.action)+' ↗</button></article>').join("")+'</section><section class="panel bot-principles"><div class="eyebrow">FABRIC RULES</div><div class="bot-principle-grid"><div><b>1</b><span>Evidence-first</span><small>لا ادعاء بلا سجل أو حالة مثبتة.</small></div><div><b>2</b><span>Lifecycle-aware</span><small>لا يبدأ التنفيذ قبل قبول المهمة.</small></div><div><b>3</b><span>Human-gated</span><small>المعاملات الحساسة خلف موافقة.</small></div><div><b>4</b><span>Portable</span><small>Telegram قناة وليست نقطة فشل للنواة.</small></div></div></section></div>';
+ return '<div class="cr-page bots-page"><section class="bots-hero"><div><div class="eyebrow">MIDAD / BOT FABRIC</div><h1>شبكة البوتات.</h1><p>كل وظيفة لها واجهة واضحة ومصدر وGate مستقل.</p></div><div class="bots-pulse"><i></i><b>FABRIC ONLINE</b><small>'+n(cards.length)+' SURFACES / '+(S.connected?"SESSION VERIFIED":"LOCKED")+'</small></div></section><section class="bot-grid">'+cards.map(x=>'<article class="bot-card"><div class="bot-card-head"><span class="bot-icon">'+x.icon+'</span><div><div class="eyebrow">'+esc(x.type)+'</div><h3>'+esc(x.name)+'</h3></div><span class="badge '+(x.state==="VERIFIED"||x.state==="READY"||x.state==="ACTIVE"?"green":x.state==="PENDING"||x.state==="REVIEW"||x.state==="GATED"?"amber":"red")+'">'+esc(x.state)+'</span></div><p>'+esc(x.detail)+'</p><div class="bot-meta"><span>CONTROL</span><span>OBSERVABLE</span><span>GATED</span></div><button class="btn primary" data-bot-action="'+esc(x.id)+'">'+esc(x.action)+' ↗</button></article>').join("")+'</section><section class="panel bot-principles"><div class="eyebrow">FABRIC RULES</div><div class="bot-principle-grid"><div><b>1</b><span>Evidence-first</span><small>لا ادعاء بلا سجل أو حالة مثبتة.</small></div><div><b>2</b><span>Lifecycle-aware</span><small>لا يبدأ التنفيذ قبل قبول المهمة.</small></div><div><b>3</b><span>Human-gated</span><small>المعاملات الحساسة خلف موافقة.</small></div><div><b>4</b><span>Portable</span><small>Telegram قناة وليست نقطة فشل للنواة.</small></div></div></section></div>';
 }
 function render(){
  if(renderGuard)return;
