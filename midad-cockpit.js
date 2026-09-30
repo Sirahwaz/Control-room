@@ -141,9 +141,21 @@ function aiStateSnapshot(){
    pipeline:usd(pipeline())
  };
 }
+function aiEvidenceCard(e){
+ const h=e?.health||{},cg=e?.capability_gate||{},o=e?.selected_opportunity||null,b=e?.selected_blueprint||null;
+ const items=[
+   ["STATE",S.error?"FAILED":S.connected?"VERIFIED":"BLOCKED"],
+   ["MONEY",n(h.money_opportunities??0)],
+   ["TASKS",n(h.pending_human_tasks??(e?.human_tasks||[]).length)],
+   ["APPROVALS",n(h.pending_approvals??(e?.approvals||[]).length)],
+   ["READINESS",Math.round(Number(cg.avg_delivery_confidence||0)*100)+"%"]
+ ];
+ const subject=o?esc(o.title||o.id):b?esc(b.title||b.id):"الحالة التشغيلية";
+ return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
+}
 function aiView(){
  const snap=aiStateSnapshot();
- const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+'</span><div class="bubble-body">'+(m.role==="ai"?formatAI(m.text):esc(m.text).replace(/\\n/g,"<br>"))+'</div></div>').join(""):'<div class="empty">النواة جاهزة. اسألها عن <b>NOW / MONEY / OPPORTUNITY / BLUEPRINT / SYSTEM</b> وستعرض الحالة، الدليل، العائق والخطوة التالية.</div>';
+ const msgs=S.aiMessages.length?S.aiMessages.map(m=>'<div class="bubble '+m.role+'"><span class="meta">'+(m.role==="ai"?"MIDAD AI":"أنت")+(m.mode?' · <span class="ai-mode-tag">'+esc(aiContextLabel(m.mode))+'</span>':"")+'</span><div class="bubble-body">'+(m.role==="ai"?formatAI(m.text):esc(m.text).replace(/\\n/g,"<br>"))+'</div>'+(m.evidence?aiEvidenceCard(m.evidence):"")+'</div>').join(""):'<div class="empty">النواة جاهزة. اسألها عن <b>NOW / MONEY / OPPORTUNITY / BLUEPRINT / SYSTEM</b> وستعرض الحالة، الدليل، العائق والخطوة التالية.</div>';
  return '<div class="cr-page ai-command-page">'+
  '<section class="ai-neural-header">'+
    '<div><div class="eyebrow">MIDAD AI / NEURAL++ REASONING</div><h1>العقل التشغيلي.</h1><p>من <b>الحالة</b> إلى <b>الدليل</b> ثم <b>القرار</b> والخطوة التالية — بدون خلط بين الرصد والتنفيذ.</p></div>'+
@@ -332,11 +344,11 @@ function command(cmd){
  if(cmd==="ugigLoad")return loadUgig(); if(cmd==="ugigBest")return ugigBest(); if(cmd==="ugigSave")return saveUgigProfile(); if(cmd==="refresh")refresh();else if(cmd==="aiClear"){S.aiMessages=[];render()}else if(cmd==="keyConnect"){const k=$("#keyInput")?.value?.trim();if(!k)return toast("أدخل مفتاح الوصول.","bad");saveKey(k);refresh()}else if(cmd==="closeTask")$("#taskModal")?.remove();else if(cmd==="wallets")showWallets();else if(cmd==="closeWallets")$("#walletModal")?.remove();else if(cmd==="telegram"){api("telegram_webhook_info").then(j=>{S.telegram=j;render();toast("تم فحص Telegram.","ok")}).catch(e=>toast("Telegram: "+e.message,"bad"))}else if(cmd==="system"){api("dashboard").then(()=>toast("النواة تعمل.","ok")).catch(e=>toast("النواة: "+e.message,"bad"))}else if(cmd==="focusCommand"){const v=window.prompt("أدخل أمر MIDAD");if(v){const q=$("#quick");if(q)q.value=v;command("quick")}}}
 async function sendAI(){
  const i=$("#aiInput");if(!i||S.aiBusy)return;const prompt=i.value.trim();if(!prompt)return;
- const mode=/^حلّل هذه الفرصة[:：]/.test(prompt)||/فرصة|opportunity/i.test(prompt)?"opportunity":/مال|دخل|cash|payment|pipeline|client/i.test(prompt)?"money":/مهم|تدخل|approval|موافقة|task/i.test(prompt)?"tasks":/osint|رصد|إشارات|signal|radar|sentinel/i.test(prompt)?"osint":"system";
+ const mode=/ما\s*(?:أهم|اهم)\s*شي.*(?:تدخل|يحتاجني).*الآن|شنو.*يحتاجني|what\s+needs\s+me|my\s+intervention/i.test(prompt)?"now":/blueprint|بلوپرنت|مخطط تنفيذ|جاهز للتنفيذ|راجع.*حزمة/i.test(prompt)?"blueprint":/^حلّل هذه الفرصة[:：]/.test(prompt)||/فرصة|opportunity/i.test(prompt)?"opportunity":/مال|دخل|cash|payment|pipeline|client/i.test(prompt)?"money":/مهم|تدخل|approval|موافقة|task/i.test(prompt)?"tasks":/osint|رصد|إشارات|signal|radar|sentinel/i.test(prompt)?"osint":"system";
  S.aiMessages.push({role:"user",text:prompt});i.value="";S.aiBusy=true;render();
  try{
    const j=await api("ai_assist",{prompt,route:"ai",ai_mode:mode},true,75000);
-   S.aiMessages.push({role:"ai",text:j.answer||"لم يصل رد."});
+   S.aiMessages.push({role:"ai",text:j.answer||"لم يصل رد.",mode:j.mode||mode,evidence:j.evidence||null,run_id:j.run_id||null});
  }catch(e){
    const m=String(e?.message||e);
    S.aiMessages.push({role:"ai",text:/aborted|abort/i.test(m)?"فشل MIDAD AI: انتهت مهلة الرد قبل وصول النتيجة.":"فشل MIDAD AI: "+m});
