@@ -1,0 +1,34 @@
+name: MIDAD Control Room Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Git diff check
+        run: git diff --check
+
+      - name: JavaScript syntax
+        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('midad-cockpit.js','utf8')); console.log('JS_SYNTAX_OK');"
+
+      - name: Required UI assets
+        run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-cockpit.css','midad-cockpit.js','Telegram WebApp']) if(!h.includes(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
+
+      - name: Bot Fabric surface
+        run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
