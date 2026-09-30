@@ -473,3 +473,11 @@ body{overflow-x:hidden}
 .ai-evidence-grid i{font:7px var(--mono);font-style:normal;color:#61758a}.ai-evidence-grid b{font:12px var(--mono);color:#d7e5ef}
 .ai-evidence-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;color:#556b80;font:7px var(--mono)}
 @media(max-width:700px){.ai-evidence-grid{grid-template-columns:repeat(2,1fr)}.ai-evidence-head{grid-template-columns:1fr}.ai-evidence-foot{display:grid}}
+
+.decision-card{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.decision-card>div{display:grid;gap:4px;padding:9px;border-radius:10px;background:rgba(3,8,13,.62);border:1px solid rgba(128,164,195,.08)}
+.decision-card i{font:7px var(--mono);font-style:normal;letter-spacing:.08em;color:#5e7488}
+.decision-card b{font-size:9px;line-height:1.55;color:#d4e1eb;font-weight:600}
+.decision-card>div:nth-child(4){border-color:rgba(103,232,249,.16);box-shadow:inset 2px 0 rgba(103,232,249,.45)}
+.decision-card>div:nth-child(5){border-color:rgba(255,209,102,.14)}
+@media(max-width:600px){.decision-card{grid-template-columns:1fr}}
