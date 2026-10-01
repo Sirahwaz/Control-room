@@ -199,5 +199,15 @@ async function importProfiles(fileInput){
   const file=fileInput?.files?.[0];if(!file)return;
   try{const data=JSON.parse(await file.text()),profiles=data?.profiles||{};Object.entries(profiles).forEach(([id,p])=>{if(p&&typeof p==="object")localStorage.setItem("midad_miner_profile_"+id,JSON.stringify(p))});fileInput.value="";render()}catch(e){S.error="Profile import failed: "+String(e?.message||e);fileInput.value="";render()}
 }
+async function post(action,timeout=60000){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),timeout);
+  try{
+    const r=await fetch(CFG.url+CFG.fn,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action}),signal:c.signal});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||j.ok===false)throw new Error(j.error||j.message||"HTTP "+r.status);
+    return j;
+  }finally{clearTimeout(t)}
+}
+
 window.addEventListener("load",()=>{render();refresh();window.setInterval(()=>{if(!S.busy)refresh()},30000)});
 })();
