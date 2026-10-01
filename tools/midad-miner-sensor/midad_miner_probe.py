@@ -184,6 +184,89 @@ def normalize(raw: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
 def sign(secret: str, timestamp: str, body: bytes) -> str:
     return hmac.new(secret.encode(), (timestamp + ".").encode() + body, hashlib.sha256).hexdigest()
 
+def post_repair(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -> dict[str, Any]:
+    body = json.dumps(body_obj, separators=(",", ":"), ensure_ascii=False).encode()
+    ts = str(int(time.time()))
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="POST",
+        headers={
+            "content-type": "application/json",
+            "x-midad-node": node_id,
+            "x-midad-timestamp": ts,
+            "x-midad-signature": sign(secret, ts, body),
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as res:
+        return json.loads(res.read().decode("utf-8"))
+
+
+def cgminer_command(host: str, port: int, command: str, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
+    payload = json.dumps({"command": command}).encode()
+    with socket.create_connection((host, port), timeout=timeout) as sock:
+        sock.settimeout(timeout)
+        sock.sendall(payload)
+        chunks: list[bytes] = []
+        while True:
+            try:
+                chunk = sock.recv(65535)
+            except socket.timeout:
+                break
+            if not chunk:
+                break
+            chunks.append(chunk)
+            if len(chunk) < 65535:
+                break
+    raw = b"".join(chunks).decode("utf-8", errors="replace")
+    if not raw:
+        raise RuntimeError("empty cgminer command response")
+    return json.loads(raw)
+
+
+def handle_repairs(cfg: dict[str, Any], repair_url: str, repair_key: str) -> None:
+    node_id = str(cfg.get("node_id") or os.uname().nodename)
+    queue = post_repair(repair_url, repair_key, node_id, {"mode": "poll", "node_id": node_id})
+    for cmd in queue.get("commands", []):
+        worker_id = int(cmd["worker_id"])
+        target = next((x for x in cfg["targets"] if int(x.get("worker_id")) == worker_id), None)
+        if not target:
+            continue
+        action_id = cmd["action_id"]
+        operation = str(cmd.get("operation") or "").lower()
+        if operation == "diagnostic":
+            try:
+                result = cgminer_command(str(target["host"]), int(target.get("port", 4028)), "summary+devs+stats+pools")
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "verified",
+                    "result": {"operation": "diagnostic", "worker_id": worker_id, "node_id": node_id, "sample": result}
+                })
+            except Exception as exc:
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "failed",
+                    "result": {"operation": "diagnostic", "worker_id": worker_id, "error": str(exc)}
+                })
+        elif operation == "restart":
+            if os.environ.get("MIDAD_ALLOW_RESTART", "").strip().lower() not in {"1", "true", "yes"}:
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "blocked",
+                    "result": {"operation": "restart", "worker_id": worker_id, "reason": "MIDAD_ALLOW_RESTART is not enabled on this node"}
+                })
+                continue
+            try:
+                post_repair(repair_url, repair_key, node_id, {"mode":"ack","action_id":action_id,"state":"running","result":{"operation":"restart","worker_id":worker_id}})
+                result = cgminer_command(str(target["host"]), int(target.get("port", 4028)), "restart")
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "completed",
+                    "result": {"operation": "restart", "worker_id": worker_id, "node_id": node_id, "response": result}
+                })
+            except Exception as exc:
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "failed",
+                    "result": {"operation": "restart", "worker_id": worker_id, "error": str(exc)}
+                })
+
+
 
 def post_batch(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -> dict[str, Any]:
     body = json.dumps(body_obj, separators=(",", ":"), ensure_ascii=False).encode()
@@ -250,11 +333,22 @@ def main() -> int:
         print("MIDAD_TELEMETRY_KEY is required", file=sys.stderr)
         return 2
     cfg = load_config(args.config)
+    repair_url = os.environ.get("MIDAD_REPAIR_URL", "https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_miner_repair_bridge")
+    repair_key = os.environ.get("MIDAD_REPAIR_KEY")
     if args.once:
-        return collect_once(cfg, args.url, args.key, args.timeout)
+        rc = collect_once(cfg, args.url, args.key, args.timeout)
+        if repair_key:
+            try:
+                handle_repairs(cfg, repair_url, repair_key)
+            except Exception as exc:
+                print(f"repair bridge error: {exc}", file=sys.stderr)
+                return max(rc, 2)
+        return rc
     while True:
         try:
             collect_once(cfg, args.url, args.key, args.timeout)
+            if repair_key:
+                handle_repairs(cfg, repair_url, repair_key)
         except Exception as exc:
             print(f"collector error: {exc}", file=sys.stderr)
         time.sleep(max(15, args.interval))
