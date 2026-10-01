@@ -175,6 +175,7 @@ def normalize(raw: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
             "asic_error_seen": bool(hwerr),
             "chain_count_seen": chain_count is not None,
             "stratum_state_seen": stratum is not None,
+            "topology": target.get("topology") if isinstance(target.get("topology"), dict) else {},
         },
         "raw": raw,
     }
