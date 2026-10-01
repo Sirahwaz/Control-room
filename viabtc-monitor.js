@@ -217,5 +217,12 @@ async function post(action,timeout=60000){
   }finally{clearTimeout(t)}
 }
 
-window.addEventListener("load",()=>{render();refresh();window.setInterval(()=>{if(!S.busy)refresh()},30000)});
+async function loadMicroscopeStatus(){
+  try{
+    const r=await fetch(CFG.url+CFG.fn,{method:"GET",cache:"no-store"});
+    const j=await r.json().catch(()=>({}));
+    if(j?.ok){S.microscope=j.microscope||null;render();}
+  }catch(_){}
+}
+window.addEventListener("load",()=>{render();loadMicroscopeStatus();refresh();window.setInterval(()=>{if(!S.busy)refresh()},30000)});
 })();
