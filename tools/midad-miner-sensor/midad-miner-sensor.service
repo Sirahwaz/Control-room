@@ -1,0 +1,24 @@
+# Example systemd unit for a local Linux farm node.
+# Store the real secret in an environment file that is NOT committed.
+# This collector is read-only: it never sends restart/reboot/control commands.
+
+[Unit]
+Description=MIDAD Miner Sensor Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/midad-miner-sensor
+EnvironmentFile=/etc/midad/miner-sensor.env
+ExecStart=/usr/bin/python3 /opt/midad-miner-sensor/midad_miner_probe.py --config /etc/midad/miners.json --interval 60
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/midad
+
+[Install]
+WantedBy=multi-user.target
