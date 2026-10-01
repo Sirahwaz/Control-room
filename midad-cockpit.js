@@ -1,7 +1,7 @@
 (()=>{
 "use strict";
 window.MIDAD_COCKPIT_BOOTING=true;
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-09-30-emergencypp"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-10-01-neuralpp1"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,miningAccounts:[],busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false,botContext:null,botStatus:null,tradeData:null,tradeBusy:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -109,6 +109,41 @@ function stateBadge(x){
  const cls={VERIFIED:"green",INFERRED:"cyan",PENDING:"amber",FAILED:"red",BLOCKED:"red"}[x]||"cyan";
  return '<span class="state-chip '+cls+'"><i></i>'+esc(x)+'</span>';
 }
+function financeOperationsPanel(){
+ const fi=S.data?.finance_intelligence||{};
+ const core=fi.finance_core||{},gov=fi.governor||{},intel=fi.intelligence||{},action=fi.action||{};
+ const os=intel.osint||{},ne=intel.neural||{};
+ const badge=(v)=>{
+   const s=String(v||"—").toUpperCase();
+   const cls=s==="VERIFIED"?"green":s==="FAILED"||s==="BLOCKED"?"red":s==="PENDING"||s==="NO_USABLE_SOURCES"?"amber":"cyan";
+   return '<span class="badge '+cls+'">'+esc(s)+'</span>';
+ };
+ const cycle=core.latest_cycle||{},ledger=core.latest_ledger||{};
+ const live=Boolean(action.live_financial_execution_allowed);
+ return '<section class="panel section-gap">'+
+   '<div class="panel-head"><div><div class="eyebrow">FINANCE / INTELLIGENCE / ACTION</div><h3>الحالة التشغيلية الفعلية</h3><small>Finance Core مستقل عن OSINT وNeural؛ هذه قراءة للحالة فقط ولا تمنح تفويضًا ماليًا.</small></div>'+badge(core.state||"NO_CYCLE")+'</div>'+
+   '<div class="kpis">'+
+     '<div class="kpi"><span>CORE DECISION</span><b style="font-size:18px">'+esc(cycle.decision||ledger.decision||"—")+'</b><div class="sub">'+esc(cycle.signal_direction||ledger.signal_direction||"—")+' · '+(cycle.signal_confidence==null?"—":Math.round(Number(cycle.signal_confidence)*100)+"%")+'</div></div>'+
+     '<div class="kpi"><span>OSINT LANE</span><b style="font-size:17px">'+esc(os.state||"IDLE")+'</b><div class="sub">'+n(os.queue_counts?.queued||0)+' queued · '+n(os.queue_counts?.processing||0)+' processing</div></div>'+
+     '<div class="kpi"><span>NEURAL LANE</span><b style="font-size:17px">'+esc(ne.state||"IDLE")+'</b><div class="sub">'+n(ne.queue_counts?.queued||0)+' queued · '+n(ne.queue_counts?.processing||0)+' processing</div></div>'+
+     '<div class="kpi"><span>LIVE FINANCE</span><b style="font-size:17px">'+(live?"OPEN":"LOCKED")+'</b><div class="sub">'+esc(gov.mode||"unknown")+' · kill switch '+(gov.kill_switch?"ON":"OFF")+'</div></div>'+
+   '</div>'+
+   '<div class="grid g2 section-gap">'+
+     '<div class="panel"><div class="panel-head"><div><div class="eyebrow">FINANCE CORE</div><h4>آخر دورة + Ledger</h4></div>'+badge(cycle.status==="completed"?"VERIFIED":cycle.status||"NO_CYCLE")+'</div>'+
+       '<div class="list"><div class="row"><div class="row-main"><b>'+esc(cycle.decision||"—")+'</b><small>'+esc(cycle.signal_direction||"—")+' · anomaly '+esc(cycle.anomaly_score??"—")+'</small></div><span class="badge cyan">'+(cycle.signal_confidence==null?"—":Math.round(Number(cycle.signal_confidence)*100)+"%")+'</span></div>'+
+       '<div class="row"><div class="row-main"><b>Ledger</b><small>'+esc(ledger.reason_code||"—")+' · '+esc(ledger.outcome_status||"—")+'</small></div><span class="badge cyan">'+esc(ledger.decision_quality||"PENDING")+'</span></div>'+
+       '<div class="row"><div class="row-main"><b>Governor</b><small>'+esc(gov.mode||"—")+' · spot '+(gov.spot_only?"only":"off")+' · leverage '+(gov.leverage_allowed?"allowed":"blocked")+'</small></div><span class="badge '+(gov.kill_switch?"red":"green")+'">'+(gov.kill_switch?"KILL ON":"KILL OFF")+'</span></div></div>'+
+     '</div>'+
+     '<div class="panel"><div class="panel-head"><div><div class="eyebrow">INTELLIGENCE ENRICHMENT</div><h4>OSINT + Neural</h4></div><span class="badge cyan">ASYNC</span></div>'+
+       '<div class="list"><div class="row"><div class="row-main"><b>OSINT</b><small>'+n(os.queue_counts?.sent||0)+' dispatched · '+esc(os.quality?.usable_sources??"—")+' usable sources</small></div>'+badge(os.state||"IDLE")+'</div>'+
+       '<div class="row"><div class="row-main"><b>Neural</b><small>'+n(ne.queue_counts?.sent||0)+' completed dispatch · '+esc(ne.quality?.status||"NOT_AVAILABLE")+'</small></div>'+badge(ne.state||"IDLE")+'</div>'+
+       '<div class="row"><div class="row-main"><b>Latest research</b><small>'+esc(intel.latest_research?.id||"—")+' · '+esc(intel.latest_research?.query_mode||"—")+'</small></div><span class="badge '+(Number(intel.latest_research?.usable_sources||0)>0?"green":"amber")+'">'+esc(intel.latest_research?.usable_sources??"—")+' sources</span></div></div>'+
+     '</div>'+
+   '</div>'+
+   '<div class="decision-footer"><span class="badge amber">HUMAN GATE</span><b>Finance remains paper-only and live execution is '+(live?"available but gated":"locked")+'.</b><span>'+esc(action.note||"لا يوجد تفويض ضمن enrichment.")+'</span></div>'+
+ '</section>';
+}
+
 function cockpitView(){
  const h=H(),ts=tasks(),mo=moneyOpps(),ss=sigs(),ready=Math.round(Number(S.data?.capability_gate?.avg_delivery_confidence||0)*100);
  const ns=neuralState();
@@ -146,6 +181,7 @@ function cockpitView(){
      '<div class="action-matrix"><button data-view="money"><span>◆</span><b>INCOME</b><small>'+n(h.money_actionable||0)+' قابلة للمراجعة</small></button><button data-view="tasks"><span>✓</span><b>HUMAN</b><small>'+n(h.pending_human_tasks||0)+' تنتظر</small></button><button data-view="intel"><span>⌬</span><b>RADAR</b><small>'+n(h.osint_events||0)+' أحداث</small></button><button data-view="more"><span>⛏</span><b>MINING</b><small>ViaBTC monitor</small></button></div>'+
    '</div>'+
  '</section>'+
+ financeOperationsPanel()+
  '<section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">NOW</div><h3>ماذا يحتاجني الآن؟</h3></div><button class="btn" data-view="tasks">كل المهام</button></div><div class="list">'+(ts.slice(0,5).map(rowTask).join("")||'<div class="empty">لا توجد مهمة بشرية مفتوحة.</div>')+'</div></div>'+
  '<div class="panel"><div class="panel-head"><div><div class="eyebrow">MONEY LANE</div><h3>الفرص التي يمكن تحويلها إلى عمل</h3></div><button class="btn" data-view="money">فتح المال</button></div><div class="list">'+(mo.slice(0,5).map(rowOpp).join("")||'<div class="empty">لا توجد حاليًا فرصة paid_work في مسار المال.</div>')+'</div></div></section>'+
  '<section class="grid g2 section-gap"><div class="panel"><div class="panel-head"><div><div class="eyebrow">RADAR</div><h3>الرصد الحي</h3></div><button class="btn" data-view="intel">فتح الرصد</button></div><div class="stream">'+(ss.slice(0,8).map(x=>'<div class="item"><b>'+esc(x.type_label||x.signal_type||"Signal")+'</b> · '+esc(x.entity||"—")+' <span class="badge cyan">'+n(x.score)+'</span><p>'+esc(x.source||"source")+" · confidence "+(x.confidence==null?"—":Math.round(Number(x.confidence)*100)+"%")+"</p></div>").join("")||'<div class="empty">لا توجد إشارات.</div>')+'</div></div>'+
@@ -174,9 +210,14 @@ function aiContextLabel(v){
  return map[String(v||"").toLowerCase()]||"NEURAL CONTEXT";
 }
 function aiStateSnapshot(){
- const h=H(),cg=S.data?.capability_gate||{},ts=tasks(),mo=moneyOpps();
+ const h=H(),cg=S.data?.capability_gate||{},ts=tasks(),mo=moneyOpps(),fi=S.data?.finance_intelligence||{};
  return {
    state:S.error?"FAILED":S.connected?"VERIFIED":"BLOCKED",
+   core_state:fi.finance_core?.state||"NO_CYCLE",
+   core_decision:fi.finance_core?.latest_cycle?.decision||fi.finance_core?.latest_ledger?.decision||"—",
+   osint_state:fi.intelligence?.osint?.state||"IDLE",
+   neural_state:fi.intelligence?.neural?.state||"IDLE",
+   live_finance:Boolean(fi.action?.live_financial_execution_allowed),
    money:moneyOpps().length,
    tasks:ts.length,
    approvals:apps().length,
@@ -197,12 +238,14 @@ function decisionAction(e){
 }
 function aiEvidenceCard(e){
  const h=e?.health||{},cg=e?.capability_gate||{},o=e?.selected_opportunity||null,b=e?.selected_blueprint||null;
+ const fi=e?.finance_intelligence||S.data?.finance_intelligence||{};
  const items=[
    ["STATE",S.error?"FAILED":S.connected?"VERIFIED":"BLOCKED"],
-   ["MONEY",n(h.money_opportunities??0)],
-   ["TASKS",n(h.pending_human_tasks??(e?.human_tasks||[]).length)],
-   ["APPROVALS",n(h.pending_approvals??(e?.approvals||[]).length)],
-   ["READINESS",Math.round(Number(cg.avg_delivery_confidence||0)*100)+"%"]
+   ["CORE",fi.finance_core?.state||"NO_CYCLE"],
+   ["DECISION",fi.finance_core?.latest_cycle?.decision||"—"],
+   ["OSINT",fi.intelligence?.osint?.state||"IDLE"],
+   ["NEURAL",fi.intelligence?.neural?.state||"IDLE"],
+   ["LIVE",fi.action?.live_financial_execution_allowed?"OPEN":"LOCKED"]
  ];
  const subject=o?esc(o.title||o.id):b?esc(b.title||b.id):"الحالة التشغيلية";
  return '<div class="ai-evidence"><div class="ai-evidence-head"><span>LIVE EVIDENCE</span><b>'+subject+'</b><small>'+esc(e.generated_at||"")+'</small></div><div class="ai-evidence-grid">'+items.map(x=>'<span><i>'+x[0]+'</i><b>'+x[1]+'</b></span>').join("")+'</div><div class="decision-action-wrap">'+decisionAction(e)+'</div><div class="ai-evidence-foot"><span>المصدر: Supabase operational state</span><span>الدليل لا يعني تفويضًا بالتنفيذ</span></div></div>';
@@ -214,7 +257,7 @@ function aiView(){
  '<section class="ai-neural-header">'+
    '<div><div class="eyebrow">MIDAD AI / NEURAL++ REASONING</div><h1>العقل التشغيلي.</h1><p>من <b>الحالة</b> إلى <b>الدليل</b> ثم <b>القرار</b> والخطوة التالية — بدون خلط بين الرصد والتنفيذ.</p></div>'+
    '<div class="ai-live-orbit"><i></i><b>AI CORE</b><small>'+esc(snap.state)+'</small></div>'+
-   '<div class="ai-state-mini"><span>STATE <b>'+esc(snap.state)+'</b></span><span>MONEY <b>'+n(snap.money)+'</b></span><span>TASKS <b>'+n(snap.tasks)+'</b></span><span>APPROVALS <b>'+n(snap.approvals)+'</b></span><span>READINESS <b>'+snap.readiness+'%</b></span><span>PIPELINE <b>'+snap.pipeline+'</b></span></div>'+
+   '<div class="ai-state-mini"><span>STATE <b>'+esc(snap.state)+'</b></span><span>CORE <b>'+esc(snap.core_state)+'</b></span><span>MONEY <b>'+n(snap.money)+'</b></span><span>TASKS <b>'+n(snap.tasks)+'</b></span><span>APPROVALS <b>'+n(snap.approvals)+'</b></span><span>READINESS <b>'+snap.readiness+'%</b></span><span>LIVE <b>'+((snap.live_finance)?"OPEN":"LOCKED")+'</b></span></div>'+
  '</section>'+
  '<div class="ai-shell">'+
    '<section class="panel ai-chat"><div class="panel-head"><div><div class="eyebrow">DECISION CONSOLE</div><h3>اسأل النواة — وسترى لماذا</h3><small>AI يقرأ الحالة التشغيلية المباشرة ويُبقي الأفعال الحساسة خلف بوابة الإنسان.</small></div><button class="btn" data-cmd="aiClear">مسح</button></div><div class="ai-scroll" id="aiScroll">'+msgs+'</div><div class="ai-compose"><textarea id="aiInput" placeholder="مثال: ما الذي يحتاجني الآن؟ أو حلّل أعلى فرصة دخل وما يمنع التقديم."></textarea><button class="btn primary" data-cmd="aiSend">إرسال</button></div></section>'+
