@@ -1,0 +1,24 @@
+{
+  "account_id": "REPLACE_WITH_MIDAD_MINING_ACCOUNT_UUID",
+  "node_id": "farm-node-01",
+  "targets": [
+    {
+      "worker_id": 51623492,
+      "name": "002",
+      "host": "192.168.1.101",
+      "port": 4028,
+      "model": "",
+      "firmware": "",
+      "chain_expected": 3
+    },
+    {
+      "worker_id": 51629206,
+      "name": "005",
+      "host": "192.168.1.102",
+      "port": 4028,
+      "model": "",
+      "firmware": "",
+      "chain_expected": 3
+    }
+  ]
+}
