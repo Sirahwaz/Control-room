@@ -1,4 +1,5 @@
 name: Deploy MIDAD Control Room to GitHub Pages
+# Neural++ deployment pulse 2026-10-01
 on:
   push:
     branches: [main]
