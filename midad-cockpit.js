@@ -43,7 +43,7 @@ function moneyOpps(){return (S.data?.money_opportunities||[]).slice().sort((a,b)
 function blueprints(){return (S.data?.income_blueprints||[]).slice().sort((a,b)=>Number(b.estimated_net_usd||0)-Number(a.estimated_net_usd||0))}
 function sigs(){return S.data?.signals||[]}
 function pipeline(){const v=H().money_expected_value;return v==null?moneyOpps().reduce((s,o)=>s+Number(o.expected_value||0),0):Number(v)}
-function nav(id,icon,label){return '<button type="button" data-view="'+id+'" title="'+esc(label)+'" aria-label="'+esc(label)+'"><b class="cr-nav-icon">'+icon+'</b><span>'+label+'</span></button>}
+function nav(id,icon,label){return '<button type="button" data-view="'+id+'" title="'+esc(label)+'" aria-label="'+esc(label)+'"><b class="cr-nav-icon">'+icon+'</b><span>'+label+'</span></button>'}
 function getBotContext(){try{return new URL(location.href).searchParams.get("bot")||null}catch{return null}}
 function setBotContext(bot,view){try{const u=new URL(location.href);if(bot)u.searchParams.set("bot",bot);else u.searchParams.delete("bot");u.searchParams.set("view",view||"cockpit");u.searchParams.set("v","20260930emergencypp2");history.replaceState({}, "", u.toString())}catch{}S.botContext=bot;S.view=view||"cockpit";S.tradeData=null;render()}
 function tradeLaneRows(lanes){
