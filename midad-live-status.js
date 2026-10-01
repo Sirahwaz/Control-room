@@ -1,8 +1,32 @@
-(()=>{const API="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_live_status";let el=null;
-function esc(v){return String(v??"—").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
-function mount(){if(el)return;el=document.createElement("section");el.id="midadLiveOps";el.setAttribute("aria-live","polite");el.innerHTML='<div class="mlo-head"><span class="mlo-dot"></span><strong>MIDAD LIVE OPS</strong><span class="mlo-state">CONNECTING</span></div><div class="mlo-grid"><div><small>Loop</small><b id="mloLoop">—</b></div><div><small>Money</small><b id="mloMoney">—</b></div><div><small>Ledger</small><b id="mloLedger">—</b></div><div><small>Tasks</small><b id="mloTasks">—</b></div><div><small>Mode</small><b id="mloMode">—</b></div><div><small>Live</small><b id="mloLive">LOCKED</b></div></div><div id="mloDetail">جاري قراءة نبض MIDAD…</div>';
-Object.assign(el.style,{position:"fixed",left:"14px",right:"14px",bottom:"14px",zIndex:"2147483000",padding:"14px 16px",border:"1px solid rgba(130,170,255,.28)",borderRadius:"16px",background:"rgba(5,9,18,.92)",backdropFilter:"blur(14px)",boxShadow:"0 14px 44px rgba(0,0,0,.35)",color:"#edf3ff",fontFamily:"system-ui,-apple-system,Segoe UI,sans-serif"});
-const style=document.createElement("style");style.textContent='#midadLiveOps .mlo-head{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.08em}#midadLiveOps .mlo-dot{width:9px;height:9px;border-radius:50%;background:#36e39a;box-shadow:0 0 12px #36e39a}#midadLiveOps .mlo-state{margin-inline-start:auto;font-size:10px;opacity:.72}#midadLiveOps .mlo-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}.mlo-grid>div{padding:8px;border-radius:10px;background:rgba(255,255,255,.035)}#midadLiveOps small{display:block;font-size:10px;opacity:.58}#midadLiveOps b{display:block;margin-top:3px;font-size:15px}#midadLiveOps #mloDetail{margin-top:9px;font-size:11px;line-height:1.6;opacity:.76}@media(max-width:640px){#midadLiveOps{bottom:8px!important;left:8px!important;right:8px!important}.mlo-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}';document.head.appendChild(style);document.body.appendChild(el);}
-async function tick(){try{const r=await fetch(API,{cache:"no-store"});const s=await r.json();if(!s.ok)throw new Error("status");const g=s.control||{},c=s.counts||{},x=s.latest_cycle||{};document.querySelector("#mloLoop").textContent=String(x.decision||"—");document.querySelector("#mloMoney").textContent=String(c.money_candidates??"—");document.querySelector("#mloLedger").textContent=String(c.decision_ledger??"—");document.querySelector("#mloTasks").textContent=String(c.open_human_tasks??"—");document.querySelector("#mloMode").textContent=String(g.mode||"—").toUpperCase();document.querySelector("#mloLive").textContent=s.live_financial_execution?"OPEN":"LOCKED";document.querySelector(".mlo-state").textContent=(s.state||"ACTIVE").toUpperCase();document.querySelector("#mloDetail").textContent="آخر دورة: "+(x.started_at?new Date(x.started_at).toLocaleTimeString():"—")+" · Signal "+String(x.signal_direction||"—")+" · Confidence "+(Number(x.signal_confidence||0)*100).toFixed(1)+"% · Blueprint "+String(c.ready_blueprints??"—")+" · Outbox sent "+String(c.outbox_sent??"—");}
-catch(e){const st=document.querySelector(".mlo-state");if(st)st.textContent="OFFLINE";const d=document.querySelector("#mloDetail");if(d)d.textContent="تعذر قراءة نبض MIDAD الآن — الواجهة الأساسية مستمرة.";}}
-window.addEventListener("DOMContentLoaded",()=>{mount();tick();setInterval(tick,30000);});})();
+(()=>{const API="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_live_status";let el=null,restore=null;
+function readState(){try{return localStorage.getItem("midad_live_ops_state")||"collapsed"}catch{return"collapsed"}}
+function writeState(v){try{localStorage.setItem("midad_live_ops_state",v)}catch{}}
+function put(sel,v){const q=document.querySelector(sel);if(q)q.textContent=String(v??"—")}
+function mount(){
+ if(el)return;
+ el=document.createElement("section");el.id="midadLiveOps";el.setAttribute("aria-label","MIDAD Live Ops");
+ el.innerHTML='<div class="mlo-head"><button class="mlo-title" type="button" data-mlo="toggle" aria-expanded="false"><span class="mlo-dot"></span><strong>MIDAD LIVE OPS</strong><span class="mlo-state">CONNECTING</span></button><div class="mlo-head-actions"><button class="mlo-action" type="button" data-mlo="collapse" aria-label="تجميع LIVE OPS" title="تجميع">−</button><button class="mlo-action" type="button" data-mlo="close" aria-label="إغلاق LIVE OPS" title="إغلاق">×</button></div></div><div class="mlo-body"><div class="mlo-grid"><div><small>Loop</small><b id="mloLoop">—</b></div><div><small>Money</small><b id="mloMoney">—</b></div><div><small>Ledger</small><b id="mloLedger">—</b></div><div><small>Tasks</small><b id="mloTasks">—</b></div><div><small>Mode</small><b id="mloMode">—</b></div><div><small>Live</small><b id="mloLive">LOCKED</b></div></div><div id="mloDetail">جاري قراءة نبض MIDAD…</div></div>';
+ document.body.appendChild(el);
+ restore=document.createElement("button");restore.id="midadLiveOpsRestore";restore.type="button";restore.hidden=true;restore.textContent="◉ LIVE OPS";restore.setAttribute("aria-label","إظهار MIDAD LIVE OPS");restore.title="إظهار MIDAD LIVE OPS";document.body.appendChild(restore);
+ el.querySelector('[data-mlo="toggle"]').onclick=()=>setState(el.classList.contains("mlo-collapsed")?"expanded":"collapsed");
+ el.querySelector('[data-mlo="collapse"]').onclick=()=>setState("collapsed");
+ el.querySelector('[data-mlo="close"]').onclick=()=>setState("closed");
+ restore.onclick=()=>setState("collapsed");
+ setState(readState());
+}
+function setState(state){
+ if(!el||!restore)return;
+ if(state==="closed"){el.classList.add("mlo-hidden");el.classList.remove("mlo-collapsed");restore.hidden=false;}
+ else{el.classList.remove("mlo-hidden");restore.hidden=true;el.classList.toggle("mlo-collapsed",state!=="expanded");const t=el.querySelector('[data-mlo="toggle"]');if(t)t.setAttribute("aria-expanded",state==="expanded"?"true":"false");}
+ writeState(state);
+}
+async function tick(){
+ try{
+  const r=await fetch(API,{cache:"no-store"}),s=await r.json();if(!s.ok)throw new Error("status");
+  const g=s.control||{},c=s.counts||{},x=s.latest_cycle||{};
+  put("#mloLoop",x.decision||"—");put("#mloMoney",c.money_candidates??"—");put("#mloLedger",c.decision_ledger??"—");put("#mloTasks",c.open_human_tasks??"—");put("#mloMode",String(g.mode||"—").toUpperCase());put("#mloLive",s.live_financial_execution?"OPEN":"LOCKED");put(".mlo-state",(s.state||"ACTIVE").toUpperCase());
+  put("#mloDetail","آخر دورة: "+(x.started_at?new Date(x.started_at).toLocaleTimeString():"—")+" · Signal "+String(x.signal_direction||"—")+" · Confidence "+(Number(x.signal_confidence||0)*100).toFixed(1)+"% · Blueprint "+String(c.ready_blueprints??"—")+" · Outbox sent "+String(c.outbox_sent??"—");
+ }catch(e){put(".mlo-state","OFFLINE");put("#mloDetail","تعذر قراءة نبض MIDAD الآن — الواجهة الأساسية مستمرة.");}
+}
+window.addEventListener("DOMContentLoaded",()=>{mount();tick();setInterval(tick,30000)});
+})();
