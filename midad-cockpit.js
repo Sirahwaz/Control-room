@@ -1,7 +1,7 @@
 (()=>{
 "use strict";
 window.MIDAD_COCKPIT_BOOTING=true;
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-10-01-neuralpp1"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-10-01-neuralpp2"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,miningAccounts:[],busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false,botContext:null,botStatus:null,tradeData:null,tradeBusy:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -449,6 +449,31 @@ function openBlueprint(id){
  S.view="ai";render();
  setTimeout(()=>{const i=$("#aiInput");if(i){i.value="راجع هذا الـBlueprint: "+(b.title||"")+"؛ هل هو جاهز للتنفيذ الآن؟ اذكر المتطلبات والعوائق والخطوة التالية والتحصيل المتوقع.";sendAI()}},50);
 }
+function stackfullDomainFromOpportunity(o){
+ const u=o?.action_url||o?.offer?.action_url||o?.offer?.url||o?.evidence?.action_url||o?.evidence?.url||"";
+ try{
+   const d=new URL(u).hostname.toLowerCase().replace(/^www\./,"");
+   return d&&d.includes(".")?d:"";
+ }catch{return ""}
+}
+async function probeStackfull(domain,title){
+ const modal=$("#oppModal"),out=$("#stackfullResult"),btn=modal?.querySelector("[data-stackfull]");
+ if(!domain)return;
+ if(btn)btn.disabled=true;
+ if(out)out.innerHTML="جاري فحص Stackfull…";
+ try{
+   const j=await api("stackfull_probe",{domain},true,25000);
+   const items=Array.isArray(j?.items)?j.items:[];
+   const top=items.slice(0,12);
+   const html='<div class="stackfull-summary"><b>'+esc(domain)+'</b><span class="badge green">'+n(items.length)+' أدوات</span></div>'+
+     (top.length?'<div class="meta stackfull-tools">'+top.map(x=>'<span class="badge">'+esc(x.name||x.slug||"tool")+(x.category?' · '+esc(x.category):"")+'</span>').join("")+'</div>':'<div class="empty">لم تُرجع Stackfull أدوات لهذه النطاق.</div>')+
+     '<small>Discovery فقط؛ تحقّق خارجيًا قبل أي استنتاج أو تواصل.</small>';
+   if(out)out.innerHTML=html;
+ }catch(e){
+   if(out)out.textContent="تعذر فحص Stackfull: "+String(e.message||e);
+ }finally{if(btn)btn.disabled=false}
+}
+
 function openOpp(id){
  const o=[...(S.data?.money_opportunities||[]),...(S.data?.opportunities||[])].find(x=>String(x.id)===String(id));
  if(!o)return;
@@ -457,7 +482,7 @@ function openOpp(id){
  const expected=o.expected_value==null?"—":usd(o.expected_value);
  const risk=o.risk_class||o.metadata?.risk_class||"—";
  const readiness=o.readiness||o.status||"—";
- const html='<div id="oppModal" style="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:95;padding:6vh 6vw;overflow:auto"><div class="panel" style="max-width:980px;margin:auto"><div class="panel-head"><div><div class="eyebrow">OPPORTUNITY / CASH PATH</div><h3>'+esc(o.title||"Opportunity")+'</h3><small>'+esc(o.source||"")+" · score "+n(o.score)+" · confidence "+(o.confidence==null?"—":Math.round(Number(o.confidence)*100)+"%")+'</small></div><button class="btn" data-cmd="closeOpp">إغلاق</button></div><div class="kpis"><div class="kpi"><span>EXPECTED</span><b>'+expected+'</b></div><div class="kpi"><span>STATUS</span><b style="font-size:18px">'+esc(readiness)+'</b></div><div class="kpi"><span>RISK</span><b style="font-size:18px">'+esc(risk)+'</b></div><div class="kpi"><span>HOURS</span><b>'+esc(o.estimated_hours==null?"—":o.estimated_hours)+'</b></div><div class="kpi"><span>DELIVERY CONF.</span><b>'+esc(o.delivery_confidence==null?"—":Math.round(Number(o.delivery_confidence)*100)+"%")+'</b></div></div><section class="panel section-gap"><div class="eyebrow">DESCRIPTION</div><p style="color:#c1cad7;line-height:1.8">'+esc(o.description||"لا يوجد وصف محفوظ.")+'</p><div class="hero-actions"><button class="btn green" data-opp-blueprint="'+esc(o.id)+'">⚙ أنشئ حزمة تنفيذ</button><button class="btn primary" data-opp-ai="'+esc(o.id)+'">✦ حلّل بالـAI</button>'+(url?'<a class="btn" href="'+esc(url)+'" target="_blank" rel="noopener">↗ افتح الفرصة</a>':"")+'</div><div id="oppResult" class="sub" style="margin-top:14px">الحزمة لا تبدأ تنفيذًا خارجيًا؛ تنشئ فقط Blueprint داخليًا قابلًا للمراجعة.</div></section></div></div>';
+ const html='<div id="oppModal" style="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:95;padding:6vh 6vw;overflow:auto"><div class="panel" style="max-width:980px;margin:auto"><div class="panel-head"><div><div class="eyebrow">OPPORTUNITY / CASH PATH</div><h3>'+esc(o.title||"Opportunity")+'</h3><small>'+esc(o.source||"")+" · score "+n(o.score)+" · confidence "+(o.confidence==null?"—":Math.round(Number(o.confidence)*100)+"%")+'</small></div><button class="btn" data-cmd="closeOpp">إغلاق</button></div><div class="kpis"><div class="kpi"><span>EXPECTED</span><b>'+expected+'</b></div><div class="kpi"><span>STATUS</span><b style="font-size:18px">'+esc(readiness)+'</b></div><div class="kpi"><span>RISK</span><b style="font-size:18px">'+esc(risk)+'</b></div><div class="kpi"><span>HOURS</span><b>'+esc(o.estimated_hours==null?"—":o.estimated_hours)+'</b></div><div class="kpi"><span>DELIVERY CONF.</span><b>'+esc(o.delivery_confidence==null?"—":Math.round(Number(o.delivery_confidence)*100)+"%")+'</b></div></div><section class="panel section-gap"><div class="eyebrow">DESCRIPTION</div><p style="color:#c1cad7;line-height:1.8">'+esc(o.description||"لا يوجد وصف محفوظ.")+'</p><div class="hero-actions"><button class="btn green" data-opp-blueprint="'+esc(o.id)+'">⚙ أنشئ حزمة تنفيذ</button><button class="btn primary" data-opp-ai="'+esc(o.id)+'">✦ حلّل بالـAI</button>+(stackfullDomainFromOpportunity(o)?'<button class="btn" data-stackfull="'+esc(stackfullDomainFromOpportunity(o))+'">🧩 Stackfull</button>':"")'+(url?'<a class="btn" href="'+esc(url)+'" target="_blank" rel="noopener">↗ افتح الفرصة</a>':"")+'</div><div id="oppResult" class="sub" style="margin-top:14px">الحزمة لا تبدأ تنفيذًا خارجيًا؛ تنشئ فقط Blueprint داخليًا قابلًا للمراجعة.</div><div id="stackfullResult" class="sub" style="margin-top:12px"></div></section></div></div>';
  document.body.insertAdjacentHTML("beforeend",html);
  const m=$("#oppModal");
  const close=m.querySelector('[data-cmd="closeOpp"]');if(close)close.onclick=()=>m.remove();
@@ -466,6 +491,8 @@ function openOpp(id){
    bp.disabled=true;const out=$("#oppResult");if(out)out.textContent="جارٍ بناء حزمة التنفيذ…";
    try{const j=await api("prepare_income_blueprint",{opportunity_id:o.id},true,45000);if(out)out.textContent=j.ok?"تم إنشاء Blueprint ويمكن مراجعته من صفحة المال.":"تعذر إنشاء Blueprint: "+(j.error||"غير مؤهل");await refresh(true)}catch(e){if(out)out.textContent="تعذر إنشاء Blueprint: "+String(e.message||e)}finally{bp.disabled=false}
  };
+ const sf=m.querySelector("[data-stackfull]");
+ if(sf)sf.onclick=()=>probeStackfull(sf.dataset.stackfull,o.title||"Opportunity");
  const ai=m.querySelector("[data-opp-ai]");
  if(ai)ai.onclick=()=>{m.remove();S.view="ai";render();setTimeout(()=>{const input=$("#aiInput");if(input){input.value="حلّل هذه الفرصة: "+(o.title||"")+"؛ قيّم قابلية التنفيذ، العوائق، وما يجب فعله قبل التقديم.";sendAI()}},50)};
 }
