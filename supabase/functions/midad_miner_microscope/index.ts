@@ -36,12 +36,30 @@ function statusLabel(w:any){
   return s.toUpperCase();
 }
 
-function diagnose(w:any,prev:any){
+function diagnose(w:any,prev:any,local:any,peer:any[]=[]){
   const age=ageMin(w.last_active),h10=n(w.hashrate_10m_ths),h1=n(w.hashrate_1h_ths),h24=n(w.hashrate_24h_ths),rej=n(w.reject_rate);
   const prior10=n(prev?.last_hashrate_10m_ths);
   const priorStatus=String(prev?.last_status||"");
   const currentStatus=statusLabel(w);
   const out:any[]=[];
+  const lt=local&&typeof local==="object"?local:null;
+  const lhash=n(lt?.local_hashrate_ths),temp=n(lt?.temp_max_c),fan=n(lt?.fan_avg_pct),power=n(lt?.power_watts),asic=n(lt?.asic_error_count),chains=n(lt?.chain_count),expectedChains=n(lt?.chain_expected),stratum=typeof lt?.stratum_ok==="boolean"?lt.stratum_ok:null;
+  if(temp!==null&&temp>=90)out.push({type:"thermal_risk",severity:"critical",reason:"Local sensor reports very high ASIC temperature (heuristic threshold >=90°C)",causes:["cooling airflow restriction","fan failure or low fan speed","ambient heat","thermal throttling"],action:"inspect cooling/fans immediately; do not force a restart without local verification"});
+  else if(temp!==null&&temp>=85)out.push({type:"thermal_risk",severity:"warning",reason:"Local sensor reports elevated ASIC temperature (heuristic threshold >=85°C)",causes:["cooling restriction","high ambient temperature","fan behavior","thermal load"],action:"inspect temperature trend and fan behavior"});
+  if(fan!==null&&fan<30&&temp!==null&&temp>=75)out.push({type:"cooling_suspect",severity:"warning",reason:"Low average fan signal combined with elevated temperature",causes:["fan degradation","fan control issue","airflow restriction"],action:"inspect fan/airflow and compare peer miners"});
+  if(asic!==null&&asic>0)out.push({type:"asic_error",severity:asic>=10?"critical":"warning",reason:"Local miner reports hardware/ASIC errors",causes:["ASIC/board instability","power quality","thermal stress","firmware/device condition"],action:"inspect per-chain/device diagnostics before restart"});
+  if(expectedChains!==null&&chains!==null&&expectedChains>0&&chains<expectedChains)out.push({type:"chain_loss",severity:"critical",reason:"Observed ASIC chain count is below the configured expected count",causes:["hashboard/chain fault","cabling/power issue","controller/firmware state"],action:"inspect the missing chain and local device diagnostics"});
+  if(stratum===false)out.push({type:"local_stratum_down",severity:"critical",reason:"Local miner reports Stratum as inactive",causes:["LAN/WAN path","pool endpoint resolution","miner networking","pool-side issue"],action:"verify network and pool endpoint; compare other miners before hardware intervention"});
+  if(h10!==null&&lhash!==null&&h10>0){
+    const gap=((lhash-h10)/h10)*100;
+    if(Math.abs(gap)>=15)out.push({type:"pool_local_disparity",severity:"warning",reason:"Local hashrate and pool-side 10m hashrate differ materially",causes:gap<0?["local miner performance below pool observation","local sensor sampling window mismatch"]:["pool-side accounting/sampling lag","worker mapping mismatch"],action:"compare timestamps/windows and inspect pool vs local samples"});
+  }
+  const topology=lt?.signals?.topology&&typeof lt.signals.topology==="object"?lt.signals.topology:null;
+  if(topology?.rack&&peer.length){
+    const peers=peer.filter((x:any)=>x?.signals?.topology?.rack===topology.rack);
+    const degraded=peers.filter((x:any)=>Number(x.local_hashrate_ths||0)>0&&Number(x.local_hashrate_ths)<Number(x.pool_10m_ths||0)*0.8);
+    if(peers.length>=2&&degraded.length>=Math.ceil(peers.length*0.5))out.push({type:"shared_rack_degradation",severity:"critical",reason:"Multiple miners in the same Rack/Zone show simultaneous local-vs-pool degradation",causes:["shared power/PSU zone","shared network/switch path","environmental condition"],action:"inspect shared infrastructure before replacing any individual miner"});
+  }
   if(currentStatus==="ACTIVE"&&h10===0)out.push({type:"active_zero_hashrate",severity:"critical",reason:"Worker reports active but current 10m hashrate is zero",causes:["stratum/network disconnect not reflected yet","miner process/hashboard fault","pool-side worker state lag"],action:"re-probe worker; inspect network, process and local miner telemetry"});
   if((currentStatus==="INACTIVE"||currentStatus==="UNKNOWN")&&["active","online","ACTIVE"].includes(priorStatus)){
     out.push({type:"worker_state_drop",severity:"critical",reason:"Worker transitioned from active to non-active",causes:["power loss or miner restart","network/stratum disconnect","worker configuration or identity change"],action:"verify power/network first, then inspect miner local status"});
@@ -70,6 +88,35 @@ function diagnose(w:any,prev:any){
   }
   if(prior10!==null&&h10!==null&&prior10>0&&h10/prior10<0.5)out.push({type:"sudden_step_down",severity:"critical",reason:"Current 10m hashrate is below half of the previous microscope sample",causes:["sudden power/network interruption","miner process fault","hashboard degradation"],action:"run immediate worker re-probe and inspect local machine"});
   return out;
+}
+
+async function aiRootCause(admin:any,w:any,issue:any,local:any){
+  const ambiguous=["active_zero_hashrate","worker_state_drop","hashrate_drop","sudden_step_down","pool_local_disparity"];
+  if(issue.severity!=="critical"||!ambiguous.includes(issue.type))return null;
+  // Only escalate when the deterministic evidence is not already strongly local.
+  const strongLocal=Boolean(local&&(Number(local.asic_error_count)>0||Number(local.chain_count)>0&&Number(local.chain_expected)>Number(local.chain_count)||local.stratum_ok===false||Number(local.temp_max_c)>=90));
+  if(strongLocal)return null;
+  const url=Deno.env.get("SUPABASE_URL")||"",sk=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",ik=Deno.env.get("MIDAD_INGEST_KEY")||"";
+  if(!url||!sk||!ik)return null;
+  const prompt=`أنت MIDAD Root-Cause Reasoning Agent. حلّل Incident تعدين حرِج اعتمادًا على الأدلة فقط.
+لا تفترض سببًا غير مقاس. أرجع JSON فقط بهذا الشكل:
+{"hypotheses":[{"cause":"...","confidence":0.0,"evidence":"...","missing":"..."}],"next_probe":"...","do_not_claim":"..."}
+الأولوية لتمييز hardware / thermal / power / network-stratum / pool-accounting / telemetry-lag.
+لا تقترح Restart أو Power Cycle كخطوة تلقائية؛ أعطِ فحصًا غير هدّام أولًا.
+Worker: ${JSON.stringify(w)}
+Issue: ${JSON.stringify(issue)}
+Local telemetry: ${JSON.stringify(local||null)}`;
+  try{
+    const r=await fetch(url+"/functions/v1/midad_orchestrator",{
+      method:"POST",
+      headers:{"content-type":"application/json","authorization":"Bearer "+sk,"x-midad-ingest-key":ik},
+      body:JSON.stringify({task:prompt,role:"reasoning",context:{worker:w,issue,local}})
+    });
+    const t=await r.text();let j:any={};try{j=JSON.parse(t)}catch{j={raw:t}};
+    if(!r.ok||j?.success===false||!j?.final)return null;
+    const raw=String(j.final);
+    try{return JSON.parse(raw)}catch{return {hypotheses:[],next_probe:"AI returned non-JSON reasoning",do_not_claim:raw.slice(0,1800)}}
+  }catch{return null}
 }
 
 async function getMicroscopeKey(admin:any){
@@ -125,6 +172,21 @@ async function upsertIncident(admin:any,accountId:string,w:any,issue:any,runId:s
   return {new:!old.data,shouldAlert,fingerprint};
 }
 
+async function proposeRepair(admin:any,accountId:string,issue:any,w:any,incident:any){
+  if(issue.severity!=="critical")return null;
+  const dedupe="miner-repair:"+accountId+":"+String(w.worker_id)+":"+issue.type;
+  const recent=await admin.from("midad_miner_repair_actions").select("id").eq("account_id",accountId).eq("worker_id",Number(w.worker_id)).eq("action_type",issue.type).in("action_state",["proposed","approved","running"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(recent.data)return recent.data;
+  const ins=await admin.from("midad_miner_repair_actions").insert({
+    incident_id:incident?.id||null,account_id:accountId,worker_id:Number(w.worker_id),
+    action_type:issue.type,action_state:"proposed",requires_approval:true,
+    requested_by_agent:"midad_miner_microscope",
+    rationale:issue.action,
+    evidence:{worker:w,issue,incident_id:incident?.id||null},
+    command_descriptor:{adapter:"local_miner_actuator",operation:"diagnostic",execution:"APPROVED_ONLY",dedupe_key:dedupe,restart_requires_explicit_operator_change:true}
+  }).select("id,action_type,action_state,requires_approval").single();
+  return ins.data||null;
+}
 async function resolveRecovered(admin:any,accountId:string,currentFingerprints:Set<string>){
   const {data}=await admin.from("midad_miner_incidents").select("*").eq("account_id",accountId).eq("status","open").limit(200);
   const recovered:any[]=[];
@@ -154,15 +216,43 @@ async function runScan(admin:any){
     return {ok:false,error:"microscope_snapshot_failed",monitor,snapshot:snap};
   }
   const workers=snap.workers||[];
-  const stateQ=await admin.from("midad_miner_worker_states").select("*").eq("account_id",snap.account.id).limit(200);
+  const [stateQ,localQ]=await Promise.all([
+    admin.from("midad_miner_worker_states").select("*").eq("account_id",snap.account.id).limit(200),
+    admin.from("midad_miner_local_telemetry").select("worker_id,node_id,observed_at,local_hashrate_ths,temp_max_c,temp_avg_c,fan_min_pct,fan_avg_pct,power_watts,efficiency_ths_per_kw,uptime_seconds,asic_error_count,chain_count,chain_expected,stratum_ok,pool_latency_ms,firmware,model,fault_codes,signals").eq("account_id",snap.account.id).order("observed_at",{ascending:false}).limit(500)
+  ]);
   const stateMap=new Map((stateQ.data||[]).map((x:any)=>[String(x.worker_id),x]));
+  const localMap=new Map<string,any>();
+  for(const x of localQ.data||[])if(!localMap.has(String(x.worker_id)))localMap.set(String(x.worker_id),x);
+  const localPeers=[...localMap.values()].map((x:any)=>({
+    ...x,
+    pool_10m_ths:workers.find((w:any)=>String(w.worker_id)===String(x.worker_id))?.hashrate_10m_ths??null
+  }));
   const current=new Set<string>(), opened:any[]=[],alerts:any[]=[],recovery:any[]=[],updatedStates:any[]=[];
   for(const w of workers){
     const prev=stateMap.get(String(w.worker_id));
-    const issues=diagnose(w,prev);
+    const local=localMap.get(String(w.worker_id));
+    const issues=diagnose(w,prev,local,localPeers);
     for(const issue of issues){
       const u=await upsertIncident(admin,snap.account.id,w,issue,runId);
+      const localNow=localMap.get(String(w.worker_id))||null;
+      const ai=await aiRootCause(admin,w,issue,localNow);
+      if(ai){
+        await admin.from("midad_miner_incidents").update({
+          diagnosis:{
+            causes:issue.causes,reason:issue.reason,agent:"root_cause_agent",
+            confidence:issue.causes?.length===1?.9:.72,
+            ai_reasoning_agent:"midad_orchestrator",
+            ai_hypotheses:ai.hypotheses||[],
+            ai_next_probe:ai.next_probe||null,
+            ai_do_not_claim:ai.do_not_claim||null
+          },
+          updated_at:new Date().toISOString()
+        }).eq("fingerprint",u.fingerprint);
+      }
       current.add(u.fingerprint);
+      const incidentRow=await admin.from("midad_miner_incidents").select("id").eq("fingerprint",u.fingerprint).maybeSingle();
+      const repairPlan=await proposeRepair(admin,snap.account.id,issue,w,incidentRow.data);
+
       opened.push({worker_id:w.worker_id,type:issue.type,severity:issue.severity});
       if(u.shouldAlert)alerts.push({...issue,worker_id:w.worker_id,worker_name:w.worker_name});
       // Recovery Agent: a second read for high-impact discrepancies, never an actuator.
@@ -177,7 +267,7 @@ async function runScan(admin:any){
     const priorDrop=Number(prev?.consecutive_drop_count||0),priorInactive=Number(prev?.consecutive_inactive_count||0);
     const isDrop=issues.some(x=>["hashrate_drop","short_term_drop","sudden_step_down"].includes(x.type));
     const isInactive=issues.some(x=>x.type==="worker_state_drop");
-    const vals={account_id:snap.account.id,worker_id:Number(w.worker_id),worker_name:w.worker_name,last_status:w.worker_status,last_hashrate_10m_ths:w.hashrate_10m_ths,last_hashrate_1h_ths:w.hashrate_1h_ths,last_hashrate_24h_ths:w.hashrate_24h_ths,last_reject_rate:w.reject_rate,last_active:w.last_active,last_seen_at:new Date().toISOString(),consecutive_drop_count:isDrop?priorDrop+1:0,consecutive_inactive_count:isInactive?priorInactive+1:0,consecutive_alert_count:alertCount?Number(prev?.consecutive_alert_count||0)+1:0,metadata:{issue_types:issues.map(x=>x.type),run_id:runId},updated_at:new Date().toISOString()};
+    const vals={account_id:snap.account.id,worker_id:Number(w.worker_id),worker_name:w.worker_name,last_status:w.worker_status,last_hashrate_10m_ths:w.hashrate_10m_ths,last_hashrate_1h_ths:w.hashrate_1h_ths,last_hashrate_24h_ths:w.hashrate_24h_ths,last_reject_rate:w.reject_rate,last_active:w.last_active,last_seen_at:new Date().toISOString(),consecutive_drop_count:isDrop?priorDrop+1:0,consecutive_inactive_count:isInactive?priorInactive+1:0,consecutive_alert_count:alertCount?Number(prev?.consecutive_alert_count||0)+1:0,metadata:{issue_types:issues.map(x=>x.type),run_id:runId,local_telemetry:local||null},updated_at:new Date().toISOString()};
     await admin.from("midad_miner_worker_states").upsert(vals,{onConflict:"account_id,worker_id"});
     updatedStates.push({worker_id:w.worker_id,issues:issues.length});
   }
@@ -209,6 +299,19 @@ async function runScan(admin:any){
   return {ok:true,run_id:runId,summary,alerts_sent:alertsSent};
 }
 
+function selfTest(){
+  const scenarios=[
+    {name:"thermal_fault",w:{worker_id:1,worker_status:"active",hashrate_10m_ths:80,hashrate_1h_ths:80,hashrate_24h_ths:82,reject_rate:0,last_active:Math.floor(Date.now()/1000)},local:{local_hashrate_ths:72,temp_max_c:92,fan_avg_pct:58,power_watts:3200,asic_error_count:0,chain_count:3,chain_expected:3,stratum_ok:true,signals:{topology:{rack:"A"}}}},
+    {name:"asic_fault",w:{worker_id:2,worker_status:"active",hashrate_10m_ths:45,hashrate_1h_ths:60,hashrate_24h_ths:62,reject_rate:.2,last_active:Math.floor(Date.now()/1000)},local:{local_hashrate_ths:44,temp_max_c:78,fan_avg_pct:85,power_watts:3400,asic_error_count:12,chain_count:2,chain_expected:3,stratum_ok:true,signals:{topology:{rack:"B"}}}},
+    {name:"network_fault",w:{worker_id:3,worker_status:"active",hashrate_10m_ths:20,hashrate_1h_ths:60,hashrate_24h_ths:65,reject_rate:.1,last_active:Math.floor(Date.now()/1000)},local:{local_hashrate_ths:60,temp_max_c:72,fan_avg_pct:90,power_watts:3300,asic_error_count:0,chain_count:3,chain_expected:3,stratum_ok:false,signals:{topology:{rack:"C"}}}},
+    {name:"stable",w:{worker_id:4,worker_status:"active",hashrate_10m_ths:80,hashrate_1h_ths:79,hashrate_24h_ths:78,reject_rate:.01,last_active:Math.floor(Date.now()/1000)},local:{local_hashrate_ths:80,temp_max_c:70,fan_avg_pct:88,power_watts:3300,asic_error_count:0,chain_count:3,chain_expected:3,stratum_ok:true,signals:{topology:{rack:"D"}}}}
+  ];
+  return scenarios.map(s=>{
+    const issues=diagnose(s.w,null,s.local,[s.local]);
+    return {scenario:s.name,issue_types:issues.map(x=>x.type),severity:issues.reduce((m,x)=>severityRank(x.severity)>severityRank(m)?x.severity:m,"info")};
+  });
+}
+
 Deno.serve(async(req)=>{
   if(req.method==="OPTIONS")return new Response(null,{status:204,headers:JSON_HEADERS});
   try{
@@ -220,6 +323,7 @@ Deno.serve(async(req)=>{
     if(!(expected&&supplied===expected)&&auth!=="Bearer "+serviceKey)return ok({ok:false,error:"unauthorized"},401);
     const body=req.method==="POST"?await req.json().catch(()=>({})):{};
     const mode=String(body.mode||url.searchParams.get("mode")||"status").toLowerCase();
+    if(mode==="self_test")return ok({ok:true,mode:"self_test",mutations:[],results:selfTest()});
     if(mode==="status"){
       const [runs,inc]=await Promise.all([
         admin.from("midad_miner_agent_runs").select("id,status,started_at,finished_at,workers_scanned,incidents_opened,incidents_resolved,alerts_sent,auto_recoveries,summary").order("started_at",{ascending:false}).limit(5),
