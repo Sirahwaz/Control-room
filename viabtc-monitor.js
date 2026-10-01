@@ -19,21 +19,40 @@ function statusInfo(w){
   return {label:String(st||"UNKNOWN").toUpperCase(),cls:"amber"};
 }
 function workerAlert(w){
-  const a=[],st=statusInfo(w),age=ageMinutes(w?.last_active);
+  const a=[],st=statusInfo(w),age=ageMinutes(w?.last_active),lt=w?.local_telemetry||null;
   const h10=Number(w?.hashrate_10min_ths),h1=Number(w?.hashrate_1hour_ths),h24=Number(w?.hashrate_24hour_ths),rej=Number(w?.reject_rate);
   const drift=h24>0&&Number.isFinite(h10)?((h10-h24)/h24)*100:null;
   const shortDrift=h1>0&&Number.isFinite(h10)?((h10-h1)/h1)*100:null;
   if(st.label==="INACTIVE"||st.label==="STALE")a.push("worker_offline");
   if(Number.isFinite(rej)&&rej>.5)a.push("high_reject");
   if(Number.isFinite(rej)&&rej>1)a.push("critical_reject");
-  if(Number.isFinite(drift)&&Math.abs(drift)>20)a.push("hashrate_drift");
-  if(Number.isFinite(shortDrift)&&Math.abs(shortDrift)>12)a.push("short_term_drift");
-  if(age!=null&&age>60)a.push("stale_telemetry");
-  const penalties=(st.label==="INACTIVE"?55:st.label==="STALE"?35:0)+(Number.isFinite(rej)?Math.min(25,rej*18):0)+(Number.isFinite(drift)?Math.min(20,Math.abs(drift)/4):0);
+  if(Number.isFinite(drift)&&drift<-20)a.push("hashrate_drift");
+  if(Number.isFinite(shortDrift)&&shortDrift<-12)a.push("short_term_drift");
+  if(age!=null&&age>60&&(!lt||Number(lt.local_hashrate_ths||0)<=0))a.push("stale_telemetry");
+  if(lt){
+    if(Number(lt.temp_max_c)>=90)a.push("thermal_risk");
+    else if(Number(lt.temp_max_c)>=85)a.push("thermal_watch");
+    if(Number(lt.asic_error_count)>0)a.push("asic_error");
+    if(Number.isFinite(Number(lt.chain_expected))&&Number(lt.chain_expected)>0&&Number(lt.chain_count)<Number(lt.chain_expected))a.push("chain_loss");
+    if(lt.stratum_ok===false)a.push("local_stratum_down");
+    const lh=Number(lt.local_hashrate_ths);
+    if(Number.isFinite(lh)&&h10>0&&Math.abs((lh-h10)/h10)*100>=15)a.push("pool_local_gap");
+  }
+  const penalties=(st.label==="INACTIVE"?55:st.label==="STALE"?35:0)
+    +(Number.isFinite(rej)?Math.min(20,rej*16):0)
+    +(Number.isFinite(drift)&&drift<0?Math.min(20,Math.abs(drift)/4):0)
+    +(a.includes("thermal_risk")?25:a.includes("thermal_watch")?10:0)
+    +(a.includes("asic_error")?20:0)+(a.includes("chain_loss")?25:0)+(a.includes("local_stratum_down")?20:0);
   const health=Math.max(0,Math.min(100,Math.round(100-penalties)));
   const anomaly=Math.max(0,Math.min(100,Math.round(100-health)));
   const dna=health>=90?"STABLE":health>=75?"WATCH":health>=50?"UNSTEADY":"CRITICAL";
-  return {count:a.length,items:a,age,drift,shortDrift,health,anomaly,dna};
+  let cause="pool-telemetry";
+  if(a.includes("chain_loss")||a.includes("asic_error"))cause="hardware-suspect";
+  else if(a.includes("thermal_risk")||a.includes("thermal_watch"))cause="thermal-suspect";
+  else if(a.includes("local_stratum_down"))cause="network-suspect";
+  else if(a.includes("pool_local_gap")&&lt&&Number(lt.local_hashrate_ths)>0)cause="pool-vs-local";
+  else if(a.includes("worker_offline"))cause="connectivity-suspect";
+  return {count:a.length,items:a,age,drift,shortDrift,health,anomaly,dna,cause,local:lt};
 }
 function fleetStats(){
   const ws=S.workers||[],active=ws.filter(w=>statusInfo(w).label==="ACTIVE"),inactive=ws.length-active.length;
@@ -53,7 +72,11 @@ function derivedShare(w){
 }
 function actionFor(w){
   const a=workerAlert(w),p=profile(w);
-  if(a.items.includes("worker_offline")||a.items.includes("stale_telemetry"))return "RECOVERY · الشبكة/الطاقة";
+  if(a.items.includes("chain_loss")||a.items.includes("asic_error"))return "DIAGNOSE · ASIC/CHAIN";
+  if(a.items.includes("thermal_risk")||a.items.includes("thermal_watch"))return "COOLING · Thermal";
+  if(a.items.includes("local_stratum_down"))return "NETWORK · Stratum";
+  if(a.items.includes("pool_local_gap"))return "FUSE · Pool↔Local";
+  if(a.items.includes("worker_offline")||a.items.includes("stale_telemetry"))return "RECOVERY · Connectivity";
   if(a.items.includes("critical_reject"))return "INSPECT · Reject";
   if(a.items.includes("hashrate_drift"))return "COMPARE · Hashrate";
   if(!p.model||!p.rated_ths||!p.watts)return "CONFIG · Machine Profile";
@@ -73,27 +96,32 @@ function getWorkers(){return (S.workers||[]).filter(w=>{
   return av-bv;
 })}
 function minerCard(w){
-  const p=profile(w),st=statusInfo(w),al=workerAlert(w),f=fleetStats(),h10=Number(w.hashrate_10min_ths)||0,h24=Number(w.hashrate_24hour_ths)||0;
+  const p=profile(w),st=statusInfo(w),al=workerAlert(w),f=fleetStats(),h10=Number(w.hashrate_10min_ths)||0,h24=Number(w.hashrate_24hour_ths)||0,lt=w.local_telemetry||null;
   const drift=al.drift,share=h24>0&&f.total24>0?(h24/f.total24)*100:null,value=derivedShare(w),rated=Number(p.rated_ths),watts=Number(p.watts);
   const eff=Number.isFinite(rated)&&rated>0&&Number.isFinite(watts)&&watts>0?(rated/watts*1000):null;
   const load=Number.isFinite(rated)&&rated>0&&h10>0?(h10/rated)*100:null,action=actionFor(w);
+  const localBits=lt?[
+    lt.temp_max_c!=null?"TEMP "+num(lt.temp_max_c,1)+"°C":"",
+    lt.fan_avg_pct!=null?"FAN "+num(lt.fan_avg_pct,0)+"%":"",
+    lt.power_watts!=null?"PWR "+num(lt.power_watts,0)+"W":"",
+    lt.asic_error_count!=null&&Number(lt.asic_error_count)>0?"ASIC "+num(lt.asic_error_count,0):""
+  ].filter(Boolean):[];
   return '<article class="miner-card '+st.cls+'" data-worker-id="'+esc(w.worker_id)+'"><div class="miner-glow"></div>'+
     '<div class="miner-top"><div><div class="miner-kicker">DIGITAL TWIN · WORKER #'+esc(w.worker_id)+'</div><h3>'+esc(w.worker_name||"Unnamed Miner")+'</h3><div class="miner-group">'+esc(w.group_name||"Default Group")+'</div></div><div class="miner-state">'+badge(st.label,st.cls)+'</div></div>'+
-    '<div class="twin-row"><span class="twin-score '+scoreClass(al.health)+'"><b>'+al.health+'</b><small>HEALTH</small></span><div class="twin-meta"><span>DNA <b>'+al.dna+'</b></span><span>ANOMALY <b>'+al.anomaly+'</b></span><span>10M↔24H <b class="'+(Number.isFinite(drift)&&Math.abs(drift)>20?"warn":"")+'">'+(drift==null?"—":num(drift,1)+"%")+'</b></span></div></div>'+
-    '<div class="miner-hash"><div class="hash-main"><span>'+ths(w.hashrate_10min_ths)+'</span><small>LIVE 10 MIN</small></div><div class="hash-rings"><i style="--v:'+Math.min(100,Math.max(4,h10?Math.round((h10/Math.max(h10,h24||h10))*100):4))+'%"></i></div></div>'+
+    '<div class="twin-row"><span class="twin-score '+scoreClass(al.health)+'"><b>'+al.health+'</b><small>HEALTH</small></span><div class="twin-meta"><span>DNA <b>'+al.dna+'</b></span><span>ANOMALY <b>'+al.anomaly+'</b></span><span>CAUSE <b>'+esc(al.cause)+'</b></span><span>10M↔24H <b class="'+(Number.isFinite(drift)&&drift<-20?"warn":"")+'">'+(drift==null?"—":num(drift,1)+"%")+'</b></span></div></div>'+
+    '<div class="miner-hash"><div class="hash-main"><span>'+ths(w.hashrate_10min_ths)+'</span><small>POOL · LIVE 10 MIN</small></div><div class="hash-rings"><i style="--v:'+Math.min(100,Math.max(4,h10?Math.round((h10/Math.max(h10,h24||h10))*100):4))+'%"></i></div></div>'+
     '<div class="miner-metrics"><div><span>1H</span><b>'+ths(w.hashrate_1hour_ths)+'</b></div><div><span>24H</span><b>'+ths(w.hashrate_24hour_ths)+'</b></div><div><span>REJECT</span><b class="'+(Number(w.reject_rate)>.5?"warn":"")+'">'+esc(w.reject_rate==null?"—":num(w.reject_rate,3)+"%")+'</b></div><div><span>LAST ACTIVE</span><b>'+esc(al.age==null?"—":al.age+"m")+'</b></div></div>'+
-    '<div class="miner-insights"><span class="micro-tag">'+(share==null?"—":"FLEET SHARE "+num(share,1)+"%")+'</span>'+(eff==null?"":'<span class="micro-tag cyanish">EFF '+num(eff,1)+' TH/s·kW</span>')+(load==null?"":'<span class="micro-tag '+(load<85?"warn":"ok")+'">LOAD '+num(load,0)+'%</span>')+(value==null?"":'<span class="micro-tag violetish">DERIVED VALUE '+num(value,6)+'</span>')+'</div>'+
-    '<div class="miner-foot"><span class="action-chip '+st.cls+'">↳ '+esc(action)+'</span>'+(al.count?'<span class="alert-pill">⚠ '+al.count+' alerts</span>':"")+'<button class="btn miner-open" data-worker-detail="'+esc(w.worker_id)+'">فتح الـTwin</button></div></article>';
+    '<div class="miner-insights"><span class="micro-tag">'+(share==null?"—":"FLEET SHARE "+num(share,1)+"%")+'</span>'+(localBits.map(x=>'<span class="micro-tag sensor-tag">'+esc(x)+'</span>').join(""))+(eff==null?"":'<span class="micro-tag cyanish">EFF '+num(eff,1)+' TH/s·kW</span>')+(load==null?"":'<span class="micro-tag '+(load<85?"warn":"ok")+'">LOAD '+num(load,0)+'%</span>')+(value==null?"":'<span class="micro-tag violetish">DERIVED VALUE '+num(value,6)+'</span>')+'</div>'+
+    '<div class="miner-foot"><span class="action-chip '+st.cls+'">↳ '+esc(action)+'</span>'+(al.count?'<span class="alert-pill">⚠ '+al.count+' signals</span>':"")+(lt?'<span class="sensor-live">⌁ LOCAL SENSOR</span>':'')+'<button class="btn miner-open" data-worker-detail="'+esc(w.worker_id)+'">فتح الـTwin</button></div></article>';
 }
 function dashboardHtml(){
   const f=fleetStats(),m=S.mining||{},drift=f.drift;
   return '<section class="dashboard-grid"><article class="dash-card hero-stat accent"><div class="dash-label">FLEET PULSE · 10M</div><strong>'+ths(f.total10)+'</strong><span>'+num(f.total24,2)+' TH/s · 24H baseline</span><div class="pulse-line"><i style="width:'+Math.min(100,Math.max(4,f.total24?Math.round((f.total10/f.total24)*100):4))+'%"></i></div></article><article class="dash-card"><div class="dash-label">DIGITAL TWINS</div><strong>'+num(f.count,0)+'</strong><span><em class="okdot"></em>'+num(f.active,0)+' active · '+num(f.inactive,0)+' inactive</span></article><article class="dash-card"><div class="dash-label">FLEET HEALTH</div><strong>'+esc(f.avgHealth??"—")+'</strong><span>Derived: status · reject · drift</span></article><article class="dash-card"><div class="dash-label">24H DRIFT</div><strong class="'+(Number.isFinite(drift)&&Math.abs(drift)>10?"warn":"")+'">'+esc(drift==null?"—":num(drift,1)+"%")+'</strong><span>10m versus 24h fleet baseline</span></article><article class="dash-card"><div class="dash-label">AVG REJECT</div><strong>'+esc(f.avgReject==null?"—":num(f.avgReject,3)+"%")+'</strong><span>Worker-level observed average</span></article><article class="dash-card"><div class="dash-label">SMART ALERTS</div><strong>'+num(f.alerts,0)+'</strong><span>'+esc(f.alerts?"Derived alerts need review":"No derived alerts")+'</span></article><article class="dash-card"><div class="dash-label">PROFIT 24H</div><strong>'+esc(m.profit_24h??"—")+'</strong><span>ViaBTC account snapshot</span></article><article class="dash-card"><div class="dash-label">BALANCE</div><strong>'+esc(m.balance??"—")+'</strong><span>Available / unpaid snapshot</span></article></section>';
 }
 function microscopePanelHtml(){
-  const x=S.microscope||{},r=x.latest_run||{},status=String(r.status||x.status||"NEVER").toUpperCase();
-  const badgeCls=status==="COMPLETED"?"green":status==="RUNNING"?"cyan":status==="FAILED"?"red":"amber";
-  const ago=r.finished_at?new Date(r.finished_at).toLocaleString():"—";
-  return '<section class="microscope-panel card"><div class="microscope-core"><div class="eyebrow">MIDAD / MINER MICROSCOPE</div><h2>مراقبة ذاتية · 24/7</h2><p>Scout → Drop Detector → Root Cause → Recovery → Alert. يعمل تلقائيًا كل 5 دقائق ويُبقي القرار الخارجي تحت السيطرة البشرية.</p><div class="micro-pills"><span>◉ AUTO 5M</span><span>◉ READ ONLY ACTUATOR</span><span>◉ '+esc(status)+'</span></div></div><div class="micro-stats"><div><span>LAST RUN</span><b>'+esc(ago)+'</b><small>'+num(r.workers_scanned??"—",0)+' workers scanned</small></div><div><span>OPEN INCIDENTS</span><b>'+esc(x.open_incidents??0)+'</b><small>'+esc(x.open_critical??0)+' critical</small></div><div><span>AUTO RECOVERY</span><b>'+esc(r.auto_recoveries??0)+'</b><small>safe re-probes only</small></div><div><span>ALERTS SENT</span><b>'+esc(r.alerts_sent??0)+'</b><small>deduplicated delivery</small></div></div></section>';
+  const x=S.microscope||{},r=x.latest_run||{},status=String(r.status||x.status||"NEVER").toUpperCase(),sc=x.sensor_coverage||{};
+  const badgeCls=status==="COMPLETED"?"green":status==="RUNNING"?"cyan":status==="FAILED"?"red":"amber",ago=r.finished_at?new Date(r.finished_at).toLocaleString():"—";
+  return '<section class="microscope-panel card"><div class="microscope-core"><div class="eyebrow">MIDAD / MINER MICROSCOPE</div><h2>مراقبة ذاتية · 24/7</h2><p>Scout → Drop Detector → Root Cause → Recovery → Alert. + Sensor Fusion عندما تصل بيانات الجهاز المحلي.</p><div class="micro-pills"><span>◉ AUTO 5M</span><span>◉ POOL + LOCAL FUSION</span><span>◉ '+badge(status,badgeCls)+'</span></div></div><div class="micro-stats"><div><span>LAST RUN</span><b>'+esc(ago)+'</b><small>'+num(r.workers_scanned??"—",0)+' workers scanned</small></div><div><span>OPEN INCIDENTS</span><b>'+esc(x.open_incidents??0)+'</b><small>'+esc(x.open_critical??0)+' critical</small></div><div><span>SENSOR COVERAGE</span><b>'+num(sc.workers_with_local??0,0)+' / '+num(sc.workers_total??0,0)+'</b><small>workers with local evidence</small></div><div><span>REPAIR QUEUE</span><b>'+esc((x.proposed_repairs||[]).length)+'</b><small>approval-gated proposals</small></div></div></section>';
 }
 function controlsHtml(){
   const f=fleetStats();
