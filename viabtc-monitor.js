@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_viabtc_public"};
-const S={mining:null,trade:null,busy:false,error:"",warning:"",workers:[],selected:null,filter:"all",query:"",sort:"status",view:"cards"};
+const S={mining:null,microscope:null,trade:null,busy:false,error:"",warning:"",workers:[],selected:null,filter:"all",query:"",sort:"status",view:"cards"};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??"—").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
 const num=(v,d=2)=>v==null||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:d});
@@ -89,6 +89,12 @@ function dashboardHtml(){
   const f=fleetStats(),m=S.mining||{},drift=f.drift;
   return '<section class="dashboard-grid"><article class="dash-card hero-stat accent"><div class="dash-label">FLEET PULSE · 10M</div><strong>'+ths(f.total10)+'</strong><span>'+num(f.total24,2)+' TH/s · 24H baseline</span><div class="pulse-line"><i style="width:'+Math.min(100,Math.max(4,f.total24?Math.round((f.total10/f.total24)*100):4))+'%"></i></div></article><article class="dash-card"><div class="dash-label">DIGITAL TWINS</div><strong>'+num(f.count,0)+'</strong><span><em class="okdot"></em>'+num(f.active,0)+' active · '+num(f.inactive,0)+' inactive</span></article><article class="dash-card"><div class="dash-label">FLEET HEALTH</div><strong>'+esc(f.avgHealth??"—")+'</strong><span>Derived: status · reject · drift</span></article><article class="dash-card"><div class="dash-label">24H DRIFT</div><strong class="'+(Number.isFinite(drift)&&Math.abs(drift)>10?"warn":"")+'">'+esc(drift==null?"—":num(drift,1)+"%")+'</strong><span>10m versus 24h fleet baseline</span></article><article class="dash-card"><div class="dash-label">AVG REJECT</div><strong>'+esc(f.avgReject==null?"—":num(f.avgReject,3)+"%")+'</strong><span>Worker-level observed average</span></article><article class="dash-card"><div class="dash-label">SMART ALERTS</div><strong>'+num(f.alerts,0)+'</strong><span>'+esc(f.alerts?"Derived alerts need review":"No derived alerts")+'</span></article><article class="dash-card"><div class="dash-label">PROFIT 24H</div><strong>'+esc(m.profit_24h??"—")+'</strong><span>ViaBTC account snapshot</span></article><article class="dash-card"><div class="dash-label">BALANCE</div><strong>'+esc(m.balance??"—")+'</strong><span>Available / unpaid snapshot</span></article></section>';
 }
+function microscopePanelHtml(){
+  const x=S.microscope||{},r=x.latest_run||{},status=String(r.status||x.status||"NEVER").toUpperCase();
+  const badgeCls=status==="COMPLETED"?"green":status==="RUNNING"?"cyan":status==="FAILED"?"red":"amber";
+  const ago=r.finished_at?new Date(r.finished_at).toLocaleString():"—";
+  return '<section class="microscope-panel card"><div class="microscope-core"><div class="eyebrow">MIDAD / MINER MICROSCOPE</div><h2>مراقبة ذاتية · 24/7</h2><p>Scout → Drop Detector → Root Cause → Recovery → Alert. يعمل تلقائيًا كل 5 دقائق ويُبقي القرار الخارجي تحت السيطرة البشرية.</p><div class="micro-pills"><span>◉ AUTO 5M</span><span>◉ READ ONLY ACTUATOR</span><span>◉ '+esc(status)+'</span></div></div><div class="micro-stats"><div><span>LAST RUN</span><b>'+esc(ago)+'</b><small>'+num(r.workers_scanned??"—",0)+' workers scanned</small></div><div><span>OPEN INCIDENTS</span><b>'+esc(x.open_incidents??0)+'</b><small>'+esc(x.open_critical??0)+' critical</small></div><div><span>AUTO RECOVERY</span><b>'+esc(r.auto_recoveries??0)+'</b><small>safe re-probes only</small></div><div><span>ALERTS SENT</span><b>'+esc(r.alerts_sent??0)+'</b><small>deduplicated delivery</small></div></div></section>';
+}
 function controlsHtml(){
   const f=fleetStats();
   return '<section class="miners-toolbar card"><div class="toolbar-head"><div><div class="eyebrow">MINER WALL / DIGITAL TWIN</div><h2>كل Miner ككيان مستقل</h2><p>Telemetry حيّة + Health + Anomaly + Efficiency + Derived Value + Action.</p></div><div class="toolbar-side"><div class="toolbar-count">'+num(f.count,0)+' WORKERS</div><div class="backup-tools"><button class="chip" id="profileExport">تصدير Profiles</button><button class="chip" id="profileImport">استيراد</button><input id="profileFile" type="file" accept="application/json" hidden></div></div></div><div class="toolbar-controls"><label><span>بحث</span><input id="minerSearch" placeholder="اسم / Worker ID / Group" value="'+esc(S.query)+'"></label><label><span>الحالة</span><select id="minerFilter"><option value="all">الكل</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="stale">Stale</option></select></label><label><span>ترتيب</span><select id="minerSort"><option value="status">الحالة</option><option value="hash">Hashrate 10m</option><option value="reject">Reject</option><option value="name">الاسم</option></select></label></div><div class="group-row">'+f.groups.map(g=>'<button class="chip group-chip" data-group="'+esc(g)+'">'+esc(g)+'</button>').join("")+'</div></section>';
@@ -117,6 +123,7 @@ function bindMinerButtons(){
 function applySnapshot(x){
   const s=x?.snapshot?.snapshot||x?.snapshot||x;
   S.mining=s?.mining||null;
+  S.microscope=s?.microscope||null;
   S.workers=Array.isArray(s?.mining?.workers)?s.mining.workers:[];
   S.connected=Boolean(s?.ok&&S.mining);
 }
