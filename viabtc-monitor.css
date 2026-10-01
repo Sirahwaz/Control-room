@@ -29,3 +29,4 @@
 #copyMsg{color:var(--cyan);font:800 8px monospace}.miner-modal .icon-btn.close{font-size:25px}
 @media(max-width:760px){.twin-hero{grid-template-columns:1fr}.derived-grid{grid-template-columns:1fr 1fr}.twin-score.giant{width:68px;height:68px}.playbook-actions .btn{width:auto}}
 @media(max-width:420px){.derived-grid{grid-template-columns:1fr 1fr}.twin-hero-copy h3{font-size:15px}}
+.noticeBox{margin-top:12px;padding:12px 14px;border:1px solid #554725;border-radius:14px;background:#17130b;color:#d8c487;display:flex;gap:8px;align-items:flex-start;line-height:1.5}.noticeBox b{font:900 8px monospace;color:var(--amber);white-space:nowrap}.noticeBox span{font-size:9px}
