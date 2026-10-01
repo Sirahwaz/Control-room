@@ -9,7 +9,8 @@
       "port": 4028,
       "model": "",
       "firmware": "",
-      "chain_expected": 3
+      "chain_expected": 3,
+      "topology": {"site": "farm-a", "rack": "rack-01", "power_zone": "psu-zone-01", "network_zone": "switch-01"}
     },
     {
       "worker_id": 51629206,
