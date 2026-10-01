@@ -629,8 +629,8 @@ body{overflow-x:hidden}
 .outcome-grid b{font-size:13px}
 .trade-runline{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:12px;color:#6f8297;font:7px var(--mono)}
 .trade-runline b{color:#b7c7d6;font-size:8px;margin-inline-end:8px}
-.context-modal{position:fixed;inset:0;z-index:140;background:rgba(0,0,0,.78);padding:6vh 6vw;overflow:auto;backdrop-filter:blur(10px)}
-.context-modal-panel{max-width:1050px;margin:auto}
+.context-modal{position:fixed;inset:0;z-index:140;background:rgba(0,0,0,.62);padding:3vh 3vw;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;backdrop-filter:blur(8px)}
+.context-modal-panel{max-width:1050px;margin:auto;max-height:94dvh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .lane-detail-text{color:#c0ccd8;line-height:1.8;font-size:12px}
 .lane-evidence{white-space:pre-wrap;max-height:280px;overflow:auto;margin:0;padding:14px;border:1px solid rgba(128,164,195,.10);border-radius:12px;background:#050a10;color:#9fb0c2;font:10px/1.65 var(--mono)}
 @media(max-width:980px){
