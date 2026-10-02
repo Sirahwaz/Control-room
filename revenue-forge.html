@@ -58,6 +58,22 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 </section>
 
 <section class="card section">
+<span class="tag">CRYPTO CHECKOUT</span>
+<h2>الدفع المباشر — USDC / Solana</h2>
+<p class="small">اختر الخدمة، وسينشئ MIDAD طلب دفع مستقل. عند وصول المبلغ إلى محفظة الاستقبال، تتم مراقبة العملية والتحقق منها تلقائيًا.</p>
+<div class="grid">
+<article class="card"><h2>Miner Microscope Audit</h2><div class="price">$39 USDC</div><button class="btn" onclick="makeCheckout('miner-microscope-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Opportunity Radar Pack</h2><div class="price">$25 USDC</div><button class="btn" onclick="makeCheckout('opportunity-radar-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Research-to-Revenue Sprint</h2><div class="price">$79 USDC</div><button class="btn" onclick="makeCheckout('research-revenue-sprint-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Bug Fix Sprint</h2><div class="price">$54 USDC</div><button class="btn" onclick="makeCheckout('bug-fix-sprint-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Data Rescue Pack</h2><div class="price">$34 USDC</div><button class="btn" onclick="makeCheckout('data-rescue-pack-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Decision Research Brief</h2><div class="price">$44 USDC</div><button class="btn" onclick="makeCheckout('decision-research-brief-v1')">إنشاء فاتورة</button></article>
+<article class="card"><h2>Code Health Review</h2><div class="price">$74 USDC</div><button class="btn" onclick="makeCheckout('code-health-review-v1')">إنشاء فاتورة</button></article>
+</div>
+<div id="checkout-result" class="card small" style="margin-top:16px;display:none"></div>
+</section>
+
+<section class="card section">
 <span class="tag">DEMAND-BACKED MICRO OFFERS</span>
 <h2>عروض مبنية على طلب مكتشف بالفعل</h2>
 <p class="small">هذه ليست أفكارًا عشوائية؛ هي تحويل مباشر لأنماط طلب ظهرت في Execution Packs الموجودة داخل MIDAD.</p>
@@ -92,5 +108,23 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 <script>
 function copyOffer(s){navigator.clipboard?.writeText(s).then(()=>{document.querySelectorAll('.copyok').forEach(x=>x.textContent='');event?.target?.nextElementSibling&&(event.target.nextElementSibling.textContent='✓ تم النسخ');});}
 </script>
-</body>
+<script>
+const MIDAD_CHECKOUT="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_public_checkout";
+function checkoutKey(product){
+  const base=localStorage.getItem("midadRevenueOrderKey")||Math.random().toString(36).slice(2)+Date.now().toString(36);
+  localStorage.setItem("midadRevenueOrderKey",base);
+  return base+"-"+product;
+}
+async function makeCheckout(product){
+  const box=document.getElementById("checkout-result");
+  box.style.display="block";
+  box.textContent="جاري إنشاء الفاتورة…";
+  try{
+    const r=await fetch(MIDAD_CHECKOUT,{method:"POST",headers:{"content-type":"application/json","x-order-key":checkoutKey(product)},body:JSON.stringify({product_id:product,order_key:checkoutKey(product)})});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||"checkout_failed");
+    box.innerHTML="<strong>"+d.product.name+"</strong><br>المبلغ: <b>"+d.payment.quoted_crypto_amount+" USDC</b><br>الشبكة: Solana<br>عنوان الاستقبال:<br><code style='word-break:break-all'>"+d.payment.wallet_address+"</code><br><br>بعد الإرسال، سيقوم MIDAD بالمراقبة والتحقق تلقائيًا.";
+  }catch(e){ box.textContent="تعذر إنشاء الفاتورة: "+e.message; }
+}
+</script></body>
 </html>
