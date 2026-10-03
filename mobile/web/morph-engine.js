@@ -18,18 +18,17 @@
       aimidad:{title:'AIMIDAD',path:'https://t.me/aimidad_bot',external:true},
       ahwaz:{title:'AHWAZ AI',path:'https://t.me/ahwazai_bot',external:true},
       keys:{title:'MIDAD Keys',path:'https://t.me/midadkeys_bot',external:true},
-      revenue:{title:'Revenue Forge',path:'./site/revenue-forge.html?v=20261003'}
+      revenue:{title:'Revenue Forge',path:'./site/revenue-forge.html?v=20261003'},
+      'revenue-forge':{title:'Revenue Forge',path:'./site/revenue-forge.html?v=20261003'}
     }
   };
 
   const normalize=(value)=>String(value||'').toLowerCase().trim();
-  const tokenize=(value)=>normalize(value)
-    .replace(/[،,;|/]/g,' ')
-    .split(/\s+/)
-    .filter(Boolean);
+  const tokenize=(value)=>normalize(value).replace(/[،,;|/]/g,' ').split(/\s+/).filter(Boolean);
 
   function planMission(goal, registry=fallbackRegistry){
-    const tokens=tokenize(goal);
+    const objective=String(goal||'').trim();
+    const tokens=tokenize(objective);
     const joined=tokens.join(' ');
     const scored=registry.capabilities.map(cap=>{
       let score=0;
@@ -41,60 +40,70 @@
     }).filter(cap=>cap.score>0).sort((a,b)=>b.score-a.score);
 
     const winner=scored[0] || {
-      id:'general',
-      label:'General',
-      stations:['control','aimidad'],
+      id:'general', label:'General', stations:['control','aimidad'],
       actions:['Clarify the objective','Collect evidence','Choose the safest next action'],
-      risk:'MEDIUM',
-      score:0
+      risk:'MEDIUM', score:0
     };
-
     const combined=scored.slice(0,3);
     const stationScores=new Map();
     for(const cap of combined){
-      for(const station of cap.stations) stationScores.set(station,(stationScores.get(station)||0)+Math.max(cap.score,1));
+      for(const station of cap.stations){
+        stationScores.set(station,(stationScores.get(station)||0)+Math.max(cap.score,1));
+      }
     }
-    const stations=[...stationScores.entries()]
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,4)
-      .map(([id,score])=>({
-        id,
-        score,
-        ...(registry.station_aliases[id] || {title:id,path:'#'})
-      }));
-
+    const stations=[...stationScores.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([id,score])=>({
+      id,score,...(registry.station_aliases[id]||{title:id,path:'#'})
+    }));
     const risks=combined.map(x=>x.risk);
     const risk=risks.includes('HIGH')?'HIGH':risks.includes('MEDIUM')?'MEDIUM':'LOW';
     return {
       mode:'MISSION_CAPSULE',
       title: winner.id==='general' ? 'Capsule عامة' : 'Capsule: '+winner.label,
-      objective:goal.trim(),
+      objective,
       primary:winner.id,
-      confidence: Math.min(99, winner.score===0 ? 42 : 55 + winner.score*8),
+      confidence:Math.min(99,winner.score===0?42:55+winner.score*8),
       risk,
+      approval_gate:risk==='HIGH'?'HUMAN_APPROVAL_REQUIRED':'NOT_REQUIRED',
       capabilities:combined.map(x=>({id:x.id,label:x.label,score:x.score})),
       stations,
       actions:[...new Set(combined.flatMap(x=>x.actions))].slice(0,5),
-      explain: winner.id==='general'
+      explain:winner.id==='general'
         ? 'لم تُكتشف إشارة قوية؛ تم اختيار مسار عام قابل للتعديل.'
         : 'تمت مطابقة الهدف مع إشارات لغوية متعددة، ثم دمج أفضل القدرات وترتيب محطات MIDAD بحسب الصلة.'
     };
   }
 
   let activeRegistry=fallbackRegistry;
-
   async function loadRegistry(){
     try{
       const response=await fetch('./morph-registry.json',{cache:'no-store'});
       if(!response.ok) throw new Error('registry '+response.status);
       const remote=await response.json();
       if(remote?.schema_version===1 && Array.isArray(remote.capabilities)) activeRegistry=remote;
-    }catch(_){ /* local fallback stays active */ }
+    }catch(_){}
     return activeRegistry;
   }
 
-  function esc(value){
-    return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  function esc(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+
+  function restoreStations(){
+    const grid=document.querySelector('#stations');
+    if(!grid) return;
+    [...grid.children].forEach(card=>{card.style.order='';card.classList.remove('morph-ranked');});
+    document.body.removeAttribute('data-morph-primary');
+  }
+
+  function applyMorph(plan){
+    const grid=document.querySelector('#stations');
+    if(!grid) return;
+    const ranks=new Map(plan.stations.map((s,index)=>[s.id,index+1]));
+    [...grid.children].forEach(card=>{
+      const rank=ranks.get(card.dataset.id);
+      card.style.order=rank?String(rank):'99';
+      card.classList.toggle('morph-ranked',Boolean(rank));
+      if(rank) card.dataset.morphRank=String(rank); else delete card.dataset.morphRank;
+    });
+    document.body.dataset.morphPrimary=plan.primary;
   }
 
   function renderCapsule(plan){
@@ -107,18 +116,29 @@
     ).join('');
     const actionHtml=plan.actions.map(a=>'<li>'+esc(a)+'</li>').join('');
     const capabilityHtml=plan.capabilities.map(c=>'<span>'+esc(c.label)+' · '+esc(c.score)+'</span>').join('');
+    const gate=plan.approval_gate==='HUMAN_APPROVAL_REQUIRED'?'HUMAN APPROVAL REQUIRED':'SAFE TO NAVIGATE';
     box.innerHTML=
       '<div class="morph-head"><div><span class="label">MISSION CAPSULE</span><h3>'+esc(plan.title)+'</h3></div><span class="morph-risk '+riskClass+'">'+esc(plan.risk)+'</span></div>'+
       '<p class="morph-objective">'+esc(plan.objective)+'</p>'+
-      '<div class="morph-metrics"><span>CONFIDENCE <b>'+esc(plan.confidence)+'%</b></span><span>MODE <b>MORPH</b></span></div>'+
+      '<div class="morph-metrics"><span>CONFIDENCE <b>'+esc(plan.confidence)+'%</b></span><span>MODE <b>MORPH</b></span><span>GATE <b>'+esc(gate)+'</b></span></div>'+
       '<div class="morph-capabilities">'+capabilityHtml+'</div>'+
       '<div class="morph-columns"><div><span class="label">NEXT ACTIONS</span><ol>'+actionHtml+'</ol></div><div><span class="label">WHY</span><p>'+esc(plan.explain)+'</p></div></div>'+
-      '<div class="label morph-label-gap">ROUTED STATIONS</div><div class="morph-stations">'+stationHtml+'</div>';
+      '<div class="label morph-label-gap">ROUTED STATIONS</div><div class="morph-stations">'+stationHtml+'</div>'+
+      '<button class="morph-reset" type="button">إرجاع مساحة العمل</button>';
     box.classList.add('is-ready');
+    applyMorph(plan);
+    box.querySelector('.morph-reset')?.addEventListener('click',()=>{
+      restoreStations();
+      box.classList.remove('is-ready');
+      box.innerHTML='<div class="morph-empty">تمت إعادة مساحة العمل إلى الوضع العادي.</div>';
+    });
     box.querySelectorAll('.morph-station').forEach(btn=>btn.addEventListener('click',async()=>{
       try{await window.MidadMobileHaptic?.('MEDIUM');}catch(_){}
       const target=btn.dataset.morphTarget;
       if(!target || target==='#') return;
+      if(plan.approval_gate==='HUMAN_APPROVAL_REQUIRED'){
+        // Navigation is allowed; privileged financial execution remains server-side and gated.
+      }
       if(btn.dataset.morphExternal==='true'){
         const browser=window.MidadMobileBrowser;
         if(browser) await browser(target); else window.open(target,'_blank','noopener,noreferrer');
@@ -134,12 +154,18 @@
     const registry=await loadRegistry();
     const plan=planMission(clean,registry);
     renderCapsule(plan);
-    try{
-      localStorage.setItem('midad-morph-last',JSON.stringify(plan));
-    }catch(_){}
+    try{localStorage.setItem('midad-morph-last',JSON.stringify(plan));}catch(_){}
     document.dispatchEvent(new CustomEvent('midad:morph',{detail:plan}));
     return plan;
   }
 
-  window.MidadMorph={planMission,morph,loadRegistry};
+  document.addEventListener('DOMContentLoaded',()=>{
+    const input=document.querySelector('#morphInput');
+    const run=document.querySelector('#morphRun');
+    const execute=()=>morph(input?.value);
+    run?.addEventListener('click',execute);
+    input?.addEventListener('keydown',e=>{if(e.key==='Enter') execute();});
+  });
+
+  window.MidadMorph={planMission,morph,loadRegistry,restoreStations};
 })();
