@@ -92,12 +92,12 @@ jobs:
         run: |
           mkdir -p dist
           cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/MIDAD-Mobile-v0.2.0-debug.apk
-          sha256sum dist/MIDAD-Mobile-debug.apk | tee dist/MIDAD-Mobile-v0.2.0-debug.apk.sha256
+          sha256sum dist/MIDAD-Mobile-v0.2.0-debug.apk | tee dist/MIDAD-Mobile-v0.2.0-debug.apk.sha256
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
           name: MIDAD-Mobile-v0.2.0
           path: |
-            dist/MIDAD-Mobile-debug.apk
-            dist/MIDAD-Mobile-debug.apk.sha256
+            dist/MIDAD-Mobile-v0.2.0-debug.apk
+            dist/MIDAD-Mobile-v0.2.0-debug.apk.sha256
