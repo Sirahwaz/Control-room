@@ -152,10 +152,7 @@
     });
   });
 
-  $('.section')?.addEventListener('click', () => {
-    // restore hidden station filters after user returns to the stations area
-    $$('#stations .card').forEach(card => card.style.display = 'flex');
-  });
+  const restoreStations = () => $('#stations .card').forEach(card => card.style.display = 'flex');
 
   $$('#newNote').forEach(btn => btn.addEventListener('click', addNote));
 
@@ -163,7 +160,7 @@
     btn.addEventListener('click', () => {
       const target = btn.dataset.scroll;
       if (target === 'home') $('#home')?.scrollIntoView({behavior:'smooth', block:'start'});
-      else if (target === 'stations') $('#stations')?.scrollIntoView({behavior:'smooth', block:'start'});
+      else if (target === 'stations') { restoreStations(); $('#stations')?.scrollIntoView({behavior:'smooth', block:'start'}); }
       else $('#future')?.scrollIntoView({behavior:'smooth', block:'start'});
       $$('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
       haptic();
