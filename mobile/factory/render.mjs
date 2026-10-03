@@ -23,8 +23,8 @@ for (const key of required) {
 }
 if (manifest.schema_version !== 1) throw new Error("Unsupported manifest schema_version");
 if (manifest.product_key !== productKey) throw new Error("product_key does not match requested product");
-if (!/^\\d+\\.\\d+\\.\\d+$/.test(manifest.version)) throw new Error("Invalid semantic version");
-if (!/^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
+if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error("Invalid semantic version");
+if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
 if (!/^([A-Za-z0-9][A-Za-z0-9._-]{2,100})$/.test(manifest.artifact_name)) throw new Error("Invalid artifact_name");
 if (manifest.features?.server_side_secrets_only !== true) {
   throw new Error("Factory security gate: server_side_secrets_only must be true");
@@ -34,7 +34,7 @@ const webEntry = path.join(root, manifest.web_entry);
 if (!fs.existsSync(webEntry)) throw new Error(`Configured web_entry not found: ${manifest.web_entry}`);
 
 const config = {
-  appId: manifest.app_id,
+if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
   appName: manifest.display_name,
   webDir: "www"
 };
@@ -50,8 +50,8 @@ fs.writeFileSync(out, JSON.stringify(manifest, null, 2) + "\n");
 console.log(JSON.stringify({
   product_key: manifest.product_key,
   display_name: manifest.display_name,
-  version: manifest.version,
-  app_id: manifest.app_id,
+if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error("Invalid semantic version");
+if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
   artifact_name: manifest.artifact_name,
   release_channel: manifest.release_channel
 }));
