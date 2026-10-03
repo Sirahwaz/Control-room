@@ -3,23 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#05070d">
+<meta name="theme-color" content="#040710">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="iAiTrader — MIDAD Financial Intelligence Trading Station">
-<title>iAiTrader — MIDAD Trading Intelligence</title>
-<link rel="stylesheet" href="./iaitrader.css?v=20261004">
+<title>iAiTrader — MIDAD Neural Trading Cockpit</title>
+<style>
+html,body{margin:0;min-height:100%;background:#040710;color:#eef7ff;font-family:system-ui,sans-serif}
+body{display:grid;place-items:center;text-align:center}
+main{padding:32px}.logo{width:84px;height:84px;margin:auto;border-radius:26px;display:grid;place-items:center;font-size:34px;border:1px solid #294e60;background:#09151e}
+p{color:#8197aa}a{color:#8fefff}
+</style>
 </head>
 <body>
-<div id="app">
-  <div class="boot">
-    <div class="boot-core"><span>₿</span></div>
-    <div class="boot-title">iAiTrader</div>
-    <div class="boot-sub">MIDAD / FINANCIAL INTELLIGENCE</div>
-    <div class="boot-line"></div>
-    <div class="boot-state">جارٍ تهيئة المحطة…</div>
-  </div>
-</div>
-<script defer src="https://telegram.org/js/telegram-web-app.js"></script>
-<script defer src="./iaitrader.js?v=20261004"></script>
+<main><div class="logo">₿</div><h1>iAiTrader</h1><p>MIDAD Neural Trading Cockpit</p><p>فتح المحطة الآمنة… / Opening secure station…</p>
+<a href="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_iaitrader_station?webapp=1&v=8">فتح iAiTrader</a></main>
+<script>location.replace("https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_iaitrader_station?webapp=1&v=8"+location.search.replace("?","&"));</script>
 </body>
 </html>
