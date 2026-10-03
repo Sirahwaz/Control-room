@@ -1,0 +1,99 @@
+name: MIDAD Mobile Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/**"
+      - "index.html"
+      - "iaitrader.html"
+      - "iaitrader.css"
+      - "iaitrader.js"
+      - "viabtc.html"
+      - "viabtc-monitor.css"
+      - "viabtc-monitor.js"
+      - "viabtc-neuralpp-v1.css"
+      - "viabtc-neuralpp-v1.js"
+      - "revenue-forge.html"
+      - "*.js"
+      - "*.css"
+      - "*.svg"
+      - "*.webmanifest"
+      - ".github/workflows/midad-mobile-android.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout MIDAD
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package.json
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install Capacitor dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+
+      - name: Prepare bundled MIDAD web surfaces
+        run: |
+          rm -rf mobile/www
+          mkdir -p mobile/www/site
+          cp mobile/web/index.html mobile/www/index.html
+          cp mobile/web/mobile-hub.css mobile/www/mobile-hub.css
+          cp mobile/web/mobile-hub.js mobile/www/mobile-hub.js
+
+          # Preserve the existing web product intact and bundle it as a local site layer.
+          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) \
+            -not -path "./mobile/*" \
+            -exec cp {} mobile/www/site/ \;
+
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android
+
+      - name: Sync web assets
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/MIDAD-Mobile-debug.apk
+          sha256sum dist/MIDAD-Mobile-debug.apk | tee dist/MIDAD-Mobile-debug.apk.sha256
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDAD-Mobile-APK
+          path: |
+            dist/MIDAD-Mobile-debug.apk
+            dist/MIDAD-Mobile-debug.apk.sha256
