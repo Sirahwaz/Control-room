@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#05070b">
+  <meta name="color-scheme" content="dark">
+  <title>MIDAD Mobile</title>
+  <link rel="manifest" href="./site/manifest.webmanifest">
+  <link rel="icon" href="./site/midad-pwa-icon.svg">
+  <link rel="stylesheet" href="./mobile-hub.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true">M</div>
+    <div class="brand-copy">
+      <div class="eyebrow">MIDAD / MOBILE</div>
+      <h1>المقود الموحد</h1>
+    </div>
+    <div class="signal"><span class="signal-dot"></span><span>LIVE SHELL</span></div>
+  </header>
+
+  <main id="app">
+    <section class="hero">
+      <div class="orbit-wrap">
+        <div class="orbit orbit-1"></div>
+        <div class="orbit orbit-2"></div>
+        <div class="core">
+          <strong>MIDAD</strong>
+          <span>NEURAL HUB</span>
+        </div>
+      </div>
+      <div class="hero-copy">
+        <p class="kicker">كل منظومة MIDAD في تطبيق واحد</p>
+        <p class="muted">محطات مستقلة، هوية موحدة، ومسار جاهز لإضافة الذاكرة والبيانات والذكاء داخل التطبيق.</p>
+      </div>
+    </section>
+
+    <section class="command">
+      <span>⌘</span>
+      <input id="commandInput" autocomplete="off" inputmode="text" placeholder="ابحث أو افتح محطة…">
+      <button id="searchBtn" aria-label="بحث">↗</button>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">STATIONS</div>
+          <h2>محطات MIDAD</h2>
+        </div>
+        <span class="count">5</span>
+      </div>
+
+      <div class="grid" id="stations">
+        <button class="card featured" data-action="open" data-target="./site/index.html">
+          <div class="card-icon">🧠</div>
+          <div class="card-main">
+            <div class="card-title">Neural Control Room</div>
+            <div class="card-sub">المقود الرئيسي • Intelligence • Revenue • Tasks</div>
+          </div>
+          <span class="arrow">›</span>
+        </button>
+
+        <button class="card" data-action="open" data-target="./site/iaitrader.html?v=20261003">
+          <div class="card-icon">📈</div>
+          <div class="card-main">
+            <div class="card-title">iAiTrader</div>
+            <div class="card-sub">Trading • Risk • Paper • Market Radar</div>
+            <span class="state">PAPER / LIVE LOCKED</span>
+          </div>
+          <span class="arrow">›</span>
+        </button>
+
+        <button class="card" data-action="open" data-target="./site/viabtc.html?v=20261003">
+          <div class="card-icon">₿</div>
+          <div class="card-main">
+            <div class="card-title">ViaBTC Monitor</div>
+            <div class="card-sub">Mining • Workers • Profit • Diagnostics</div>
+            <span class="state">MINING STATION</span>
+          </div>
+          <span class="arrow">›</span>
+        </button>
+
+        <button class="card" data-action="external" data-target="https://t.me/aimidad_bot">
+          <div class="card-icon">🔎</div>
+          <div class="card-main">
+            <div class="card-title">AIMIDAD</div>
+            <div class="card-sub">Neural Research • OSINT • Opportunities</div>
+            <span class="state">TELEGRAM NODE</span>
+          </div>
+          <span class="arrow">›</span>
+        </button>
+
+        <button class="card" data-action="external" data-target="https://t.me/ahwazai_bot">
+          <div class="card-icon">⚙️</div>
+          <div class="card-main">
+            <div class="card-title">AHWAZ AI</div>
+            <div class="card-sub">Operations • Services • Revenue</div>
+            <span class="state">TELEGRAM NODE</span>
+          </div>
+          <span class="arrow">›</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="quick">
+      <button class="quick-card" data-action="external" data-target="https://t.me/iAiTrader_bot">
+        <span>📡</span><strong>iAiTrader Bot</strong><em>فتح</em>
+      </button>
+      <button class="quick-card" data-action="external" data-target="https://t.me/viabtc_monitor">
+        <span>⛏️</span><strong>ViaBTC Bot</strong><em>فتح</em>
+      </button>
+      <button class="quick-card" data-action="external" data-target="https://t.me/midadkeys_bot">
+        <span>🔐</span><strong>MIDAD Keys</strong><em>فتح</em>
+      </button>
+    </section>
+
+    <section class="future">
+      <div class="label">NEXT LAYER</div>
+      <div class="future-grid">
+        <div><b>🗄</b><span>Database</span><small>جاهز للتوسعة</small></div>
+        <div><b>📝</b><span>Notes</span><small>ذاكرة وملاحظات</small></div>
+        <div><b>🤖</b><span>Private AI</span><small>ذكاء مستقل</small></div>
+        <div><b>🔔</b><span>Alerts</span><small>تنبيهات موحدة</small></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-scroll="top"><span>◉</span><small>المقود</small></button>
+    <button class="nav-item" data-scroll="stations"><span>✦</span><small>المحطات</small></button>
+    <button class="nav-item" data-scroll="future"><span>＋</span><small>التوسعة</small></button>
+  </nav>
+
+  <script src="./mobile-hub.js"></script>
+</body>
+</html>
