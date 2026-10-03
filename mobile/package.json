@@ -6,7 +6,9 @@
   "scripts": {
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync android",
-    "cap:open": "cap open android"
+    "cap:open": "cap open android",
+    "factory:create": "node factory/create-product.mjs",
+    "factory:render": "node factory/render.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
