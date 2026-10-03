@@ -8,6 +8,7 @@ const safeKey = /^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey);
 if (!safeKey) throw new Error(`Invalid product key: ${productKey}`);
 
 const manifestPath = path.join(root, "mobile", "factory", "products", `${productKey}.json`);
+if (!fs.existsSync(manifestPath)) throw new Error(`Product manifest not found: ${manifestPath}`);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
 const required = [
@@ -25,6 +26,12 @@ if (manifest.product_key !== productKey) throw new Error("product_key does not m
 if (!/^\\d+\\.\\d+\\.\\d+$/.test(manifest.version)) throw new Error("Invalid semantic version");
 if (!/^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
 if (!/^([A-Za-z0-9][A-Za-z0-9._-]{2,100})$/.test(manifest.artifact_name)) throw new Error("Invalid artifact_name");
+if (manifest.features?.server_side_secrets_only !== true) {
+  throw new Error("Factory security gate: server_side_secrets_only must be true");
+}
+
+const webEntry = path.join(root, manifest.web_entry);
+if (!fs.existsSync(webEntry)) throw new Error(`Configured web_entry not found: ${manifest.web_entry}`);
 
 const config = {
   appId: manifest.app_id,
