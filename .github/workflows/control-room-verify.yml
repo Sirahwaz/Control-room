@@ -45,6 +45,8 @@ jobs:
           if (html.includes('webapp=1')) fail('iAiTrader static page must not depend on Edge Function HTML serving');
           const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(Boolean);
           if (!scripts.length) fail('No inline application script found');
+          if (!html.includes('const one=s=>document.querySelector(s);const all=s=>Array.from(document.querySelectorAll(s));')) fail('Selector helper contract missing');
+          if (!html.includes('telegram-web-app.js" defer')) fail('Telegram SDK must be deferred to avoid blocking first paint');
           scripts.forEach((code, i) => {
             try { new Function(code); }
             catch (e) { fail('Inline script syntax error #' + (i + 1) + ': ' + e.message); }
