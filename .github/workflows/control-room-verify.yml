@@ -30,5 +30,28 @@ jobs:
       - name: Required UI assets
         run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-control-v2.css','midad-control-v2.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); for(const x of ['iaitrader.html','iaitrader.css','iaitrader.js']) if(!fs.existsSync(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
 
+
+      - name: iAiTrader canonical Mini App contract
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('iaitrader.html', 'utf8');
+          const fail = (m) => { throw new Error(m); };
+          if (!/^<!doctype html>/i.test(html)) fail('iAiTrader must be a complete HTML document');
+          if (!html.includes('<script src="https://telegram.org/js/telegram-web-app.js"></script>')) fail('Telegram Mini App SDK missing');
+          if (!html.includes('const A="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_iaitrader_station"')) fail('Canonical Supabase JSON API endpoint missing');
+          if (html.includes('location.replace(')) fail('iAiTrader static page must not self-redirect');
+          if (html.includes('webapp=1')) fail('iAiTrader static page must not depend on Edge Function HTML serving');
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(Boolean);
+          if (!scripts.length) fail('No inline application script found');
+          scripts.forEach((code, i) => {
+            try { new Function(code); }
+            catch (e) { fail('Inline script syntax error #' + (i + 1) + ': ' + e.message); }
+          });
+          if (html.length < 30000) fail('iAiTrader static bundle unexpectedly small');
+          console.log('IAITRADER_STATIC_CONTRACT_OK');
+          NODE
+
       - name: Bot Fabric surface
         run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
