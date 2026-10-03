@@ -39,7 +39,7 @@ jobs:
           const html = fs.readFileSync('iaitrader.html', 'utf8');
           const fail = (m) => { throw new Error(m); };
           if (!/^<!doctype html>/i.test(html)) fail('iAiTrader must be a complete HTML document');
-          if (!html.includes('<script src="https://telegram.org/js/telegram-web-app.js"></script>')) fail('Telegram Mini App SDK missing');
+          if (!/<script src="https:\/\/telegram\.org\/js\/telegram-web-app\.js" defer><\/script>/.test(html)) fail('Telegram Mini App SDK missing or not deferred');
           if (!html.includes('const A="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_iaitrader_station"')) fail('Canonical Supabase JSON API endpoint missing');
           if (html.includes('location.replace(')) fail('iAiTrader static page must not self-redirect');
           if (html.includes('webapp=1')) fail('iAiTrader static page must not depend on Edge Function HTML serving');
