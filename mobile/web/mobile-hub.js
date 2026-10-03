@@ -178,6 +178,9 @@
     });
   }
 
+  window.MidadMobileHaptic = haptic;
+  window.MidadMobileBrowser = openExternal;
+
   renderState();
   notesRender();
   document.body.dataset.ready = 'true';
