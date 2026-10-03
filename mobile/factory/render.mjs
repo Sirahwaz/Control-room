@@ -4,11 +4,14 @@ import path from "node:path";
 
 const root = process.cwd();
 const productKey = process.argv[2] || process.env.MIDAD_PRODUCT || "midad-mobile";
-const safeKey = /^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey);
-if (!safeKey) throw new Error(`Invalid product key: ${productKey}`);
+if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey)) {
+  throw new Error(`Invalid product key: ${productKey}`);
+}
 
 const manifestPath = path.join(root, "mobile", "factory", "products", `${productKey}.json`);
-if (!fs.existsSync(manifestPath)) throw new Error(`Product manifest not found: ${manifestPath}`);
+if (!fs.existsSync(manifestPath)) {
+  throw new Error(`Product manifest not found: ${manifestPath}`);
+}
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
 const required = [
@@ -29,9 +32,17 @@ if (!/^([A-Za-z0-9][A-Za-z0-9._-]{2,100})$/.test(manifest.artifact_name)) throw 
 if (manifest.features?.server_side_secrets_only !== true) {
   throw new Error("Factory security gate: server_side_secrets_only must be true");
 }
+if (typeof manifest.features?.mission_capsules !== "boolean") {
+  throw new Error("mission_capsules feature flag must be boolean");
+}
+if (typeof manifest.features?.hybrid_neural_planner !== "boolean") {
+  throw new Error("hybrid_neural_planner feature flag must be boolean");
+}
 
 const webEntry = path.join(root, manifest.web_entry);
-if (!fs.existsSync(webEntry)) throw new Error(`Configured web_entry not found: ${manifest.web_entry}`);
+if (!fs.existsSync(webEntry)) {
+  throw new Error(`Configured web_entry not found: ${manifest.web_entry}`);
+}
 
 const config = {
   appId: manifest.app_id,
@@ -47,11 +58,14 @@ fs.writeFileSync(
 const out = path.join(root, "mobile", "factory", "runtime-product.json");
 fs.writeFileSync(out, JSON.stringify(manifest, null, 2) + "\n");
 
-console.log(JSON.stringify({
+const summary = {
   product_key: manifest.product_key,
   display_name: manifest.display_name,
-if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error("Invalid semantic version");
-if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
+  version: manifest.version,
+  app_id: manifest.app_id,
   artifact_name: manifest.artifact_name,
-  release_channel: manifest.release_channel
-}));
+  release_channel: manifest.release_channel,
+  mission_capsules: manifest.features.mission_capsules,
+  hybrid_neural_planner: manifest.features.hybrid_neural_planner
+};
+console.log(JSON.stringify(summary));
