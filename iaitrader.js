@@ -55,7 +55,15 @@ function openForge(){
 }
 function latest(){const sig=S.result?.signal||S.data?.signals?.[0]?.payload||{},features=S.result?.features||sig,ev=S.result?.evidence||{};return{sig,features,ev}}
 function shell(){
- $("#app").innerHTML='<div id="iat3"><header class="iat-top"><div class="iat-brand"><div class="iat-orb"><b>₿</b><i></i></div><div><strong>iAiTrader</strong><small>MIDAD / FINANCIAL INTELLIGENCE</small></div></div><div class="iat-top-right"><span class="iat-chip"><i class="'+(S.initData?"good":"warn")+""></i>"+(S.initData?"TELEGRAM":"NO SESSION")+"</span><span class="iat-chip">"+st(S.edge)+"</span><span class="iat-chip">"+st(S.data?.governor?.kill_switch?"LOCKED":"CHECKING")+'</span><button class="iat-icon" data-cmd="refresh">↻</button></div></header><main id="iat-main"></main><nav class="iat-nav"><button data-view="command">◉<small>المقود</small></button><button data-view="evidence">⌁<small>الأدلة</small></button><button data-view="lattice">◇<small>الشبكة</small></button><button data-view="risk">⛨<small>المخاطر</small></button><button data-view="lab">▦<small>Lab</small></button></nav></div>'
+ const html=[];
+ html.push('<div id="iat3"><header class="iat-top"><div class="iat-brand"><div class="iat-orb"><b>₿</b><i></i></div><div><strong>iAiTrader</strong><small>MIDAD / FINANCIAL INTELLIGENCE</small></div></div><div class="iat-top-right">');
+ html.push('<span class="iat-chip"><i class="'+(S.initData?"good":"warn")+'"></i>'+(S.initData?"TELEGRAM":"NO SESSION")+'</span>');
+ html.push('<span class="iat-chip">'+st(S.edge)+'</span>');
+ html.push('<span class="iat-chip">'+st(S.data?.governor?.kill_switch?"LOCKED":"CHECKING")+'</span>');
+ html.push('<button class="iat-icon" data-cmd="refresh">↻</button></div></header><main id="iat-main"></main>');
+ html.push('<nav class="iat-nav"><button data-view="command">◉<small>المقود</small></button><button data-view="evidence">⌁<small>الأدلة</small></button>');
+ html.push('<button data-view="lattice">◇<small>الشبكة</small></button><button data-view="risk">⛨<small>المخاطر</small></button><button data-view="lab">▦<small>Lab</small></button></nav></div>');
+ $("#app").innerHTML=html.join("");
 }
 function command(){
  const g=S.data?.governor||{},p=S.data?.paper_trades||{},led=S.data?.decision_ledger||[],x=latest(),s=x.sig,f=x.features,open=(S.data?.paper_trades||[]).filter(a=>["open","review"].includes(String(a.status))).length,lanes=f.strategy_lanes||[];
