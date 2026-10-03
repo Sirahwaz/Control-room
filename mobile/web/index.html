@@ -46,6 +46,24 @@
       <button id="searchBtn" aria-label="بحث">↗</button>
     </section>
 
+    <section class="morph-hero" id="neuralMorph">
+      <div class="morph-banner">
+        <div>
+          <div class="label">MIDAD NEURAL MORPHOGENESIS</div>
+          <h2>حوّل الهدف إلى Mission Capsule</h2>
+          <p>اكتب ما تريد إنجازه. MIDAD يركّب لك مساحة عمل مؤقتة من القدرات والمحطات والخطوات، بدل أن يجبرك على التنقل بين كل أجزاء النظام.</p>
+        </div>
+        <span class="morph-badge">OMEGA / HYBRID</span>
+      </div>
+      <div class="morph-input-row">
+        <input id="morphInput" autocomplete="off" inputmode="text" placeholder="مثال: أريد زيادة الدخل من فرصة AI قابلة للتنفيذ…">
+        <button id="morphRun" type="button">تشكيل المهمة ↗</button>
+      </div>
+      <div id="morphOutput" class="morph-output">
+        <div class="morph-empty">لا توجد Capsule نشطة. اكتب الهدف، ثم دع MIDAD يعيد تشكيل مساحة العمل حوله.</div>
+      </div>
+    </section>
+
     <section class="section compact">
       <div class="section-head">
         <div>
@@ -162,5 +180,6 @@
   </nav>
 
   <script src="./mobile-hub.js"></script>
+  <script src="./morph-engine.js"></script>
 </body>
 </html>

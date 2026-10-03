@@ -8,8 +8,8 @@ if (!productKey || !displayName || !appId) {
   process.exit(2);
 }
 if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey)) throw new Error("Invalid product-key");
-if (!/^\\d+\\.\\d+\\.\\d+$/.test(version)) throw new Error("Invalid version");
-if (!/^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$/.test(appId)) throw new Error("Invalid app-id");
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid version");
+if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(appId)) throw new Error("Invalid app-id");
 
 const safeName = displayName.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
 const manifest = {
@@ -30,7 +30,9 @@ const manifest = {
     native_back_navigation: true,
     in_app_browser: true,
     server_side_secrets_only: true,
-    live_financial_execution: false
+    live_financial_execution: false,
+    mission_capsules: true,
+    hybrid_neural_planner: true
   },
   surfaces: []
 };

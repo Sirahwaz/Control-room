@@ -94,6 +94,9 @@ jobs:
           cp mobile/web/index.html mobile/www/index.html
           cp mobile/web/mobile-hub.css mobile/www/mobile-hub.css
           cp mobile/web/mobile-hub.js mobile/www/mobile-hub.js
+          cp mobile/web/morph-engine.js mobile/www/morph-engine.js
+          cp mobile/factory/morph-registry.json mobile/www/morph-registry.json
+          node mobile/factory/morph-engine.smoke.mjs
 
           # Preserve the existing web product intact and bundle it as a local site layer.
           find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) \
