@@ -2,6 +2,12 @@ name: MIDAD Mobile Android
 
 on:
   workflow_dispatch:
+    inputs:
+      product:
+        description: "Factory product key"
+        required: true
+        default: "midad-mobile"
+        type: string
   push:
     branches: ["main"]
     paths:
@@ -34,6 +40,25 @@ jobs:
       - name: Checkout MIDAD
         uses: actions/checkout@v7
 
+      - name: Resolve Factory product
+        id: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          product="${{ github.event.inputs.product || 'midad-mobile' }}"
+          node mobile/factory/render.mjs "$product" > product.json
+          jq -e '.features.server_side_secrets_only == true' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.product_key == $p' --arg p "$product" mobile/factory/runtime-product.json >/dev/null
+          {
+            echo "product=$product"
+            echo "display_name=$(jq -r '.display_name' mobile/factory/runtime-product.json)"
+            echo "version=$(jq -r '.version' mobile/factory/runtime-product.json)"
+            echo "app_id=$(jq -r '.app_id' mobile/factory/runtime-product.json)"
+            echo "artifact_name=$(jq -r '.artifact_name' mobile/factory/runtime-product.json)"
+            echo "release_channel=$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
+          } >> "$GITHUB_OUTPUT"
+          cat product.json
+
       - name: Setup Java 21
         uses: actions/setup-java@v6
         with:
@@ -44,8 +69,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: npm
-          cache-dependency-path: mobile/package.json
 
       - name: Prepare Android SDK
         shell: bash
@@ -65,6 +88,7 @@ jobs:
 
       - name: Prepare bundled MIDAD web surfaces
         run: |
+          set -euo pipefail
           rm -rf mobile/www
           mkdir -p mobile/www/site
           cp mobile/web/index.html mobile/www/index.html
@@ -89,15 +113,22 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Collect APK
+        env:
+          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
+          RELEASE_CHANNEL: ${{ steps.product.outputs.release_channel }}
         run: |
+          set -euo pipefail
           mkdir -p dist
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/MIDAD-Mobile-v0.2.0-debug.apk
-          sha256sum dist/MIDAD-Mobile-v0.2.0-debug.apk | tee dist/MIDAD-Mobile-v0.2.0-debug.apk.sha256
+          apk="dist/${ARTIFACT_NAME}-debug.apk"
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          sha256sum "$apk" | tee "${apk}.sha256"
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: MIDAD-Mobile-v0.2.0
+          name: ${{ steps.product.outputs.artifact_name }}-${{ steps.product.outputs.release_channel }}
           path: |
-            dist/MIDAD-Mobile-v0.2.0-debug.apk
-            dist/MIDAD-Mobile-v0.2.0-debug.apk.sha256
+            dist/*.apk
+            dist/*.apk.sha256
+            dist/product-manifest.json
