@@ -64,3 +64,22 @@ border:1px solid var(--line);border-radius:19px;background:rgba(8,12,18,.9);back
 border:1px solid var(--line);border-radius:14px;background:#0e141d;box-shadow:0 18px 38px rgba(0,0,0,.35);font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s ease;max-width:calc(100vw - 40px);text-align:center}
 .toast.show{opacity:1}@keyframes spin{to{transform:rotate(388deg) scaleX(.7)}}@media(min-width:700px){main{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(2,1fr)}.grid .featured{grid-column:1/-1}.quick{grid-template-columns:repeat(3,1fr)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+
+.morph-hero{margin-top:18px;padding:16px;border:1px solid rgba(124,244,210,.22);border-radius:22px;background:linear-gradient(145deg,rgba(17,31,35,.9),rgba(8,13,19,.96));box-shadow:0 20px 55px rgba(0,0,0,.22);position:relative;overflow:hidden}
+.morph-hero:before{content:"";position:absolute;inset:-50%;background:conic-gradient(from 120deg,transparent,rgba(124,244,210,.08),transparent 35%);animation:morphSweep 11s linear infinite;pointer-events:none}
+.morph-banner,.morph-input-row,.morph-output{position:relative;z-index:1}.morph-banner{display:flex;gap:14px;justify-content:space-between;align-items:start}
+.morph-banner h2{margin:5px 0 7px;font-size:21px}.morph-banner p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+.morph-badge{flex:0 0 auto;padding:7px 9px;border:1px solid rgba(124,244,210,.24);border-radius:10px;color:var(--accent);font-size:8px;letter-spacing:.12em}
+.morph-input-row{display:flex;gap:8px;margin-top:13px}.morph-input-row input{min-width:0;flex:1;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.2);color:var(--text)}
+.morph-input-row button{border:1px solid rgba(124,244,210,.25);border-radius:14px;padding:0 13px;background:rgba(124,244,210,.09);color:var(--accent);font-weight:750;font-size:11px}
+.morph-output{margin-top:11px}.morph-empty{padding:13px;border:1px dashed var(--line);border-radius:14px;color:var(--soft);font-size:11px;line-height:1.7}
+.morph-output.is-ready{padding:13px;border:1px solid var(--line);border-radius:16px;background:rgba(5,10,14,.38)}
+.morph-head,.morph-metrics,.morph-columns,.morph-stations{display:flex;gap:9px;justify-content:space-between}.morph-head{align-items:start}.morph-head h3{margin:4px 0 0;font-size:18px}
+.morph-risk{padding:6px 8px;border-radius:9px;font-size:8px;letter-spacing:.1em;border:1px solid var(--line)}.morph-risk-high{color:#ff9a97;border-color:rgba(255,130,126,.25)}.morph-risk-medium{color:#ffd28d;border-color:rgba(255,210,141,.25)}.morph-risk-low{color:var(--accent)}
+.morph-objective{margin:10px 0 0;font-size:12px;line-height:1.7}.morph-metrics{margin-top:9px;justify-content:flex-start;flex-wrap:wrap}
+.morph-metrics span{font-size:8px;letter-spacing:.11em;color:var(--soft);padding:6px 8px;border:1px solid var(--line);border-radius:8px}.morph-metrics b{color:var(--text);margin-right:3px}
+.morph-capabilities{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.morph-capabilities span{font-size:8px;color:var(--accent2);padding:5px 7px;border-radius:8px;background:rgba(130,169,255,.06);border:1px solid rgba(130,169,255,.13)}
+.morph-columns{margin-top:11px;align-items:start}.morph-columns>div{flex:1;min-width:0}.morph-columns ol{margin:6px 0 0;padding-right:18px}.morph-columns li{font-size:10px;line-height:1.65;color:var(--muted)}.morph-columns p{font-size:10px;color:var(--muted);line-height:1.65;margin:6px 0 0}
+.morph-label-gap{margin-top:11px}.morph-stations{justify-content:flex-start;flex-wrap:wrap}.morph-station{flex:1;min-width:115px;border:1px solid var(--line);border-radius:11px;padding:9px;background:rgba(255,255,255,.018);text-align:right;display:flex;justify-content:space-between;gap:8px}
+.morph-station span{font-size:10px}.morph-station em{font-style:normal;font-size:8px;color:var(--accent)}
+@keyframes morphSweep{to{transform:rotate(360deg)}}@media(max-width:470px){.morph-banner{display:block}.morph-badge{display:inline-block;margin-top:10px}.morph-input-row{flex-direction:column}.morph-input-row button{height:43px}.morph-columns{display:grid;grid-template-columns:1fr}}
