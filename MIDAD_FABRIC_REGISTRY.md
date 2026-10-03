@@ -120,3 +120,21 @@ APMIX is architecturally wired but not live until the secret `MIDAD_APMIX_API_KE
 - APMIX capability `ai.model.gateway.apmix` is now marked `VERIFIED`; the key request is `approved` while retaining `human_gate=true` for governance traceability.
 - Revenue Autopilot cycle was executed. No new submissions were made because the existing daily application cap was already at 20/20; wallet watch scanned 2 Solana revenue wallets and found no new receipts. Live trading and auto-withdraw remain disabled.
 - Latest KPI snapshot: 119 income discoveries, 100 execute-ready first-mover entries, 25 revenue jobs, $2,837 expected pipeline, $0 paid, 1 payout pending, 10 open human gates, 15 fresh income candidates, 280 closed paper trades, 12 paper trades under review, 1 trade intent in review, 0 live trade executions, 53,602 OSINT events, 501 research runs, 10 persisted research findings, and 7 active Model Fabric routes.
+
+
+## MYSUN/LOOP — Wallet Receipt Mesh + First-Cents Test (2026-10-03)
+
+Implemented by extending the existing wallet/payment architecture; no wallet system rebuild.
+
+- Canonical receive route: midad_revenue_routes → USDC/Solana → Primary Solana Receive Wallet, deterministic priority 10. The older UGIG USDC route remains active as a secondary route with priority 20.
+- Canonical native USDC mint is pinned in route verification metadata: EPjFWddt1v (full mint is held in the secure/runtime route metadata).
+- New midad_wallet_monitor_state tracks scan time, signature/slot, live token balance, health, and last error per receive route. RLS is enabled; service-side access is used by the monitor.
+- New midad_wallet_receipt_monitor v1 is ACTIVE and performs inbound-only Solana verification using finalized chain data. It does not transfer, withdraw, or sign outbound funds.
+- midad-wallet-receipt-monitor-1m pg_cron job is ACTIVE and scans every minute through the existing MIDAD autonomy key path.
+- midad_public_checkout v3 now prefers the canonical route and exposes the exact asset/network/mint plus an explicit fee profile. MIDAD inbound receive fee is 0; sender/network costs can still apply.
+- midad_payment_verifier v30 now requires independent chain evidence and, for Solana USDC, an explicit mint verification before marking a payment paid/matched.
+- midad_settlement_router v29 was hardened to reject an unregistered receiving address instead of falling back to a different wallet. Address selection is now deterministic, not heuristic.
+- Live monitor verification passed on both active USDC/Solana routes: status VERIFIED, current token balance 0, no RPC errors.
+- First-cents test intent created: 93c3d020-f3b5-45c6-8b6e-159d68ce44d0, exact amount 0.01 USDC on Solana, status quoted, awaiting the first real inbound receipt.
+- No real funds have been credited by this test yet. The remaining external step is the actual 0.01 USDC transfer from a funded wallet; once broadcast, the monitor will detect it, create a receipt, run reconciliation, and prepare settlement without any outbound transfer.
+- Secrets/private keys are not stored in GitHub, this registry, frontend code, or SQL records.
