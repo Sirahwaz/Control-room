@@ -25,10 +25,10 @@ jobs:
         run: git diff --check
 
       - name: JavaScript syntax
-        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('midad-cockpit.js','utf8')); console.log('JS_SYNTAX_OK');"
+        run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
 
       - name: Required UI assets
-        run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-cockpit.css','midad-cockpit.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
+        run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-control-v2.css','midad-control-v2.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); for(const x of ['iaitrader.html','iaitrader.css','iaitrader.js']) if(!fs.existsSync(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
 
       - name: Bot Fabric surface
         run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
