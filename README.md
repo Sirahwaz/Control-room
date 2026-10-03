@@ -1,16 +1,30 @@
 # MIDAD Control Room
 
-واجهة ويب خفيفة لغرفة التحكم في MIDAD، قابلة للنشر عبر GitHub Pages ولفتحها داخل Telegram Mini App.
+## Control Room v2
+واجهة القيادة الرئيسية لـ MIDAD، Mobile-first وTelegram Mini App.
 
-## البنية
-- `index.html` — الواجهة.
-- `styles.css` — التصميم المتجاوب.
-- `app.js` — طبقة الاتصال القابلة للربط مع n8n.
+### ملكية المحطات
+- @ahwazai_bot: Operations / Services / Revenue
+- @aimidad_bot: Neural / Research / OSINT
+- @midadkeys_bot: Identity / Secrets / Capabilities
+- @viabtc_monitor: Mining / Capital / Withdrawals
+- @iAiTrader_bot: Trading / Risk / Paper / Market Radar
 
-## الأمان
-لا تضع مفاتيح Supabase service-role أو مفاتيح n8n السرية داخل ملفات GitHub Pages. الواجهة العامة يجب أن تتصل بواجهة خلفية آمنة، وتتحقق الخادم من Telegram initData قبل تنفيذ الأوامر.
+### iAiTrader
+iAiTrader محطة تداول مستقلة مرتبطة بـ MIDAD Core.
+- Telegram Bot runtime: midad_iaitrader_bot
+- Mini App: iaitrader.html
+- Station API: midad_iaitrader_station
+- Shared engine: midad_noncopy_trading_engine
+- Trading Governor: iAiTrader Governor
+- Default mode: paper
+- Live execution: blocked
+- Human approval: required for high-impact actions
+- No copy-trading
 
-## النشر
-GitHub Pages → Deploy from a branch → `main` → `/(root)`.
+### Control Room
+Control Room يحتفظ بالحالة والسياق والانتقال إلى المحطات؛ لا يعيد بناء Mining أو Trading داخله.
 
-بعد النشر، اربط رابط الصفحة كـ Web App في بوت Telegram، ثم نربط طبقة الخلفية بـ n8n/Supabase.
+### الأمان
+Bot tokens والأسرار تحفظ في Supabase Secrets ولا تدخل GitHub Pages.
+الأوامر المالية الحساسة تبقى خلف Policy + Human Approval.
