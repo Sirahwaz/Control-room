@@ -34,7 +34,7 @@ const webEntry = path.join(root, manifest.web_entry);
 if (!fs.existsSync(webEntry)) throw new Error(`Configured web_entry not found: ${manifest.web_entry}`);
 
 const config = {
-if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(manifest.app_id)) throw new Error("Invalid Android application id");
+  appId: manifest.app_id,
   appName: manifest.display_name,
   webDir: "www"
 };
