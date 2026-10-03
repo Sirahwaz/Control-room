@@ -127,11 +127,11 @@ APMIX is architecturally wired but not live until the secret `MIDAD_APMIX_API_KE
 Implemented by extending the existing wallet/payment architecture; no wallet system rebuild.
 
 - Canonical receive route: midad_revenue_routes → USDC/Solana → Primary Solana Receive Wallet, deterministic priority 10. The older UGIG USDC route remains active as a secondary route with priority 20.
-- Canonical native USDC mint is pinned in route verification metadata: EPjFWddt1v (full mint is held in the secure/runtime route metadata).
+- Canonical native USDC mint is pinned in route verification metadata: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v.
 - New midad_wallet_monitor_state tracks scan time, signature/slot, live token balance, health, and last error per receive route. RLS is enabled; service-side access is used by the monitor.
 - New midad_wallet_receipt_monitor v1 is ACTIVE and performs inbound-only Solana verification using finalized chain data. It does not transfer, withdraw, or sign outbound funds.
 - midad-wallet-receipt-monitor-1m pg_cron job is ACTIVE and scans every minute through the existing MIDAD autonomy key path.
-- midad_public_checkout v3 now prefers the canonical route and exposes the exact asset/network/mint plus an explicit fee profile. MIDAD inbound receive fee is 0; sender/network costs can still apply.
+- midad_public_checkout v4 now prefers the canonical route and exposes the exact asset/network/mint plus an explicit fee profile and a Solana Pay payment URI. MIDAD inbound receive fee is 0; sender/network costs can still apply.
 - midad_payment_verifier v30 now requires independent chain evidence and, for Solana USDC, an explicit mint verification before marking a payment paid/matched.
 - midad_settlement_router v29 was hardened to reject an unregistered receiving address instead of falling back to a different wallet. Address selection is now deterministic, not heuristic.
 - Live monitor verification passed on both active USDC/Solana routes: status VERIFIED, current token balance 0, no RPC errors.
