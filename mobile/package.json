@@ -8,7 +8,8 @@
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
     "factory:create": "node factory/create-product.mjs",
-    "factory:render": "node factory/render.mjs"
+    "factory:render": "node factory/render.mjs",
+    "factory:morph-smoke": "node factory/morph-engine.smoke.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
