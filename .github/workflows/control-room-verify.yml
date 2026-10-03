@@ -51,7 +51,7 @@ jobs:
             try { new Function(code); }
             catch (e) { fail('Inline script syntax error #' + (i + 1) + ': ' + e.message); }
           });
-          const appRule = (html.match(/#app\\{[^}]*\\}/) || [])[0] || '';
+          const appRule = (html.match(/#app\{[^}]*\}/) || [])[0] || '';
           if (!appRule.includes('overflow:visible')) fail('#app must preserve vertical document scrolling');
           if (html.length < 30000) fail('iAiTrader static bundle unexpectedly small');
           console.log('IAITRADER_STATIC_CONTRACT_OK');
