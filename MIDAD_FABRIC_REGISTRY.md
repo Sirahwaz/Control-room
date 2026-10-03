@@ -107,3 +107,16 @@ Implemented from the verified live architecture without rebuilding existing syst
 ### Pending capability gate
 
 APMIX is architecturally wired but not live until the secret `MIDAD_APMIX_API_KEY` is added through secure Supabase Edge Function secret storage. No API key is embedded in GitHub, frontend code, SQL data, or this registry.
+
+
+## MYSUN/LOOP — APMIX Activation + Verification (2026-10-03)
+
+- Secure secret `MIDAD_APMIX_API_KEY` was added to Supabase Edge Function Secrets; the value is not stored in source, SQL, GitHub, or this registry.
+- `midad_model_gateway_v3` is ACTIVE and authenticates autonomy traffic through `midad_get_autonomy_key()`.
+- APMIX `/models` verification returned the account catalog with `gpt-6-luna-free`; routes were updated from the unavailable `deepseek-v4-flash-free` to the verified account model.
+- Direct inference verification passed: APMIX returned a valid response through `midad_model_gateway_v3` with 74 total tokens and ~3.47s latency.
+- `midad_ai_router` v5 verification passed with `fallback=false`, proving Router → APMIX routing.
+- `midad_neural_core` v32 verification passed on an existing Research Run; it produced structured facts/hypotheses and persisted research findings via the new protected RPC `midad_record_research_finding()`.
+- APMIX capability `ai.model.gateway.apmix` is now marked `VERIFIED`; the key request is `approved` while retaining `human_gate=true` for governance traceability.
+- Revenue Autopilot cycle was executed. No new submissions were made because the existing daily application cap was already at 20/20; wallet watch scanned 2 Solana revenue wallets and found no new receipts. Live trading and auto-withdraw remain disabled.
+- Latest KPI snapshot: 119 income discoveries, 100 execute-ready first-mover entries, 25 revenue jobs, $2,837 expected pipeline, $0 paid, 1 payout pending, 10 open human gates, 15 fresh income candidates, 280 closed paper trades, 12 paper trades under review, 1 trade intent in review, 0 live trade executions, 53,602 OSINT events, 501 research runs, 10 persisted research findings, and 7 active Model Fabric routes.
