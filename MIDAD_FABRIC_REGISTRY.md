@@ -85,3 +85,25 @@ Supabase Security Advisor currently reports 28 RLS-enabled public tables without
 - Bot Ops exposes management contexts for @viabtc_monitor, @ahwazai_bot, and @aimidad_bot without exposing secrets.
 - @aimidad_bot control menu now links to its scoped Control Room, Bot Ops, and the ViaBTC Trading Lab; /trade and /mysun route to the non-copy engine.
 - GitHub Actions `MIDAD Control Room Verify` succeeded on the latest UI cache-bust commit.
+
+
+## MYSUN/LOOP — Revenue Intelligence Architecture vNext (2026-10-03)
+
+Implemented from the verified live architecture without rebuilding existing systems.
+
+- Revenue conversion bridge: `midad_first_mover_queue` → `midad_income_discoveries`; 119 discovery records reconciled idempotently.
+- Revenue reconciliation: legacy `submitted_waiting` opportunities without a Revenue Job were linked to tracking jobs without re-submitting externally; Revenue Jobs increased to 25.
+- Money Hunter v38: optional revenue sources are enabled by default unless explicitly disabled by `MIDAD_ENABLE_OPTIONAL_REVENUE_SOURCES=false`. Existing risk filters remain authoritative.
+- Model Fabric: private `midad_private` schema with `model_providers`, `model_routes`, and `model_runs`; no client/anon access.
+- APMIX adapter: `midad_model_gateway_v2` is active and defaults to `deepseek-v4-flash-free`; the APMIX secret is intentionally not stored in this registry or source code.
+- AI Router: `midad_ai_router` v2 routes task classes to the model fabric and falls back to the existing Control Room AI path when APMIX is not configured.
+- Neural Core: v29 now routes AI through `midad_ai_router` and records generated facts into `midad_research_findings` for traceability.
+- Revenue KPI RPC: `midad_get_revenue_kpis()` provides a single service-role-only cash-conversion snapshot for Control Room integration.
+- Authorized Red Team capability: `security.redteam.authorized` is registered as high-risk/gated with explicit denials for credential theft, auth bypass, malware, persistence, and exfiltration.
+- Current verified revenue snapshot: 119 income discoveries, 100 first-mover execute-ready, 25 revenue jobs, $2,837 expected pipeline, $0 paid, 9 open human gates.
+- Current trading snapshot: 280 closed paper trades, 12 under review, 1 trade intent awaiting approval, 0 live executions.
+- Current research snapshot: 501 research runs and a new write-through path from Neural Core to research findings.
+
+### Pending capability gate
+
+APMIX is architecturally wired but not live until the secret `MIDAD_APMIX_API_KEY` is added through secure Supabase Edge Function secret storage. No API key is embedded in GitHub, frontend code, SQL data, or this registry.
