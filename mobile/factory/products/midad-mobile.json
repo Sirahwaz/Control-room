@@ -1,0 +1,30 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-mobile",
+  "display_name": "MIDAD Mobile",
+  "version": "0.2.0",
+  "app_id": "ai.midad.mobile",
+  "artifact_name": "MIDAD-Mobile-v0.2.0",
+  "web_entry": "mobile/web/index.html",
+  "product_mode": "midad-hub",
+  "release_channel": "debug",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": true,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false
+  },
+  "surfaces": [
+    "control-room",
+    "viabtc-monitor",
+    "iaitrader",
+    "revenue-forge",
+    "aimidad",
+    "ahwaz-ai",
+    "midad-keys"
+  ]
+}
