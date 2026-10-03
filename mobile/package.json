@@ -1,8 +1,8 @@
 {
   "name": "midad-mobile",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "MIDAD Mobile Hub — unified Android shell for the MIDAD bot and station ecosystem.",
+  "description": "MIDAD Mobile Hub — native Android shell and future mobile-app factory base for MIDAD.",
   "scripts": {
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync android",
@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
-    "@capacitor/core": "8.5.2"
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/haptics": "8.0.2"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2"
