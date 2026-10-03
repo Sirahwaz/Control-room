@@ -4,7 +4,7 @@ const VERSION="20261004";
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"command",initData:"",data:null,result:null,busy:false,error:"",edge:"CHECKING",edgeMs:null,transport:"IDLE",lastAction:"",prepared:null};
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-const esc=v=>String(v??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const esc=v=>String(v??"").replace(/[&<>"]/g,m=>m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;");
 const num=(v,d=2)=>v==null||v===""||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:d});
 const pct=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)*100).toFixed(1)+"%";
 const money=v=>v==null||!Number.isFinite(Number(v))?"—":"$"+Number(v).toFixed(2);
