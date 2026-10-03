@@ -16,7 +16,9 @@
     "native_back_navigation": true,
     "in_app_browser": true,
     "server_side_secrets_only": true,
-    "live_financial_execution": false
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true
   },
   "surfaces": [
     "control-room",
