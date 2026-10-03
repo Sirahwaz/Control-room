@@ -24,3 +24,6 @@ The repository's GitHub Actions workflow performs the reproducible Android debug
 ## Safety
 
 The mobile shell is not a privileged execution surface. Trading remains paper-only/live-locked by the existing backend policy, and secret material stays server-side.
+
+
+CI checkpoint: native Android APK pipeline verified on main.
