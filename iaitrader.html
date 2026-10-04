@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#040710"><meta name="color-scheme" content="dark"><meta name="robots" content="noindex,nofollow">
-<title>iAiTrader — MIDAD Neural Trading Cockpit v16 — Neural X-Ray</title>
+<title>iAiTrader — MIDAD Neural Trading Cockpit v17 — Neural X-Ray</title>
 <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
 <style>
 :root{--bg:#040710;--bg2:#07101a;--p:rgba(9,16,28,.92);--line:rgba(134,168,207,.14);--txt:#f0f7ff;--muted:#7890a8;--cyan:#69edff;--violet:#b38dff;--gold:#f3d57e;--green:#72e5b6;--red:#ff728c;--mono:"JetBrains Mono","SFMono-Regular",Consolas,monospace}
@@ -127,7 +127,7 @@ async function test(p){try{const j=await api("test_connector",{provider:p},30000
 async function prepare(){try{const j=await api("prepare",{provider:one("#tradeVenue").value,market:one("#tradeMarket").value,side:one("#tradeSide").value,amount:Number(one("#tradeAmount").value||1)},45000);one("#tradeOut").innerHTML='<div class="trade-out"><b>INTENT READY</b><pre>'+esc(JSON.stringify(j.result||j,null,2))+'</pre></div>'}catch(e){one("#tradeOut").innerHTML='<div class="trade-out"><b>BLOCKED</b><p>'+esc(e.message||e)+'</p></div>'}}
 function spark(){const xs=(S.data?.signals||[]).slice(0,12).reverse().map(x=>Number(x.payload?.price)).filter(Number.isFinite);if(xs.length<2)return"";const mn=Math.min(...xs),mx=Math.max(...xs),r=mx-mn||1,pts=xs.map((v,i)=>(i/(xs.length-1))*100+","+(94-((v-mn)/r)*78)).join(" ");return '<svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="'+pts+'"/></svg>'}
 function nav(v,ic){return '<button class="'+(S.v===v?"active":"")+'" data-v="'+v+'"><span>'+ic+'</span><small>'+esc(t(v))+'</small></button>'}
-function top(){return '<header class="top"><div class="brand"><div class="logo">₿</div><div><b>iAiTrader</b><small>MIDAD / NEURAL++ / V16</small></div></div><div class="private-ribbon"><strong>هادي</strong><span>•</span><strong>أبو إلياس</strong><span>•</span><b>PRIVATE / لا أحد يدخل هنا</b></div><div class="top-actions"><button class="top-btn" data-cmd="appearance" aria-label="UI appearance">✦ UI</button><button class="top-btn" aria-label="Language" data-cmd="language">'+esc(S.lang==="ar"?"العربية":S.lang==="fa"?"فارسی":"English")+'</button><button class="top-btn" data-cmd="refresh" aria-label="Refresh">↻</button><button class="top-btn" data-cmd="settings" aria-label="Settings">⚙</button></div></header>'}
+function top(){return '<header class="top"><div class="brand"><div class="logo">₿</div><div><b>iAiTrader</b><small>MIDAD / NEURAL++ / V17</small></div></div><div class="private-ribbon"><strong>هادي</strong><span>•</span><strong>أبو إلياس</strong><span>•</span><b>PRIVATE / لا أحد يدخل هنا</b></div><div class="top-actions"><button class="top-btn" data-cmd="appearance" aria-label="UI appearance">✦ UI</button><button class="top-btn" aria-label="Language" data-cmd="language">'+esc(S.lang==="ar"?"العربية":S.lang==="fa"?"فارسی":"English")+'</button><button class="top-btn" data-cmd="refresh" aria-label="Refresh">↻</button><button class="top-btn" data-cmd="settings" aria-label="Settings">⚙</button></div></header>'}
 function cockpit(){const g=S.data?.governor||{},m=S.result?.features||S.result?.signal||S.data?.signals?.[0]?.payload||{},p=S.data?.paper_trades||[],con=S.data?.connectors||[],c=con.find(x=>x.status==="connected")||con[0]||{};return '<div class="page"><section class="hero"><div class="hero-grid"><div><span class="eyebrow">MYSUN / LOOP + TRADE</span><h1>TURN<br><em>DATA</em><br>INTO EDGE.</h1><p>'+esc(t("noGuarantee"))+'</p><div class="mission"><span>INTELLIGENCE</span><i>→</i><span>OPPORTUNITY</span><i>→</i><span>ACTION</span><i>→</i><span>DELIVERY</span><i>→</i><span>PAYMENT</span><i>→</i><span>LEARNING</span></div><div class="hero-actions"><button class="btn primary" data-cmd="analyze">🧠 '+t("analyze")+'</button><button class="btn" data-v="trade">↯ '+t("trade")+'</button><button class="btn danger" data-cmd="lock">🔒 '+t("lock")+'</button></div></div><div class="core-wrap"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div><div class="core"><b>AI</b><small>'+esc(g.mode||"PAPER")+'</small></div><span class="node n1">MKT</span><span class="node n2">RISK</span><span class="node n3">OSINT</span><span class="node n4">LAB</span></div></div></section><section class="kpis"><div class="kpi"><span>SIGNAL</span><b>'+esc(m.direction||"NEUTRAL")+'</b><small>'+pct(m.confidence||0)+'</small></div><div class="kpi"><span>BTCUSDT</span><b>'+esc(m.price??"—")+'</b><small>multi-venue</small></div><div class="kpi"><span>VENUES</span><b>'+num(m.usable_sources??0,0)+'</b><small>usable sources</small></div><div class="kpi"><span>PAPER</span><b>'+p.filter(x=>["open","review"].includes(x.status)).length+'</b><small>'+t("paper")+'</small></div><div class="kpi"><span>LIVE</span><b class="gold">'+(g.kill_switch?t("locked"):"GATED")+'</b><small>human gate</small></div></section><section class="grid2"><article class="panel"><div class="head"><div><span class="eyebrow">'+t("marketRadar")+'</span><h2>BTC / Market</h2></div>'+badge(m.direction||"NEUTRAL")+'</div><div class="price-row"><b class="price">'+esc(m.price??"—")+'</b><span>BTCUSDT</span></div>'+spark()+'<div class="mini"><div><span>REGIME</span><b>'+esc(m.regime||"—")+'</b></div><div><span>CONF</span><b>'+pct(m.confidence||0)+'</b></div><div><span>AVG</span><b>'+esc(m.avg_change_24h_pct==null?"—":num(m.avg_change_24h_pct,3)+"%")+'</b></div><div><span>SPREAD</span><b>'+esc(m.max_spread_pct==null?"—":num(m.max_spread_pct,4)+"%")+'</b></div></div><button class="line-btn" data-v="markets">'+t("markets")+' →</button></article><article class="panel"><div class="head"><div><span class="eyebrow">'+t("portfolio")+'</span><h2>'+t("capital")+'</h2></div>'+badge(g.kill_switch?"LOCKED":"GATED")+'</div><div class="alloc"><div class="allocbox"><span>'+t("principal")+'</span><b>'+money(g.principal_floor_usd||1)+'</b></div><div class="allocbox"><span>'+t("reserve")+'</span><b>'+num(g.metadata?.profit_policy?.reserve_pct??100,0)+'%</b></div></div><div class="checks"><span>✓ Multi-source</span><span>✓ Fee check</span><span>✓ Min-order</span><span>✕ Leverage</span></div><button class="line-btn" data-v="portfolio">'+t("portfolio")+' →</button></article></section><section class="panel"><div class="head"><div><span class="eyebrow">MIDAD NEURAL FABRIC</span><h3>AI → Market → Risk → Paper → Learning</h3></div>'+badge("CONNECTED","cyan")+'</div><div class="fabric"><div><b>◈</b><strong>Market Intelligence</strong><small>multi-source + regime</small></div><div><b>⛨</b><strong>Risk Governor</strong><small>caps + floor + kill switch</small></div><div><b>▣</b><strong>Paper Lab</strong><small>counterfactual learning</small></div><div><b>∞</b><strong>Automation</strong><small>'+esc(g.mode||"paper")+'</small></div><div><b>🔐</b><strong>Vault</strong><small>server-side credentials</small></div><div><b>🛰</b><strong>Security</strong><small>anti-phishing · anomaly</small></div></div></section></div>'}
 
 function xrayModel(){
@@ -219,17 +219,59 @@ function copilotContext(){
 }
 function copilotMode(){return document.documentElement.dataset.copilotMode||"explain"}
 function setCopilotMode(v){document.documentElement.dataset.copilotMode=v;csSet("copilot_mode",v);all("[data-copilot-mode]").forEach(e=>e.classList.toggle("active",e.dataset.copilotMode===v))}
-function localCopilotReason(mode,question,ctx){
- const conf=Math.max(0,Math.min(1,ctx.confidence)),spread=ctx.spread==null?null:Number(ctx.spread),sources=ctx.sources||0;
- const checks=["مصادر متعددة: "+(sources>=3?"✅":"⚠️ "+sources+" مصدر"),"الثقة: "+(conf*100).toFixed(1)+"%", "Regime: "+ctx.regime, "Spread: "+(spread==null?"غير مقاس":spread.toFixed(4)+"%"),"التنفيذ الحي: 🔒 مقفول"];
- if(mode==="choose"||/اختار|أفضل|عملة|coin|best/i.test(question)){
-   if(ctx.price==null)return "لا أريد اختلاق فائز. لا توجد قراءة سعر مؤكدة داخل الجولة الحالية. شغّل مسح السوق أولًا.";
-   const best=ctx.bestCandidate;if(!best)return "🎯 لا أريد اختلاق فائز. لا يوجد مرشح يملك أدلة كافية في الجولة الحالية؛ شغّل مسحًا أوسع أولًا.";return "🎯 أفضل مرشح بالأدلة الحالية: "+best.symbol+"\n\nEvidence score: "+(best.evidence*100).toFixed(1)+"% · confidence: "+(best.confidence*100).toFixed(1)+"%\nDirection: "+best.direction+"\n\nهذا ترتيب احتمالي قائم على الأدلة المتاحة، وليس وعدًا بالربح. قبل التحرك: الرسوم + السبريد + الحد الأدنى + تأكيد المصادر.";
+function copilotInferMode(question,current="explain"){
+ const q=String(question||"").toLowerCase();
+ if(/(اختار|أفضل|افضل|أي عملة|اي عملة|مرشح|عملة|coin|best|which)/.test(q))return"choose";
+ if(/(إشارة|اشارة|اتجاه|توقع|صعود|هبوط|signal|direction|forecast)/.test(q))return"signal";
+ if(/(خطر|مخاطر|مخاطرة|سبريد|مصدر|مصادر|risk|spread|source)/.test(q))return"scan";
+ if(/(نفذ|تنفيذ|شراء|بيع|صفقة|order|buy|sell|execute|trade)/.test(q))return"act";
+ if(/(ليش|لماذا|شنو يعني|شنو معناها|ماذا يعني|فسر|اشرح|يعني شنو|why|what does|explain)/.test(q))return"explain";
+ return current||"explain";
+}
+function copilotHumanState(ctx){
+ const conf=Math.max(0,Math.min(1,Number(ctx.confidence)||0)),dir=String(ctx.direction||"NEUTRAL").toUpperCase(),regime=String(ctx.regime||"PENDING").toUpperCase(),sources=Number(ctx.sources)||0,spread=ctx.spread==null?null:Number(ctx.spread);
+ let direct,meaning,action;
+ if(ctx.price==null){
+  direct="هسه ما عندي قراءة سعر مؤكدة داخل الجولة، لذلك ما راح أتصرف وكأن عندنا فرصة واضحة.";
+  meaning="المشكلة هنا نقص بيانات مؤكدة، مو حكم على السوق نفسه.";
+  action="أعد تشغيل المسح حتى نبني الصورة من بيانات فعلية.";
+ }else if(dir==="NEUTRAL"&&regime==="RANGE"){
+  direct="بالعربي: السوق حاليًا أقرب إلى نطاق (RANGE) وماكو أفضلية واضحة لا للشراء ولا للبيع.";
+  meaning="هذا لا يعني أن السوق ساكن. يعني أن الحركة الموجودة ما تعطي اتجاهًا موثوقًا بما يكفي حتى نراهن عليه.";
+  action="الأفضل الآن الانتظار إلى أن يظهر كسر أو تأكيد أقوى بدل مطاردة الحركة داخل النطاق.";
+ }else if(dir==="NEUTRAL"&&conf<=0.05){
+  direct="الإشارة محايدة، وثقة المحرك شبه معدومة؛ لذلك القرار الصحيح الآن هو عدم اختلاق اتجاه.";
+  meaning="الصفر هنا يعني أن المحرك ما عنده أدلة كافية، مو أن السوق احتمال صعوده أو هبوطه حرفيًا صفر.";
+  action="نحتاج evidence أقوى أو جولة تحليل جديدة قبل أي اتجاه.";
+ }else if(dir==="NEUTRAL"){
+  direct="الصورة الحالية محايدة: ما عندنا edge اتجاهي واضح يستحق BUY أو SELL.";
+  meaning="السوق ممكن يتحرك، لكن الأدلة الحالية ما تبرر أن نقول لك إن هناك اتجاهًا موثوقًا.";
+  action=conf<0.35?"خلّينا ننتظر confirmation أقوى قبل أي خطوة.":"نراقب ونختبر الفرضية في Paper بدل المخاطرة بالمال.";
+ }else{
+  direct="عندنا ميل "+(dir==="BUY"?"للشراء":"للبيع")+" في البيانات الحالية، لكنه ما يزال رأيًا تحليليًا وليس أمر تنفيذ.";
+  meaning="الاتجاه موجود لأن الأدلة تميل له، لكن قوة هذا الميل تعتمد على الثقة والمصادر وتكلفة التنفيذ.";
+  action=conf>=0.7?"نحوّل الفكرة إلى Paper Intent ونراقب النتيجة بدل التنفيذ الحي.":"نحتاج تأكيدًا إضافيًا قبل رفعها من مجرد إشارة إلى قرار.";
  }
- if(mode==="signal")return "📡 الإشارة الحالية\n\nDirection: "+ctx.direction+"\nConfidence: "+(conf*100).toFixed(1)+"%\nRegime: "+ctx.regime+"\nPrice: "+(ctx.price==null?"—":ctx.price)+"\nSpread: "+(spread==null?"—":spread.toFixed(4)+"%")+"\n\nهذه إشارة تحليلية وليست ضمان ربح.";
- if(mode==="scan")return "🛰️ Scan state\n\n"+checks.join("\n")+"\n\nأستطيع استخدام هذه الحالة لترتيب المرشحين، لكن لا أسمح باستنتاج ربح من مصدر واحد أو من بيانات ناقصة.";
- if(mode==="act")return "⚙️ Action Gate\n\nأستطيع تجهيز Paper Intent فقط من داخل هذه الطبقة. أي BUY/SELL حي يبقى خلف Human Gate.\n\nالمسار: evidence → candidate → risk → prepare → human approval.";
- return "🧠 Explanation\n\nالمساعد يرى الآن: "+ctx.direction+" / "+(conf*100).toFixed(1)+"% / "+ctx.regime+".\n\nأفصل دائمًا بين FACT وINFERENCE وACTION، وأشير إلى ما ينقص قبل أن أطلب منك اختيارًا.";
+ const missing=[];
+ if(sources<3)missing.push("تأكيد من مصادر أكثر");
+ if(spread==null)missing.push("قياس السبريد");
+ if(ctx.liveLocked)missing.push("Human Gate مقفول للتنفيذ الحي");
+ return {direct,meaning,action,missing:missing.join(" · ")||"ماكو blocker واضح ضمن البيانات الحالية"};
+}
+function localCopilotReason(mode,question,ctx){
+ const conf=Math.max(0,Math.min(1,Number(ctx.confidence)||0)),spread=ctx.spread==null?null:Number(ctx.spread),human=copilotHumanState(ctx);
+ if(mode==="choose"||/(اختار|أفضل|افضل|عملة|مرشح|coin|best)/i.test(question)){
+  if(ctx.price==null)return human.direct+"\n\nشنو الناقص؟ لا توجد قراءة سعر مؤكدة.";
+  const best=ctx.bestCandidate;
+  if(!best)return human.direct+"\n\nما عندنا مرشح يملك أدلة كافية الآن، لذلك ما راح أختلق واحد.";
+  return "لو أجبرني أختار من البيانات الحالية فقط، فهذا المرشح المتقدم: "+best.symbol+"."+
+    "\n\nليش؟ confidence "+(Number(best.confidence||0)*100).toFixed(1)+"% · evidence score "+(Number(best.evidence||0)*100).toFixed(1)+"% · الاتجاه "+best.direction+"."+
+    "\n\nبس مهم: هذا ترتيب للأدلة، مو وعد ربح ولا أمر شراء/بيع. الخطوة الآمنة: Paper أولًا.";
+ }
+ if(mode==="signal")return human.direct+"\n\nشنو يعني؟ "+human.meaning+"\n\nالبيانات: confidence "+(conf*100).toFixed(1)+"% · regime "+String(ctx.regime||"PENDING")+" · price "+(ctx.price==null?"—":ctx.price)+" · spread "+(spread==null?"غير مقاس":spread.toFixed(4)+"%")+"."+ "\n\nالخطوة: "+human.action;
+ if(mode==="scan")return human.direct+"\n\nفحص سريع: sources "+ctx.sources+" · spread "+(spread==null?"غير مقاس":spread.toFixed(4)+"%")+" · confidence "+(conf*100).toFixed(1)+"%."+ "\n\nالخلاصة: "+human.action+"\nالناقص: "+human.missing;
+ if(mode==="act")return human.direct+"\n\nما أقدر أحوّلها إلى تنفيذ حي من هذه الطبقة. أقدر فقط أجهّز Paper Intent، وبعدها يبقى أي تنفيذ مالي خلف Human Gate.";
+ return "🧠 "+human.direct+"\n\nشنو يعني؟ "+human.meaning+"\nشنو أسوي هسه؟ "+human.action+"\nشنو الناقص؟ "+human.missing;
 }
 function copilotAppend(role,textValue){
  const value=String(textValue??"").slice(0,7000);
@@ -244,44 +286,58 @@ function copilotAppend(role,textValue){
 }
 async function copilotRestore(){
  try{
-  const raw=await csGet("copilot_memory");if(!raw)return;
-  const arr=JSON.parse(raw);if(!Array.isArray(arr))return;
-  S.copilot.messages=[];
-  const log=one("#copilotLog");if(log)log.innerHTML="";
-  for(const m of arr.slice(-12)){
-   S.copilot.messages.push(m);
+  const raw=await csGet("copilot_memory");
+  let arr=S.copilot?.messages||[];
+  if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))arr=parsed}
+  if(!Array.isArray(arr)||!arr.length)return;
+  S.copilot.messages=arr.slice(-12);
+  const log=one("#copilotLog");if(!log)return;
+  log.innerHTML="";
+  for(const m of S.copilot.messages){
    const d=document.createElement("div");d.className="copilot-msg "+(m.role==="user"?"user":"ai");
    d.innerHTML='<small>'+ (m.role==="user"?"YOU":"NEURAL COPILOT") +'</small>'+esc(m.content||"");
-   if(log)log.appendChild(d);
+   log.appendChild(d);
   }
-  if(log)log.scrollTop=log.scrollHeight;
+  log.scrollTop=log.scrollHeight;
  }catch{}
 }
 function copilotRenderDecision(ctx){
  const el=one("#copilotDecision");if(!el)return;
- el.innerHTML='<h4>Decision Pulse</h4><p><b>'+esc(ctx.direction)+'</b> · '+(ctx.confidence*100).toFixed(1)+'% · '+esc(ctx.regime)+' · spread '+(ctx.spread==null?"—":Number(ctx.spread).toFixed(4)+"%")+'<br>القرار الآمن الآن: <b>'+esc(ctx.liveLocked?"PAPER / REVIEW":"GATED")+'</b></p>';
+ const h=copilotHumanState(ctx),conf=Math.max(0,Math.min(1,Number(ctx.confidence)||0));
+ el.innerHTML='<h4>الخلاصة الآن</h4><p><b>'+esc(h.direct)+'</b><br><br><span>المعنى: </span>'+esc(h.meaning)+'<br><span>الخطوة الآمنة: </span>'+esc(h.action)+'<br><span>الناقص: </span>'+esc(h.missing)+'<br><small>'+esc(String(ctx.direction||"NEUTRAL"))+' · confidence '+(conf*100).toFixed(1)+'% · '+esc(String(ctx.regime||"PENDING"))+'</small></p>';
 }
-function openCopilot(){
+async function openCopilot(){
  one("#copilotDrawer")?.remove();
  const ctx=copilotContext();
  const modes=[["explain","✦","explain"],["choose","◈","choose"],["signal","⌁","signal"],["scan","◌","scan"],["act","↯","act"]];
- document.body.insertAdjacentHTML("beforeend",'<div id="copilotDrawer" class="copilot-drawer"><section class="copilot-sheet"><div class="copilot-head"><div class="copilot-id"><div class="copilot-core">🧠</div><div><h3>'+t("copilot")+'</h3><p>MYSUN / LOOP · adaptive hybrid intelligence · paper-first</p></div></div><button class="copilot-close" data-cmd="copilot-close">×</button></div><div class="copilot-modes">'+modes.map(x=>'<button class="copilot-mode" data-copilot-mode="'+x[0]+'">'+x[1]+' '+t(x[2])+'</button>').join("")+'</div><div class="copilot-context"><div><span>ASSET</span><b>BTC/USDT</b></div><div><span>SIGNAL</span><b>'+esc(ctx.direction)+'</b></div><div><span>CONF</span><b>'+((ctx.confidence||0)*100).toFixed(1)+'%</b></div><div><span>REGIME</span><b>'+esc(ctx.regime)+'</b></div><div><span>SPREAD</span><b>'+((ctx.spread==null)?"—":Number(ctx.spread).toFixed(4)+"%")+'</b></div><div><span>SOURCES</span><b>'+esc(ctx.sources)+'</b></div><div><span>VENUES</span><b>'+esc(ctx.connected.join(",")||"—")+'</b></div><div><span>LIVE</span><b>LOCKED</b></div></div><div id="copilotLog" class="copilot-log"></div><div id="copilotDecision" class="copilot-decision"></div><div class="copilot-quick"><button data-copilot-quick="explain">لماذا هذه الإشارة؟</button><button data-copilot-quick="choose">ما أفضل مرشح الآن؟</button><button data-copilot-quick="scan">افحص المخاطر</button><button data-copilot-quick="act">جهّز Paper Intent</button></div><div class="copilot-compose"><button class="copilot-icon" data-cmd="copilot-mic" aria-label="Voice">🎙</button><textarea id="copilotInput" placeholder="'+t("ask")+'"></textarea><button class="copilot-send" data-cmd="copilot-send">➤</button></div><div class="copilot-footer"><button data-cmd="copilot-clear">↺ '+t("clear")+'</button><button data-cmd="copilot-act">⚙ '+t("paperIntent")+'</button></div></section></div>'); bind();setCopilotMode(copilotMode());copilotRenderDecision(ctx);copilotAppend("ai","أنا هنا كعقل مرافق: أشرح، أقارن، ألتقط السياق، وأجهّز الحركة الآمنة. لا أتجاوز بوابة التنفيذ الحي.");
+ document.body.insertAdjacentHTML("beforeend",'<div id="copilotDrawer" class="copilot-drawer"><section class="copilot-sheet"><div class="copilot-head"><div class="copilot-id"><div class="copilot-core">🧠</div><div><h3>'+t("copilot")+'</h3><p>قل لي سؤالك بطريقتك الطبيعية؛ أحوّل حالة النظام إلى معنى بشري وخطوة واضحة.</p></div></div><button class="copilot-close" data-cmd="copilot-close">×</button></div><div class="copilot-modes">'+modes.map(x=>'<button class="copilot-mode" data-copilot-mode="'+x[0]+'">'+x[1]+' '+t(x[2])+'</button>').join("")+'</div><div class="copilot-context"><div><span>ASSET</span><b>BTC/USDT</b></div><div><span>الحالة</span><b>'+esc(ctx.direction)+'</b></div><div><span>الثقة</span><b>'+((ctx.confidence||0)*100).toFixed(1)+'%</b></div><div><span>السياق</span><b>'+esc(ctx.regime)+'</b></div><div><span>السبريد</span><b>'+((ctx.spread==null)?"غير مقاس":Number(ctx.spread).toFixed(4)+"%")+'</b></div><div><span>المصادر</span><b>'+esc(ctx.sources)+'</b></div><div><span>VENUES</span><b>'+esc(ctx.connected.join(",")||"—")+'</b></div><div><span>LIVE</span><b>LOCKED</b></div></div><div id="copilotLog" class="copilot-log"></div><div id="copilotDecision" class="copilot-decision"></div><div class="copilot-quick"><button data-copilot-quick="explain">شنو يعني الوضع الحالي؟</button><button data-copilot-quick="choose">شنو أفضل مرشح؟</button><button data-copilot-quick="scan">وين الخطر أو النقص؟</button><button data-copilot-quick="act">جهّز Paper فقط</button></div><div class="copilot-compose"><button class="copilot-icon" data-cmd="copilot-mic" aria-label="Voice">🎙</button><textarea id="copilotInput" placeholder="'+t("ask")+'"></textarea><button class="copilot-send" data-cmd="copilot-send">➤</button></div><div class="copilot-footer"><button data-cmd="copilot-clear">↺ '+t("clear")+'</button><button data-cmd="copilot-act">⚙ '+t("paperIntent")+'</button></div></section></div>');
+ bind();setCopilotMode(copilotMode());copilotRenderDecision(ctx);await copilotRestore();
+ if(!(S.copilot?.messages?.length)){
+  copilotAppend("ai","أشوف الصورة الحالية، وأشرحها لك بلغة بشرية: شنو نعرف، شنو يعني، شنو أفضل خطوة، وشنو الناقص — بدون ما أخترع معلومة.");
+ }
 }
 async function copilotAsk(q,forcedMode=null){
  const input=one("#copilotInput"),question=String(q??input?.value??"").trim();if(!question)return;
  if(input&&input.value.trim()===question)input.value="";
  copilotAppend("user",question);
- const ctx=copilotContext(),mode=forcedMode||copilotMode();
- copilotAppend("ai","جارٍ تركيب السياق…");
+ const ctx=copilotContext(),mode=forcedMode||copilotInferMode(question,copilotMode());
+ setCopilotMode(mode);
+ copilotAppend("ai","أركّب الصورة…");
  const log=one("#copilotLog");if(log&&log.lastElementChild)log.lastElementChild.remove();
  try{
-   const j=await api("copilot",{mode,task_class:"market_analysis",prompt:question,context:ctx,messages:(S.copilot?.messages||[]).slice(-10).map(x=>({role:x.role,content:String(x.content||"").slice(0,5000)}))},45000);
-   if(j?.answer){copilotAppend("ai",j.answer);copilotRenderDecision(ctx);return;}
+   const j=await api("copilot",{mode,language:S.lang,task_class:"market_analysis",prompt:question,context:ctx,messages:(S.copilot?.messages||[]).filter(x=>x.content!=="أركّب الصورة…").slice(-10).map(x=>({role:x.role,content:String(x.content||"").slice(0,5000)}))},45000);
+   if(j?.answer){
+    const fresh=copilotContext();
+    copilotAppend("ai",j.answer);copilotRenderDecision(fresh);return;
+   }
    throw new Error(j?.error||"copilot_empty");
  }catch{
-   // Hybrid fallback: use the station's existing market intelligence, never fabricate a model answer.
-   try{const a=await api("analyze",{},90000);S.result=a.result||a;const fresh=copilotContext();copilotAppend("ai",localCopilotReason(mode,question,fresh));copilotRenderDecision(fresh);}
-   catch(e){copilotAppend("ai","⚠️ لم أستطع الوصول إلى محرك التحليل الآن. لا سأخمن؛ أعد المسح عندما تعود البيانات.");}
+   try{
+    const a=await api("analyze",{},90000);S.result=a.result||a;const fresh=copilotContext();
+    copilotAppend("ai",localCopilotReason(mode,question,fresh));copilotRenderDecision(fresh);
+   }catch(e){
+    copilotAppend("ai",localCopilotReason(mode,question,ctx));copilotRenderDecision(ctx);
+   }
  }
 }
 async function copilotPaper(){
