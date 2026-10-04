@@ -6,68 +6,346 @@
     {
       "id": "revenue",
       "label": "Revenue",
-      "keywords": ["revenue","money","income","profit","دخل","مال","ربح","فلوس","سعر"],
-      "stations": ["revenue-forge","revenue","aimidad","control"],
-      "actions": ["Find monetizable opportunities","Rank by effort and payout","Prepare a delivery path"],
+      "keywords": [
+        "revenue",
+        "money",
+        "income",
+        "profit",
+        "دخل",
+        "مال",
+        "ربح",
+        "فلوس",
+        "سعر"
+      ],
+      "stations": [
+        "revenue-forge",
+        "revenue",
+        "aimidad",
+        "control"
+      ],
+      "actions": [
+        "Find monetizable opportunities",
+        "Rank by effort and payout",
+        "Prepare a delivery path"
+      ],
       "risk": "MEDIUM"
     },
     {
       "id": "mining",
       "label": "Mining",
-      "keywords": ["mine","mining","miner","viabtc","hashrate","worker","تعدين","ماينر","هشريت","عمال"],
-      "stations": ["mining","control"],
-      "actions": ["Inspect worker health","Detect hashrate anomalies","Review profit signals"],
+      "keywords": [
+        "mine",
+        "mining",
+        "miner",
+        "viabtc",
+        "hashrate",
+        "worker",
+        "تعدين",
+        "ماينر",
+        "هشريت",
+        "عمال"
+      ],
+      "stations": [
+        "mining",
+        "control"
+      ],
+      "actions": [
+        "Inspect worker health",
+        "Detect hashrate anomalies",
+        "Review profit signals"
+      ],
       "risk": "LOW"
     },
     {
       "id": "trading",
       "label": "Trading",
-      "keywords": ["trade","trading","market","btc","crypto","risk","تداول","سوق","بيتكوين","كريبتو"],
-      "stations": ["trader","aimidad","control"],
-      "actions": ["Build market context","Score risk","Keep execution paper-only by default"],
+      "keywords": [
+        "trade",
+        "trading",
+        "market",
+        "btc",
+        "crypto",
+        "risk",
+        "تداول",
+        "سوق",
+        "بيتكوين",
+        "كريبتو"
+      ],
+      "stations": [
+        "trader",
+        "aimidad",
+        "control"
+      ],
+      "actions": [
+        "Build market context",
+        "Score risk",
+        "Keep execution paper-only by default"
+      ],
       "risk": "HIGH"
     },
     {
       "id": "osint",
       "label": "OSINT",
-      "keywords": ["research","osint","intel","intelligence","بحث","استخبارات","معلومات","تحقيق"],
-      "stations": ["aimidad","control"],
-      "actions": ["Collect evidence","Cross-check sources","Produce an explainable brief"],
+      "keywords": [
+        "research",
+        "osint",
+        "intel",
+        "intelligence",
+        "بحث",
+        "استخبارات",
+        "معلومات",
+        "تحقيق"
+      ],
+      "stations": [
+        "aimidad",
+        "control"
+      ],
+      "actions": [
+        "Collect evidence",
+        "Cross-check sources",
+        "Produce an explainable brief"
+      ],
       "risk": "LOW"
     },
     {
       "id": "operations",
       "label": "Operations",
-      "keywords": ["operate","operations","bot","control","task","workflow","تشغيل","عمليات","بوت","مهمة","اوتوميشن"],
-      "stations": ["control","ahwaz","keys"],
-      "actions": ["Inspect system state","Route tasks","Verify execution gates"],
+      "keywords": [
+        "operate",
+        "operations",
+        "bot",
+        "control",
+        "task",
+        "workflow",
+        "تشغيل",
+        "عمليات",
+        "بوت",
+        "مهمة",
+        "اوتوميشن"
+      ],
+      "stations": [
+        "control",
+        "ahwaz",
+        "keys"
+      ],
+      "actions": [
+        "Inspect system state",
+        "Route tasks",
+        "Verify execution gates"
+      ],
       "risk": "MEDIUM"
     },
     {
       "id": "security",
       "label": "Security",
-      "keywords": ["security","secure","credential","secret","token","privacy","أمان","سر","مفتاح","خصوصية"],
-      "stations": ["keys","control"],
-      "actions": ["Check exposure boundaries","Review least-privilege posture","Block unsafe client-side secrets"],
+      "keywords": [
+        "security",
+        "secure",
+        "credential",
+        "secret",
+        "token",
+        "privacy",
+        "أمان",
+        "سر",
+        "مفتاح",
+        "خصوصية"
+      ],
+      "stations": [
+        "keys",
+        "control"
+      ],
+      "actions": [
+        "Check exposure boundaries",
+        "Review least-privilege posture",
+        "Block unsafe client-side secrets"
+      ],
       "risk": "HIGH"
     },
     {
       "id": "content",
       "label": "Content",
-      "keywords": ["content","video","photo","post","marketing","محتوى","فيديو","صورة","تسويق"],
-      "stations": ["aimidad","ahwaz","revenue"],
-      "actions": ["Define deliverable","Select production route","Package for monetization"],
+      "keywords": [
+        "content",
+        "video",
+        "photo",
+        "post",
+        "marketing",
+        "محتوى",
+        "فيديو",
+        "صورة",
+        "تسويق"
+      ],
+      "stations": [
+        "aimidad",
+        "ahwaz",
+        "revenue"
+      ],
+      "actions": [
+        "Define deliverable",
+        "Select production route",
+        "Package for monetization"
+      ],
       "risk": "LOW"
+    },
+    {
+      "id": "global_markets",
+      "label": "Global Markets",
+      "keywords": [
+        "global",
+        "market",
+        "usa",
+        "us",
+        "america",
+        "arab",
+        "عربي",
+        "العالم",
+        "آسيا",
+        "اسيا",
+        "asia",
+        "europe",
+        "اوروبا",
+        "سوق",
+        "أسواق",
+        "pricing",
+        "currency"
+      ],
+      "stations": [
+        "revenue-forge",
+        "aimidad",
+        "control"
+      ],
+      "actions": [
+        "Select the highest-value market lane",
+        "Localize language and currency",
+        "Check platform terms and regional constraints",
+        "Adapt price and offer"
+      ],
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "mobile_factory",
+      "label": "Mobile App Factory",
+      "keywords": [
+        "mobile",
+        "app",
+        "android",
+        "apk",
+        "ios",
+        "application",
+        "تطبيق",
+        "تطبيقات",
+        "هاتف",
+        "اندرويد",
+        "ابك"
+      ],
+      "stations": [
+        "revenue-forge",
+        "control"
+      ],
+      "actions": [
+        "Create a product manifest",
+        "Compose a Mission Capsule",
+        "Prepare a build and QA path",
+        "Package a monetizable offer"
+      ],
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "revenue_predator",
+      "label": "Revenue Predator",
+      "keywords": [
+        "bounty",
+        "job",
+        "gig",
+        "work",
+        "cash",
+        "usd",
+        "usdc",
+        "income",
+        "earn",
+        "وظيفة",
+        "عمل",
+        "دخل",
+        "دولار",
+        "عملة"
+      ],
+      "stations": [
+        "revenue-forge",
+        "aimidad",
+        "control"
+      ],
+      "actions": [
+        "Detect fresh payable work",
+        "Score revenue velocity",
+        "Suppress duplicates and stale targets",
+        "Prepare the shortest lawful execution route"
+      ],
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "legal_edge",
+      "label": "Legal Edge",
+      "keywords": [
+        "legal",
+        "law",
+        "authorization",
+        "authorized",
+        "terms",
+        "compliance",
+        "قانون",
+        "قانوني",
+        "تفويض",
+        "شروط",
+        "امتثال"
+      ],
+      "stations": [
+        "control",
+        "keys"
+      ],
+      "actions": [
+        "Check authorization and jurisdiction",
+        "Inspect platform terms",
+        "Select the maximum lawful action",
+        "Escalate ambiguous high-impact actions"
+      ],
+      "risk": "HIGH"
     }
   ],
   "station_aliases": {
-    "control": {"title": "Neural Control Room", "path": "./site/index.html"},
-    "trader": {"title": "iAiTrader", "path": "./site/iaitrader.html?v=20261003"},
-    "mining": {"title": "ViaBTC Monitor", "path": "./site/viabtc.html?v=20261003"},
-    "aimidad": {"title": "AIMIDAD", "path": "https://t.me/aimidad_bot", "external": true},
-    "ahwaz": {"title": "AHWAZ AI", "path": "https://t.me/ahwazai_bot", "external": true},
-    "keys": {"title": "MIDAD Keys", "path": "https://t.me/midadkeys_bot", "external": true},
-    "revenue": {"title": "Revenue Forge", "path": "./site/revenue-forge.html?v=20261003"},
-    "revenue-forge": {"title": "Revenue Forge", "path": "./site/revenue-forge.html?v=20261003"}
+    "control": {
+      "title": "Neural Control Room",
+      "path": "./site/index.html"
+    },
+    "trader": {
+      "title": "iAiTrader",
+      "path": "./site/iaitrader.html?v=20261003"
+    },
+    "mining": {
+      "title": "ViaBTC Monitor",
+      "path": "./site/viabtc.html?v=20261003"
+    },
+    "aimidad": {
+      "title": "AIMIDAD",
+      "path": "https://t.me/aimidad_bot",
+      "external": true
+    },
+    "ahwaz": {
+      "title": "AHWAZ AI",
+      "path": "https://t.me/ahwazai_bot",
+      "external": true
+    },
+    "keys": {
+      "title": "MIDAD Keys",
+      "path": "https://t.me/midadkeys_bot",
+      "external": true
+    },
+    "revenue": {
+      "title": "Revenue Forge",
+      "path": "./site/revenue-forge.html?v=20261003"
+    },
+    "revenue-forge": {
+      "title": "Revenue Forge",
+      "path": "./site/revenue-forge.html?v=20261003"
+    }
   }
 }
