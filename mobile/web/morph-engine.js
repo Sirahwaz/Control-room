@@ -3,7 +3,7 @@
     schema_version: 1,
     engine: 'MIDAD Neural Morphogenesis',
     capabilities: [
-      {id:'revenue',label:'Revenue',keywords:['revenue','money','income','profit','دخل','مال','ربح'],stations:['revenue-forge','aimidad','control'],actions:['Find monetizable opportunities','Rank by effort and payout','Prepare a delivery path'],risk:'MEDIUM'},
+      {id:'revenue',label:'Revenue',keywords:['revenue','money','income','profit','دخل','مال','ربح'],stations:['revenue-forge','revenue','aimidad','control'],actions:['Find monetizable opportunities','Rank by effort and payout','Prepare a delivery path'],risk:'MEDIUM'},
       {id:'mining',label:'Mining',keywords:['mine','mining','miner','viabtc','hashrate','تعدين','ماينر','هشريت'],stations:['mining','control'],actions:['Inspect worker health','Detect hashrate anomalies','Review profit signals'],risk:'LOW'},
       {id:'trading',label:'Trading',keywords:['trade','trading','market','btc','crypto','risk','تداول','سوق','بيتكوين'],stations:['trader','aimidad','control'],actions:['Build market context','Score risk','Keep execution paper-only by default'],risk:'HIGH'},
       {id:'osint',label:'OSINT',keywords:['research','osint','intel','بحث','استخبارات','معلومات'],stations:['aimidad','control'],actions:['Collect evidence','Cross-check sources','Produce an explainable brief'],risk:'LOW'},
