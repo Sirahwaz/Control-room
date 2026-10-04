@@ -1,0 +1,47 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-revenue-scout",
+  "display_name": "MIDAD Revenue Scout",
+  "version": "0.1.0",
+  "app_id": "ai.midad.revenue.scout",
+  "artifact_name": "MIDAD-Revenue-Scout-v0.1.0",
+  "web_entry": "mobile/web/index.html",
+  "product_mode": "revenue-scout",
+  "release_channel": "internal",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": true,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true
+  },
+  "surfaces": [
+    "revenue-forge",
+    "aimidad",
+    "control-room"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "arab_levant",
+    "arab_north_africa",
+    "east_southeast_asia",
+    "south_asia",
+    "latin_america"
+  ],
+  "monetization_models": [
+    "one_time",
+    "subscription",
+    "white_label",
+    "b2b_license",
+    "lead_generation"
+  ],
+  "revenue_mode": "productized"
+}
