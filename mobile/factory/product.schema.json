@@ -109,6 +109,30 @@
         "minLength": 1
       },
       "minItems": 0
+    },
+    "target_markets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "monetization_models": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "revenue_mode": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "productized",
+        "b2b",
+        "consumer",
+        "white_label"
+      ]
     }
   },
   "additionalProperties": false
