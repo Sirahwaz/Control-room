@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "source": "MIDAD market lane registry",
+  "lanes": [
+    {"id":"arab_gcc","label":"Arab Gulf","region":"MENA","languages":["ar","en"],"currencies":["SAR","AED","QAR","KWD","BHD","OMR","USD"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana","Lightning"]},
+    {"id":"arab_levant","label":"Arab Levant & Iraq","region":"MENA","languages":["ar","en"],"currencies":["IQD","JOD","LBP","USD","EUR"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana","Lightning"]},
+    {"id":"arab_north_africa","label":"Arab North Africa","region":"MENA","languages":["ar","en","fr"],"currencies":["EGP","MAD","DZD","TND","USD","EUR"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana"]},
+    {"id":"south_asia","label":"South Asia","region":"ASIA","languages":["en","hi","ur","bn"],"currencies":["USD","INR","PKR","BDT"],"payment_assets":["USDC","USDT"],"networks":["Base","Ethereum","Solana"]},
+    {"id":"east_southeast_asia","label":"East & Southeast Asia","region":"ASIA","languages":["en","ja","ko","zh","th","vi"],"currencies":["USD","JPY","KRW","SGD","MYR"],"payment_assets":["USDC","USDT"],"networks":["Base","Ethereum","Solana"]},
+    {"id":"north_america","label":"North America","region":"AMERICAS","languages":["en","es","fr"],"currencies":["USD","CAD"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana","Lightning"]},
+    {"id":"latin_america","label":"Latin America","region":"AMERICAS","languages":["es","pt","en"],"currencies":["USD","MXN","BRL","ARS","CLP","COP","PEN"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana"]},
+    {"id":"europe_uk","label":"Europe & UK","region":"EUROPE","languages":["en","nl","de","fr","es","it","pt"],"currencies":["EUR","GBP","USD"],"payment_assets":["USDC","USDT","BTC"],"networks":["Base","Ethereum","Solana","Lightning"]},
+    {"id":"global_remote_crypto","label":"Global Remote / Crypto Native","region":"GLOBAL","languages":["en","ar","es","fr","de","pt","hi","zh"],"currencies":["USD","EUR","GBP"],"payment_assets":["USDC","USDT","BTC","SOL"],"networks":["Base","Ethereum","Solana","Lightning"]}
+  ]
+}
