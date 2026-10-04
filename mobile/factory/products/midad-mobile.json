@@ -28,5 +28,25 @@
     "aimidad",
     "ahwaz-ai",
     "midad-keys"
-  ]
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "arab_levant",
+    "arab_north_africa",
+    "east_southeast_asia",
+    "south_asia",
+    "latin_america"
+  ],
+  "monetization_models": [
+    "subscription",
+    "one_time",
+    "white_label",
+    "b2b_license",
+    "custom_build",
+    "lead_generation"
+  ],
+  "revenue_mode": "productized"
 }
