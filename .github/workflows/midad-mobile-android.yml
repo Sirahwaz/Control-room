@@ -32,7 +32,7 @@ permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
+  build-release-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -111,27 +111,52 @@ jobs:
         working-directory: mobile
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Build unsigned release APK
         working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Collect APK
-        env:
-          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
-          RELEASE_CHANNEL: ${{ steps.product.outputs.release_channel }}
+      - name: Sign release APK for installability
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          apk="dist/${ARTIFACT_NAME}-debug.apk"
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk "$apk"
-          sha256sum "$apk" | tee "${apk}.sha256"
+          APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "$APK_SRC"
+          mkdir -p dist signing
+          keytool -genkeypair -v \
+            -keystore signing/midad-release-temporary.jks \
+            -storepass "midad-temp-release" \
+            -keypass "midad-temp-release" \
+            -alias midad \
+            -keyalg RSA -keysize 2048 -validity 3650 \
+            -dname "CN=MIDAD Mobile, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          apksigner sign \
+            --ks signing/midad-release-temporary.jks \
+            --ks-pass pass:midad-temp-release \
+            --key-pass pass:midad-temp-release \
+            --ks-key-alias midad \
+            --out "dist/${ARTIFACT_NAME}-release.apk" \
+            "$APK_SRC"
+          apksigner verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
+          sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
+          rm -rf signing
+        env:
+          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
+
+      - name: Collect APK metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "dist/${ARTIFACT_NAME}-release.apk"
+          file "dist/${ARTIFACT_NAME}-release.apk"
+        env:
+          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.product.outputs.artifact_name }}-${{ steps.product.outputs.release_channel }}
+          name: ${{ steps.product.outputs.artifact_name }}-release-${{ steps.product.outputs.release_channel }}
           path: |
-            dist/*.apk
-            dist/*.apk.sha256
+            dist/*-release.apk
+            dist/*-release.apk.sha256
             dist/product-manifest.json
