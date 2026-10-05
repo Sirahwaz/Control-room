@@ -129,14 +129,16 @@ jobs:
             -alias midad \
             -keyalg RSA -keysize 2048 -validity 3650 \
             -dname "CN=MIDAD Mobile, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
-          apksigner sign \
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" sign \
             --ks signing/midad-release-temporary.jks \
             --ks-pass pass:midad-temp-release \
             --key-pass pass:midad-temp-release \
             --ks-key-alias midad \
             --out "dist/${ARTIFACT_NAME}-release.apk" \
             "$APK_SRC"
-          apksigner verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
+          "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           rm -rf signing
