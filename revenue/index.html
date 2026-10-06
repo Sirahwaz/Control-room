@@ -20,6 +20,7 @@ button{border:0;border-radius:12px;padding:13px 15px;font-weight:800;background:
 button:disabled{opacity:.6;cursor:wait}.foot{margin-top:12px;font-size:12px;color:var(--muted)}
 #modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);padding:18px;z-index:10;overflow:auto}
 .dialog{max-width:720px;margin:5vh auto;background:#0a141e;border:1px solid var(--line);border-radius:20px;padding:20px}
+.field{display:grid;gap:7px;margin:12px 0}.field label{font-size:12px;color:var(--muted)}.field input,.field textarea{width:100%;border:1px solid var(--line);background:#061019;color:var(--text);border-radius:12px;padding:12px;font:inherit}.field textarea{min-height:120px;resize:vertical}
 .close{float:right;background:transparent;color:var(--muted);padding:6px 9px}
 .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:14px 0}
 .addr{word-break:break-all;background:#061019;border:1px solid var(--line);padding:12px;border-radius:12px;font-family:ui-monospace,monospace;font-size:13px}
@@ -74,24 +75,52 @@ async function checkout(productId){
   openModal();
   const [id,name,usd]=products.find(x=>x[0]===productId);
   document.getElementById('mTitle').textContent=name;
+  document.getElementById('mBody').innerHTML=
+    '<div class="price">
+function copyAddr(){navigator.clipboard?.writeText(document.getElementById('addr').textContent).then(()=>{});}
+window.addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+</script>
+</body>
+</html>+usd+' USDC</div>'+
+    '<div class="field"><label>Name (optional)</label><input id="customerName" maxlength="120" autocomplete="name"></div>'+
+    '<div class="field"><label>Email (recommended for delivery)</label><input id="customerEmail" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></div>'+
+    '<div class="field"><label>What do you need? Include the goal, files/data context, or reproducible issue.</label><textarea id="requirements" maxlength="5000"></textarea></div>'+
+    '<button id="continuePay" onclick="startPayment(\''+id+'\')">Continue to USDC payment</button>'+
+    '<div class="foot">Your contact details are used only to attach the paid order to its fulfillment record.</div>';
+}
+async function startPayment(productId){
+  const [id,name,usd]=products.find(x=>x[0]===productId);
+  const customerName=document.getElementById('customerName')?.value.trim()||'';
+  const customerEmail=document.getElementById('customerEmail')?.value.trim()||'';
+  const requirements=document.getElementById('requirements')?.value.trim()||'';
+  const btn=document.getElementById('continuePay');
+  if(btn) btn.disabled=true;
   document.getElementById('mBody').innerHTML='<div class="status">Creating a payment quote…</div>';
   try{
     const orderKey='store-'+crypto.randomUUID();
-    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},body:JSON.stringify({product_id:productId,order_key:orderKey,expires_in_minutes:60})});
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},
+      body:JSON.stringify({product_id:productId,order_key:orderKey,expires_in_minutes:60,customer_name:customerName,customer_email:customerEmail,requirements})});
     const data=await res.json();
     if(!data.ok) throw new Error(data.error||'Checkout failed');
     const p=data.payment;
     const wallet=data.receiving.wallet_address;
     const uri=data.payment_uri;
     document.getElementById('mBody').innerHTML=
-      '<div class="price">$'+usd+' USDC</div>'+
+      '<div class="price">
+function copyAddr(){navigator.clipboard?.writeText(document.getElementById('addr').textContent).then(()=>{});}
+window.addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+</script>
+</body>
+</html>+usd+' USDC</div>'+
       '<div class="status"><b>Payment Intent:</b> '+p.id+'<br><b>Status:</b> '+p.status+'<br><b>Expires:</b> '+new Date(p.expires_at).toLocaleString()+'</div>'+
       '<div class="row"><div class="addr" id="addr">'+wallet+'</div><button onclick="copyAddr()">Copy</button></div>'+
       (uri?'<p><a href="'+uri+'">Open in a compatible Solana wallet</a></p>':'')+
       '<p class="warn">Send exactly '+p.quoted_crypto_amount+' USDC on Solana. The sender/network may incur normal network or token-account costs.</p>'+
-      '<div class="status">After payment, MIDAD will verify the finalized on-chain receipt automatically. Keep your payment reference for support.</div>';
+      '<div class="status">After payment, MIDAD will verify the finalized on-chain receipt automatically and attach it to your order.</div>';
   }catch(e){
     document.getElementById('mBody').innerHTML='<div class="status" style="color:var(--danger)">Checkout error: '+String(e.message||e)+'</div>';
+  }finally{
+    if(document.getElementById('continuePay')) document.getElementById('continuePay').disabled=false;
   }
 }
 function copyAddr(){navigator.clipboard?.writeText(document.getElementById('addr').textContent).then(()=>{});}
