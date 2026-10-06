@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIDAD — Revenue Store</title>
+<meta name="description" content="MIDAD AI rapid technical services. Pay with USDC on Solana.">
+<style>
+:root{--bg:#071018;--panel:#0d1722;--panel2:#101d2a;--text:#eef6ff;--muted:#9db0c3;--line:#203142;--accent:#66e3c4;--danger:#ff8e8e;--shadow:0 18px 60px rgba(0,0,0,.32)}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#071018 0%,#09131d 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}
+header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:24px}
+h1{font-size:clamp(30px,5vw,52px);line-height:1;margin:0 0 10px;letter-spacing:-.03em}
+.sub{max-width:760px;color:var(--muted);font-size:15px;line-height:1.7}
+.badge{display:inline-flex;align-items:center;border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:999px;padding:8px 12px;font-size:12px;color:var(--accent);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:250px}
+.card h2{font-size:20px;margin:0 0 10px}.price{font-size:30px;font-weight:800;margin:6px 0 8px}.desc{color:var(--muted);line-height:1.6;font-size:14px;flex:1}
+button{border:0;border-radius:12px;padding:13px 15px;font-weight:800;background:var(--accent);color:#06140f;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}.foot{margin-top:12px;font-size:12px;color:var(--muted)}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);padding:18px;z-index:10;overflow:auto}
+.dialog{max-width:720px;margin:5vh auto;background:#0a141e;border:1px solid var(--line);border-radius:20px;padding:20px}
+.close{float:right;background:transparent;color:var(--muted);padding:6px 9px}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:14px 0}
+.addr{word-break:break-all;background:#061019;border:1px solid var(--line);padding:12px;border-radius:12px;font-family:ui-monospace,monospace;font-size:13px}
+.status{margin-top:14px;padding:12px;border-radius:12px;background:#061019;border:1px solid var(--line);font-size:13px;line-height:1.6}
+a{color:var(--accent)}
+.warn{color:#ffd6a1}
+@media (max-width:720px){header{display:block}.badge{margin-top:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div>
+<div class="badge">MIDAD AI · REVENUE STORE v1</div>
+<h1>Fast technical work.<br>USDC settlement.</h1>
+<div class="sub">Choose a fixed-price service, create a secure payment quote, and pay the exact USDC amount on Solana. MIDAD verifies the on-chain receipt automatically. No outbound transfer is performed by checkout.</div>
+</div>
+</header>
+<div id="grid" class="grid"></div>
+<div class="foot">Payment truth: a service is counted as realized revenue only after an on-chain receipt is verified in a MIDAD receiving wallet.</div>
+</div>
+
+<div id="modal">
+<div class="dialog">
+<button class="close" onclick="closeModal()">Close</button>
+<h2 id="mTitle">Checkout</h2>
+<div id="mBody"></div>
+</div>
+</div>
+
+<script>
+const API='https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout';
+const products=[
+['miner-microscope-v1','Miner Microscope Audit',39,'Worker-by-worker mining diagnostic snapshot with anomaly evidence and a recovery checklist.'],
+['opportunity-radar-v1','Opportunity Radar Pack',25,'Fresh paid-opportunity shortlist with evidence, blockers and a proposal starter.'],
+['research-revenue-sprint-v1','Research-to-Revenue Sprint',79,'Source-backed findings, contradictions, testable hypotheses and an action blueprint.'],
+['bug-fix-sprint-v1','Bug Fix Sprint',54,'One reproducible Python or TypeScript bug fixed with tests.'],
+['data-rescue-pack-v1','Data Rescue Pack',34,'One CSV or JSON file cleaned, converted or validated with tests.'],
+['decision-research-brief-v1','Decision Research Brief',44,'Focused source-cited research with a decision summary.'],
+['code-health-review-v1','Code Health Review',74,'Python/JavaScript bug, security and performance review.']
+];
+const grid=document.getElementById('grid');
+products.forEach(([id,name,usd,desc])=>{
+  const el=document.createElement('section');
+  el.className='card';
+  el.innerHTML='<h2>'+name+'</h2><div class="price">$'+usd+' USDC</div><div class="desc">'+desc+'</div><button onclick="checkout(\''+id+'\')">Buy / Create Checkout</button>';
+  grid.appendChild(el);
+});
+function openModal(){document.getElementById('modal').style.display='block'}
+function closeModal(){document.getElementById('modal').style.display='none'}
+async function checkout(productId){
+  openModal();
+  const [id,name,usd]=products.find(x=>x[0]===productId);
+  document.getElementById('mTitle').textContent=name;
+  document.getElementById('mBody').innerHTML='<div class="status">Creating a payment quote…</div>';
+  try{
+    const orderKey='store-'+crypto.randomUUID();
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},body:JSON.stringify({product_id:productId,order_key:orderKey,expires_in_minutes:60})});
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error||'Checkout failed');
+    const p=data.payment;
+    const wallet=data.receiving.wallet_address;
+    const uri=data.payment_uri;
+    document.getElementById('mBody').innerHTML=
+      '<div class="price">$'+usd+' USDC</div>'+
+      '<div class="status"><b>Payment Intent:</b> '+p.id+'<br><b>Status:</b> '+p.status+'<br><b>Expires:</b> '+new Date(p.expires_at).toLocaleString()+'</div>'+
+      '<div class="row"><div class="addr" id="addr">'+wallet+'</div><button onclick="copyAddr()">Copy</button></div>'+
+      (uri?'<p><a href="'+uri+'">Open in a compatible Solana wallet</a></p>':'')+
+      '<p class="warn">Send exactly '+p.quoted_crypto_amount+' USDC on Solana. The sender/network may incur normal network or token-account costs.</p>'+
+      '<div class="status">After payment, MIDAD will verify the finalized on-chain receipt automatically. Keep your payment reference for support.</div>';
+  }catch(e){
+    document.getElementById('mBody').innerHTML='<div class="status" style="color:var(--danger)">Checkout error: '+String(e.message||e)+'</div>';
+  }
+}
+function copyAddr(){navigator.clipboard?.writeText(document.getElementById('addr').textContent).then(()=>{});}
+window.addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+</script>
+</body>
+</html>
