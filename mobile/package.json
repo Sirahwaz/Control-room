@@ -9,7 +9,9 @@
     "cap:open": "cap open android",
     "factory:create": "node factory/create-product.mjs",
     "factory:render": "node factory/render.mjs",
-    "factory:morph-smoke": "node factory/morph-engine.smoke.mjs"
+    "factory:morph-smoke": "node factory/morph-engine.smoke.mjs",
+    "factory:compile": "node factory/compile-request.mjs",
+    "factory:quality": "node factory/quality-gate.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
