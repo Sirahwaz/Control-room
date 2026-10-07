@@ -75,8 +75,8 @@ jobs:
           if(manifest.features?.server_side_secrets_only !== true) fail('Mobile secret boundary weakened');
           if(manifest.features?.live_financial_execution !== false) fail('Mobile live financial execution gate weakened');
           for(const x of ['mobile-hub.css','mobile-hub.js','morph-engine.js']) if(!html.includes(x)) fail('Missing mobile asset '+x);
-          if(!js.includes('https://t.me/ViaBtcMonitor_bot')) fail('ViaBTC bot URL drift');
-          if(js.includes('https://t.me/viabtc_monitor')) fail('Obsolete ViaBTC bot URL remains');
+          if(!html.includes('https://t.me/ViaBtcMonitor_bot')) fail('ViaBTC bot URL drift');
+          if(html.includes('https://t.me/viabtc_monitor')) fail('Obsolete ViaBTC bot URL remains');
           console.log('MOBILE_FACTORY_CONTRACT_OK');
           NODE
 
