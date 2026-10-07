@@ -62,7 +62,7 @@ function safeProfileValue(snapshot:any,key:string){
 
 async function persistCommunicationSignal(sb:any,ownerId:string,body:any,result:any,conversationId:string){
   const channel=clip(body.channel||"customer_support",64);
-  const externalRef=clip(body.external_ref||body.client_ref||body.external_message_id,240)||("conversation:"+conversationId);
+  const externalRef=clip(body.client_ref||body.external_ref||body.client_contact||body.contact,240)||("conversation:"+conversationId);
   const clientContact=clip(body.client_contact||body.contact,320)||null;
   const clientName=clip(body.client_name||body.display_name,320)||null;
   const conf=Number.isFinite(Number(result?.confidence))?Math.max(0,Math.min(1,Number(result.confidence))):null;
