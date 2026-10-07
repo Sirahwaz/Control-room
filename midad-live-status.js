@@ -1,7 +1,7 @@
 (function(){
   var API="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_live_status";
   var el=null,restore=null;
-  function stateRead(){try{return localStorage.getItem("midad_live_ops_state")||"collapsed"}catch(e){return"collapsed"}}
+  function stateRead(){try{var saved=localStorage.getItem("midad_live_ops_state");if(window.matchMedia&&window.matchMedia("(max-width:760px)").matches)return "collapsed";return saved||"collapsed"}catch(e){return"collapsed"}}
   function stateWrite(v){try{localStorage.setItem("midad_live_ops_state",v)}catch(e){}}
   function put(sel,v){var q=document.querySelector(sel);if(q)q.textContent=String(v==null?"—":v)}
   function mount(){
@@ -23,7 +23,9 @@
     el.querySelector('[data-mlo="collapse"]').onclick=function(){setState("collapsed")};
     el.querySelector('[data-mlo="close"]').onclick=function(){setState("closed")};
     restore.onclick=function(){setState("collapsed")};
-    setState(stateRead());
+    var initial=stateRead();
+    setState(initial);
+    if(window.matchMedia){var mq=window.matchMedia("(max-width:760px)");var sync=function(ev){if(ev.matches)setState("collapsed")};try{mq.addEventListener("change",sync)}catch(e){try{mq.addListener(sync)}catch(_){}}}
   }
   function setState(state){
     if(!el||!restore)return;
