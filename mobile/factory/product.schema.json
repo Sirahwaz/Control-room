@@ -220,6 +220,36 @@
         "consumer",
         "white_label"
       ]
+    },
+    "factory": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "request_driven_ui": {
+          "type": "boolean"
+        },
+        "dynamic_content": {
+          "type": "boolean"
+        },
+        "localization": {
+          "type": "object"
+        },
+        "learning": {
+          "type": "object"
+        },
+        "quality": {
+          "type": "object"
+        },
+        "data": {
+          "type": "object"
+        },
+        "delivery": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": false
