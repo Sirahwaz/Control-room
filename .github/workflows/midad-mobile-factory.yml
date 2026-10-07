@@ -89,9 +89,12 @@ jobs:
           rm -rf mobile/www
           mkdir -p mobile/www/site
           cp "$WEB_ENTRY" mobile/www/index.html
-          BASE="$(basename "${WEB_ENTRY%.html}")"
-          [ -f "mobile/web/$BASE.css" ] && cp "mobile/web/$BASE.css" mobile/www/ || true
-          [ -f mobile/web/omni-agent.js ] && cp mobile/web/omni-agent.js mobile/www/ || true
+          ASSETS="$(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)"
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            test -f "$asset"
+            cp "$asset" mobile/www/
+          done <<< "$ASSETS"
 
       - name: Add Android platform
         working-directory: mobile
