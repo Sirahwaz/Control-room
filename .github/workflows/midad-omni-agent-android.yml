@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "mobile/web/omni-agent.*"
+      - "mobile/web/human-bridge.js"
       - "mobile/factory/**"
       - "mobile/package.json"
       - ".github/workflows/midad-omni-agent-android.yml"
