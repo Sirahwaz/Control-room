@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#05070b">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MIDAD Human Bridge</title>
+<link rel="stylesheet" href="./human-bridge.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<header class="topbar">
+  <div class="brand-mark">M</div>
+  <div class="brand-copy"><div class="eyebrow">MIDAD / HUMAN BRIDGE</div><h1>جسر التدخل البشري</h1></div>
+  <div id="connectionPill" class="pill danger">غير مربوط</div>
+</header>
+<main>
+<section id="pairCard" class="panel pair-panel">
+  <div class="panel-head"><div><div class="label">PAIR DEVICE</div><h2>اربط الهاتف بـ MIDAD</h2></div><span class="state-chip">ONE-TIME</span></div>
+  <p>أدخل رمز الاقتران الذي يصدره MIDAD Control Room. الرمز مؤقت ويستخدم مرة واحدة فقط.</p>
+  <div class="pair-row"><input id="pairCode" autocomplete="off" inputmode="text" maxlength="8" placeholder="مثال: 7KQ2MX9P"><button id="pairBtn">ربط الجهاز</button></div>
+  <div id="pairStatus" class="micro">لم يتم إنشاء جلسة بعد.</div>
+</section>
+
+<section id="taskPanel" class="panel hidden">
+  <div class="panel-head"><div><div class="label">HUMAN TASKS</div><h2>مركز التدخلات</h2></div><div class="head-actions"><span id="taskCount" class="count">0</span><button id="refreshBtn" class="icon-btn">↻</button></div></div>
+  <div id="tasks" class="task-list"></div>
+</section>
+
+<section id="activePanel" class="panel hidden">
+  <div class="panel-head"><div><div class="label">ACTIVE TASK</div><h2 id="activeTitle">—</h2></div><span id="activeRisk" class="state-chip">—</span></div>
+  <div class="active-grid"><div><span>الوكل</span><b id="activeAgent">—</b></div><div><span>الحالة</span><b id="activeState">—</b></div><div><span>سبب التوقف</span><b id="activeReason">—</b></div></div>
+  <div class="action-row"><button id="openTaskBtn" class="primary">فتح الصفحة أمامي ↗</button><button id="inspectBtn">فحص الصفحة</button><button id="safeFillBtn">ملء آمن</button></div>
+  <div id="pageStatus" class="browser-status">لا توجد صفحة مرتبطة حاليًا.</div>
+  <div class="action-row secondary"><button id="completeBtn" class="success">تم — أكمل MIDAD</button><button id="clearActiveBtn">إخفاء</button></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><div class="label">WALLET FINDER</div><h2>المحافظ والعناوين</h2></div><span class="state-chip">READ ONLY</span></div>
+  <div class="search-row"><input id="walletSearch" autocomplete="off" placeholder="ابحث: BTC / EVM / USDC / Solana..."><button id="profileBtn">تحديث</button></div>
+  <div id="walletResults" class="wallet-list"><div class="empty">اربط الجهاز لعرض العناوين العامة المسجلة.</div></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><div class="label">EVENT STREAM</div><h2>سجل الجسر</h2></div><button id="clearLogBtn" class="icon-btn">×</button></div>
+  <div id="events" class="event-list"></div>
+</section>
+
+<section class="panel safety">
+  <div class="panel-head"><div><div class="label">MIDAD SAFETY EDGE</div><h2>حدود الجسر</h2></div></div>
+  <div class="guard-grid">
+    <div><b>CAPTCHA</b><span>أنت تحلها بنفسك؛ التطبيق لا يتجاوزها.</span></div>
+    <div><b>KYC / 2FA</b><span>بوابة بشرية صريحة؛ لا استخراج ولا تجاوز.</span></div>
+    <div><b>Secrets</b><span>لا Passwords ولا OTP ولا Private Keys داخل التطبيق.</span></div>
+    <div><b>Finance</b><span>لا Withdraw / Transfer / Live Trade من هذا المسار.</span></div>
+  </div>
+</section>
+</main>
+<div id="toast" class="toast"></div>
+<script src="./human-bridge.js"></script>
+</body>
+</html>
