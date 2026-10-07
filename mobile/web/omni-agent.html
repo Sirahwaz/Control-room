@@ -35,6 +35,104 @@
     <div id="agent-log" class="panel"><div class="panel-head"><h2>Neural Event Stream</h2><button id="clear-log" class="ghost">مسح</button></div><div id="events"></div></div>
   </section>
 
+  <section id="communication" class="view">
+    <div class="section-title"><div><div class="eyebrow">COMMUNICATION AGENT</div><h2>وكيل التواصل العالمي</h2></div><span class="pill ok">Draft-first · Multilingual</span></div>
+
+    <div class="panel comm-hero">
+      <div>
+        <div class="comm-orb">◈</div>
+        <h3>افهم الرسالة → صِغ الرد → ترجم → انطق → جهّز الإرسال</h3>
+        <p class="muted">MIDAD يتعامل مع لغة العميل، يحافظ على هويتك الحقيقية، ويقترح ردًا احترافيًا دون اختلاق معلومات أو التزام غير مؤكد.</p>
+      </div>
+      <div class="comm-status" id="comm-status">جاهز</div>
+    </div>
+
+    <div class="panel">
+      <div class="grid2">
+        <div><label>القناة / السياق</label>
+          <select id="comm-channel">
+            <option value="customer_support">Customer Support · دعم عميل</option>
+            <option value="sales_lead">Sales Lead · عميل محتمل</option>
+            <option value="freelance">Freelance Platform · منصة عمل</option>
+            <option value="marketplace">Marketplace · سوق</option>
+            <option value="partner">Partner / B2B · شريك</option>
+            <option value="social_dm">Social / DM · رسالة خاصة</option>
+            <option value="follow_up">Follow-up · متابعة</option>
+            <option value="negotiation">Negotiation · تفاوض</option>
+          </select>
+        </div>
+        <div><label>دور الوكيل</label>
+          <select id="comm-role">
+            <option value="support">مساعد خدمة العملاء</option>
+            <option value="sales">مندوب مبيعات</option>
+            <option value="business_development">تطوير أعمال</option>
+            <option value="freelance">مساعد منصات العمل</option>
+            <option value="partner_manager">مدير علاقات وشراكات</option>
+            <option value="translator">مترجم / فاحص لغوي</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div><label>لغة المصدر</label>
+          <select id="comm-source-lang">
+            <option value="auto">Auto Detect · اكتشاف تلقائي</option><option value="ar">العربية</option><option value="en">English</option><option value="fa">فارسی</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option><option value="tr">Türkçe</option><option value="hi">हिन्दी</option><option value="ur">اردو</option><option value="zh-Hans">中文</option><option value="ja">日本語</option><option value="ko">한국어</option>
+          </select>
+        </div>
+        <div><label>لغة الرد</label>
+          <select id="comm-target-lang">
+            <option value="en">English · الإنجليزية</option><option value="ar">العربية</option><option value="fa">فارسی · الفارسية</option><option value="fr">Français · الفرنسية</option><option value="de">Deutsch · الألمانية</option><option value="es">Español · الإسبانية</option><option value="tr">Türkçe · التركية</option><option value="hi">हिन्दी · الهندية</option><option value="ur">اردو · الأوردية</option><option value="zh-Hans">中文 · الصينية</option><option value="ja">日本語 · اليابانية</option><option value="ko">한국어 · الكورية</option>
+          </select>
+        </div>
+        <div><label>النبرة</label>
+          <select id="comm-tone">
+            <option value="professional_warm">Professional + Warm · احترافي ودافئ</option><option value="concise">Concise · مختصر</option><option value="sales">Sales · بيعي</option><option value="premium">Premium · راقٍ</option><option value="friendly">Friendly · ودود</option><option value="firm">Firm · حازم ومحترم</option>
+          </select>
+        </div>
+      </div>
+
+      <label>نوع النتيجة</label>
+      <select id="comm-mode">
+        <option value="reply_translate">رد + ترجمة داخلية</option>
+        <option value="translate_only">ترجمة فقط</option>
+        <option value="reply_only">رد جاهز باللغة الهدف</option>
+        <option value="reply_bilingual">رد باللغة الهدف + نسخة عربية داخلية</option>
+      </select>
+
+      <label>رسالة العميل / المنصة</label>
+      <textarea id="comm-input" rows="7" placeholder="الصق رسالة العميل هنا، أو استخدم الميكروفون للمحادثة الصوتية."></textarea>
+
+      <div class="row">
+        <button id="comm-compose" class="primary">🧠 تحليل وصياغة</button>
+        <button id="comm-speak" class="secondary">🔊 نطق الرد</button>
+        <button id="comm-copy" class="secondary">📋 نسخ الرد</button>
+        <button id="comm-live" class="secondary">🎙 Live Interpreter</button>
+      </div>
+
+      <div class="notice">
+        <b>قاعدة الثقة:</b> MIDAD لا يختلق سعرًا أو موعدًا أو هوية أو موافقة أو وعدًا غير موجود في السياق. الإرسال الخارجي يظل منفصلًا، ويمكن تحويل تسجيل الدخول/2FA/CAPTCHA/التوقيع إلى Human Gate.
+      </div>
+    </div>
+
+    <div class="comm-grid">
+      <div class="panel comm-box"><div class="panel-head"><h3>فهم داخلي</h3><span id="comm-confidence" class="pill">—</span></div><div id="comm-internal" class="comm-text muted">لا توجد نتيجة بعد.</div></div>
+      <div class="panel comm-box"><div class="panel-head"><h3>الرد الجاهز</h3><span id="comm-target-label" class="pill">English</span></div><div id="comm-reply" class="comm-text">—</div></div>
+      <div class="panel comm-box"><div class="panel-head"><h3>ترجمة عربية</h3><span class="pill">مرجع داخلي</span></div><div id="comm-arabic" class="comm-text muted">—</div></div>
+    </div>
+
+    <div class="panel"><div class="panel-head"><h3>Communication Memory</h3><button id="comm-clear-history" class="ghost">مسح السجل</button></div><div id="comm-history" class="comm-history"></div></div>
+
+    <div id="live-interpreter-panel" class="panel live-panel hidden">
+      <div class="panel-head"><div><div class="eyebrow">LIVE INTERPRETER</div><h3>مترجم صوتي مباشر</h3></div><span id="live-state" class="pill warn">متوقف</span></div>
+      <div class="live-grid">
+        <div><div class="metric-kicker">INPUT</div><div id="live-input-transcript" class="comm-text">—</div></div>
+        <div><div class="metric-kicker">OUTPUT</div><div id="live-output-transcript" class="comm-text">—</div></div>
+      </div>
+      <div class="row"><button id="live-stop" class="secondary">⏹ إيقاف</button></div>
+      <div class="notice">الترجمة المباشرة تستخدم جلسة مؤقتة. لا يرسل هذا المسار رسائل إلى العملاء تلقائيًا.</div>
+    </div>
+  </section>
+
   <section id="missions" class="view">
     <div class="section-title"><div><div class="eyebrow">MISSIONS</div><h2>المهام والبوابات البشرية</h2></div><button id="refresh-tasks" class="secondary">تحديث</button></div>
     <div id="tasks"></div>
@@ -126,6 +224,7 @@
 
 <nav class="bottom-nav">
   <button data-view="command" class="active">🧠<span>المقود</span></button>
+  <button data-view="communication">💬<span>تواصل</span></button>
   <button data-view="missions">🎯<span>المهام</span></button>
   <button data-view="browser">🌐<span>المتصفح</span></button>
   <button data-view="automation">⚙️<span>Automation</span></button>
