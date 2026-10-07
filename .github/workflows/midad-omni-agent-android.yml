@@ -6,10 +6,8 @@ on:
     branches: ["main"]
     paths:
       - "mobile/web/omni-agent.*"
-      - "mobile/factory/products/midad-omni-agent.json"
-      - "mobile/factory/product.schema.json"
+      - "mobile/factory/**"
       - "mobile/package.json"
-      - "mobile/factory/render.mjs"
       - ".github/workflows/midad-omni-agent-android.yml"
 
 permissions:
@@ -82,6 +80,9 @@ jobs:
           s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
+      - name: Factory quality gate
+        run: node mobile/factory/quality-gate.mjs midad-omni-agent
+
       - name: Static JS syntax audit
         working-directory: mobile
         run: node --check web/omni-agent.js
