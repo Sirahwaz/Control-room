@@ -165,7 +165,12 @@ jobs:
           file "$APK"
           AAPT2="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
           test -x "$AAPT2"
-          "$AAPT2" dump badging "$APK" | grep -E "package: name='ai\.midad\.mobile'|versionName='0\.3\.0'|versionCode='30000'"
+           BADGING="$(\"$AAPT2\" dump badging \"$APK\")"
+           echo "$BADGING"
+           echo "$BADGING" | grep -F "package: name='${{ steps.product.outputs.app_id }}'" >/dev/null
+           echo "$BADGING" | grep -F "versionName='${{ steps.product.outputs.version }}'" >/dev/null
+           VERSION_CODE="$(node -e 'const v=process.argv[1].split(\".\").map(Number); console.log(v[0]*10000+v[1]*100+v[2])' "${{ steps.product.outputs.version }}")"
+           echo "$BADGING" | grep -F "versionCode='$VERSION_CODE'" >/dev/null
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
 
