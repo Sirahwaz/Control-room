@@ -1,0 +1,57 @@
+{
+  "$schema": "../product-request.schema.json",
+  "product_key": "customer-product",
+  "display_name": "Customer Product",
+  "app_id": "ai.midad.customer.product",
+  "version": "0.1.0",
+  "objective": "Describe the measurable user/business outcome the application must deliver.",
+  "target_markets": [
+    "global_remote"
+  ],
+  "languages": [
+    "ar",
+    "en",
+    "fa"
+  ],
+  "surfaces": [
+    "dashboard",
+    "onboarding",
+    "core-workflow",
+    "settings"
+  ],
+  "features": {
+    "camera_input": true,
+    "communication_agent": true,
+    "communication_memory": true,
+    "smart_inspector": true
+  },
+  "backend": {
+    "database": "supabase",
+    "storage": "supabase-storage"
+  },
+  "monetization": {
+    "model": "subscription"
+  },
+  "constraints": [
+    "mobile-first",
+    "large-readable-ui",
+    "rtl-ready",
+    "no hard-coded secrets"
+  ],
+  "acceptance_tests": [
+    "main workflow completes without JavaScript errors",
+    "security boundary checks pass",
+    "required empty/loading/error states exist"
+  ],
+  "delivery": {
+    "channel": "internal",
+    "artifacts": [
+      "apk",
+      "sha256",
+      "manifest",
+      "build_report",
+      "test_report",
+      "learning_report"
+    ]
+  }
+}
