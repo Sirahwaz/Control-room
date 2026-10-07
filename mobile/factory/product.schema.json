@@ -149,6 +149,24 @@
         },
         "trust_boundary_ui": {
           "type": "boolean"
+        },
+        "proactive_execution": {
+          "type": "boolean"
+        },
+        "adaptive_recovery": {
+          "type": "boolean"
+        },
+        "evidence_capture": {
+          "type": "boolean"
+        },
+        "mission_autoflow": {
+          "type": "boolean"
+        },
+        "camera_input": {
+          "type": "boolean"
+        },
+        "smart_inspector": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
