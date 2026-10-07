@@ -167,6 +167,24 @@
         },
         "smart_inspector": {
           "type": "boolean"
+        },
+        "communication_agent": {
+          "type": "boolean"
+        },
+        "multilingual_composer": {
+          "type": "boolean"
+        },
+        "live_voice_translation": {
+          "type": "boolean"
+        },
+        "voice_reply": {
+          "type": "boolean"
+        },
+        "communication_memory": {
+          "type": "boolean"
+        },
+        "send_requires_human_gate": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
