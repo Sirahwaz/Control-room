@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MIDAD Mobile Factory Configuration",
+  "type": "object",
+  "required": [
+    "factory_version",
+    "engine",
+    "default_pipeline",
+    "quality",
+    "learning",
+    "data",
+    "ui_generation",
+    "automation",
+    "delivery"
+  ],
+  "properties": {
+    "factory_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "engine": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "default_pipeline": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "quality": {
+      "type": "object"
+    },
+    "learning": {
+      "type": "object"
+    },
+    "data": {
+      "type": "object"
+    },
+    "ui_generation": {
+      "type": "object"
+    },
+    "automation": {
+      "type": "object"
+    },
+    "delivery": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
