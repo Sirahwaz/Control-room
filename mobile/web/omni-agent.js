@@ -18,7 +18,9 @@
     profile: readJson("midad.omni.profile", {}),
     recipes: readJson("midad.omni.recipes", []),
     contexts: readJson("midad.omni.contexts", []),
-    proactive: localStorage.getItem("midad.omni.proactive") === "1"
+    proactive: localStorage.getItem("midad.omni.proactive") === "1",
+    communications: readJson("midad.omni.communications", []),
+    live: { socket: null, mediaStream: null, audioContext: null, processor: null, source: null, nextPlayTime: 0 }
   };
 
   function readJson(key, fallback) {
@@ -572,6 +574,272 @@
     };
   }
 
+
+  const COMM_LANG_NAMES = {
+    ar:"العربية", en:"English", fa:"فارسی", fr:"Français", de:"Deutsch", es:"Español",
+    tr:"Türkçe", hi:"हिन्दी", ur:"اردو", "zh-Hans":"中文", ja:"日本語", ko:"한국어"
+  };
+
+  function commLangName(code) {
+    return COMM_LANG_NAMES[code] || code || "—";
+  }
+
+  function renderCommunicationHistory() {
+    const host = $("#comm-history");
+    if (!host) return;
+    host.innerHTML = state.communications.slice(0,20).map((x) =>
+      '<div class="history-item"><b>' + escapeHtml((x.channel || "communication") + " · " + (x.target_language || "en")) +
+      '</b><small>' + escapeHtml(new Date(x.at || Date.now()).toLocaleString("ar")) + '</small>' +
+      '<div class="comm-text">' + escapeHtml(x.reply || "") + '</div></div>'
+    ).join("") || '<div class="muted">لا توجد محادثات محفوظة.</div>';
+  }
+
+  function setCommStatus(text, kind = "ok") {
+    const el = $("#comm-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "comm-status";
+    if (kind === "warn") el.style.color = "#f1d37e";
+    else if (kind === "error") el.style.color = "#ff9d9d";
+    else el.style.color = "#8df0c9";
+  }
+
+  async function runCommunicationAgent() {
+    const message = $("#comm-input")?.value?.trim() || "";
+    if (!message) {
+      setCommStatus("أدخل رسالة أولًا", "warn");
+      return;
+    }
+    const payload = {
+      prompt: message,
+      source_language: $("#comm-source-lang")?.value || "auto",
+      target_language: $("#comm-target-lang")?.value || "en",
+      channel: $("#comm-channel")?.value || "customer_support",
+      agent_role: $("#comm-role")?.value || "support",
+      tone: $("#comm-tone")?.value || "professional_warm",
+      mode: $("#comm-mode")?.value || "reply_translate",
+      profile: state.profile,
+      context: state.contexts.slice(0,20)
+    };
+    try {
+      setCommStatus("MIDAD يحلل ويصيغ…");
+      log("Communication Agent: تحليل الرسالة وصياغة الرد.", "communication");
+      const result = await ai("communication", payload);
+      const data = result.result || result.communication || result;
+      const reply = data.reply_target || data.reply || result.output_text || "";
+      const arabic = data.reply_arabic || data.internal_arabic_summary || data.translation_arabic || "";
+      const internal = data.internal_arabic_summary || data.intent || "";
+      const confidence = data.confidence ?? "—";
+      $("#comm-reply").textContent = reply || "لم يتم توليد رد.";
+      $("#comm-arabic").textContent = arabic || "—";
+      $("#comm-internal").textContent = internal || "—";
+      $("#comm-confidence").textContent = typeof confidence === "number" ? Math.round(confidence*100) + "%" : String(confidence);
+      $("#comm-target-label").textContent = commLangName(payload.target_language);
+      state.communications.unshift({
+        at: new Date().toISOString(), channel: payload.channel, target_language: payload.target_language,
+        incoming: message, reply, arabic, internal, confidence
+      });
+      state.communications = state.communications.slice(0,20);
+      writeJson("midad.omni.communications", state.communications);
+      renderCommunicationHistory();
+      setCommStatus("تمت الصياغة — جاهز للمراجعة");
+      log("Communication Agent: الرد جاهز، ولم يتم إرساله تلقائيًا.", "communication");
+    } catch (error) {
+      setCommStatus("فشل التنفيذ", "error");
+      log(error.message, "error");
+    }
+  }
+
+  function speakCommunicationReply() {
+    const text = $("#comm-reply")?.textContent?.trim() || "";
+    if (!text || text === "—") {
+      log("لا يوجد رد جاهز للنطق.", "voice");
+      return;
+    }
+    if (!("speechSynthesis" in window)) {
+      log("تحويل النص إلى صوت غير متاح في WebView الحالية.", "voice");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const lang = $("#comm-target-lang")?.value || "en";
+    u.lang = lang === "zh-Hans" ? "zh-CN" : lang === "fa" ? "fa-IR" : lang === "ar" ? "ar-SA" : lang;
+    u.rate = 0.98;
+    u.pitch = 1;
+    window.speechSynthesis.speak(u);
+    log("تم تشغيل نطق الرد باللغة " + commLangName(lang) + ".", "voice");
+  }
+
+  async function copyCommunicationReply() {
+    const text = $("#comm-reply")?.textContent?.trim() || "";
+    if (!text || text === "—") return;
+    try {
+      await navigator.clipboard.writeText(text);
+      log("تم نسخ الرد الجاهز.", "clipboard");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      log("تم نسخ الرد الجاهز.", "clipboard");
+    }
+  }
+
+  function decodeBase64Pcm16(b64) {
+    const bin = atob(b64);
+    const out = new Int16Array(bin.length / 2);
+    for (let i=0;i<out.length;i++) out[i] = (bin.charCodeAt(i*2) | (bin.charCodeAt(i*2+1)<<8));
+    return out;
+  }
+
+  function playLivePcm(b64) {
+    const ctx = state.live.audioContext;
+    if (!ctx) return;
+    const pcm = decodeBase64Pcm16(b64);
+    const buf = ctx.createBuffer(1, pcm.length, 24000);
+    const ch = buf.getChannelData(0);
+    for (let i=0;i<pcm.length;i++) ch[i] = pcm[i] / 32768;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const start = Math.max(ctx.currentTime + 0.01, state.live.nextPlayTime || 0);
+    src.start(start);
+    state.live.nextPlayTime = start + buf.duration;
+  }
+
+  function floatToPcm16(input) {
+    const out = new Int16Array(input.length);
+    for (let i=0;i<input.length;i++) {
+      const v = Math.max(-1, Math.min(1, input[i]));
+      out[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+    }
+    return new Uint8Array(out.buffer);
+  }
+
+  function toBase64(bytes) {
+    let s = "";
+    const chunk = 0x8000;
+    for (let i=0;i<bytes.length;i+=chunk) s += String.fromCharCode(...bytes.subarray(i, Math.min(i+chunk, bytes.length)));
+    return btoa(s);
+  }
+
+  async function stopLiveInterpreter() {
+    try { state.live.processor?.disconnect?.(); } catch {}
+    try { state.live.source?.disconnect?.(); } catch {}
+    try { state.live.mediaStream?.getTracks?.().forEach(t => t.stop()); } catch {}
+    try { await state.live.audioContext?.close?.(); } catch {}
+    try { state.live.socket?.close?.(); } catch {}
+    state.live.socket = null;
+    state.live.mediaStream = null;
+    state.live.processor = null;
+    state.live.source = null;
+    state.live.audioContext = null;
+    state.live.nextPlayTime = 0;
+    if ($("#live-state")) {
+      $("#live-state").textContent = "متوقف";
+      $("#live-state").className = "pill warn";
+    }
+    log("تم إيقاف Live Interpreter.", "voice");
+  }
+
+  async function startLiveInterpreter() {
+    if (state.live.socket) { await stopLiveInterpreter(); return; }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      log("الميكروفون غير متاح في WebView الحالية.", "voice");
+      return;
+    }
+    const target = $("#comm-target-lang")?.value || "en";
+    try {
+      setCommStatus("تهيئة الترجمة المباشرة…");
+      const tokenResult = await ai("live_token", { target_language: target });
+      const token = tokenResult.token || tokenResult.name || tokenResult.token_name;
+      if (!token) throw new Error("لم يتم الحصول على Live token.");
+      const ws = new WebSocket(
+        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?access_token=" +
+        encodeURIComponent(token)
+      );
+      state.live.socket = ws;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }});
+      state.live.mediaStream = stream;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      state.live.audioContext = ctx;
+      state.live.nextPlayTime = ctx.currentTime;
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          setup: {
+            model: "models/gemini-3.5-live-translate-preview",
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              translationConfig: { targetLanguageCode: target, echoTargetLanguage: true }
+            }
+          }
+        }));
+        const source = ctx.createMediaStreamSource(stream);
+        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        processor.onaudioprocess = (event) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const pcm = floatToPcm16(event.inputBuffer.getChannelData(0));
+          ws.send(JSON.stringify({
+            realtimeInput: {
+              audio: { data: toBase64(pcm), mimeType: "audio/pcm;rate=" + String(ctx.sampleRate) }
+            }
+          }));
+        };
+        source.connect(processor);
+        processor.connect(ctx.destination);
+        state.live.source = source;
+        state.live.processor = processor;
+        if ($("#live-state")) {
+          $("#live-state").textContent = "يستمع";
+          $("#live-state").className = "pill ok";
+        }
+        setCommStatus("Live Interpreter يعمل");
+        log("Live Interpreter: بدأ الاستماع والترجمة إلى " + commLangName(target) + ".", "voice");
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          const c = msg.serverContent;
+          if (c?.inputTranscription?.text) $("#live-input-transcript").textContent = c.inputTranscription.text;
+          if (c?.outputTranscription?.text) {
+            $("#live-output-transcript").textContent = c.outputTranscription.text;
+            $("#comm-input").value = c.inputTranscription?.text || $("#comm-input").value;
+          }
+          for (const part of (c?.modelTurn?.parts || [])) {
+            if (part.inlineData?.data) playLivePcm(part.inlineData.data);
+          }
+        } catch (e) { log("Live message parse error: " + e.message, "error"); }
+      };
+      ws.onerror = () => log("Live Interpreter WebSocket error.", "error");
+      ws.onclose = () => {
+        if (state.live.socket === ws) stopLiveInterpreter();
+      };
+    } catch (error) {
+      await stopLiveInterpreter();
+      setCommStatus("تعذر تشغيل Live Interpreter", "error");
+      log(error.message, "error");
+    }
+  }
+
+  function installCommunication() {
+    $("#comm-compose")?.addEventListener("click", runCommunicationAgent);
+    $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
+    $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
+    $("#comm-live")?.addEventListener("click", startLiveInterpreter);
+    $("#live-stop")?.addEventListener("click", stopLiveInterpreter);
+    $("#comm-clear-history")?.addEventListener("click", () => {
+      state.communications = [];
+      writeJson("midad.omni.communications", state.communications);
+      renderCommunicationHistory();
+      log("تم مسح Communication Memory المحلية.", "communication");
+    });
+  }
+
   function installButtons() {
     $("#settings-btn")?.addEventListener("click", () => switchView("settings"));
     $$(".bottom-nav button").forEach((button) => {
@@ -643,6 +911,18 @@
       };
       recognition.onerror = (event) => log("Voice error: " + event.error, "error");
       recognition.start();
+    });
+
+    $("#comm-compose")?.addEventListener("click", runCommunicationAgent);
+    $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
+    $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
+    $("#comm-live")?.addEventListener("click", startLiveInterpreter);
+    $("#live-stop")?.addEventListener("click", stopLiveInterpreter);
+    $("#comm-clear-history")?.addEventListener("click", () => {
+      state.communications = [];
+      writeJson("midad.omni.communications", state.communications);
+      renderCommunicationHistory();
+      log("تم مسح Communication Memory المحلية.", "communication");
     });
 
     $("#refresh-tasks")?.addEventListener("click", refreshMissions);
@@ -887,6 +1167,8 @@
   renderContexts();
   renderRecipes();
   renderProfile();
+  renderCommunicationHistory();
+  installCommunication();
   updatePairState();
 
   log("MIDAD Omni Agent v0.3 runtime جاهز · Native primary · Gemini specialist · TinyFish fallback", "boot");
