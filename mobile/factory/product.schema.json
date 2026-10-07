@@ -250,6 +250,13 @@
         }
       },
       "additionalProperties": true
+    },
+    "web_assets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 0
     }
   },
   "additionalProperties": false
