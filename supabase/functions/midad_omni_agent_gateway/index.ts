@@ -59,6 +59,81 @@ function safeProfileValue(snapshot:any,key:string){
   return String(x);
 }
 
+
+async function persistCommunicationSignal(sb:any,ownerId:string,body:any,result:any,conversationId:string){
+  const channel=clip(body.channel||"customer_support",64);
+  const externalRef=clip(body.external_ref||body.client_ref||body.external_message_id,240)||("conversation:"+conversationId);
+  const clientContact=clip(body.client_contact||body.contact,320)||null;
+  const clientName=clip(body.client_name||body.display_name,320)||null;
+  const conf=Number.isFinite(Number(result?.confidence))?Math.max(0,Math.min(1,Number(result.confidence))):null;
+  const clientMetadata={
+    source:"communication_intelligence",
+    conversation_id:conversationId,
+    channel,
+    inferred_fields:{
+      intent:result?.intent||null,
+      requirements:Array.isArray(result?.extracted_requirements)?result.extracted_requirements.slice(0,20):[],
+      confidence:conf
+    }
+  };
+  let clientProfileId:string|null=null;
+  const old=await sb.from("midad_client_profiles").select("id,display_name,contact,preferred_language,detected_language,communication_style,metadata").eq("user_id",ownerId).eq("external_ref",externalRef).maybeSingle();
+  const base:any={
+    user_id:ownerId,
+    external_ref:externalRef,
+    display_name:clientName,
+    contact:clientContact,
+    preferred_language:clip(body.client_preferred_language||result?.target_language,40)||null,
+    detected_language:clip(result?.detected_language,40)||null,
+    communication_style:clip(result?.sentiment,80)||null,
+    trust_level:old.data?.trust_level||"unknown",
+    notes:clip(result?.internal_arabic_summary,1800)||null,
+    metadata:clientMetadata
+  };
+  if(old.data?.id){
+    const patch:any={updated_at:new Date().toISOString(),metadata:{...(old.data?.metadata||{}),...clientMetadata}};
+    for(const k of ["display_name","contact","preferred_language","detected_language","communication_style","notes"]) if(base[k]) patch[k]=base[k];
+    const up=await sb.from("midad_client_profiles").update(patch).eq("id",old.data.id).select("id").maybeSingle();
+    clientProfileId=up.data?.id||old.data.id;
+  }else{
+    const ins=await sb.from("midad_client_profiles").insert(base).select("id").single();
+    clientProfileId=ins.data?.id||null;
+  }
+
+  const ls=result?.lead_signal;
+  const qualified=Boolean(ls?.qualified===true||ls?.is_lead===true||ls===true);
+  const leadScore=Number.isFinite(Number(ls?.score))?Math.max(0,Math.min(1,Number(ls.score))):(qualified?.75:0);
+  if(qualified && leadScore>=0.55){
+    const source="communication";
+    const need=clip(
+      (Array.isArray(result?.extracted_requirements)?result.extracted_requirements.join("; "):"")+
+      (result?.intent?" | intent: "+result.intent:""),
+      1800
+    );
+    const recent=await sb.from("leads").select("id,metadata").eq("user_id",ownerId).eq("source",source).eq("contact",clientContact||externalRef).order("created_at",{ascending:false}).limit(20);
+    const exists=(recent.data||[]).some((x:any)=>x?.metadata?.conversation_id===conversationId);
+    if(!exists){
+      await sb.from("leads").insert({
+        user_id:ownerId,
+        source,
+        name:clientName||externalRef,
+        contact:clientContact||externalRef,
+        need:need||clip(result?.internal_arabic_summary,1800)||"Communication-derived lead",
+        stage:"new",
+        metadata:{
+          conversation_id:conversationId,
+          client_profile_id:clientProfileId,
+          score:leadScore,
+          reason:clip(ls?.reason,1200),
+          detected_language:result?.detected_language||null,
+          channel
+        }
+      });
+    }
+  }
+  return {client_profile_id:clientProfileId,lead_created:qualified&&leadScore>=0.55};
+}
+
 const SYS="MIDAD Omni Agent: high-reliability agentic planner. Prefer MIDAD Native orchestration; use specialized Gemini capability when useful. Never bypass authentication, human verification, identity checks or signatures. Never collect recovery secrets. Explain gates, evidence, expected result and fallback.";
 Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:H});if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
 const sb=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");const body=await req.json().catch(()=>({}));const action=clip(body.action||"capabilities",80).toLowerCase();
@@ -132,7 +207,31 @@ if(action==="form_plan"){
   return json({ok:true,action,provider:n?.ok?"midad-native":"gemini",profile:snapshot,field_actions:safeActions,blocked_fields:Array.isArray(plan.blocked_fields)?plan.blocked_fields.slice(0,80):[],missing_required:Array.isArray(plan.missing_required)?plan.missing_required.slice(0,40):[],human_gate_required:Boolean(plan.human_gate_required),expected_result:clip(plan.expected_result,1000)});
 }
 const prompt=clip(body.prompt,18000);if(["plan","automation_plan","communication","gemini_text","research","vision_inspect"].includes(action)&&!prompt)return json({ok:false,error:"prompt_required"},400);
-if(action==="communication"){const target=clip(body.target_language||"en",32),source=clip(body.source_language||"auto",32),channel=clip(body.channel||"customer_support",64),role=clip(body.agent_role||"support",64),tone=clip(body.tone||"professional_warm",64),mode=clip(body.mode||"reply_translate",64),conversationId=clip(body.conversation_id,80)||crypto.randomUUID();const owner=await ownerProfile(sb,s.owner_user_id,body.profile||{});const spec=SYS+"\nAct as MIDAD Global Communication Intelligence. Understand the incoming message even when it is in another language. Produce a truthful, culturally appropriate professional draft using ONLY OWNER_PROFILE and CONTEXTS. Never invent facts, commitments, prices, dates, identities or approvals. Never send automatically. Also extract a concise client intent for downstream Revenue Intelligence. Return STRICT JSON with keys detected_language,internal_arabic_summary,intent,urgency,sentiment,extracted_requirements,reply_target,reply_arabic,translation_arabic,confidence,risk_flags,send_readiness,next_action,lead_signal.\nSOURCE="+source+" TARGET="+target+" CHANNEL="+channel+" ROLE="+role+" TONE="+tone+" MODE="+mode+"\nOWNER_PROFILE="+JSON.stringify(owner)+"\nCONTEXTS="+JSON.stringify(body.context||[])+"\nINCOMING:\n"+prompt;const n=await native(spec,{app:"midad-omni-agent",mode:"communication",target_language:target,owner_user_id:s.owner_user_id});let result:any;let provider="midad-native";let run_id=null;let selected_model=null;if(n.ok){result=parse(n.output);run_id=n.run_id;selected_model=n.model}else{const x=await gemini(input(spec),"gemini-3.8-flash",[],{thinking_level:"high",thinking_summaries:"auto"});if(!x.ok)return json(x,503);provider="gemini";result=parse(outText(x.data));}const textOut=String(result?.reply_target||"");const aiDraft=textOut||outText(n?.data);try{await sb.from("midad_messages").insert({user_id:s.owner_user_id,conversation_id:conversationId,external_message_id:clip(body.external_message_id,240)||null,direction:"in",sender_role:"client",original_text:prompt,normalized_text:clip(result?.internal_arabic_summary||prompt,12000),detected_language:clip(result?.detected_language||source,40),target_language:target,intent:clip(result?.intent,240)||null,ai_draft:aiDraft||null,final_text:null,approval_status:"not_required",confidence:Number.isFinite(Number(result?.confidence))?Number(result.confidence):null,metadata:{channel,role,tone,mode,provider,lead_signal:result?.lead_signal||null,run_id}})}catch(_){}return json({ok:true,action,provider,output_text:aiDraft,result,conversation_id:conversationId,run_id,selected_model})}if(action==="plan"){const n=await native(SYS+"\nPlan this user mission. Return JSON with title,intent,mode,steps,gates,evidence,expected_result,fallback. USER:\n"+prompt,{profile:body.context?.profile||{},app:"midad-omni-agent"});if(n.ok)return json({ok:true,action,provider:"midad-native",output_text:n.output,plan:parse(n.output),run_id:n.run_id,selected_model:n.model});}
+if(action==="communication"){
+ const target=clip(body.target_language||"en",32),source=clip(body.source_language||"auto",32),channel=clip(body.channel||"customer_support",64),role=clip(body.agent_role||"support",64),tone=clip(body.tone||"professional_warm",64),mode=clip(body.mode||"reply_translate",64),conversationId=clip(body.conversation_id,80)||crypto.randomUUID();
+ const owner=await ownerProfile(sb,s.owner_user_id,body.profile||{});
+ const spec=SYS+"\nAct as MIDAD Global Communication Intelligence. Understand the incoming message even when it is in another language. Produce a truthful, culturally appropriate professional draft using ONLY OWNER_PROFILE and CONTEXTS. Never invent facts, commitments, prices, dates, identities or approvals. Never send automatically. Also extract a concise client intent for downstream Revenue Intelligence. Return STRICT JSON with keys detected_language,internal_arabic_summary,intent,urgency,sentiment,extracted_requirements,reply_target,reply_arabic,translation_arabic,confidence,risk_flags,send_readiness,next_action,lead_signal. lead_signal MUST be {qualified:boolean,score:0..1,reason:string}; set qualified=true only when the message shows a plausible commercial/service opportunity, not for greetings or noise.\nSOURCE="+source+" TARGET="+target+" CHANNEL="+channel+" ROLE="+role+" TONE="+tone+" MODE="+mode+"\nOWNER_PROFILE="+JSON.stringify(owner)+"\nCONTEXTS="+JSON.stringify(body.context||[])+"\nINCOMING:\n"+prompt;
+ let result:any,provider="midad-native",run_id=null,selected_model=null;
+ const n=await native(spec,{app:"midad-omni-agent",mode:"communication",target_language:target,owner_user_id:s.owner_user_id});
+ if(n.ok){result=parse(n.output);run_id=n.run_id;selected_model=n.model}
+ else{const x=await gemini(input(spec),"gemini-3.8-flash",[],{thinking_level:"high",thinking_summaries:"auto"});if(!x.ok)return json(x,503);provider="gemini";result=parse(outText(x.data));}
+ const textOut=String(result?.reply_target||"");
+ const aiDraft=textOut||"";
+ try{
+   await sb.from("midad_messages").insert({
+     user_id:s.owner_user_id,conversation_id:conversationId,external_message_id:clip(body.external_message_id,240)||null,
+     direction:"in",sender_role:"client",original_text:prompt,normalized_text:clip(result?.internal_arabic_summary||prompt,12000),
+     detected_language:clip(result?.detected_language||source,40),target_language:target,intent:clip(result?.intent,240)||null,
+     ai_draft:aiDraft||null,final_text:null,approval_status:"not_required",
+     confidence:Number.isFinite(Number(result?.confidence))?Number(result.confidence):null,
+     metadata:{channel,role,tone,mode,provider,lead_signal:result?.lead_signal||null,run_id}
+   });
+ }catch(_){}
+ let revenue:any={client_profile_id:null,lead_created:false};
+ try{revenue=await persistCommunicationSignal(sb,s.owner_user_id,body,result,conversationId)}catch(_){}
+ return json({ok:true,action,provider,output_text:aiDraft,result,conversation_id:conversationId,run_id,selected_model,revenue});
+}
+if(action==="plan"){const n=await native(SYS+"\nPlan this user mission. Return JSON with title,intent,mode,steps,gates,evidence,expected_result,fallback. USER:\n"+prompt,{profile:body.context?.profile||{},app:"midad-omni-agent"});if(n.ok)return json({ok:true,action,provider:"midad-native",output_text:n.output,plan:parse(n.output),run_id:n.run_id,selected_model:n.model});}
 if(action==="automation_plan"){const spec=SYS+"\nCreate an allowlisted Automation Recipe. Allowed step types: navigate,click,type_non_secret,select,wait,extract_public_text,screenshot,human_gate,verify. Never create secret-entry or bypass steps. Return JSON: title,steps,preconditions,expected_result,fallback. USER:\n"+prompt;const n=await native(spec,{app:"midad-omni-agent",mode:"automation_plan"});if(n.ok)return json({ok:true,action,provider:"midad-native",output_text:n.output,plan:parse(n.output),run_id:n.run_id,selected_model:n.model});}
 const imgs=(body.images||[]).map((x:any)=>({data:x?.data,mime_type:x?.mime_type||x?.mimeType})).filter((x:any)=>x.data&&x.mime_type);
 if(action==="vision_inspect"){const g=await gemini(input(SYS+"\nInspect this UI/image and identify visible fields, blockers and safe next steps. Do not infer hidden secrets.\n"+prompt,imgs),"gemini-3.8-flash",[],{thinking_level:"high",thinking_summaries:"auto"});return g.ok?json({ok:true,action,provider:"gemini",output_text:outText(g.data),raw:g.data}):json(g,503);}
