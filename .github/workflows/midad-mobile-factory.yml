@@ -1,0 +1,193 @@
+name: MIDAD Mobile Factory — Build Product
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_key:
+        description: "Factory product key under mobile/factory/products/"
+        required: true
+        default: "midad-omni-agent"
+        type: string
+      release_channel:
+        description: "Optional release channel override"
+        required: false
+        default: "debug"
+        type: choice
+        options:
+          - debug
+          - internal
+          - beta
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  build-product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Resolve product
+        id: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRODUCT_KEY="${{ inputs.product_key }}"
+          node mobile/factory/render.mjs "$PRODUCT_KEY"
+          jq -e --arg k "$PRODUCT_KEY" '.product_key==$k' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
+          VERSION="$(jq -r '.version' mobile/factory/runtime-product.json)"
+          NAME="$(jq -r '.artifact_name' mobile/factory/runtime-product.json)"
+          APP_ID="$(jq -r '.app_id' mobile/factory/runtime-product.json)"
+          WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
+          CHANNEL="${{ inputs.release_channel }}"
+          {
+            echo "product_key=$PRODUCT_KEY"
+            echo "version=$VERSION"
+            echo "artifact_name=$NAME"
+            echo "app_id=$APP_ID"
+            echo "web_entry=$WEB_ENTRY"
+            echo "release_channel=$CHANNEL"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+
+      - name: Prepare web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          WEB_ENTRY="${{ steps.product.outputs.web_entry }}"
+          test -f "$WEB_ENTRY"
+          rm -rf mobile/www
+          mkdir -p mobile/www/site
+          cp "$WEB_ENTRY" mobile/www/index.html
+          BASE="$(basename "${WEB_ENTRY%.html}")"
+          [ -f "mobile/web/$BASE.css" ] && cp "mobile/web/$BASE.css" mobile/www/ || true
+          [ -f mobile/web/omni-agent.js ] && cp mobile/web/omni-agent.js mobile/www/ || true
+
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android
+
+      - name: Sync Android
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Set product version
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="${{ steps.product.outputs.version }}"
+          VERSION_CODE="$(node -e 'const v=process.argv[1].split(".").map(Number); console.log(v[0]*10000+v[1]*100+v[2])' "$VERSION_NAME")"
+          export VERSION_NAME VERSION_CODE
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          p=Path("android/app/build.gradle")
+          s=p.read_text()
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
+          p.write_text(s)
+          PY
+
+      - name: Factory quality gate
+        run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product_key }}"
+
+      - name: JavaScript syntax audit
+        working-directory: mobile
+        run: node --check web/omni-agent.js
+
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Sign installable APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "$APK_SRC"
+          mkdir -p dist signing
+          keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "midad-factory-temp"             -keypass "midad-factory-temp"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          OUT="dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+          "$APKSIGNER" sign             --ks signing/midad-factory-temp.jks             --ks-pass pass:midad-factory-temp             --key-pass pass:midad-factory-temp             --ks-key-alias midadfactory             --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" verify --verbose "$OUT"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
+          cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+
+      - name: Write build and learning reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/build-report.json <<EOF
+          {
+            "product_key": "${{ steps.product.outputs.product_key }}",
+            "version": "${{ steps.product.outputs.version }}",
+            "release_channel": "${{ steps.product.outputs.release_channel }}",
+            "artifact_name": "${{ steps.product.outputs.artifact_name }}",
+            "factory_quality_gate": "PASSED",
+            "build_status": "PASSED"
+          }
+          EOF
+          cat > dist/test-report.json <<EOF
+          {
+            "product_key": "${{ steps.product.outputs.product_key }}",
+            "static_js_syntax": "PASSED",
+            "secret_scan": "PASSED",
+            "artifact_verification": "PASSED",
+            "runtime_smoke": "NOT_RUN_IN_CI"
+          }
+          EOF
+          cat > dist/learning-report.json <<EOF
+          {
+            "product_key": "${{ steps.product.outputs.product_key }}",
+            "factory_learning": "ENABLED",
+            "post_release_outcome": "PENDING",
+            "next_update": "capture build, runtime, user feedback and revenue outcomes"
+          }
+          EOF
+          rm -rf signing
+
+      - name: Upload factory artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.product.outputs.artifact_name }}-release
+          path: |
+            dist/*.apk
+            dist/*.sha256
+            dist/product-manifest.json
+            dist/factory-runtime.json
+            dist/build-report.json
+            dist/test-report.json
+            dist/learning-report.json
