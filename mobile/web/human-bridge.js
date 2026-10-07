@@ -90,6 +90,21 @@
     const c=$("#pairCode").value.trim().toUpperCase();if(c.length<6){toast("أدخل رمز الاقتران");return;}
     try{const d=await api("pair_complete",{code:c,device_id:await deviceId(),device_name:"MIDAD Human Bridge Android"});await setStore(K.token,d.bridge_token);await setStore(K.profile,"{}");connected(true);$("#pairStatus").textContent="تم الربط بنجاح";log("تم اقتران الجهاز");await loadAll();}catch(e){$("#pairStatus").textContent=e.message;toast("فشل الاقتران");log("Pairing failed: "+e.message);}
   }
+  async function requestConnection(){
+    const provider=($("#connectionProvider").value||"").trim();
+    const kind=$("#connectionKind").value||"wallet";
+    const targetUrl=($("#connectionUrl").value||"").trim();
+    if(!provider){toast("اكتب اسم المنصة أولًا");return;}
+    if(targetUrl&&!/^https:\/\//i.test(targetUrl)){toast("استخدم رابط HTTPS رسمي فقط");return;}
+    try{
+      const d=await api("create_connection_request",{provider_name:provider,kind,target_url:targetUrl});
+      $("#connectionProvider").value="";$("#connectionUrl").value="";
+      log("تم إنشاء مهمة Human-Gated لربط "+provider+" ("+kind+")");
+      toast("تم إنشاء مهمة الربط");
+      await loadAll();
+      if(d.task)activateTask(d.task.id);
+    }catch(e){toast("تعذر إنشاء مهمة الربط");log("Connection request failed: "+e.message);}
+  }
   async function loadProfile(){try{const d=await api("profile");profile=d.profile||{};await setStore(K.profile,JSON.stringify(profile));renderWallets();}catch(_){}}
   function renderWallets(){
     const q=($("#walletSearch").value||"").trim().toLowerCase();
@@ -108,7 +123,7 @@
     renderLog();
     const tok=await getStore(K.token);
     if(tok){try{await api("heartbeat");connected(true);await loadAll();}catch(_){await removeStore(K.token);connected(false);}}else connected(false);
-    $("#pairBtn").onclick=pair;$("#refreshBtn").onclick=loadAll;$("#openTaskBtn").onclick=openTask;$("#inspectBtn").onclick=inspect;$("#safeFillBtn").onclick=safeFill;$("#completeBtn").onclick=complete;$("#clearActiveBtn").onclick=()=>$("#activePanel").classList.add("hidden");$("#profileBtn").onclick=loadProfile;$("#walletSearch").oninput=renderWallets;
+    $("#pairBtn").onclick=pair;$("#connectionBtn").onclick=requestConnection;$("#refreshBtn").onclick=loadAll;$("#openTaskBtn").onclick=openTask;$("#inspectBtn").onclick=inspect;$("#safeFillBtn").onclick=safeFill;$("#completeBtn").onclick=complete;$("#clearActiveBtn").onclick=()=>$("#activePanel").classList.add("hidden");$("#profileBtn").onclick=loadProfile;$("#walletSearch").oninput=renderWallets;
     $("#clearLogBtn").onclick=async()=>{await setStore(K.log,"[]");renderLog();};
     try{const b=browser();if(b?.addListener){await b.addListener("urlChangeEvent",e=>{$("#pageStatus").textContent="تنقل: "+e.url;log("تنقل داخل الصفحة: "+e.url);});await b.addListener("messageFromWebview",e=>{const d=e?.detail||{};if(d.message==="midadPageReport"){const r=d.report||{};const flags=Object.entries(r.flags||{}).filter(([,v])=>v).map(([k])=>k).join(", ");$("#pageStatus").textContent="Inspector: "+(r.title||r.url||"")+" • "+(r.inputCount||0)+" حقول"+(flags?" • "+flags:"");if(flags)toast("حاجز مكتشف: "+flags);log("Inspector: "+flags);}});}}catch(_){}
     setInterval(async()=>{if(await getStore(K.token))await loadAll();},12000);
