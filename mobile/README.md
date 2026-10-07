@@ -78,3 +78,21 @@ The Factory now includes the `midad-human-bridge` product (`ai.midad.human.bridg
 Human checkpoints stay human. The bridge does not bypass CAPTCHA, KYC, 2FA, access controls, or identity checks. It also never stores private keys, seed phrases, passwords, OTP values, exchange secrets, or service-role keys in the APK.
 
 The bridge uses a provider-neutral contract. A managed WebView provider can be replaced without changing MIDAD Core's task model. See `mobile/factory/MIDAD_HUMAN_BRIDGE.md`.
+
+
+## MIDAD Omni Agent — standalone product
+
+The Factory now contains a separate product, midad-omni-agent (ai.midad.omni.agent), rather than extending the Human Bridge application.
+
+Its intended role is the MIDAD mobile agent operating surface:
+- Hybrid Agent Kernel with provider routing and resumable mission state.
+- Multimodal reasoning and server-side Gemini gateway.
+- Gemini Notebook handoff plus an optional Enterprise API path.
+- Android phone file selection for profile/media inputs.
+- Media Studio for AI image generation/editing.
+- Automation Recipe generation with an explicit allowlist and human-gate steps.
+- Profiles, platform contexts, connector fabric, wallet/address public lookup surfaces.
+- Native-first browser/automation path with TinyFish retained as a fallback provider.
+- Event bus, recovery loop, evidence trail, and visible trust boundary.
+
+This product is intentionally independent from midad-human-bridge; both can coexist and use shared MIDAD backend contracts.
