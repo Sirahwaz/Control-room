@@ -70,3 +70,11 @@ Production signing, Play AAB publishing, device smoke tests, notifications, iden
 
 Trading remains paper-only/live-locked by the existing MIDAD backend policy. The mobile app is not a privileged execution surface. The Factory enforces `server_side_secrets_only=true` before an Android product can be built.
 
+
+## MIDAD Human Bridge
+
+The Factory now includes the `midad-human-bridge` product (`ai.midad.human.bridge`). It is the human-intervention surface for MIDAD agents: Human Tasks, managed browser sessions, CAPTCHA/KYC/2FA checkpoints, safe autofill, wallet/address discovery, connector requests, and local event history.
+
+Human checkpoints stay human. The bridge does not bypass CAPTCHA, KYC, 2FA, access controls, or identity checks. It also never stores private keys, seed phrases, passwords, OTP values, exchange secrets, or service-role keys in the APK.
+
+The bridge uses a provider-neutral contract. A managed WebView provider can be replaced without changing MIDAD Core's task model. See `mobile/factory/MIDAD_HUMAN_BRIDGE.md`.
