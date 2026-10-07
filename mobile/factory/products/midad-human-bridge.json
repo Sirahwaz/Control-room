@@ -1,0 +1,50 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-human-bridge",
+  "display_name": "MIDAD Human Bridge",
+  "version": "0.1.0",
+  "app_id": "ai.midad.human.bridge",
+  "artifact_name": "MIDAD-Human-Bridge-v0.1.0",
+  "web_entry": "mobile/web/human-bridge.html",
+  "product_mode": "human-bridge",
+  "release_channel": "debug",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": true,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true,
+    "human_bridge": true,
+    "agentic_browser": true,
+    "safe_autofill": true,
+    "local_notifications": true,
+    "secure_pairing": true
+  },
+  "surfaces": [
+    "human-gates",
+    "browser-worker",
+    "platform-profiles",
+    "wallet-finder",
+    "connector-requests",
+    "event-stream"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "east_southeast_asia"
+  ],
+  "monetization_models": [
+    "internal",
+    "subscription",
+    "b2b_license",
+    "white_label"
+  ],
+  "revenue_mode": "internal"
+}
