@@ -21,7 +21,7 @@
     try{const p=prefs();if(p?.remove){await p.remove({key:k});return;}}catch(_){}
     try{localStorage.removeItem(k);}catch(_){}
   }
-  function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#039;"}[c]));}
+  function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
   function toast(m){const e=$("#toast");e.textContent=m;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),2200);}
   async function log(m){
     let a=[];try{const r=await getStore(K.log);a=r?JSON.parse(r):[];}catch(_){}
@@ -29,7 +29,7 @@
   }
   async function renderLog(){
     let a=[];try{const r=await getStore(K.log);a=r?JSON.parse(r):[];}catch(_){}
-    $("#events").innerHTML=a.map(x=>"<div class="event"><span class="event-dot"></span><div><time>"+new Date(x.t).toLocaleString("ar")+"</time><p>"+esc(x.m)+"</p></div></div>").join("")||"<div class="empty">لا توجد أحداث بعد.</div>";
+    $("#events").innerHTML=a.map(x=>`<div class="event"><span class="event-dot"></span><div><time>${new Date(x.t).toLocaleString("ar")}</time><p>${esc(x.m)}</p></div></div>`).join("")||'<div class="empty">لا توجد أحداث بعد.</div>';
   }
   async function deviceId(){let d=await getStore(K.device);if(d)return d;d="midad-bridge-"+crypto.randomUUID();await setStore(K.device,d);return d;}
   async function api(action,body={}){
