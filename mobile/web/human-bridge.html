@@ -44,6 +44,25 @@
 </section>
 
 <section class="panel">
+  <div class="panel-head"><div><div class="label">CONNECTION CENTER</div><h2>ربط محفظة / منصة / توقيع</h2></div><span class="state-chip">HUMAN GATED</span></div>
+  <p>أنشئ طلب ربط رسمي. MIDAD يجهّز المهمة، وأنت تنفّذ فقط الخطوة التي تطلبها المنصة.</p>
+  <div class="search-row">
+    <input id="connectionProvider" autocomplete="off" placeholder="اسم المنصة: Trust Wallet / WEEX / Exchange...">
+    <select id="connectionKind" class="select-input">
+      <option value="wallet">Wallet</option>
+      <option value="exchange">Exchange</option>
+      <option value="address">Coin / Address</option>
+      <option value="signature">Signature</option>
+    </select>
+  </div>
+  <div class="search-row">
+    <input id="connectionUrl" autocomplete="off" inputmode="url" placeholder="الرابط الرسمي (HTTPS) — اختياري">
+    <button id="connectionBtn">إنشاء مهمة ربط</button>
+  </div>
+  <div class="micro">لا تُدخل Private Key أو Seed Phrase أو OTP في التطبيق.</div>
+</section>
+
+<section class="panel">
   <div class="panel-head"><div><div class="label">EVENT STREAM</div><h2>سجل الجسر</h2></div><button id="clearLogBtn" class="icon-btn">×</button></div>
   <div id="events" class="event-list"></div>
 </section>
