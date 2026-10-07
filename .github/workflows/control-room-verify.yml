@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Git diff check
         run: git diff --check
@@ -55,6 +55,29 @@ jobs:
           if (!appRule.includes('overflow:visible')) fail('#app must preserve vertical document scrolling');
           if (html.length < 30000) fail('iAiTrader static bundle unexpectedly small');
           console.log('IAITRADER_STATIC_CONTRACT_OK');
+          NODE
+
+      - name: Mobile Factory contract
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('mobile/factory/products/midad-mobile.json','utf8'));
+          const pkg = JSON.parse(fs.readFileSync('mobile/package.json','utf8'));
+          const cap = JSON.parse(fs.readFileSync('mobile/capacitor.config.json','utf8'));
+          const html = fs.readFileSync('mobile/web/index.html','utf8');
+          const js = fs.readFileSync('mobile/web/mobile-hub.js','utf8');
+          const fail = (m) => { throw new Error(m); };
+          if(manifest.product_key !== 'midad-mobile') fail('Unexpected mobile product key');
+          if(manifest.app_id !== cap.appId) fail('Capacitor appId drift');
+          if(manifest.app_id !== 'ai.midad.mobile') fail('Canonical mobile appId changed');
+          if(manifest.version !== pkg.version) fail('mobile/package.json version drift');
+          if(manifest.features?.server_side_secrets_only !== true) fail('Mobile secret boundary weakened');
+          if(manifest.features?.live_financial_execution !== false) fail('Mobile live financial execution gate weakened');
+          for(const x of ['mobile-hub.css','mobile-hub.js','morph-engine.js']) if(!html.includes(x)) fail('Missing mobile asset '+x);
+          if(!js.includes('https://t.me/ViaBtcMonitor_bot')) fail('ViaBTC bot URL drift');
+          if(js.includes('https://t.me/viabtc_monitor')) fail('Obsolete ViaBTC bot URL remains');
+          console.log('MOBILE_FACTORY_CONTRACT_OK');
           NODE
 
       - name: Bot Fabric surface
