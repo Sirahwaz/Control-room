@@ -46,8 +46,8 @@
   }
   function renderTasks(){
     $("#taskCount").textContent=String(tasks.length);
-    if(!tasks.length){$("#tasks").innerHTML="<div class="empty">لا توجد مهام بشرية معلقة. عندما يحتاج MIDAD تدخلًا ستظهر هنا.</div>";return;}
-    $("#tasks").innerHTML=tasks.map(t=>"<article class="task"><div class="task-top"><h3>"+esc(t.title)+"</h3><span class="tag">"+esc((t.risk_class||"medium").toUpperCase())+"</span></div><p>"+esc(t.instruction||t.reason||"")+"</p><div class="task-meta"><span class="tag">"+esc(t.type||"HUMAN_INPUT")+"</span><span class="tag">"+esc(t.requested_by_agent||"MIDAD")+"</span></div><button data-task=""+esc(t.id)+"">فتح المهمة</button></article>").join("");
+    if(!tasks.length){$("#tasks").innerHTML='<div class="empty">لا توجد مهام بشرية معلقة. عندما يحتاج MIDAD تدخلًا ستظهر هنا.</div>';return;}
+    $("#tasks").innerHTML=tasks.map(t=>`<article class="task"><div class="task-top"><h3>${esc(t.title)}</h3><span class="tag">${esc((t.risk_class||"medium").toUpperCase())}</span></div><p>${esc(t.instruction||t.reason||"")}</p><div class="task-meta"><span class="tag">${esc(t.type||"HUMAN_INPUT")}</span><span class="tag">${esc(t.requested_by_agent||"MIDAD")}</span></div><button data-task="${esc(t.id)}">فتح المهمة</button></article>`).join("");
     $$("#tasks button").forEach(b=>b.onclick=()=>activateTask(b.dataset.task));
   }
   function activateTask(id){
@@ -110,7 +110,7 @@
     const q=($("#walletSearch").value||"").trim().toLowerCase();
     const rows=[...(profile.public_wallets||[]).map(x=>({name:x.label,chain:x.chain,address:x.address,purpose:x.purpose})),...(profile.wallet_connectors||[]).map(x=>({name:x.provider,chain:(x.chains||[]).join(", "),address:"—",purpose:x.connector_key}))];
     const f=rows.filter(x=>!q||[x.name,x.chain,x.address,x.purpose].join(" ").toLowerCase().includes(q));
-    $("#walletResults").innerHTML=f.map(x=>"<div class="wallet-item"><strong>"+esc(x.name)+"</strong><code>"+esc(x.address)+"</code><small>"+esc(x.chain)+" • "+esc(x.purpose)+"</small></div>").join("")||"<div class="empty">لا توجد نتائج.</div>";
+    $("#walletResults").innerHTML=f.map(x=>`<div class="wallet-item"><strong>${esc(x.name)}</strong><code>${esc(x.address)}</code><small>${esc(x.chain)} • ${esc(x.purpose)}</small></div>`).join("")||'<div class="empty">لا توجد نتائج.</div>';
   }
   async function loadAll(){
     try{const d=await api("list_tasks");const old=new Set(tasks.map(x=>x.id));tasks=d.tasks||[];renderTasks();connected(true);const fresh=tasks.find(x=>!old.has(x.id));if(fresh){toast("MIDAD يحتاج تدخلًا بشريًا");log("مهمة بشرية جديدة: "+fresh.title);notify(fresh);}}catch(e){connected(false);}
