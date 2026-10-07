@@ -20,6 +20,7 @@
     contexts: readJson("midad.omni.contexts", []),
     proactive: localStorage.getItem("midad.omni.proactive") === "1",
     communications: readJson("midad.omni.communications", []),
+    communications: readJson("midad.omni.communications", []),
     live: { socket: null, mediaStream: null, audioContext: null, processor: null, source: null, nextPlayTime: 0 }
   };
 
@@ -925,6 +926,12 @@
       log("تم مسح Communication Memory المحلية.", "communication");
     });
 
+    $("#comm-compose")?.addEventListener("click", runCommunicationAgent);
+    $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
+    $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
+    $("#comm-clear-history")?.addEventListener("click",()=>{state.communications=[];writeJson("midad.omni.communications",state.communications);renderCommunicationHistory();});
+    $("#comm-live")?.addEventListener("click",()=>log("Live Interpreter سيستخدم جلسة الصوت المباشر الآمنة بعد تفعيل Live token على Gateway.","voice"));
+    $("#live-stop")?.addEventListener("click",()=>log("لا توجد جلسة Live فعالة.","voice"));
     $("#refresh-tasks")?.addEventListener("click", refreshMissions);
     $("#refresh-jobs")?.addEventListener("click", refreshMissions);
 
@@ -1167,6 +1174,7 @@
   renderContexts();
   renderRecipes();
   renderProfile();
+  renderCommunicationHistory();
   renderCommunicationHistory();
   installCommunication();
   updatePairState();
