@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mesh_key": "midad-distribution-mesh-v1",
-  "status": "IMPLEMENTED_PENDING_LIVE_CHANNEL_VERIFICATION",
+  "status": "VERIFIED_E2E",
   "canonical_landing": "https://sirahwaz.github.io/Control-room/revenue/",
   "daily_target": {
     "qualified_targets_min": 10,
@@ -81,5 +81,23 @@
     "proof_required_before_claim": true,
     "payment_verified_on_chain_before_revenue_recognition": true,
     "human_approval_for_external_submission": true
+  },
+  "last_verified_at": "2026-10-07T06:44:30Z",
+  "verification": {
+    "github_pages_live": true,
+    "control_room_ci": "passed",
+    "pull_request": 47,
+    "merge_commit": "7591ef8869187df7c4ce2630e789853b5dc7ea9d",
+    "public_checkout_version": 8,
+    "attribution_persistence": "verified",
+    "non_payment_checkout_created": true,
+    "non_payment_checkout_cleaned_up": true
+  },
+  "lead_activation": {
+    "internal_targets_created": 10,
+    "qualified_target": 6,
+    "human_review": 4,
+    "auto_message_enabled": 0,
+    "note": "10 high-score internal opportunity targets activated; 4 remain human-gated because no exact active playbook/capability match was verified."
   }
 }
