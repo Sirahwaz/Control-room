@@ -90,10 +90,6 @@ jobs:
           s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
-        env:
-          VERSION_NAME: ${{ '0.1.0' }}
-          VERSION_CODE: 1000
-
       - name: Build release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
