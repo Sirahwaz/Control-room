@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b14">
+<title>MIDAD Omni Agent</title>
+<link rel="stylesheet" href="omni-agent.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">◆</span><div><strong>MIDAD Omni Agent</strong><small>Hybrid · Multimodal · Provider-Neutral</small></div></div>
+  <div class="top-actions"><span id="pair-state" class="pill warn">غير مقترن</span><button id="settings-btn" class="icon-btn" aria-label="الإعدادات">⚙</button></div>
+</header>
+
+<main id="app">
+  <section id="command" class="view active">
+    <div class="hero">
+      <div><div class="eyebrow">NEURAL COMMAND</div><h1>ماذا تريد أن ينجز MIDAD الآن؟</h1><p>يخطط → يتحقق → ينفذ المسموح → يتوقف عند بوابة بشرية → يستأنف تلقائيًا.</p></div>
+      <div class="brain">🧠</div>
+    </div>
+    <div class="command-card">
+      <textarea id="agent-prompt" rows="4" placeholder="مثال: جهّز ملف بروفايلي لمنصة العمل، أنشئ صورة مناسبة، وافتح صفحة التسجيل ثم توقف عند CAPTCHA."></textarea>
+      <div class="row">
+        <button id="run-agent" class="primary">تشغيل الوكيل</button>
+        <button id="plan-agent" class="secondary">خطّة فقط</button>
+        <button id="notebook-btn" class="secondary">📓 Gemini Notebook</button>
+      </div>
+    </div>
+    <div class="grid3">
+      <article class="stat"><span>المحرك الأساسي</span><b>MIDAD Native</b><small>لا يعتمد على TinyFish</small></article>
+      <article class="stat"><span>Fallback</span><b>TinyFish</b><small>يستخدم عند الحاجة فقط</small></article>
+      <article class="stat"><span>Human Gates</span><b id="task-count">0</b><small>CAPTCHA · KYC · 2FA · Sign</small></article>
+    </div>
+    <div id="agent-log" class="panel"><div class="panel-head"><h2>Neural Event Stream</h2><button id="clear-log" class="ghost">مسح</button></div><div id="events"></div></div>
+  </section>
+
+  <section id="missions" class="view">
+    <div class="section-title"><div><div class="eyebrow">MISSIONS</div><h2>المهام والبوابات البشرية</h2></div><button id="refresh-tasks" class="secondary">تحديث</button></div>
+    <div id="tasks"></div>
+    <div class="panel"><div class="panel-head"><h3>Browser Jobs</h3><button id="refresh-jobs" class="ghost">تحديث</button></div><div id="jobs"></div></div>
+  </section>
+
+  <section id="browser" class="view">
+    <div class="section-title"><div><div class="eyebrow">AGENT BROWSER</div><h2>المتصفح الوكيلي</h2></div></div>
+    <div class="panel">
+      <label>رابط المهمة</label>
+      <input id="browser-url" type="url" placeholder="https://example.com">
+      <div class="row"><button id="open-browser" class="primary">فتح صفحة آمنة</button><button id="inspect-browser" class="secondary">تحليل الصفحة</button></div>
+      <div class="notice"><b>Human Gate:</b> إذا ظهرت CAPTCHA أو KYC أو 2FA أو توقيع خارجي، يوقف الوكيل التنفيذ ويحوّل المهمة لك. لا توجد محاولة لتجاوز هذه الضوابط.</div>
+    </div>
+    <div class="panel"><div class="panel-head"><h3>Platform Contexts</h3><button id="new-context" class="ghost">إضافة</button></div><div id="contexts" class="chips"></div></div>
+  </section>
+
+  <section id="automation" class="view">
+    <div class="section-title"><div><div class="eyebrow">AUTOMATION LAB</div><h2>مصنع الأتمتة</h2></div></div>
+    <div class="panel">
+      <textarea id="automation-prompt" rows="5" placeholder="صف العملية كاملة. سيولّد MIDAD Recipe قابلة للمراجعة ثم التنفيذ."></textarea>
+      <div class="row"><button id="generate-recipe" class="primary">توليد Recipe</button><button id="save-recipe" class="secondary">حفظ</button></div>
+    </div>
+    <pre id="recipe-output" class="codebox">{}</pre>
+    <div class="panel"><div class="panel-head"><h3>Recipes محلية</h3></div><div id="recipes"></div></div>
+  </section>
+
+  <section id="media" class="view">
+    <div class="section-title"><div><div class="eyebrow">MEDIA STUDIO</div><h2>استوديو الصورة والهوية</h2></div></div>
+    <div class="panel">
+      <div class="media-grid">
+        <div>
+          <button id="pick-file" class="upload-box">🖼️ اختر صورة من الهاتف</button>
+          <input id="file-input" type="file" accept="image/*" hidden>
+          <div id="file-meta" class="muted">لم يتم اختيار ملف</div>
+        </div>
+        <img id="image-preview" class="preview" alt="preview">
+      </div>
+      <textarea id="image-prompt" rows="4" placeholder="مثال: حوّل الصورة إلى بروفايل احترافي نظيف مع خلفية محايدة، دون تغيير ملامح الشخص."></textarea>
+      <div class="row"><button id="generate-image" class="primary">توليد / تعديل بالـGemini</button><button id="use-profile" class="secondary">استخدام كصورة بروفايل</button></div>
+      <div class="notice">المفتاح يبقى على خادم MIDAD؛ التطبيق لا يحمل Gemini API key.</div>
+    </div>
+  </section>
+
+  <section id="profiles" class="view">
+    <div class="section-title"><div><div class="eyebrow">PROFILE FABRIC</div><h2>الملفات الشخصية والسياقات</h2></div></div>
+    <div class="panel">
+      <div class="grid2"><div><label>الاسم</label><input id="profile-name" placeholder="اسمك"></div><div><label>الدور</label><input id="profile-role" placeholder="Founder / Freelancer / Builder"></div></div>
+      <label>نبذة واقعية</label><textarea id="profile-bio" rows="3" placeholder="وصف حقيقي قابل لإعادة الاستخدام"></textarea>
+      <label>المهارات / المنتجات</label><textarea id="profile-skills" rows="3" placeholder="مهارات، منتجات، روابط عامة"></textarea>
+      <button id="save-profile" class="primary">حفظ السياق</button>
+    </div>
+    <div id="profile-status" class="panel"></div>
+  </section>
+
+  <section id="knowledge" class="view">
+    <div class="section-title"><div><div class="eyebrow">KNOWLEDGE MESH</div><h2>Gemini + Gemini Notebook</h2></div></div>
+    <div class="grid2">
+      <article class="panel"><h3>Gemini</h3><p>Reasoning + tool calling + multimodal. يدعم التخطيط، تحليل الصور، وتوليد/تحرير الصور عبر بوابة MIDAD.</p><button id="open-gemini" class="secondary">فتح Gemini</button></article>
+      <article class="panel"><h3>Gemini Notebook</h3><p>للبحوث القائمة على مصادر وملفات. الممر الرسمي يستخدم واجهة Notebook، مع قابلية ربط Enterprise API عندما تتوفر بيئة Google Cloud المناسبة.</p><button id="open-notebook" class="secondary">فتح Notebook</button></article>
+    </div>
+    <div class="panel"><h3>Knowledge actions</h3><div class="chips"><button data-k="research">بحث عميق</button><button data-k="summarize">تلخيص مصادر</button><button data-k="compare">مقارنة منصات</button><button data-k="extract">استخراج بيانات</button><button data-k="brief">تحويل البحث إلى خطة عمل</button></div></div>
+  </section>
+
+  <section id="connect" class="view">
+    <div class="section-title"><div><div class="eyebrow">CONNECTOR FABRIC</div><h2>المحافظ والمنصات والملحقات</h2></div></div>
+    <div class="panel">
+      <div class="grid2">
+        <div><label>النوع</label><select id="conn-kind"><option value="wallet">Wallet</option><option value="exchange">Exchange</option><option value="address">Address</option><option value="signature">Signature</option></select></div>
+        <div><label>المزوّد</label><input id="conn-provider" placeholder="Trust Wallet / WEEX / platform"></div>
+      </div>
+      <label>الرابط الرسمي</label><input id="conn-url" type="url" placeholder="https://...">
+      <button id="request-connection" class="primary">إنشاء Human Gate للربط</button>
+    </div>
+    <div class="panel"><h3>Provider Router</h3><div class="provider active"><b>MIDAD Native</b><span>Primary · Local/Native capable</span></div><div class="provider"><b>Gemini</b><span>Reasoning / multimodal / image</span></div><div class="provider"><b>Gemini Notebook</b><span>Knowledge / source-grounded research</span></div><div class="provider"><b>TinyFish</b><span>Fallback only · managed browser</span></div></div>
+  </section>
+
+  <section id="settings" class="view">
+    <div class="section-title"><div><div class="eyebrow">CONTROL PLANE</div><h2>الإعدادات والحدود</h2></div></div>
+    <div class="panel">
+      <label>MIDAD Human Bridge URL</label><input id="bridge-url" value="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_human_bridge">
+      <label>MIDAD AI Gateway URL</label><input id="ai-url" value="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_omni_agent_gateway">
+      <button id="save-settings" class="primary">حفظ الإعدادات</button>
+    </div>
+    <div class="panel"><h3>Trust Boundary</h3><div class="safety ok">✅ أسرار الخدمات تبقى على الخادم</div><div class="safety ok">✅ CAPTCHA / KYC / 2FA / التوقيع = Human Gate</div><div class="safety ok">✅ المعاملات المالية الحية غير مفعلة من التطبيق</div><div class="safety ok">✅ TinyFish ليس مسارًا أساسيًا</div><div class="safety warn">⚠️ توقيع خارجي أو سحب/تحويل يتطلب موافقة بشرية صريحة</div></div>
+    <div class="panel"><button id="pair-device" class="primary">ربط هذا الهاتف بـMIDAD</button><div id="pair-help" class="muted"></div></div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <button data-view="command" class="active">🧠<span>المقود</span></button>
+  <button data-view="missions">🎯<span>المهام</span></button>
+  <button data-view="browser">🌐<span>المتصفح</span></button>
+  <button data-view="automation">⚙️<span>Automation</span></button>
+  <button data-view="media">🎨<span>Media</span></button>
+  <button data-view="knowledge">📓<span>Knowledge</span></button>
+  <button data-view="connect">🔗<span>Connect</span></button>
+</nav>
+<script src="omni-agent.js"></script>
+</body>
+</html>
