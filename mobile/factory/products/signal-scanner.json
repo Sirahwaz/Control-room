@@ -1,0 +1,113 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "signal-scanner",
+  "display_name": "SignalScan AI",
+  "version": "0.1.0",
+  "app_id": "ai.signalscan.scanner",
+  "artifact_name": "SignalScan-AI-v0.1.0",
+  "web_entry": "mobile/web/signal-scanner.html",
+  "product_mode": "standalone-neural-scanner",
+  "release_channel": "internal",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": false,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true
+  },
+  "surfaces": [
+    "scanner",
+    "signals",
+    "signal-detail",
+    "replay-verify",
+    "watchlist",
+    "alerts",
+    "settings",
+    "neural-insight"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "east_southeast_asia"
+  ],
+  "monetization_models": [
+    "subscription",
+    "freemium",
+    "one_time",
+    "white_label",
+    "b2b_license"
+  ],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "request-driven-product",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": [
+        "global",
+        "product",
+        "tenant"
+      ],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true,
+      "objective": "Standalone real-time market signal scanner with multi-timeframe confluence, liquidity/structure proxies, transparent confidence scoring, replay verification, alerts, and explainable neural-style analysis."
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true,
+      "acceptance_tests": [
+        "app_id_is_standalone",
+        "no_server_secrets_in_client",
+        "scanner_has_loading_error_empty_states",
+        "signals_are_explainable",
+        "live_order_execution_is_disabled",
+        "ar_en_fa_localization_present"
+      ]
+    },
+    "data": {
+      "backend": "supabase",
+      "offline_first": true,
+      "sync_strategy": "outbox_then_reconcile",
+      "market_data": {
+        "primary": "binance-public",
+        "fallback": [
+          "coinex-public",
+          "coingecko-public"
+        ],
+        "client_secret_required": false
+      }
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "learning_report"
+      ]
+    }
+  },
+  "web_assets": [
+    "mobile/web/signal-scanner.css",
+    "mobile/web/signal-scanner.js"
+  ]
+}
