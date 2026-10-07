@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#070A12"><meta name="description" content="SignalScan AI — real-time market signal scanner.">
+<title>SignalScan AI</title><link rel="stylesheet" href="signal-scanner.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <div class="brand"><div class="radar-logo" aria-hidden="true"><span></span></div><div>
+    <div class="brand-name">SignalScan <b>AI</b></div><div class="brand-sub" data-i18n="brand_sub">Market Intelligence Scanner</div>
+  </div></div>
+  <div class="top-actions"><button class="icon-btn" id="langBtn">AR</button><button class="icon-btn" id="refreshBtn">↻</button></div>
+</header>
+
+<main>
+<section class="status-strip"><div class="status-dot live"></div><span id="statusText" data-i18n="ready">جاهز للفحص</span><span class="status-divider"></span><span id="lastUpdated">--</span><span class="status-source" id="dataSource">PUBLIC DATA</span></section>
+
+<section class="hero-card"><div class="hero-copy">
+<div class="eyebrow">NEURAL SCANNER</div><h1 data-i18n="hero_title">العثور على الإشارة قبل الضجيج</h1>
+<p data-i18n="hero_desc">يفحص الزخم والبنية والسيولة والحجم والتوافق متعدد الأطر، ثم يشرح سبب النتيجة بدل إغراقك بالأرقام.</p>
+</div><button class="primary-btn" id="scanBtn"><span class="scan-orb"></span><span data-i18n="scan_now">Scan Now</span></button></section>
+
+<section class="metric-grid" id="metricGrid"></section>
+
+<section class="control-card"><div class="section-head"><div><h2 data-i18n="scanner_controls">Scanner Controls</h2><div class="muted" data-i18n="control_hint">غيّر الإطار أو عدد الأصول قبل الفحص</div></div><button class="tiny-btn" id="resetFilters" data-i18n="reset">Reset</button></div>
+<div class="chip-row" id="intervalChips"></div><div class="chip-row" id="universeChips"></div>
+<div class="mini-row"><label><span data-i18n="risk_profile">Risk Profile</span><select id="riskProfile"><option value="balanced" data-i18n="balanced">Balanced</option><option value="conservative" data-i18n="conservative">Conservative</option><option value="aggressive" data-i18n="aggressive">Aggressive</option></select></label>
+<label><span data-i18n="min_score">Minimum Score</span><input id="minScore" type="range" min="55" max="85" step="5" value="65"></label></div>
+<div class="score-readout"><span data-i18n="score">Score</span> <b id="minScoreValue">65</b></div></section>
+
+<section class="signals-card"><div class="section-head"><div><h2 data-i18n="signals">Signals</h2><div class="muted" id="signalSummary">--</div></div><button class="tiny-btn" id="watchBtn" data-i18n="watchlist">Watchlist</button></div>
+<div id="signalsList" class="signals-list"><div class="empty-state"><div class="empty-icon">◎</div><strong data-i18n="empty_title">لا توجد نتائج بعد</strong><span data-i18n="empty_desc">اضغط Scan Now لتشغيل أول دورة فحص.</span></div></div></section>
+
+<section class="insight-card"><div class="section-head"><div><h2><span class="spark">✦</span> <span data-i18n="neural_insight">Neural Insight</span></h2><div class="muted" data-i18n="neural_sub">شرح إنساني، وليس رقمًا معزولًا</div></div><span class="badge neutral" id="insightState">PENDING</span></div>
+<div id="insightBody" class="insight-body" data-i18n="insight_wait">أكمل الفحص أولًا؛ بعد ذلك سأشرح أقوى حالة ولماذا هي مهمة.</div></section>
+
+<section class="quick-actions">
+<button class="action-tile" data-nav="replay"><span>↺</span><b data-i18n="replay">Replay & Verify</b><small data-i18n="replay_sub">اختبار تاريخي سريع</small></button>
+<button class="action-tile" data-nav="watch"><span>♡</span><b data-i18n="watchlist">Watchlist</b><small data-i18n="watch_sub">متابعة مخصصة</small></button>
+<button class="action-tile" data-nav="alerts"><span>⌁</span><b data-i18n="alerts">Alerts</b><small data-i18n="alerts_sub">تنبيهات محلية</small></button>
+<button class="action-tile" data-nav="settings"><span>⚙</span><b data-i18n="settings">Settings</b><small data-i18n="settings_sub">اللغة والأداء</small></button>
+</section>
+<section class="disclaimer" data-i18n="disclaimer">للاستخدام المعلوماتي والتعليمـي فقط. الإشارات احتمالية وليست ضمانًا للاتجاه أو الربح، ولا ينفّذ التطبيق أوامر تداول.</section>
+</main>
+
+<nav class="bottom-nav"><button class="nav-item active" data-nav="scan"><span>⌁</span><b data-i18n="nav_scan">Scan</b></button>
+<button class="nav-item" data-nav="signals"><span>◈</span><b data-i18n="nav_signals">Signals</b></button>
+<button class="nav-item" data-nav="replay"><span>↺</span><b data-i18n="nav_replay">Replay</b></button>
+<button class="nav-item" data-nav="settings"><span>⚙</span><b data-i18n="nav_settings">Settings</b></button></nav>
+</div>
+<div class="modal-backdrop" id="modalBackdrop" hidden><div class="modal" id="detailModal"></div></div>
+<div class="toast" id="toast" hidden></div>
+<script src="signal-scanner.js"></script>
+</body></html>
