@@ -128,5 +128,9 @@
         "learning_report"
       ]
     }
-  }
+  },
+  "web_assets": [
+    "mobile/web/omni-agent.css",
+    "mobile/web/omni-agent.js"
+  ]
 }
