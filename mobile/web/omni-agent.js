@@ -841,6 +841,53 @@
     });
   }
 
+
+  let liveRecognition=null;
+  let liveRelayActive=false;
+  function setLiveRelay(on){
+    liveRelayActive=on;
+    const p=$("#live-interpreter-panel"),s=$("#live-state"),b=$("#comm-live");
+    if(p)p.classList.toggle("hidden",!on);
+    if(s){s.textContent=on?"يستمع":"متوقف";s.className="pill "+(on?"ok":"warn");}
+    if(b)b.textContent=on?"⏹ إيقاف المترجم":"🎙 Live Interpreter";
+  }
+  function stopLiveRelay(){
+    try{liveRecognition?.stop?.();}catch{}
+    liveRecognition=null;
+    setLiveRelay(false);
+    log("تم إيقاف وضع المترجم الصوتي.","voice");
+  }
+  function startLiveRelay(){
+    if(liveRelayActive){stopLiveRelay();return;}
+    const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!Recognition){log("التعرف الصوتي المستمر غير متاح في WebView الحالية.","voice");return;}
+    const target=$("#comm-target-lang")?.value||"en";
+    const recognition=new Recognition();
+    recognition.lang=$("#comm-source-lang")?.value&&$("#comm-source-lang").value!=="auto"?$("#comm-source-lang").value:"ar-SA";
+    recognition.interimResults=true; recognition.continuous=true; recognition.maxAlternatives=1;
+    recognition.onstart=()=>{setLiveRelay(true);log("Live Interpreter: بدأ وضع الاستماع والترجمة إلى "+commLangName(target)+".","voice");};
+    recognition.onresult=async(ev)=>{
+      let finalText="";
+      for(let i=ev.resultIndex;i<ev.results.length;i++){const t=ev.results[i][0]?.transcript||"";if(ev.results[i].isFinal)finalText+=t+" ";}
+      const current=ev.results[ev.results.length-1]?.[0]?.transcript||"";
+      if(current&&$("#live-input-transcript"))$("#live-input-transcript").textContent=current;
+      if(!finalText.trim())return;
+      try{
+        const result=await ai("gemini_text",{prompt:"Translate this spoken message to "+target+". Return only the natural translated sentence, preserving meaning and tone. Do not add facts. Message:\n"+finalText.trim()});
+        const translated=(result.output_text||result.data?.output_text||"").trim();
+        if($("#live-output-transcript"))$("#live-output-transcript").textContent=translated||"—";
+        if(translated&&window.speechSynthesis){
+          window.speechSynthesis.cancel();
+          const u=new SpeechSynthesisUtterance(translated); u.lang=target==="zh-Hans"?"zh-CN":target==="fa"?"fa-IR":target==="ar"?"ar-SA":target; u.rate=.98; window.speechSynthesis.speak(u);
+        }
+        log("Live Interpreter: تم تحويل جملة صوتية إلى "+commLangName(target)+".","voice");
+      }catch(e){log("Live Interpreter: "+e.message,"error");}
+    };
+    recognition.onerror=(e)=>{log("Live Interpreter error: "+e.error,"error");if(e.error==="not-allowed")stopLiveRelay();};
+    recognition.onend=()=>{if(liveRelayActive)try{recognition.start();}catch{}};
+    liveRecognition=recognition;
+    try{recognition.start();}catch(e){log(e.message,"error");setLiveRelay(false);}
+  }
   function installButtons() {
     $("#settings-btn")?.addEventListener("click", () => switchView("settings"));
     $$(".bottom-nav button").forEach((button) => {
@@ -930,8 +977,8 @@
     $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
     $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
     $("#comm-clear-history")?.addEventListener("click",()=>{state.communications=[];writeJson("midad.omni.communications",state.communications);renderCommunicationHistory();});
-    $("#comm-live")?.addEventListener("click",()=>log("Live Interpreter سيستخدم جلسة الصوت المباشر الآمنة بعد تفعيل Live token على Gateway.","voice"));
-    $("#live-stop")?.addEventListener("click",()=>log("لا توجد جلسة Live فعالة.","voice"));
+    $("#comm-live")?.addEventListener("click",startLiveRelay);
+    $("#live-stop")?.addEventListener("click",stopLiveRelay);
     $("#refresh-tasks")?.addEventListener("click", refreshMissions);
     $("#refresh-jobs")?.addEventListener("click", refreshMissions);
 
