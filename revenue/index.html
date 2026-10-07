@@ -42,7 +42,7 @@ a{color:var(--accent)}.warn{color:var(--warn)}
 </div>
 </header>
 <div id="grid" class="grid"></div>
-<div class="foot">قاعدة الدخل: لا يُحتسب أي مبلغ كإيراد محقق إلا بعد وجود إيصال on-chain مُتحقق منه في محفظة الاستلام.</div>
+<div class="foot">قاعدة الدخل: لا يُحتسب أي مبلغ كإيراد محقق إلا بعد وجود إيصال on-chain مُتحقق منه في محفظة الاستلام.</div><div class="foot">التتبع الموحد: المصدر والحملة والـlane تُحفظان مع طلب Checkout عند توفرها.</div>
 </div>
 
 <div id="modal" aria-hidden="true">
@@ -64,6 +64,24 @@ const products=[
 ['decision-research-brief-v1','Decision Research Brief',44,'بحث مركز بمصادر موثوقة مع خلاصة قرار واضحة.'],
 ['code-health-review-v1','Code Health Review',74,'مراجعة Python/JavaScript للأخطاء والأمان والأداء.']
 ];
+
+const TRACKING_STORAGE='midad_distribution_attribution_v1';
+const TRACKING_KEYS=['utm_source','utm_medium','utm_campaign','utm_content','utm_term','ref','lane'];
+function readAttribution(){
+  const q=new URLSearchParams(location.search);
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem(TRACKING_STORAGE)||'{}')||{} }catch{}
+  const out={...saved};
+  for(const k of TRACKING_KEYS){
+    const v=(q.get(k)||'').trim().slice(0,160);
+    if(v) out[k]=v;
+  }
+  out.landing_path=location.pathname;
+  out.captured_at=out.captured_at||new Date().toISOString();
+  try{ localStorage.setItem(TRACKING_STORAGE,JSON.stringify(out)); }catch{}
+  return out;
+}
+const attribution=readAttribution();
 const grid=document.getElementById('grid');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 products.forEach(([id,name,usd,desc])=>{
@@ -99,7 +117,7 @@ async function startPayment(productId){
   try{
     const orderKey='store-'+crypto.randomUUID();
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},
-      body:JSON.stringify({product_id:productId,order_key:orderKey,expires_in_minutes:60,customer_name:customerName,customer_email:customerEmail,requirements})});
+      body:JSON.stringify({product_id:productId,order_key:orderKey,expires_in_minutes:60,customer_name:customerName,customer_email:customerEmail,requirements,attribution})});
     const data=await res.json();
     if(!data.ok)throw new Error(data.error||'Checkout failed');
     const pay=data.payment||data.payment_intent;

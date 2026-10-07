@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "mesh_key": "midad-distribution-mesh-v1",
+  "status": "IMPLEMENTED_PENDING_LIVE_CHANNEL_VERIFICATION",
+  "canonical_landing": "https://sirahwaz.github.io/Control-room/revenue/",
+  "daily_target": {
+    "qualified_targets_min": 10,
+    "qualified_targets_max": 20
+  },
+  "attribution": {
+    "persisted_keys": [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_content",
+      "utm_term",
+      "ref",
+      "lane"
+    ],
+    "storage": "landing-page localStorage -> public checkout -> payment_intent.metadata.attribution + store_order.metadata.attribution",
+    "direct_default_source": "direct"
+  },
+  "offer_catalog": [
+    "miner-microscope-v1",
+    "opportunity-radar-v1",
+    "research-revenue-sprint-v1",
+    "bug-fix-sprint-v1",
+    "data-rescue-pack-v1",
+    "decision-research-brief-v1",
+    "code-health-review-v1"
+  ],
+  "channels": [
+    {
+      "id": "owned_web",
+      "priority": 1,
+      "medium": "owned",
+      "automation": "allowed",
+      "goal": "conversion"
+    },
+    {
+      "id": "telegram",
+      "priority": 2,
+      "medium": "direct",
+      "automation": "human_gate",
+      "goal": "qualified_leads"
+    },
+    {
+      "id": "professional_outreach",
+      "priority": 3,
+      "medium": "direct",
+      "automation": "human_gate",
+      "goal": "qualified_leads"
+    },
+    {
+      "id": "github_proof",
+      "priority": 4,
+      "medium": "community",
+      "automation": "human_gate",
+      "goal": "proof_to_offer"
+    },
+    {
+      "id": "community_contribution",
+      "priority": 5,
+      "medium": "community",
+      "automation": "human_gate",
+      "goal": "demand_capture"
+    },
+    {
+      "id": "marketplace",
+      "priority": 6,
+      "medium": "marketplace",
+      "automation": "human_gate",
+      "goal": "buyer_intent"
+    }
+  ],
+  "link_template": "https://sirahwaz.github.io/Control-room/revenue/?utm_source={utm_source}&utm_medium={utm_medium}&utm_campaign={utm_campaign}&utm_content={utm_content}&utm_term={utm_term}&lane={lane}&ref={ref}",
+  "rules": {
+    "no_spam": true,
+    "no_bulk_unsolicited_outreach": true,
+    "no_auto_social_posting": true,
+    "proof_required_before_claim": true,
+    "payment_verified_on_chain_before_revenue_recognition": true,
+    "human_approval_for_external_submission": true
+  }
+}
