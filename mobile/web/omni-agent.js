@@ -20,7 +20,10 @@
     contexts: readJson("midad.omni.contexts", []),
     proactive: localStorage.getItem("midad.omni.proactive") === "1",
     communications: readJson("midad.omni.communications", []),
-    communications: readJson("midad.omni.communications", []),
+    conversationId: localStorage.getItem("midad.omni.conversationId") || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    serverProfile: {},
+    pageReport: null,
+    pageReportWaiter: null,
     live: { socket: null, mediaStream: null, audioContext: null, processor: null, source: null, nextPlayTime: 0 }
   };
 
@@ -287,7 +290,7 @@
       await bridge("complete_task", {
         task_id: task.id,
         response_data: {
-          completed_from: "midad-omni-agent-v0.3",
+          completed_from: "midad-omni-agent-v0.4",
           human_confirmed: true,
           webview_id: state.webviewId || null
         }
@@ -458,33 +461,61 @@
         return;
       }
 
-      const profile = readJson("midad.omni.profile", state.profile);
-      const safeData = {
-        fullName: profile.name || "",
-        role: profile.role || "",
-        bio: profile.bio || "",
-        skills: profile.skills || ""
-      };
-
-      const code =
-        "(() => {" +
-        "const d=" + JSON.stringify(safeData) + ";" +
-        "const nodes=[...document.querySelectorAll('input,textarea')];" +
-        "const pick=(keys)=>nodes.find(x=>keys.some(k=>((x.name||'')+' '+(x.id||'')+' '+(x.placeholder||'')).toLowerCase().includes(k))&&x.type!=='password'&&x.type!=='hidden'&&x.autocomplete!=='one-time-code');" +
-        "const q=[[" +
-        "pick(['full name','fullname','name','الاسم']),d.fullName],[" +
-        "pick(['role','job title','title','position','الدور']),d.role],[" +
-        "pick(['bio','about','description','نبذة']),d.bio],[" +
-        "pick(['skills','expertise','مهارات']),d.skills]];" +
-        "let changed=0;" +
-        "q.forEach(([el,val])=>{if(!el||!val)return;el.focus();el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));changed++});" +
-        "window.mobileApp?.postMessage({detail:{message:'midadSafeFill',changed}});" +
-        "})();";
-
       try {
+        setCommStatus("فحص الحقول وبناء خطة الملء الآمن…");
+        const page = await inspectCurrentPage();
+        if (!page?.fields?.length) {
+          log("Form Planner: لم تُكتشف حقول قابلة للمعالجة.", "autofill");
+          return;
+        }
+
+        const result = await ai("form_plan", {
+          page: { ...page, url: page.url || "", title: page.title || "" },
+          profile: state.profile,
+          objective: "Fill only truthful non-sensitive profile fields; never submit."
+        });
+
+        state.pageReport = page;
+
+        if (result.human_gate_required) {
+          log("Form Planner: توجد خطوة تتطلب تدخلًا بشريًا؛ لم يتم الملء.", "human-gate");
+          if (result.missing_required?.length) {
+            log("حقول مطلوبة غير متاحة: " + result.missing_required.join(", "), "autofill");
+          }
+          return;
+        }
+
+        const actions = Array.isArray(result.field_actions) ? result.field_actions : [];
+        if (!actions.length) {
+          log("Form Planner: لا توجد مطابقة آمنة عالية الثقة.", "autofill");
+          return;
+        }
+
+        const blocked = Array.isArray(result.blocked_fields) ? result.blocked_fields.length : 0;
+        const code =
+          "(() => {" +
+          "const actions=" + JSON.stringify(actions) + ";" +
+          "const nodes=[...document.querySelectorAll('input,textarea,select')];" +
+          "const blocked=(x)=>/password|passwd|secret|private|seed|recovery|otp|one[- ]time|2fa|security code|captcha|kyc|identity|passport|government id|driver.?s license|ssn|tax id|bank|routing|card number|credit card|cvv|signature|wallet|api key|token/i.test([x.type,x.name,x.id,x.placeholder,x.getAttribute('aria-label'),x.autocomplete].join(' '));" +
+          "let changed=0,skipped=0;" +
+          "for(const a of actions){" +
+            "const el=nodes[Number(a.field_index)];" +
+            "if(!el||blocked(el)||['password','file','hidden'].includes((el.type||'').toLowerCase())){skipped++;continue;}" +
+            "if((el.value||'').trim()){skipped++;continue;}" +
+            "const v=String(a.value??'');" +
+            "if(!v){skipped++;continue;}" +
+            "if(el.tagName==='SELECT'){const opts=[...el.options];const hit=opts.find(o=>o.value===v)||opts.find(o=>(o.text||'').trim().toLowerCase()===v.trim().toLowerCase());if(!hit){skipped++;continue;}el.value=hit.value;}" +
+            "else{el.focus();el.value=v;}" +
+            "el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));changed++;" +
+          "}" +
+          "window.mobileApp?.postMessage({detail:{message:'midadSafeFill',changed,skipped,blocked:" + blocked + "}});" +
+          "})();";
+
         await b.executeScript({ id, code });
-        log("Safe Autofill: تم ملء البيانات العامة فقط دون إرسال النموذج.", "autofill");
+        setCommStatus("تم الملء الآمن — بدون إرسال النموذج.");
+        log("Safe Autofill: طُبقت " + actions.length + " مطابقة آمنة؛ لم يتم إرسال النموذج.", "autofill");
       } catch (error) {
+        setCommStatus("فشل الملء الآمن", "error");
         log("Safe Autofill error: " + error.message, "error");
       }
     };
@@ -496,29 +527,19 @@
     button.dataset.midadUpgraded = "1";
 
     button.onclick = async () => {
-      const b = Browser();
-      const id = window.__midadWebId || state.webviewId;
-      if (!id || !b?.executeScript) {
-        log("افتح صفحة داخل MIDAD أولًا.", "inspect");
-        return;
-      }
-
-      const code =
-        "(() => {" +
-        "const text=(document.body?.innerText||'').slice(0,14000).toLowerCase();" +
-        "const inputs=[...document.querySelectorAll('input,textarea,select')].slice(0,120).map(x=>({type:x.type||'',name:x.name||'',id:x.id||'',placeholder:x.placeholder||'',autocomplete:x.autocomplete||''}));" +
-        "const flags={" +
-        "captcha:/captcha|verify you are human|robot|cloudflare/.test(text)," +
-        "kyc:/kyc|identity verification|passport|government id|driver.?s license/.test(text)," +
-        "twofa:/otp|one[- ]time|verification code|security code/.test(text)," +
-        "password:inputs.some(x=>x.type==='password')," +
-        "payment:/card number|bank account|routing number/.test(text)};" +
-        "window.mobileApp?.postMessage({detail:{message:'midadPageReport',report:{url:location.href,title:document.title,inputCount:inputs.length,flags}}});" +
-        "})();";
-
       try {
-        await b.executeScript({ id, code });
-        log("Smart Inspector: أرسل تقرير الصفحة.", "inspect");
+        const page = await inspectCurrentPage();
+        if (page) {
+          state.pageReport = page;
+          const flags = Object.entries(page.flags || {}).filter(([,v]) => Boolean(v)).map(([k]) => k);
+          log(
+            flags.length
+              ? "Inspector → حاجز ظاهر: " + flags.join(", ")
+              : "Inspector → لا يوجد حاجز ظاهر؛ تم التقاط مخطط الحقول.",
+            "inspect"
+          );
+          log("Inspector → " + (page.fields?.length || 0) + " حقول مكتشفة.", "inspect");
+        }
       } catch (error) {
         log("Inspector error: " + error.message, "error");
       }
@@ -533,6 +554,10 @@
     b.addListener("messageFromWebview", (event) => {
       const detail = event?.detail || {};
       if (detail.message === "midadPageReport") {
+        state.pageReport = detail.report || null;
+        state.pageReportWaiter?.(detail.report || null);
+        state.pageReportWaiter = null;
+
         const flags = Object.entries(detail.report?.flags || {})
           .filter(([, value]) => Boolean(value))
           .map(([key]) => key);
@@ -546,7 +571,11 @@
       }
 
       if (detail.message === "midadSafeFill") {
-        log("Safe Autofill → تم تغيير " + (detail.changed || 0) + " حقول آمنة.", "autofill");
+        log(
+          "Safe Autofill → تم تغيير " + (detail.changed || 0) +
+          " حقول آمنة، وتجاوز " + (detail.skipped || 0) + ".",
+          "autofill"
+        );
       }
     });
 
@@ -557,8 +586,57 @@
     b.addListener("closeEvent", () => {
       window.__midadWebId = null;
       state.webviewId = null;
+      state.pageReportWaiter = null;
       log("تم إغلاق صفحة المتصفح؛ حالة المهمة محفوظة.", "resume");
     });
+  }
+
+  async function inspectCurrentPage() {
+    const b = Browser();
+    const id = window.__midadWebId || state.webviewId;
+    if (!id || !b?.executeScript) throw new Error("افتح صفحة داخل MIDAD أولًا.");
+
+    if (state.pageReportWaiter) {
+      state.pageReportWaiter(null);
+      state.pageReportWaiter = null;
+    }
+
+    const promise = new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (state.pageReportWaiter === wrappedResolve) {
+          state.pageReportWaiter = null;
+          resolve(null);
+        }
+      }, 4500);
+
+      const wrappedResolve = (report) => {
+        clearTimeout(timer);
+        resolve(report || null);
+      };
+
+      state.pageReportWaiter = wrappedResolve;
+    });
+
+    const code =
+      "(() => {" +
+      "const text=(document.body?.innerText||'').slice(0,14000).toLowerCase();" +
+      "const fields=[...document.querySelectorAll('input,textarea,select')].slice(0,160).map((x,i)=>({" +
+        "index:i,tag:x.tagName?.toLowerCase()||'',type:x.type||'',name:x.name||'',id:x.id||''," +
+        "placeholder:x.placeholder||'',aria_label:x.getAttribute('aria-label')||''," +
+        "label:x.labels?.[0]?.innerText||'',autocomplete:x.autocomplete||'',required:Boolean(x.required)" +
+      "}));" +
+      "const flags={" +
+        "captcha:/captcha|verify you are human|robot|cloudflare/.test(text)," +
+        "kyc:/kyc|identity verification|passport|government id|driver.?s license/.test(text)," +
+        "twofa:/otp|one[- ]time|verification code|security code/.test(text)," +
+        "password:fields.some(x=>x.type==='password')," +
+        "payment:/card number|bank account|routing number/.test(text)" +
+      "};" +
+      "window.mobileApp?.postMessage({detail:{message:'midadPageReport',report:{url:location.href,title:document.title,inputCount:fields.length,fields,flags}}});" +
+      "})();";
+
+    await b.executeScript({ id, code });
+    return promise;
   }
 
   function patchWebViewIdCapture() {
@@ -620,7 +698,8 @@
       tone: $("#comm-tone")?.value || "professional_warm",
       mode: $("#comm-mode")?.value || "reply_translate",
       profile: state.profile,
-      context: state.contexts.slice(0,20)
+      context: state.contexts.slice(0,20),
+      conversation_id: state.conversationId
     };
     try {
       setCommStatus("MIDAD يحلل ويصيغ…");
@@ -636,6 +715,8 @@
       $("#comm-internal").textContent = internal || "—";
       $("#comm-confidence").textContent = typeof confidence === "number" ? Math.round(confidence*100) + "%" : String(confidence);
       $("#comm-target-label").textContent = commLangName(payload.target_language);
+      state.conversationId = result.conversation_id || state.conversationId;
+      localStorage.setItem("midad.omni.conversationId", state.conversationId);
       state.communications.unshift({
         at: new Date().toISOString(), channel: payload.channel, target_language: payload.target_language,
         incoming: message, reply, arabic, internal, confidence
@@ -842,52 +923,6 @@
   }
 
 
-  let liveRecognition=null;
-  let liveRelayActive=false;
-  function setLiveRelay(on){
-    liveRelayActive=on;
-    const p=$("#live-interpreter-panel"),s=$("#live-state"),b=$("#comm-live");
-    if(p)p.classList.toggle("hidden",!on);
-    if(s){s.textContent=on?"يستمع":"متوقف";s.className="pill "+(on?"ok":"warn");}
-    if(b)b.textContent=on?"⏹ إيقاف المترجم":"🎙 Live Interpreter";
-  }
-  function stopLiveRelay(){
-    try{liveRecognition?.stop?.();}catch{}
-    liveRecognition=null;
-    setLiveRelay(false);
-    log("تم إيقاف وضع المترجم الصوتي.","voice");
-  }
-  function startLiveRelay(){
-    if(liveRelayActive){stopLiveRelay();return;}
-    const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!Recognition){log("التعرف الصوتي المستمر غير متاح في WebView الحالية.","voice");return;}
-    const target=$("#comm-target-lang")?.value||"en";
-    const recognition=new Recognition();
-    recognition.lang=$("#comm-source-lang")?.value&&$("#comm-source-lang").value!=="auto"?$("#comm-source-lang").value:"ar-SA";
-    recognition.interimResults=true; recognition.continuous=true; recognition.maxAlternatives=1;
-    recognition.onstart=()=>{setLiveRelay(true);log("Live Interpreter: بدأ وضع الاستماع والترجمة إلى "+commLangName(target)+".","voice");};
-    recognition.onresult=async(ev)=>{
-      let finalText="";
-      for(let i=ev.resultIndex;i<ev.results.length;i++){const t=ev.results[i][0]?.transcript||"";if(ev.results[i].isFinal)finalText+=t+" ";}
-      const current=ev.results[ev.results.length-1]?.[0]?.transcript||"";
-      if(current&&$("#live-input-transcript"))$("#live-input-transcript").textContent=current;
-      if(!finalText.trim())return;
-      try{
-        const result=await ai("gemini_text",{prompt:"Translate this spoken message to "+target+". Return only the natural translated sentence, preserving meaning and tone. Do not add facts. Message:\n"+finalText.trim()});
-        const translated=(result.output_text||result.data?.output_text||"").trim();
-        if($("#live-output-transcript"))$("#live-output-transcript").textContent=translated||"—";
-        if(translated&&window.speechSynthesis){
-          window.speechSynthesis.cancel();
-          const u=new SpeechSynthesisUtterance(translated); u.lang=target==="zh-Hans"?"zh-CN":target==="fa"?"fa-IR":target==="ar"?"ar-SA":target; u.rate=.98; window.speechSynthesis.speak(u);
-        }
-        log("Live Interpreter: تم تحويل جملة صوتية إلى "+commLangName(target)+".","voice");
-      }catch(e){log("Live Interpreter: "+e.message,"error");}
-    };
-    recognition.onerror=(e)=>{log("Live Interpreter error: "+e.error,"error");if(e.error==="not-allowed")stopLiveRelay();};
-    recognition.onend=()=>{if(liveRelayActive)try{recognition.start();}catch{}};
-    liveRecognition=recognition;
-    try{recognition.start();}catch(e){log(e.message,"error");setLiveRelay(false);}
-  }
   function installButtons() {
     $("#settings-btn")?.addEventListener("click", () => switchView("settings"));
     $$(".bottom-nav button").forEach((button) => {
@@ -961,24 +996,6 @@
       recognition.start();
     });
 
-    $("#comm-compose")?.addEventListener("click", runCommunicationAgent);
-    $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
-    $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
-    $("#comm-live")?.addEventListener("click", startLiveInterpreter);
-    $("#live-stop")?.addEventListener("click", stopLiveInterpreter);
-    $("#comm-clear-history")?.addEventListener("click", () => {
-      state.communications = [];
-      writeJson("midad.omni.communications", state.communications);
-      renderCommunicationHistory();
-      log("تم مسح Communication Memory المحلية.", "communication");
-    });
-
-    $("#comm-compose")?.addEventListener("click", runCommunicationAgent);
-    $("#comm-speak")?.addEventListener("click", speakCommunicationReply);
-    $("#comm-copy")?.addEventListener("click", copyCommunicationReply);
-    $("#comm-clear-history")?.addEventListener("click",()=>{state.communications=[];writeJson("midad.omni.communications",state.communications);renderCommunicationHistory();});
-    $("#comm-live")?.addEventListener("click",startLiveRelay);
-    $("#live-stop")?.addEventListener("click",stopLiveRelay);
     $("#refresh-tasks")?.addEventListener("click", refreshMissions);
     $("#refresh-jobs")?.addEventListener("click", refreshMissions);
 
@@ -1164,6 +1181,19 @@
     }
   }
 
+  async function syncProfileTruth() {
+    if (!state.token) return;
+    try {
+      const result = await ai("profile_snapshot", { profile: state.profile });
+      state.serverProfile = result.profile || {};
+      localStorage.setItem("midad.omni.conversationId", state.conversationId);
+      log("Profile Truth: تمت مزامنة البيانات الموثوقة من MIDAD.", "profile");
+      renderProfile();
+    } catch (error) {
+      log("Profile Truth: تعذر المزامنة الآن — سيستمر الـruntime بالبيانات المحلية.", "profile");
+    }
+  }
+
   function renderRecipes() {
     const host = $("#recipes");
     if (!host) return;
@@ -1222,11 +1252,11 @@
   renderRecipes();
   renderProfile();
   renderCommunicationHistory();
-  renderCommunicationHistory();
   installCommunication();
   updatePairState();
+  if (state.token) syncProfileTruth();
 
-  log("MIDAD Omni Agent v0.3 runtime جاهز · Native primary · Gemini specialist · TinyFish fallback", "boot");
+  log("MIDAD Omni Agent v0.4 runtime جاهز · Communication Intelligence · Safe Form Planner · Gemini Live", "boot");
 
   if (state.token) {
     refreshMissions();
