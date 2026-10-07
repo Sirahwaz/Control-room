@@ -99,9 +99,7 @@ jobs:
           node mobile/factory/morph-engine.smoke.mjs
 
           # Preserve the existing web product intact and bundle it as a local site layer.
-          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) \
-            -not -path "./mobile/*" \
-            -exec cp {} mobile/www/site/ \;
+          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \)             -not -path "./mobile/*"             -exec cp {} mobile/www/site/ \;
 
       - name: Add Android platform
         working-directory: mobile
@@ -111,33 +109,69 @@ jobs:
         working-directory: mobile
         run: npx cap sync android
 
+      - name: Set Android version metadata
+        working-directory: mobile
+        shell: bash
+        env:
+          MIDAD_VERSION_NAME: ${{ steps.product.outputs.version }}
+        run: |
+          set -euo pipefail
+          VERSION_CODE="$(node -e 'const v=process.env.MIDAD_VERSION_NAME.split(".").map(Number); console.log(v[0]*10000+v[1]*100+v[2])')"
+          export VERSION_CODE MIDAD_VERSION_NAME
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          code = os.environ["VERSION_CODE"]
+          name = os.environ["MIDAD_VERSION_NAME"]
+          if len(re.findall(r'\bversionCode\s+\d+', s)) != 1:
+              raise SystemExit("Expected exactly one app versionCode declaration")
+          if len(re.findall(r'\bversionName\s+"[^"]+"', s)) != 1:
+              raise SystemExit("Expected exactly one app versionName declaration")
+          s = re.sub(r'\bversionCode\s+\d+', f'versionCode {code}', s, count=1)
+          s = re.sub(r'\bversionName\s+"[^"]+"', f'versionName "{name}"', s, count=1)
+          p.write_text(s)
+          PY
+          grep -E 'applicationId|versionCode|versionName' android/app/build.gradle
+
       - name: Build unsigned release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Sign release APK for installability
         shell: bash
+        env:
+          MIDAD_RELEASE_KEYSTORE_B64: ${{ secrets.MIDAD_RELEASE_KEYSTORE_B64 }}
+          MIDAD_RELEASE_STOREPASS: ${{ secrets.MIDAD_RELEASE_STOREPASS }}
+          MIDAD_RELEASE_KEYPASS: ${{ secrets.MIDAD_RELEASE_KEYPASS }}
+          MIDAD_RELEASE_ALIAS: ${{ secrets.MIDAD_RELEASE_ALIAS }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v \
-            -keystore signing/midad-release-temporary.jks \
-            -storepass "midad-temp-release" \
-            -keypass "midad-temp-release" \
-            -alias midad \
-            -keyalg RSA -keysize 2048 -validity 3650 \
-            -dname "CN=MIDAD Mobile, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+
+          if [ -n "${MIDAD_RELEASE_KEYSTORE_B64:-}" ]; then
+            : "${MIDAD_RELEASE_STOREPASS:?MIDAD_RELEASE_STOREPASS is required with MIDAD_RELEASE_KEYSTORE_B64}"
+            : "${MIDAD_RELEASE_KEYPASS:?MIDAD_RELEASE_KEYPASS is required with MIDAD_RELEASE_KEYSTORE_B64}"
+            : "${MIDAD_RELEASE_ALIAS:?MIDAD_RELEASE_ALIAS is required with MIDAD_RELEASE_KEYSTORE_B64}"
+            printf '%s' "$MIDAD_RELEASE_KEYSTORE_B64" | base64 --decode > signing/midad-release.jks
+            KEYSTORE="signing/midad-release.jks"
+            STOREPASS="$MIDAD_RELEASE_STOREPASS"
+            KEYPASS="$MIDAD_RELEASE_KEYPASS"
+            ALIAS="$MIDAD_RELEASE_ALIAS"
+          else
+            keytool -genkeypair -v               -keystore signing/midad-release-temporary.jks               -storepass "midad-temp-release"               -keypass "midad-temp-release"               -alias midad               -keyalg RSA -keysize 2048 -validity 3650               -dname "CN=MIDAD Mobile, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+            KEYSTORE="signing/midad-release-temporary.jks"
+            STOREPASS="midad-temp-release"
+            KEYPASS="midad-temp-release"
+            ALIAS="midad"
+          fi
+
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" sign \
-            --ks signing/midad-release-temporary.jks \
-            --ks-pass pass:midad-temp-release \
-            --key-pass pass:midad-temp-release \
-            --ks-key-alias midad \
-            --out "dist/${ARTIFACT_NAME}-release.apk" \
-            "$APK_SRC"
+          "$APKSIGNER" sign             --ks "$KEYSTORE"             --ks-pass pass:"$STOREPASS"             --key-pass pass:"$KEYPASS"             --ks-key-alias "$ALIAS"             --out "dist/${ARTIFACT_NAME}-release.apk"             "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
@@ -149,8 +183,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f "dist/${ARTIFACT_NAME}-release.apk"
-          file "dist/${ARTIFACT_NAME}-release.apk"
+          APK="dist/${ARTIFACT_NAME}-release.apk"
+          test -f "$APK"
+          file "$APK"
+          AAPT2="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
+          test -x "$AAPT2"
+          "$AAPT2" dump badging "$APK" | grep -E "package: name='ai\.midad\.mobile'|versionName='0\.3\.0'|versionCode='30000'"
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
 

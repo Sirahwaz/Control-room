@@ -1,14 +1,23 @@
 (() => {
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
-  const STORAGE = 'midad-mobile-v02';
+  const STORAGE = 'midad-mobile-v03';
+  const LEGACY_STORAGE = 'midad-mobile-v02';
+
+  const readStorage = (key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  };
 
   const state = (() => {
-    try {
-      return Object.assign({ favorites: [], recent: [], notes: [] }, JSON.parse(localStorage.getItem(STORAGE) || '{}'));
-    } catch (_) {
-      return { favorites: [], recent: [], notes: [] };
-    }
+    const base = { favorites: [], recent: [], notes: [] };
+    const current = readStorage(STORAGE);
+    const legacy = current ? null : readStorage(LEGACY_STORAGE);
+    return Object.assign(base, current || legacy || {});
   })();
 
   const save = () => {
@@ -38,10 +47,12 @@
   const openExternal = async (url) => {
     const browser = nativePlugin('Browser');
     if (browser?.open) {
-      await browser.open({url, toolbarColor:'#0b111a'});
-      return;
+      try {
+        await browser.open({url, toolbarColor:'#0b111a'});
+        return;
+      } catch (_) {}
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { location.href = url; }
   };
 
   const remember = (id) => {
@@ -72,8 +83,13 @@
     $('#notesCount').textContent = state.notes.length;
   };
 
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[c]));
+
   const notesRender = () => {
     const box = $('#notesBox');
+    if (!box) return;
     if (!state.notes.length) {
       box.innerHTML = '<div class="empty">لا توجد ملاحظات بعد. هذه الطبقة محلية الآن ومهيأة لاحقًا للانتقال إلى MIDAD Database.</div>';
       return;
@@ -86,10 +102,6 @@
       state.notes.splice(Number(btn.dataset.note), 1); save(); notesRender(); haptic('MEDIUM');
     }));
   };
-
-  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  }[c]));
 
   const addNote = () => {
     const text = window.prompt('اكتب ملاحظتك لـ MIDAD:');
@@ -113,18 +125,15 @@
     el.addEventListener('click', () => openTarget(el));
   });
 
-  $('#searchBtn')?.addEventListener('click', runCommand);
-  $('#commandInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') runCommand(); });
-
   function runCommand() {
     const q = ($('#commandInput')?.value || '').trim().toLowerCase();
     if (!q) return;
     if (q.includes('note') || q.includes('ملاح')) { addNote(); return; }
     const rules = [
-      {keys:['trade','trader','تداول','تاجر'], target:'./site/iaitrader.html?v=20261003', id:'trader'},
-      {keys:['mine','mining','viabtc','تعدين','via'], target:'./site/viabtc.html?v=20261003', id:'mining'},
-      {keys:['control','room','مقود','control room'], target:'./site/index.html?v=20261003', id:'control'},
-      {keys:['revenue','money','مال','دخل','ربح'], target:'./site/revenue-forge.html?v=20261003', id:'revenue'},
+      {keys:['trade','trader','تداول','تاجر'], target:'./site/iaitrader.html?v=20261007', id:'trader'},
+      {keys:['mine','mining','viabtc','تعدين','via'], target:'./site/viabtc.html?v=20261007', id:'mining'},
+      {keys:['control','room','مقود','control room'], target:'./site/index.html?v=20261007', id:'control'},
+      {keys:['revenue','money','مال','دخل','ربح'], target:'./site/revenue-forge.html?v=20261007', id:'revenue'},
       {keys:['ai','aimidad','بحث','osint'], target:'https://t.me/aimidad_bot', external:true, id:'aimidad'}
     ];
     const hit = rules.find(r => r.keys.some(k => q.includes(k)));
@@ -132,6 +141,9 @@
     remember(hit.id);
     if (hit.external) openExternal(hit.target); else location.href = hit.target;
   }
+
+  $('#searchBtn')?.addEventListener('click', runCommand);
+  $('#commandInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') runCommand(); });
 
   $$('.space-card').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -147,14 +159,13 @@
         $$('#stations .card').forEach(card => { card.style.display = ids.has(card.dataset.id) ? 'flex' : 'none'; });
         if (!state.recent.length) showToast('لا يوجد سجل حديث بعد');
       } else if (kind === 'system') {
-        showToast('MIDAD Mobile v0.2 • Native Shell • Safe Local Storage');
+        showToast('MIDAD Mobile v0.3 • Native Shell • Safe Local Storage');
       }
     });
   });
 
-  const restoreStations = () => $('#stations .card').forEach(card => card.style.display = 'flex');
-
-  $$('#newNote').forEach(btn => btn.addEventListener('click', addNote));
+  const restoreStations = () => $$('#stations .card').forEach(card => card.style.display = 'flex');
+  $('#newNote')?.addEventListener('click', addNote);
 
   $$('[data-scroll]').forEach((btn) => {
     btn.addEventListener('click', () => {
