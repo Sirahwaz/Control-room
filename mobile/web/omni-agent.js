@@ -839,13 +839,14 @@
       const token = tokenResult.token || tokenResult.name || tokenResult.token_name;
       if (!token) throw new Error("لم يتم الحصول على Live token.");
       const ws = new WebSocket(
-        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?access_token=" +
+        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=" +
         encodeURIComponent(token)
       );
       state.live.socket = ws;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }});
       state.live.mediaStream = stream;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx({ sampleRate: 16000 });
       state.live.audioContext = ctx;
       state.live.nextPlayTime = ctx.currentTime;
 
