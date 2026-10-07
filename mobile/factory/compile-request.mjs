@@ -59,6 +59,7 @@ const manifest = {
   app_id:req.app_id,
   artifact_name:`${displaySafe}-v${req.version}`,
   web_entry:req.web_entry || "mobile/web/index.html",
+  web_assets:Array.isArray(req.web_assets)?req.web_assets:[],
   product_mode:req.product_mode || "midad-powered",
   release_channel:req.release_channel || "debug",
   features:baseFeatures,
