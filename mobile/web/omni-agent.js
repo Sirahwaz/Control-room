@@ -875,6 +875,7 @@
     }
   }
 
+  const fileInput = $("#file-input"); if (fileInput) fileInput.setAttribute("capture","environment");
   ensureAttentionBar();
   ensureHumanGateModal();
   patchWebViewIdCapture();
