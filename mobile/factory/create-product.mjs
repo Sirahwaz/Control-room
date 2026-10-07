@@ -34,7 +34,39 @@ const manifest = {
     mission_capsules: true,
     hybrid_neural_planner: true
   },
-  surfaces: []
+  surfaces: [],
+  target_markets: ["global_remote"],
+  monetization_models: ["subscription","custom_build"],
+  revenue_mode: "productized",
+  factory: {
+    profile: "request-driven-product",
+    request_driven_ui: true,
+    dynamic_content: true,
+    localization: {
+      default_language: "ar",
+      supported_seed: ["ar","en","fa"],
+      expand_on_demand: true
+    },
+    learning: {
+      enabled: true,
+      scope: ["global","product","tenant"],
+      decision_policy: "evidence_weighted",
+      feedback_required: true
+    },
+    quality: {
+      minimum_confidence: 0.9,
+      max_repair_attempts_per_incident: 3,
+      fail_closed_on_security_gate: true
+    },
+    data: {
+      backend: "supabase",
+      offline_first: true,
+      sync_strategy: "outbox_then_reconcile"
+    },
+    delivery: {
+      outputs: ["apk","sha256","manifest","build_report","test_report","learning_report"]
+    }
+  }
 };
 
 const outDir = path.join(process.cwd(), "mobile", "factory", "products");
