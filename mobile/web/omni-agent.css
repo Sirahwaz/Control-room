@@ -15,4 +15,4 @@
 .bottom-nav{display:flex;overflow-x:auto;gap:2px;scrollbar-width:none}
 .bottom-nav::-webkit-scrollbar{display:none}
 .bottom-nav button{flex:0 0 66px}
-@media(max-width:680px){.comm-hero{align-items:flex-start}.comm-grid,.live-grid{grid-template-columns:1fr}.bottom-nav button{flex-basis:62px}.comm-text{font-size:12px}}
+@media(max-width:680px){.comm-hero{align-items:flex-start}.comm-grid,.live-grid{grid-template-columns:1fr}.bottom-nav button{flex-basis:72px}.comm-text{font-size:12px}}
