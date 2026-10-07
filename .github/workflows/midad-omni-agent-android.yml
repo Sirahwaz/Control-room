@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           node mobile/factory/render.mjs midad-omni-agent
-          test "$(jq -r '.version' mobile/factory/runtime-product.json)" = "0.3.0"
+          test "$(jq -r '.version' mobile/factory/runtime-product.json)" = "0.4.0"
           jq -e '.features.proactive_execution==true and .features.smart_inspector==true and .features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
       - name: Build release APK
         working-directory: mobile/android
@@ -103,16 +103,16 @@ jobs:
           mkdir -p dist signing
           keytool -genkeypair -v -keystore signing/midad-omni-agent.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Omni Agent, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          "$APKSIGNER" sign --ks signing/midad-omni-agent.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out dist/MIDAD-Omni-Agent-v0.3.0-release.apk "$APK_SRC"
-          "$APKSIGNER" verify --verbose dist/MIDAD-Omni-Agent-v0.3.0-release.apk
-          sha256sum dist/MIDAD-Omni-Agent-v0.3.0-release.apk | tee dist/MIDAD-Omni-Agent-v0.3.0-release.apk.sha256
+          "$APKSIGNER" sign --ks signing/midad-omni-agent.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out dist/MIDAD-Omni-Agent-v0.4.0-release.apk "$APK_SRC"
+          "$APKSIGNER" verify --verbose dist/MIDAD-Omni-Agent-v0.4.0-release.apk
+          sha256sum dist/MIDAD-Omni-Agent-v0.4.0-release.apk | tee dist/MIDAD-Omni-Agent-v0.4.0-release.apk.sha256
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           rm -rf signing
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MIDAD-Omni-Agent-v0.3.0-release
+          name: MIDAD-Omni-Agent-v0.4.0-release
           path: |
-            dist/MIDAD-Omni-Agent-v0.3.0-release.apk
-            dist/MIDAD-Omni-Agent-v0.3.0-release.apk.sha256
+            dist/MIDAD-Omni-Agent-v0.4.0-release.apk
+            dist/MIDAD-Omni-Agent-v0.4.0-release.apk.sha256
             dist/product-manifest.json
