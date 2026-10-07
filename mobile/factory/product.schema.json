@@ -3,137 +3,49 @@
   "title": "MIDAD Mobile Factory Product",
   "type": "object",
   "required": [
-    "schema_version",
-    "product_key",
-    "display_name",
-    "version",
-    "app_id",
-    "artifact_name",
-    "web_entry",
-    "product_mode",
-    "release_channel",
-    "features",
-    "surfaces"
+    "schema_version","product_key","display_name","version","app_id",
+    "artifact_name","web_entry","product_mode","release_channel",
+    "features","surfaces"
   ],
   "properties": {
-    "schema_version": {
-      "type": "integer",
-      "const": 1
-    },
-    "product_key": {
-      "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9-]{1,48}$"
-    },
-    "display_name": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-    },
-    "app_id": {
-      "type": "string",
-      "pattern": "^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$"
-    },
-    "artifact_name": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,100}$"
-    },
-    "web_entry": {
-      "type": "string",
-      "minLength": 1
-    },
-    "product_mode": {
-      "type": "string",
-      "minLength": 1
-    },
-    "release_channel": {
-      "type": "string",
-      "enum": [
-        "debug",
-        "internal",
-        "beta",
-        "production"
-      ]
-    },
-    "features": {
-      "type": "object",
-      "required": [
-        "rtl_first",
-        "local_first",
-        "native_haptics",
-        "native_back_navigation",
-        "in_app_browser",
-        "server_side_secrets_only",
-        "live_financial_execution",
-        "mission_capsules",
-        "hybrid_neural_planner"
+    "schema_version":{"type":"integer","const":1},
+    "product_key":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]{1,48}$"},
+    "display_name":{"type":"string","minLength":1,"maxLength":80},
+    "version":{"type":"string","pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "app_id":{"type":"string","pattern":"^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$"},
+    "artifact_name":{"type":"string","pattern":"^[A-Za-z0-9][A-Za-z0-9._-]{2,100}$"},
+    "web_entry":{"type":"string","minLength":1},
+    "product_mode":{"type":"string","minLength":1},
+    "release_channel":{"type":"string","enum":["debug","internal","beta","production"]},
+    "features":{
+      "type":"object",
+      "required":[
+        "rtl_first","local_first","native_haptics","native_back_navigation",
+        "in_app_browser","server_side_secrets_only","live_financial_execution",
+        "mission_capsules","hybrid_neural_planner"
       ],
-      "properties": {
-        "rtl_first": {
-          "type": "boolean"
-        },
-        "local_first": {
-          "type": "boolean"
-        },
-        "native_haptics": {
-          "type": "boolean"
-        },
-        "native_back_navigation": {
-          "type": "boolean"
-        },
-        "in_app_browser": {
-          "type": "boolean"
-        },
-        "server_side_secrets_only": {
-          "type": "boolean"
-        },
-        "live_financial_execution": {
-          "type": "boolean"
-        },
-        "mission_capsules": {
-          "type": "boolean"
-        },
-        "hybrid_neural_planner": {
-          "type": "boolean"
-        }
+      "properties":{
+        "rtl_first":{"type":"boolean"},
+        "local_first":{"type":"boolean"},
+        "native_haptics":{"type":"boolean"},
+        "native_back_navigation":{"type":"boolean"},
+        "in_app_browser":{"type":"boolean"},
+        "server_side_secrets_only":{"type":"boolean"},
+        "live_financial_execution":{"type":"boolean"},
+        "mission_capsules":{"type":"boolean"},
+        "hybrid_neural_planner":{"type":"boolean"},
+        "human_bridge":{"type":"boolean"},
+        "agentic_browser":{"type":"boolean"},
+        "safe_autofill":{"type":"boolean"},
+        "local_notifications":{"type":"boolean"},
+        "secure_pairing":{"type":"boolean"}
       },
-      "additionalProperties": false
+      "additionalProperties":false
     },
-    "surfaces": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "minItems": 0
-    },
-    "target_markets": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1
-    },
-    "monetization_models": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1
-    },
-    "revenue_mode": {
-      "type": "string",
-      "enum": [
-        "internal",
-        "productized",
-        "b2b",
-        "consumer",
-        "white_label"
-      ]
-    }
+    "surfaces":{"type":"array","items":{"type":"string","minLength":1},"minItems":0},
+    "target_markets":{"type":"array","items":{"type":"string"},"minItems":1},
+    "monetization_models":{"type":"array","items":{"type":"string"},"minItems":1},
+    "revenue_mode":{"type":"string","enum":["internal","productized","b2b","consumer","white_label"]}
   },
-  "additionalProperties": false
+  "additionalProperties":false
 }
