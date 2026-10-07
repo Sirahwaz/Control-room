@@ -3,9 +3,9 @@
   "schema_version": 1,
   "product_key": "midad-omni-agent",
   "display_name": "MIDAD Omni Agent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "app_id": "ai.midad.omni.agent",
-  "artifact_name": "MIDAD-Omni-Agent-v0.2.0",
+  "artifact_name": "MIDAD-Omni-Agent-v0.3.0",
   "web_entry": "mobile/web/omni-agent.html",
   "product_mode": "omni-agent",
   "release_channel": "debug",
@@ -30,7 +30,13 @@
     "gemini_notebook_bridge": true,
     "offline_operator": true,
     "event_bus": true,
-    "trust_boundary_ui": true
+    "trust_boundary_ui": true,
+    "proactive_execution": true,
+    "adaptive_recovery": true,
+    "evidence_capture": true,
+    "mission_autoflow": true,
+    "camera_input": true,
+    "smart_inspector": true
   },
   "surfaces": [
     "neural-command",
@@ -47,7 +53,10 @@
     "provider-router",
     "extension-fabric",
     "event-stream",
-    "safety-boundary"
+    "safety-boundary",
+    "proactive-mode",
+    "evidence-capture",
+    "recovery-control"
   ],
   "target_markets": [
     "global_remote",
