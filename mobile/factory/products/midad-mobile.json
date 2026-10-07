@@ -92,5 +92,10 @@
         "learning_report"
       ]
     }
-  }
+  },
+  "web_assets": [
+    "mobile/web/mobile-hub.css",
+    "mobile/web/mobile-hub.js",
+    "mobile/web/morph-engine.js"
+  ]
 }
