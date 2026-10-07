@@ -1,0 +1,170 @@
+{
+  "$schema": "./factory.config.schema.json",
+  "factory_version": 2,
+  "engine": "midad-mobile-factory",
+  "principles": [
+    "AUDIT",
+    "PRESERVE",
+    "REPAIR",
+    "INTEGRATE",
+    "UPGRADE",
+    "VERIFY"
+  ],
+  "default_pipeline": [
+    "request_intake",
+    "requirements_normalization",
+    "product_manifest",
+    "ui_content_generation",
+    "static_audit",
+    "dependency_audit",
+    "android_build",
+    "artifact_verification",
+    "runtime_smoke",
+    "release_package",
+    "learning_capture"
+  ],
+  "quality": {
+    "minimum_confidence": 0.9,
+    "max_repair_attempts_per_incident": 3,
+    "fail_closed_on_security_gate": true,
+    "required_gates": [
+      "manifest_valid",
+      "source_present",
+      "javascript_syntax",
+      "security_boundary",
+      "artifact_exists",
+      "artifact_installability",
+      "hash_recorded"
+    ],
+    "optional_gates": [
+      "ui_smoke",
+      "runtime_smoke",
+      "accessibility",
+      "localization",
+      "offline_degradation"
+    ],
+    "release_states": [
+      "PLANNED",
+      "GENERATING",
+      "BUILDING",
+      "TESTING",
+      "VERIFIED",
+      "RELEASED",
+      "FAILED",
+      "BLOCKED"
+    ]
+  },
+  "learning": {
+    "enabled": true,
+    "store": "supabase:midad-ai",
+    "scopes": [
+      "global",
+      "product",
+      "tenant"
+    ],
+    "capture": [
+      "request",
+      "decision",
+      "tool",
+      "build",
+      "test",
+      "failure",
+      "repair",
+      "release",
+      "user_feedback",
+      "revenue_outcome"
+    ],
+    "decision_policy": "evidence_weighted",
+    "minimum_samples_before_global_rule": 5,
+    "decay_days": 90,
+    "never_learn_from": [
+      "secrets",
+      "private_keys",
+      "passwords",
+      "otp",
+      "identity_documents",
+      "raw_credentials"
+    ],
+    "future_decisions": [
+      "provider_selection",
+      "ui_pattern_selection",
+      "feature_priority",
+      "model_routing",
+      "retry_strategy",
+      "test_depth",
+      "release_channel",
+      "monetization_surface"
+    ]
+  },
+  "data": {
+    "primary_backend": "supabase",
+    "primary_project": "midad-ai",
+    "storage_layers": {
+      "control_plane": "postgres",
+      "artifacts": "object_storage_or_github_artifacts",
+      "local_cache": "device_local",
+      "secrets": "server_side_secret_store"
+    },
+    "tenant_isolation": [
+      "tenant_key",
+      "owner_user_id",
+      "product_key"
+    ],
+    "offline_first": true,
+    "sync_strategy": "outbox_then_reconcile"
+  },
+  "ui_generation": {
+    "mode": "request_driven",
+    "design_sources": [
+      "product_manifest",
+      "brand_profile",
+      "target_market",
+      "device_profile",
+      "accessibility_profile"
+    ],
+    "required": {
+      "responsive": true,
+      "rtl_support": true,
+      "large_touch_targets": true,
+      "readable_typography": true,
+      "dark_light_ready": true,
+      "empty_error_loading_states": true,
+      "offline_degradation": true
+    },
+    "dynamic_surfaces": true,
+    "content_externalization": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
+      "expand_on_demand": true
+    }
+  },
+  "automation": {
+    "n8n_optional": true,
+    "need_first_provider_second": true,
+    "external_send_default": "human_gate",
+    "financial_action_default": "human_gate",
+    "credential_entry": "never_automated"
+  },
+  "delivery": {
+    "artifacts": [
+      "apk",
+      "sha256",
+      "product_manifest",
+      "build_report",
+      "test_report",
+      "learning_report"
+    ],
+    "naming": "<artifact_name>-v<version>",
+    "release_channels": [
+      "debug",
+      "internal",
+      "beta",
+      "production"
+    ]
+  }
+}
