@@ -1,0 +1,123 @@
+name: MIDAD Human Bridge Android
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/web/human-bridge.*"
+      - "mobile/factory/products/midad-human-bridge.json"
+      - "mobile/factory/product.schema.json"
+      - "mobile/package.json"
+      - "mobile/factory/render.mjs"
+      - ".github/workflows/midad-human-bridge-android.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build-human-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout MIDAD
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Resolve Human Bridge manifest
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs midad-human-bridge
+          jq -e '.product_key=="midad-human-bridge"' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.human_bridge==true' mobile/factory/runtime-product.json >/dev/null
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+
+      - name: Prepare Human Bridge web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf mobile/www
+          mkdir -p mobile/www/site
+          cp -R mobile/web/. mobile/www/
+          cp mobile/web/human-bridge.html mobile/www/index.html
+          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) -not -path "./mobile/*" -exec cp {} mobile/www/site/ \;
+
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android
+
+      - name: Sync Android
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Set version
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(jq -r '.version' factory/runtime-product.json)"
+          VERSION_CODE="$(node -e 'const v=process.argv[1].split(".").map(Number); console.log(v[0]*10000+v[1]*100+v[2])' "$VERSION_NAME")"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          p=Path("android/app/build.gradle"); s=p.read_text()
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
+          p.write_text(s)
+          PY
+        env:
+          VERSION_NAME: ${{ '0.1.0' }}
+          VERSION_CODE: 1000
+
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Sign for installability
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "$APK_SRC"
+          mkdir -p dist signing
+          keytool -genkeypair -v -keystore signing/midad-human-bridge.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Human Bridge, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" sign --ks signing/midad-human-bridge.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out dist/MIDAD-Human-Bridge-v0.1.0-release.apk "$APK_SRC"
+          "$APKSIGNER" verify --verbose dist/MIDAD-Human-Bridge-v0.1.0-release.apk
+          sha256sum dist/MIDAD-Human-Bridge-v0.1.0-release.apk | tee dist/MIDAD-Human-Bridge-v0.1.0-release.apk.sha256
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
+          rm -rf signing
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDAD-Human-Bridge-v0.1.0-release-debug
+          path: |
+            dist/MIDAD-Human-Bridge-v0.1.0-release.apk
+            dist/MIDAD-Human-Bridge-v0.1.0-release.apk.sha256
+            dist/product-manifest.json
