@@ -1,0 +1,16 @@
+{
+  "registry_version": 1,
+  "plugins": [
+    {"id":"factory-shell","version":"2","type":"core","capabilities":["mobile-shell","responsive-ui","rtl-l10n"],"reuse":"always","tests":["navigation","responsive","rtl"]},
+    {"id":"factory-security-boundary","version":"1","type":"core","capabilities":["secure-secrets"],"reuse":"always","tests":["secret-scan","privileged-action-gate"]},
+    {"id":"factory-neural-orchestrator","version":"1","type":"core","capabilities":["agent-orchestration","model-routing","quality-audit"],"reuse":"always","tests":["routing","retry","audit"]},
+    {"id":"factory-localization-pack","version":"1","type":"module","capabilities":["rtl-l10n","multilingual-ui"],"reuse":"preferred","tests":["ar","en","fa","rtl"]},
+    {"id":"factory-offline-data-pack","version":"1","type":"module","capabilities":["offline-first"],"reuse":"preferred","tests":["cache","outbox","reconcile"]},
+    {"id":"factory-artifact-pack","version":"1","type":"module","capabilities":["artifact-delivery"],"reuse":"preferred","tests":["sha256","integrity"]},
+    {"id":"provider-adapter-template","version":"1","type":"template","capabilities":["provider-router"],"reuse":"on_demand","tests":["fallback","timeouts","provider_contract"]},
+    {"id":"observability-adapter-template","version":"1","type":"template","capabilities":["crash-observability","analytics"],"reuse":"on_demand","tests":["event_delivery","privacy"]},
+    {"id":"notification-adapter-template","version":"1","type":"template","capabilities":["notifications"],"reuse":"on_demand","tests":["permission","deep_link","fallback"]},
+    {"id":"billing-adapter-template","version":"1","type":"template","capabilities":["subscription-billing","payments"],"reuse":"on_demand","tests":["entitlement","restore","store_error"]},
+    {"id":"device-smoke-harness","version":"1","type":"qa","capabilities":["device-lab","quality-audit"],"reuse":"preferred","tests":["launch","navigation","critical_paths"]}
+  ]
+}

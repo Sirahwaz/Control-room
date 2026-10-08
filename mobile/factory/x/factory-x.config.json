@@ -1,0 +1,67 @@
+{
+  "$schema": "./factory-x.config.schema.json",
+  "factory_x_version": 1,
+  "engine": "midad-mobile-factory-x",
+  "mode": "intelligent-parallel-app-factory",
+  "selection": {
+    "strategy": "need-first-provider-second",
+    "unknown_provider_action": "discover-evaluate-register",
+    "minimum_provider_evidence": 0.75,
+    "minimum_capability_fit": 0.8,
+    "allow_multiple_providers": true,
+    "require_fallback_for_critical_capabilities": true
+  },
+  "execution": {
+    "max_parallel_agents": 24,
+    "max_parallel_tasks": 48,
+    "max_provider_discovery_tasks": 8,
+    "default_task_timeout_seconds": 900,
+    "max_repair_attempts_per_incident": 3,
+    "prefer_cached_artifacts": true,
+    "prefer_incremental_builds": true,
+    "parallel_independent_checks": true
+  },
+  "quality": {
+    "fail_closed_on_security_gate": true,
+    "required_preflight": [
+      "requirements_normalized",
+      "capability_plan_exists",
+      "provider_plan_exists",
+      "plugin_reuse_check",
+      "agent_plan_exists",
+      "automation_plan_exists",
+      "security_boundary",
+      "missing_surface_audit",
+      "fallback_coverage"
+    ],
+    "required_release_checks": [
+      "static_audit",
+      "secret_scan",
+      "dependency_audit",
+      "artifact_integrity",
+      "installability",
+      "runtime_smoke_when_device_available"
+    ]
+  },
+  "registries": {
+    "capabilities": "./capabilities.registry.json",
+    "providers": "./providers.registry.json",
+    "plugins": "./plugins.registry.json",
+    "agents": "./agents.registry.json",
+    "automations": "./automations.registry.json",
+    "selection_policy": "./selection.policy.json"
+  },
+  "learning": {
+    "enabled": true,
+    "scopes": ["global", "product", "tenant"],
+    "store": "supabase:midad-ai",
+    "never_learn_from": [
+      "secrets",
+      "private_keys",
+      "passwords",
+      "otp",
+      "identity_documents",
+      "raw_credentials"
+    ]
+  }
+}

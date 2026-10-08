@@ -1,0 +1,31 @@
+{
+  "registry_version": 1,
+  "concurrency_model": "dynamic_bounded_parallelism",
+  "max_parallel_agents": 24,
+  "agents": [
+    {"id":"requirements-agent","domain":"product","parallel_safe":true,"inputs":["objective","constraints"],"outputs":["normalized_requirements"]},
+    {"id":"capability-scout","domain":"architecture","parallel_safe":true,"inputs":["normalized_requirements"],"outputs":["capability_matches"]},
+    {"id":"provider-scout","domain":"architecture","parallel_safe":true,"inputs":["requirements","capability_matches"],"outputs":["provider_candidates"]},
+    {"id":"reuse-agent","domain":"factory","parallel_safe":true,"inputs":["capabilities","plugins","repo"],"outputs":["reuse_plan"]},
+    {"id":"ui-architect","domain":"ui","parallel_safe":true,"inputs":["requirements","design_tokens"],"outputs":["ui_plan"]},
+    {"id":"backend-architect","domain":"backend","parallel_safe":true,"inputs":["requirements","data_needs"],"outputs":["backend_plan"]},
+    {"id":"android-agent","domain":"android","parallel_safe":true,"inputs":["ui_plan","backend_plan"],"outputs":["android_plan"]},
+    {"id":"ios-agent","domain":"ios","parallel_safe":true,"inputs":["ui_plan","backend_plan"],"outputs":["ios_plan"]},
+    {"id":"data-agent","domain":"data","parallel_safe":true,"inputs":["backend_plan"],"outputs":["data_plan"]},
+    {"id":"ai-agent","domain":"ai","parallel_safe":true,"inputs":["objective","provider_candidates"],"outputs":["ai_plan"]},
+    {"id":"security-agent","domain":"security","parallel_safe":true,"inputs":["all_plans"],"outputs":["security_findings"]},
+    {"id":"performance-agent","domain":"performance","parallel_safe":true,"inputs":["android_plan","ios_plan"],"outputs":["performance_plan"]},
+    {"id":"localization-agent","domain":"localization","parallel_safe":true,"inputs":["ui_plan","languages"],"outputs":["localization_plan"]},
+    {"id":"monetization-agent","domain":"revenue","parallel_safe":true,"inputs":["market","business_model"],"outputs":["monetization_plan"]},
+    {"id":"research-agent","domain":"research","parallel_safe":true,"inputs":["unknowns"],"outputs":["evidence_bundle"]},
+    {"id":"design-system-agent","domain":"design","parallel_safe":true,"inputs":["ui_plan","brand"],"outputs":["component_plan"]},
+    {"id":"test-agent","domain":"qa","parallel_safe":true,"inputs":["all_plans"],"outputs":["test_matrix"]},
+    {"id":"audit-agent","domain":"qa","parallel_safe":false,"inputs":["all_outputs"],"outputs":["audit_report"]},
+    {"id":"repair-agent","domain":"repair","parallel_safe":false,"inputs":["audit_report"],"outputs":["repair_plan"]},
+    {"id":"build-agent","domain":"build","parallel_safe":false,"inputs":["approved_plan"],"outputs":["artifacts"]},
+    {"id":"runtime-agent","domain":"runtime","parallel_safe":false,"inputs":["artifacts"],"outputs":["runtime_report"]},
+    {"id":"release-agent","domain":"release","parallel_safe":false,"inputs":["verified_artifacts"],"outputs":["release_package"]},
+    {"id":"learning-agent","domain":"learning","parallel_safe":true,"inputs":["run_results"],"outputs":["learning_record"]},
+    {"id":"factory-governor","domain":"orchestration","parallel_safe":false,"inputs":["all_agents"],"outputs":["execution_plan","gates"]}
+  ]
+}
