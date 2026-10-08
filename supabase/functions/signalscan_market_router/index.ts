@@ -277,6 +277,33 @@ async function depth(symbol:string, limit:number){
   return firstValid(jobs);
 }
 
+async function liveScan(universe:number, interval:string){
+  const t=await ticker();
+  const top=t.data
+    .filter((x:any)=>/USDT$/.test(String(x.symbol))&&!/(USDC|BUSD|FDUSD)USDT$/.test(String(x.symbol)))
+    .sort((a:any,b:any)=>Number(b.quoteVolume||0)-Number(a.quoteVolume||0))
+    .slice(0,Math.min(12,Math.max(3,universe)));
+  const candles:any[]=[];
+  for(let i=0;i<top.length;i+=3){
+    const wave=top.slice(i,i+3);
+    const got=await Promise.all(wave.map(async(x:any)=>{
+      try{
+        const [p,s]=await Promise.all([
+          kline(x.symbol,interval,140),
+          kline(x.symbol,interval==="1d"?"1d":"4h",140)
+        ]);
+        return {symbol:x.symbol,primary:p.data,secondary:s.data,providers:[p.provider,s.provider]};
+      }catch(e){
+        return {symbol:x.symbol,error:String((e as Error)?.message||e).slice(0,220)};
+      }
+    }));
+    candles.push(...got);
+  }
+  const valid=candles.filter(x=>Array.isArray(x.primary)&&x.primary.length>=25&&Array.isArray(x.secondary)&&x.secondary.length>=25);
+  if(!valid.length) throw new Error("live_scan_no_valid_symbol");
+  return {ok:true,state:"VERIFIED",kind:"scan",ticker_provider:t.provider,tickers:top,candles:valid,failed:candles.filter(x=>x.error).map(x=>({symbol:x.symbol,error:x.error})),generated_at:new Date().toISOString()};
+}
+
 Deno.serve(async(req)=>{
   if(req.method==="OPTIONS") return new Response(null,{status:204,headers:H});
   if(req.method!=="GET") return out({ok:false,state:"FAILED",error:"method_not_allowed"},405);
@@ -301,6 +328,12 @@ Deno.serve(async(req)=>{
     if(kind==="ticker") r=await ticker();
     else if(kind==="kline") r=await kline(symbol,interval,limit);
     else if(kind==="depth") r=await depth(symbol,limit);
+    else if(kind==="scan") {
+      const raw=Number(u.searchParams.get("universe")||10);
+      const universe=Number.isFinite(raw)?raw:10;
+      const scan=await liveScan(universe,interval);
+      return out(scan,200,{"x-signalscan-provider":scan.ticker_provider});
+    }
     else return out({ok:false,state:"FAILED",error:"unsupported_kind"},400);
 
     return out(r.data,200,{"x-signalscan-provider":r.provider});
