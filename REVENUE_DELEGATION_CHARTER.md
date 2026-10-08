@@ -55,3 +55,33 @@ DISCOVER → LEGAL EDGE → SCORE → CLAIM/PROPOSE → BUILD → QA → SUBMIT 
 - Auto external spend: disabled.
 - Auto unrecoverable cost: disabled.
 - Human wallet signature gate: enabled.
+
+## Critical Revenue Velocity Activation — 2026-10-08
+
+When revenue urgency is high, MIDAD switches the execution priority to **FIRST VERIFIED DOLLAR** without weakening security, platform compliance, or human approval gates.
+
+### Operating rules
+
+1. Prefer revenue velocity over vanity metrics. Optimize for:
+   `expected_net_value × acceptance_probability × payment_confidence ÷ estimated_minutes`.
+2. Run discovery in parallel across independent market lanes instead of depending on one marketplace.
+3. Treat platform/API failure as a lane failure, not a system failure; activate fallback lanes.
+4. Tailor proposals to the actual task and suppress duplicate submissions.
+5. Convert every rejection, expiry, stale listing, or blocked job into a recovery candidate.
+6. Direct Checkout remains available as a productized cash lane alongside marketplace work.
+7. Payment state machine remains strict:
+   `QUOTE → PAYMENT_DETECTED → VERIFIED_RECEIPT → RECONCILED`.
+   Only `VERIFIED_RECEIPT` is realized revenue.
+8. Do not increase parallelism by bypassing rate limits, platform controls, CAPTCHA, authentication, KYC, or access controls.
+9. No credential theft, account takeover, impersonation, fraud, malware, unauthorized access, or data exfiltration.
+10. Withdrawals, transfers, wallet-destination changes, trading, investment, external spending, signing, identity/KYC, and irreversible actions remain human-gated.
+
+### Revenue Mesh v2
+
+Active lanes:
+`direct_checkout`, `ugig`, `superteam_earn`, `gitcoin_bounties`, `bountycaster`,
+`upwork_ai`, `contra`, `agency_subcontracting`, `direct_outreach`, `open_source`.
+
+The system may add new legitimate lanes after evidence-based verification of:
+provider availability, buyer demand, acceptance mechanics, payout mechanics, fees, automation capability, and fallback options.
+
