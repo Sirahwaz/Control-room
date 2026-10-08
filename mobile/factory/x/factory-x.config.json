@@ -1,7 +1,7 @@
 {
   "$schema": "./factory-x.config.schema.json",
   "factory_x_version": 1,
-  "engine": "midad-mobile-factory-x",
+  "engine": "midad-mobile-factory-x-execution",
   "mode": "intelligent-parallel-app-factory",
   "selection": {
     "strategy": "need-first-provider-second",
@@ -22,7 +22,11 @@
     "prefer_incremental_builds": true,
     "parallel_independent_checks": true,
     "scale_policy": "capacity_adaptive",
-    "agent_pool_strategy": "dynamic_role_selection"
+    "agent_pool_strategy": "dynamic_role_selection",
+    "execution_engine": "./execution-engine.mjs",
+    "retry_policy": "bounded_repair_then_block",
+    "deadlock_policy": "fail_closed",
+    "cache_scope": "task+request+registry-version"
   },
   "quality": {
     "fail_closed_on_security_gate": true,
@@ -38,7 +42,9 @@
       "fallback_coverage",
       "competitive_gap_audit",
       "privacy_baseline",
-      "performance_budget_plan"
+      "performance_budget_plan",
+      "execution_engine_present",
+      "execution_dag_valid"
     ],
     "required_release_checks": [
       "static_audit",
@@ -50,7 +56,8 @@
       "privacy_store_gate",
       "visual_device_qa",
       "dependency_supply_chain_audit",
-      "growth_readiness_check"
+      "growth_readiness_check",
+      "execution_report"
     ]
   },
   "registries": {
