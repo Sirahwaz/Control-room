@@ -22,6 +22,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore Factory X cache
+        uses: actions/cache@v4
+        with:
+          path: .factory-cache
+          key: factory-x-cache-${{ runner.os }}-${{ hashFiles('mobile/factory/x/*.json') }}
+          restore-keys: |
+            factory-x-cache-${{ runner.os }}-
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -99,6 +107,7 @@ jobs:
           if(r.state!=='PLANNED_EXECUTION_VERIFIED') throw new Error('execution state invalid');
           if(r.counts.tasks < 20) throw new Error('DAG task count too low');
           if(r.counts.completed < 20 && r.counts.cached < 20) throw new Error('DAG did not complete');
+          if(r.counts.cached < 20) throw new Error('cache reuse not verified: expected at least 20 cached tasks');
           if(r.parallelism.max_parallel_tasks < 40) throw new Error('parallel task capacity not preserved');
           console.log(JSON.stringify({ok:true,state:r.state,tasks:r.counts.tasks,completed:r.counts.completed,cached:r.counts.cached,discovery:r.discovery_queue.length}));
           NODE
