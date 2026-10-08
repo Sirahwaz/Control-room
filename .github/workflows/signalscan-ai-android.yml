@@ -5,6 +5,13 @@ on:
     paths:
       - "mobile/factory/products/signalscan-ai.json"
       - "mobile/web/signalscan/**"
+      - "mobile/factory/products/signalscan-ai.json"
+      - "mobile/factory/certification-gate.mjs"
+      - "mobile/factory/prepare-web-bundle.mjs"
+      - "mobile/factory/artifact-certification.mjs"
+      - "mobile/factory/product-smoke/**"
+      - "mobile/factory/runtime-smoke/**"
+      - "mobile/factory/x/**"
       - ".github/workflows/signalscan-ai-android.yml"
   workflow_dispatch:
     inputs:
