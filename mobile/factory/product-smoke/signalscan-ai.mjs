@@ -9,7 +9,7 @@ const ids=new Set([...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x=>x[1]));
 const missing=requiredIds.filter(id=>!ids.has(id));
 if(missing.length)throw new Error("Missing required UI ids: "+missing.join(", "));
 for(const p of ["binance","bybit","kucoin","coinbase"])if(!js.includes('id:"'+p+'"'))throw new Error("Provider missing: "+p);
-for(const l of ["ar","en","fa"])if(!new RegExp("\\\\b"+l+":\\\\s*\\\\{").test(js))throw new Error("Locale missing: "+l);
+for(const l of ["ar","en","fa"])if(!js.includes(l+":{"))throw new Error("Locale missing: "+l);
 for(const marker of ["FACT","INFERENCE","ACTION","BLOCKED","ROUTER VERIFIED","ROUTER SCANNING"])if(!js.includes(marker))throw new Error("Operational marker missing: "+marker);
 if(!js.includes("good.length<2"))throw new Error("Low-quorum guard missing");
 if(!js.includes("!a.good.length"))throw new Error("No-data fail-closed branch missing");
