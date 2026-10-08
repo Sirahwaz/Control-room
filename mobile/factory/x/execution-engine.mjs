@@ -238,7 +238,7 @@ async function runTask(t) {
       attempt:attempts[t.id]
     };
     timings.push(telemetry);
-    if (!NO_CACHE) cache[cacheKey] = {output,telemetry};
+    cache[cacheKey] = {output,telemetry};
     events.push({event:"DONE",task:t.id,at:isoNow(),duration_ms:telemetry.duration_ms});
   } catch (error) {
     if (attempts[t.id] < maxRetries) {
