@@ -1,0 +1,14 @@
+{
+  "product_key":"signal-scanner",
+  "product_version":"0.2.0",
+  "run_key":"signalscan-factory-x-rebuild-001",
+  "mode":"product-rebuild",
+  "objective":"Rebuild the existing standalone SignalScan AI Android product through MIDAD Mobile Factory X without changing its security boundary or live-trading prohibition; preserve proven features, improve orchestration efficiency, and verify build integrity.",
+  "languages":["ar","en","fa"],
+  "target_markets":["global_remote_crypto","north_america","europe_uk","arab_gcc","east_southeast_asia"],
+  "capability_tags":["mobile-shell","responsive-ui","rtl-l10n","web-research","design-system","auth","ci-cd-mobile","quality-audit","performance-budget","product-analytics","competitive-intelligence","model-routing","offline-first","artifact-delivery","privacy-compliance","device-matrix","accessibility-audit","dependency-audit"],
+  "backend":{"strategy":"supabase-edge","function":"signalscan_brain","ai_fallback":"local_explanation"},
+  "monetization_models":["subscription","freemium","one_time","white_label","b2b_license"],
+  "constraints":["preserve-working-signal-scanner-v0.2","no-privileged-credentials-in-client","live-orders-disabled","withdrawals-disabled","no-automated-credential-entry","human-gate-for-irreversible-actions","reuse-before-rebuild"],
+  "competitor_evidence":"Existing SignalScan v0.2 competitor-gap work and product audit are preserved as prior evidence; Factory X may re-evaluate when needed."
+}
