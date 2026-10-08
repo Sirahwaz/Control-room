@@ -1,0 +1,14 @@
+{
+  "registry_version": 1,
+  "protocol": "MIDAD-FX-1",
+  "adapters": [
+    {"id":"local-worker","kind":"local","execution":"in_process","secrets":"none","supports":["deterministic_tasks","build","static_audit","qa"]},
+    {"id":"native-host","kind":"host_connector","execution":"host_dispatch","secrets":"host_managed","supports":["github","supabase","figma","firecrawl","context7","hive","linear","notion","openart","heygen","speedbot","tinyfish","remote-desktop","plugin-management","plugin-creator"]},
+    {"id":"supabase-edge","kind":"serverless","execution":"https","secrets":"server_only","supports":["supabase","internal_functions"]},
+    {"id":"http-provider","kind":"external_api","execution":"https","secrets":"server_only","supports":["rest_api","webhook"]},
+    {"id":"github-actions","kind":"ci","execution":"workflow_dispatch","secrets":"github_actions","supports":["android_build","ios_build","test_matrix","artifact_delivery"]},
+    {"id":"browser-gateway","kind":"browser","execution":"managed_browser","secrets":"vault_or_profile","supports":["browser_automation","interactive_web"]},
+    {"id":"human-gate","kind":"approval","execution":"approval_queue","secrets":"never_requested","supports":["irreversible_external_action","credential_setup","production_publish"]},
+    {"id":"blocked","kind":"safety","execution":"none","secrets":"none","supports":["unsupported","unsafe","missing_contract"]}
+  ]
+}
