@@ -9,7 +9,11 @@ if (!requestPath) throw new Error("Usage: node mobile/factory/x/execution-engine
 
 const NO_CACHE = process.argv.includes("--no-cache");
 const readJson = p => JSON.parse(fs.readFileSync(path.join(root, p), "utf8"));
-const writeJson = (p, value) => fs.writeFileSync(path.join(root, p), JSON.stringify(value, null, 2) + "\n");
+const writeJson = (p, value) => {
+  const target = path.isAbsolute(p) ? p : path.join(root, p);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(value, null, 2) + "\n");
+};
 const hash = value => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const isoNow = () => new Date().toISOString();
 
