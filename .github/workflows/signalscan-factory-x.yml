@@ -82,20 +82,22 @@ jobs:
           set -euo pipefail
           rm -f mobile/factory/x/execution-report.json
           rm -rf .factory-cache
-          T0=$(date +%s)
+          T0=$(date +%s%3N)
           node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/signal-scanner.request.json --no-cache
-          T1=$(date +%s)
-          echo "FX_FIRST_SECONDS=$((T1-T0))" >> "$GITHUB_ENV"
-          jq -e '.ok==true and .counts.tasks>=20 and .counts.completed>=20' mobile/factory/x/execution-report.json
+          T1=$(date +%s%3N)
+          echo "FX_FIRST_MS=$((T1-T0))" >> "$GITHUB_ENV"
+          cp mobile/factory/x/execution-report.json mobile/factory/x/execution-report-uncached.json
+          jq -e '.ok==true and .counts.tasks>=20 and .counts.completed>=20 and .counts.cached==0' mobile/factory/x/execution-report.json
 
       - name: Factory X execution — cached efficiency pass
         run: |
           set -euo pipefail
-          T0=$(date +%s)
+          T0=$(date +%s%3N)
           node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/signal-scanner.request.json
-          T1=$(date +%s)
-          echo "FX_CACHED_SECONDS=$((T1-T0))" >> "$GITHUB_ENV"
-          jq -e '.ok==true and .counts.cached>=20' mobile/factory/x/execution-report.json
+          T1=$(date +%s%3N)
+          echo "FX_CACHED_MS=$((T1-T0))" >> "$GITHUB_ENV"
+          cp mobile/factory/x/execution-report.json mobile/factory/x/execution-report-cached.json
+          jq -e '.ok==true and .counts.cached>=20 and .counts.completed==0' mobile/factory/x/execution-report.json
 
       - name: Agent Execution Fabric — product dispatch plan
         run: |
@@ -105,6 +107,7 @@ jobs:
           jq -e '.waves|length >= 3' mobile/factory/x/fabric-plan.json
           jq -e '[.waves[]|select(length>1)]|length >= 1' mobile/factory/x/fabric-plan.json
           jq -e '[.waves[]|select(length==1)]|length >= 1' mobile/factory/x/fabric-plan.json
+          jq -e '[.waves[][] | .agent] | index("android-agent") and index("build-agent") and index("security-agent")' mobile/factory/x/fabric-plan.json
 
       - name: Resolve SignalScan product
         run: |
@@ -149,6 +152,12 @@ jobs:
           set -euo pipefail
           RESP="$(curl -sS --fail-with-body --max-time 25             -H 'content-type: application/json'             -H "apikey: $SIGNALSCAN_PUBLIC_KEY"             -H 'x-signalscan-device: ci-factory-x-2026-10-08'             -d '{"device_id":"ci-factory-x-2026-10-08","want_ai":false,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain')"
           echo "$RESP" | jq -e '.ok==true and .consensus.score >= 5 and .adversarial != null and .limits.live_orders==false and .limits.withdrawals==false'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
 
       - name: Prepare Android toolchain
         shell: bash
@@ -250,16 +259,17 @@ jobs:
           APK="dist/SignalScan-AI-v0.2.0-factory-x.apk"
           SIZE=$(stat -c%s "$APK")
           BASELINE=6214492
-          python3 - "$SIZE" "$BASELINE" "${FX_FIRST_SECONDS:-0}" "${FX_CACHED_SECONDS:-0}" "${ANDROID_BUILD_SECONDS:-0}" <<'PY'
+          python3 - "$SIZE" "$BASELINE" "${FX_FIRST_MS:-0}" "${FX_CACHED_MS:-0}" "${ANDROID_BUILD_SECONDS:-0}" <<'PY'
           import json,sys
           size,baseline,first,cached,android=map(int,sys.argv[1:])
           report={
             "factory":"MIDAD Mobile Factory X",
             "product":"SignalScan AI",
             "version":"0.2.0",
-            "factory_execution_seconds_uncached":first,
-            "factory_execution_seconds_cached":cached,
-            "factory_cache_reuse":cached>=0,
+            "factory_execution_ms_uncached":first,
+            "factory_execution_ms_cached":cached,
+            "factory_cache_reuse":cached>=0 and first>0 and cached>0,
+            "factory_cache_speedup_x":round(first/cached,3) if cached>0 else None,
             "configured_parallel_agents":32,
             "configured_parallel_tasks":64,
             "apk_bytes":size,
@@ -293,4 +303,6 @@ jobs:
             mobile/factory/x/runtime-plan.json
             mobile/factory/x/preflight-report.json
             mobile/factory/x/execution-report.json
+            mobile/factory/x/execution-report-uncached.json
+            mobile/factory/x/execution-report-cached.json
             mobile/factory/x/fabric-plan.json
