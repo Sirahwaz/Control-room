@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MIDAD Mobile Factory X Configuration",
+  "type": "object",
+  "required": ["factory_x_version","engine","mode","selection","execution","quality","registries","learning"],
+  "properties": {
+    "factory_x_version": {"type":"integer","minimum":1},
+    "engine": {"type":"string","minLength":1},
+    "mode": {"type":"string","minLength":1},
+    "selection": {"type":"object"},
+    "execution": {"type":"object"},
+    "quality": {"type":"object"},
+    "registries": {"type":"object"},
+    "learning": {"type":"object"}
+  },
+  "additionalProperties": true
+}

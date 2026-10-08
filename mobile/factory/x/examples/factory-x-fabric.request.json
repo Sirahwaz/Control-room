@@ -1,0 +1,31 @@
+{
+  "product_key":"factory-x-fabric-self-test",
+  "run_key":"factory-x-fabric-self-test-001",
+  "mode":"dispatch-ready",
+  "capability_tags":["android","responsive","rtl","web-research","design-system","auth","ci-cd-mobile","quality-audit","performance-budget","product-analytics","competitive-intelligence"],
+  "agent_ids":[
+    "requirements-agent",
+    "capability-scout",
+    "provider-scout",
+    "reuse-agent",
+    "ui-architect",
+    "backend-architect",
+    "android-agent",
+    "ai-agent",
+    "security-agent",
+    "performance-agent",
+    "localization-agent",
+    "research-agent",
+    "design-system-agent",
+    "test-agent",
+    "audit-agent",
+    "build-agent",
+    "release-agent",
+    "factory-governor",
+    "competitor-intel-agent",
+    "privacy-agent",
+    "visual-qa-agent",
+    "analytics-agent"
+  ],
+  "constraints":["no-privileged-credentials-in-client","human-gate-irresversible-actions","preserve-existing-factory"]
+}

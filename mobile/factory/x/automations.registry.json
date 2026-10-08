@@ -1,0 +1,217 @@
+{
+  "registry_version": 1,
+  "automations": [
+    {
+      "id": "factory-preflight",
+      "trigger": "before_every_build",
+      "steps": [
+        "requirements-normalize",
+        "capability-plan",
+        "provider-plan",
+        "reuse-audit",
+        "security-audit",
+        "fallback-audit"
+      ],
+      "parallel": [
+        "capability-plan",
+        "provider-plan",
+        "reuse-audit"
+      ],
+      "gate": "preflight_complete"
+    },
+    {
+      "id": "provider-gap-discovery",
+      "trigger": "capability_missing",
+      "steps": [
+        "discover-providers",
+        "collect-evidence",
+        "score",
+        "register_candidate",
+        "select_primary_and_fallback"
+      ],
+      "parallel": [
+        "discover-providers",
+        "collect-evidence"
+      ],
+      "gate": "provider_plan_complete"
+    },
+    {
+      "id": "parallel-static-qa",
+      "trigger": "after_source_change",
+      "steps": [
+        "js_syntax",
+        "secret_scan",
+        "dependency_audit",
+        "schema_audit",
+        "surface_wiring_audit"
+      ],
+      "parallel": [
+        "js_syntax",
+        "secret_scan",
+        "dependency_audit",
+        "schema_audit",
+        "surface_wiring_audit"
+      ],
+      "gate": "all_pass"
+    },
+    {
+      "id": "rapid-build",
+      "trigger": "plan_approved",
+      "steps": [
+        "prepare_cache",
+        "incremental_build",
+        "sign_test_artifact",
+        "integrity_audit"
+      ],
+      "parallel": [
+        "prepare_cache",
+        "incremental_build"
+      ],
+      "gate": "artifact_verified"
+    },
+    {
+      "id": "repair-loop",
+      "trigger": "quality_failure",
+      "steps": [
+        "classify_incident",
+        "select_repair_agent",
+        "patch",
+        "rerun_affected_checks",
+        "full_gate_if_repaired"
+      ],
+      "max_attempts": 3,
+      "gate": "repaired_or_blocked"
+    },
+    {
+      "id": "device-smoke",
+      "trigger": "device_available",
+      "steps": [
+        "install",
+        "launch",
+        "critical_path",
+        "permissions",
+        "back_navigation",
+        "network_degradation",
+        "collect_log"
+      ],
+      "parallel": [
+        "critical_path",
+        "permissions"
+      ],
+      "gate": "runtime_smoke_passed"
+    },
+    {
+      "id": "release-package",
+      "trigger": "all_release_gates_pass",
+      "steps": [
+        "collect_apk_aab_ipa",
+        "sha256",
+        "reports",
+        "human_gate_if_external_publish",
+        "upload_human_facing_artifacts"
+      ],
+      "gate": "release_package_ready"
+    },
+    {
+      "id": "factory-learning-capture",
+      "trigger": "run_complete",
+      "steps": [
+        "capture_request",
+        "capture_decisions",
+        "capture_failures",
+        "capture_repairs",
+        "capture_feedback",
+        "capture_outcome"
+      ],
+      "parallel": [
+        "capture_decisions",
+        "capture_failures",
+        "capture_repairs"
+      ],
+      "gate": "learning_record_saved"
+    },
+    {
+      "id": "competitive-gap-audit",
+      "trigger": "before_product_architecture",
+      "steps": [
+        "discover_competitors",
+        "collect_current_evidence",
+        "feature_gap_matrix",
+        "differentiation_plan",
+        "record_decision"
+      ],
+      "parallel": [
+        "discover_competitors",
+        "collect_current_evidence"
+      ],
+      "gate": "competitive_baseline_complete"
+    },
+    {
+      "id": "privacy-store-gate",
+      "trigger": "before_release",
+      "steps": [
+        "privacy_audit",
+        "permission_audit",
+        "store_policy_audit",
+        "data_disclosure_audit"
+      ],
+      "parallel": [
+        "privacy_audit",
+        "permission_audit",
+        "store_policy_audit"
+      ],
+      "gate": "compliance_complete"
+    },
+    {
+      "id": "visual-device-qa",
+      "trigger": "after_build",
+      "steps": [
+        "device_matrix",
+        "screenshot_capture",
+        "visual_diff",
+        "accessibility_scan",
+        "performance_budget"
+      ],
+      "parallel": [
+        "device_matrix",
+        "screenshot_capture",
+        "accessibility_scan",
+        "performance_budget"
+      ],
+      "gate": "device_qa_complete"
+    },
+    {
+      "id": "dependency-supply-chain-audit",
+      "trigger": "after_dependency_change",
+      "steps": [
+        "lockfile_check",
+        "license_check",
+        "known_vulnerability_check",
+        "integrity_check",
+        "reproducibility_check"
+      ],
+      "parallel": [
+        "license_check",
+        "known_vulnerability_check",
+        "integrity_check"
+      ],
+      "gate": "dependency_audit_complete"
+    },
+    {
+      "id": "growth-readiness-check",
+      "trigger": "before_production",
+      "steps": [
+        "analytics_events",
+        "funnel_check",
+        "experiment_hooks",
+        "monetization_surface_check"
+      ],
+      "parallel": [
+        "analytics_events",
+        "funnel_check",
+        "experiment_hooks"
+      ],
+      "gate": "growth_surface_complete"
+    }
+  ]
+}

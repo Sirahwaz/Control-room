@@ -1,0 +1,177 @@
+name: MIDAD Mobile Factory X
+
+on:
+  push:
+    branches:
+      - factory/mobile-factory-x
+      - main
+    paths:
+      - 'mobile/factory/x/**'
+      - 'mobile/factory/factory.config.json'
+      - '.github/workflows/mobile-factory-x.yml'
+  pull_request:
+    paths:
+      - 'mobile/factory/x/**'
+      - 'mobile/factory/factory.config.json'
+      - '.github/workflows/mobile-factory-x.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: factory-x-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  factory-x-self-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore Factory X cache
+        uses: actions/cache@v4
+        with:
+          path: .factory-cache
+          key: factory-x-cache-${{ runner.os }}-${{ hashFiles('mobile/factory/x/*.json') }}
+          restore-keys: |
+            factory-x-cache-${{ runner.os }}-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: JSON registry parse
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const files = [
+            'mobile/factory/factory.config.json',
+            'mobile/factory/x/factory-x.config.json',
+            'mobile/factory/x/factory-x.config.schema.json',
+            'mobile/factory/x/capabilities.registry.json',
+            'mobile/factory/x/providers.registry.json',
+            'mobile/factory/x/plugins.registry.json',
+            'mobile/factory/x/agents.registry.json',
+            'mobile/factory/x/automations.registry.json',
+            'mobile/factory/x/selection.policy.json',
+            'mobile/factory/x/adapters.registry.json',
+            'mobile/factory/x/agent-bindings.registry.json',
+            'mobile/factory/x/examples/factory-x-self-test.request.json',
+            'mobile/factory/x/examples/factory-x-execution.request.json'
+          ];
+          for (const f of files) {
+            JSON.parse(fs.readFileSync(f, 'utf8'));
+            console.log('JSON OK', f);
+          }
+          NODE
+
+      - name: JavaScript syntax
+        run: |
+          node --check mobile/factory/x/plan.mjs
+          node --check mobile/factory/x/preflight.mjs
+          node --check mobile/factory/x/execution-engine.mjs
+          node --check mobile/factory/x/execution-fabric.mjs
+
+      - name: Factory contract registration
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const f=JSON.parse(fs.readFileSync('mobile/factory/factory.config.json'));
+          const x=f.extensions?.intelligent_parallel_app_factory;
+          const fabric=x?.agent_fabric;
+          if(x?.enabled!==true) throw new Error('Factory X not enabled in parent contract');
+          if(fabric?.enabled!==true) throw new Error('Agent Execution Fabric not registered in parent contract');
+          if(fabric?.protocol!=='MIDAD-FX-1') throw new Error('Fabric protocol not registered');
+          if(!fabric?.adapters || !fabric?.bindings || !fabric?.executor) throw new Error('Fabric contract paths incomplete');
+          console.log(JSON.stringify({ok:true,protocol:fabric.protocol,executor:fabric.executor}));
+          NODE
+
+      - name: Factory X preflight
+        run: node mobile/factory/x/preflight.mjs
+
+      - name: Factory X planning
+        run: node mobile/factory/x/plan.mjs mobile/factory/x/examples/factory-x-self-test.request.json
+
+      - name: Factory X execution engine
+        run: node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/factory-x-execution.request.json --no-cache
+
+      - name: Factory X cache reuse
+        run: node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/factory-x-execution.request.json
+
+      - name: Agent Execution Fabric
+        run: node mobile/factory/x/execution-fabric.mjs mobile/factory/x/examples/factory-x-fabric.request.json
+
+      - name: Agent Fabric assertions
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('mobile/factory/x/fabric-plan.json'));
+          const bindings=JSON.parse(fs.readFileSync('mobile/factory/x/agent-bindings.registry.json')).bindings;
+          const adapters=JSON.parse(fs.readFileSync('mobile/factory/x/adapters.registry.json')).adapters;
+          if(!r.ok) throw new Error('fabric plan blocked');
+          if(r.counts.dispatch_tasks < 20) throw new Error('fabric task count too low');
+          if(bindings.length < 38) throw new Error('agent binding registry incomplete');
+          if(adapters.length < 8) throw new Error('adapter registry incomplete');
+          if(r.parallelism.max_dispatch_per_wave < 20) throw new Error('fabric parallel ceiling too low');
+          if(r.counts.waves < 3) throw new Error('fabric did not create parallel/serial execution lanes');
+          if(!r.waves.some(w=>w.length > 1)) throw new Error('parallel lane not demonstrated');
+          if(!r.waves.some(w=>w.length === 1)) throw new Error('serial gate lane not demonstrated');
+          console.log(JSON.stringify({ok:true,tasks:r.counts.dispatch_tasks,waves:r.counts.waves,blockers:r.counts.blockers,bindings:bindings.length,adapters:adapters.length}));
+          NODE
+
+      - name: Assert parallelism and registries
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const cfg=JSON.parse(fs.readFileSync('mobile/factory/x/factory-x.config.json'));
+          const agents=JSON.parse(fs.readFileSync('mobile/factory/x/agents.registry.json')).agents;
+          const autos=JSON.parse(fs.readFileSync('mobile/factory/x/automations.registry.json')).automations;
+          const providers=JSON.parse(fs.readFileSync('mobile/factory/x/providers.registry.json')).providers;
+          if(cfg.execution.max_parallel_agents < 20) throw new Error('parallel agent capacity too low');
+          if(cfg.execution.max_parallel_tasks < 40) throw new Error('parallel task capacity too low');
+          if(agents.length < 20) throw new Error('agent registry incomplete');
+          if(autos.length < 7) throw new Error('automation registry incomplete');
+          if(!providers.some(p=>p.status==='discover_on_need')) throw new Error('provider discovery path missing');
+          console.log(JSON.stringify({
+            ok:true,
+            max_parallel_agents:cfg.execution.max_parallel_agents,
+            max_parallel_tasks:cfg.execution.max_parallel_tasks,
+            agents:agents.length,
+            automations:autos.length,
+            providers:providers.length
+          }));
+          NODE
+
+      - name: Execution report assertions
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('mobile/factory/x/execution-report.json'));
+          if(!r.ok) throw new Error('execution report not ok');
+          if(r.state!=='PLANNED_EXECUTION_VERIFIED') throw new Error('execution state invalid');
+          if(r.counts.tasks < 20) throw new Error('DAG task count too low');
+          if(r.counts.completed < 20 && r.counts.cached < 20) throw new Error('DAG did not complete');
+          if(r.counts.cached < 20) throw new Error('cache reuse not verified: expected at least 20 cached tasks');
+          if(r.parallelism.max_parallel_tasks < 40) throw new Error('parallel task capacity not preserved');
+          console.log(JSON.stringify({ok:true,state:r.state,tasks:r.counts.tasks,completed:r.counts.completed,cached:r.counts.cached,discovery:r.discovery_queue.length}));
+          NODE
+
+      - name: Security text scan
+        run: |
+          if grep -RInE --exclude-dir=.git --exclude='*.lock'             'BEGIN (RSA|OPENSSH|PRIVATE) KEY|SUPABASE_SERVICE_ROLE_KEY|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}'             mobile/factory/x; then
+            echo "Potential secret pattern found"
+            exit 1
+          fi
+          echo "Security scan PASS"
+
+      - name: Upload Factory X execution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-x-execution-report
+          if-no-files-found: error
+          path: |
+            mobile/factory/x/runtime-plan.json
+            mobile/factory/x/preflight-report.json
+            mobile/factory/x/execution-report.json
+            mobile/factory/x/fabric-plan.json
