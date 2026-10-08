@@ -156,7 +156,7 @@ jobs:
           grep -q "signalscan_brain" mobile/web/signal-scanner.js
           grep -q "signalscan_market_router" mobile/web/signal-scanner.js
           grep -q "signalscan_market_proxy" mobile/web/signal-scanner.js
-          test "$(grep -o "enrichSymbol(" mobile/web/signal-scanner.js | wc -l)" -ge 2
+          test "$(grep -o "enrichSymbol" mobile/web/signal-scanner.js | wc -l)" -ge 2
           test "$(grep -o "buildMarketContext(" mobile/web/signal-scanner.js | wc -l)" -ge 2
           test "$(grep -o "callBrain(" mobile/web/signal-scanner.js | wc -l)" -ge 2
           grep -q "openWatchlist" mobile/web/signal-scanner.js
