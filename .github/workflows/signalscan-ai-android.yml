@@ -1,7 +1,7 @@
 name: SignalScan AI Android
 on:
   push:
-    branches: ["main"]
+    branches: ["main","factory-certification-v1"]
     paths:
       - "mobile/factory/products/signalscan-ai.json"
       - "mobile/web/signalscan/**"
