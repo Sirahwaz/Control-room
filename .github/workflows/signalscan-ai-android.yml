@@ -106,11 +106,11 @@ jobs:
       - name: Sign and certify APK artifact
         shell: bash
         env:
-          ANDROID_KEYSTORE_B64: \${{ secrets.MIDAD_ANDROID_KEYSTORE_B64 }}
-          ANDROID_KEYSTORE_PASSWORD: \${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: \${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: \${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
-          CUSTOMER_DELIVERY: \${{ inputs.customer_delivery || false }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
+          CUSTOMER_DELIVERY: ${{ inputs.customer_delivery || false }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
@@ -137,8 +137,8 @@ jobs:
             KEY_PASS="$TMP_PASS"
             PROD_SIGNING=false
           fi
-          APKSIGNER="$(find "\${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          AAPT="$(find "\${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
           test -x "$AAPT"
           OUT="dist/SignalScan-AI-v$(jq -r '.version' mobile/factory/runtime-product.json)-release.apk"
@@ -156,7 +156,7 @@ jobs:
           cp mobile/factory/reports/signalscan-ai-artifact-certification.json dist/artifact-certification.json
           rm -rf signing
       - name: Customer delivery gate
-        if: \${{ inputs.customer_delivery }}
+        if: ${{ inputs.customer_delivery }}
         shell: bash
         env:
           RUNTIME_REPORT: mobile/factory/reports/signalscan-ai-runtime-smoke.json
