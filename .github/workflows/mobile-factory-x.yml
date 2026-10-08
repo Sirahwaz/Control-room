@@ -52,6 +52,8 @@ jobs:
             'mobile/factory/x/agents.registry.json',
             'mobile/factory/x/automations.registry.json',
             'mobile/factory/x/selection.policy.json',
+            'mobile/factory/x/adapters.registry.json',
+            'mobile/factory/x/agent-bindings.registry.json',
             'mobile/factory/x/examples/factory-x-self-test.request.json',
             'mobile/factory/x/examples/factory-x-execution.request.json'
           ];
@@ -66,6 +68,7 @@ jobs:
           node --check mobile/factory/x/plan.mjs
           node --check mobile/factory/x/preflight.mjs
           node --check mobile/factory/x/execution-engine.mjs
+          node --check mobile/factory/x/execution-fabric.mjs
 
       - name: Factory X preflight
         run: node mobile/factory/x/preflight.mjs
@@ -78,6 +81,24 @@ jobs:
 
       - name: Factory X cache reuse
         run: node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/factory-x-execution.request.json
+
+      - name: Agent Execution Fabric
+        run: node mobile/factory/x/execution-fabric.mjs mobile/factory/x/examples/factory-x-fabric.request.json
+
+      - name: Agent Fabric assertions
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('mobile/factory/x/fabric-plan.json'));
+          const bindings=JSON.parse(fs.readFileSync('mobile/factory/x/agent-bindings.registry.json')).bindings;
+          const adapters=JSON.parse(fs.readFileSync('mobile/factory/x/adapters.registry.json')).adapters;
+          if(!r.ok) throw new Error('fabric plan blocked');
+          if(r.counts.dispatch_tasks < 20) throw new Error('fabric task count too low');
+          if(bindings.length < 38) throw new Error('agent binding registry incomplete');
+          if(adapters.length < 8) throw new Error('adapter registry incomplete');
+          if(r.parallelism.max_dispatch_per_wave < 20) throw new Error('fabric parallel ceiling too low');
+          console.log(JSON.stringify({ok:true,tasks:r.counts.dispatch_tasks,waves:r.counts.waves,blockers:r.counts.blockers,bindings:bindings.length,adapters:adapters.length}));
+          NODE
 
       - name: Assert parallelism and registries
         run: |
