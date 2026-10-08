@@ -11,7 +11,8 @@ const files=[
   "mobile/factory/x/plugins.registry.json",
   "mobile/factory/x/agents.registry.json",
   "mobile/factory/x/automations.registry.json",
-  "mobile/factory/x/selection.policy.json"
+  "mobile/factory/x/selection.policy.json",
+  "mobile/factory/x/execution-engine.mjs"
 ];
 for(const f of files){
   if(!fs.existsSync(path.join(root,f))) throw new Error("Missing Factory X file: "+f);
@@ -35,11 +36,14 @@ if(cfg.quality?.fail_closed_on_security_gate!==true) failures.push("security_gat
 if(cfg.execution?.max_parallel_agents<4) failures.push("parallel_agents_too_low");
 if(cfg.execution?.max_parallel_tasks<8) failures.push("parallel_tasks_too_low");
 if(cfg.execution?.max_repair_attempts_per_incident>3) failures.push("repair_limit");
-if(agents.length<16) failures.push("agent_pool_incomplete");
-if(automations.length<6) failures.push("automation_pool_incomplete");
+if(agents.length<20) failures.push("agent_pool_incomplete");
+if(automations.length<7) failures.push("automation_pool_incomplete");
 if(policy.rules.includes("never_choose_provider_from_availability_alone")===false) failures.push("provider_rule_missing");
 
 const uncovered=caps.filter(c=>c.criticality==="critical" && !providerCapCoverage.has(c.id) && !pluginCapCoverage.has(c.id)).map(c=>c.id);
+
+if(cfg.execution?.agent_pool_strategy!=="dynamic_role_selection") failures.push("agent_pool_strategy");
+if(cfg.execution?.scale_policy!=="capacity_adaptive") failures.push("scale_policy");
 
 const result={
   ok:failures.length===0,
