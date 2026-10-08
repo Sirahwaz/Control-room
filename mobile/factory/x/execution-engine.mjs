@@ -221,6 +221,7 @@ async function runTask(t) {
 
   status[t.id] = "RUNNING";
   active.add(t.id);
+  peakConcurrency = Math.max(peakConcurrency, active.size);
   attempts[t.id] += 1;
   const start = Date.now();
   events.push({event:"START",task:t.id,at:isoNow(),attempt:attempts[t.id]});
@@ -293,7 +294,7 @@ const report = {
   run_id:runId,
   state:"PLANNED_EXECUTION_VERIFIED",
   counts:{tasks:tasks.length,completed:Object.values(status).filter(x=>x==="DONE").length,cached:Object.values(status).filter(x=>x==="CACHED").length},
-  parallelism:{max_parallel_agents:maxAgents,max_parallel_tasks:maxTasks},
+  parallelism:{max_parallel_agents:maxAgents,max_parallel_tasks:maxTasks,observed_peak_concurrency:peakConcurrency},
   discovery_queue:discoveryQueue.map(x => ({capability:x.capability,candidates:x.candidates,reason:x.reason})),
   statuses:status,
   attempts,
