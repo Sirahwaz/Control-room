@@ -91,7 +91,7 @@ async function aiExplain(body:any,cons:any){
   const prompt="Analyze this market scan as an explainable signal research assistant. Do not promise profit or invent facts. Give: DIRECT VERDICT, WHY IT MATTERS, WHAT COULD INVALIDATE IT, NEXT OBSERVATION. Be concise. Context: "+JSON.stringify(compact);
   try{
     const r=await fetch(url+"/functions/v1/midad_ai_router",{
-      method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+sk},
+      method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+sk},signal:AbortSignal.timeout(12000),
       body:JSON.stringify({task_class:"market_analysis",request_ref:"signalscan-"+crypto.randomUUID(),prompt,max_output_tokens:800,temperature:.2})
     });
     const j=await r.json().catch(()=>({}));
