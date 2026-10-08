@@ -14,6 +14,18 @@ on:
       - ".github/workflows/signalscan-factory-x.yml"
   workflow_dispatch:
 
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile/factory/**"
+      - "mobile/web/signal-scanner.html"
+      - "mobile/web/signal-scanner.css"
+      - "mobile/web/signal-scanner.js"
+      - "mobile/factory/products/signal-scanner.json"
+      - "mobile/factory/products/signal-scanner-icon.xml"
+      - "supabase/functions/signalscan_brain/**"
+      - ".github/workflows/signalscan-factory-x.yml"
+
 concurrency:
   group: signalscan-factory-x-${{ github.ref }}
   cancel-in-progress: true
