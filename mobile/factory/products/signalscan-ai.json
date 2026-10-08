@@ -87,7 +87,8 @@
         "test_report",
         "learning_report"
       ]
-    }
+    },
+    "certification_version": "1.0"
   },
   "web_assets": [
     "mobile/web/signalscan/signalscan.css",
