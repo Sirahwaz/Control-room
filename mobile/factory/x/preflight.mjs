@@ -25,6 +25,19 @@ const plugins=load(files[4]).plugins;
 const agents=load(files[5]).agents;
 const automations=load(files[6]).automations;
 const policy=load(files[7]);
+const adapterRegistry=load("mobile/factory/x/adapters.registry.json").adapters;
+const bindingRegistry=load("mobile/factory/x/agent-bindings.registry.json").bindings;
+const adapterIds=new Set(adapterRegistry.map(a=>a.id));
+const agentIds=new Set(agents.map(a=>a.id));
+const boundAgentIds=new Set(bindingRegistry.map(b=>b.agent));
+if(bindingRegistry.length !== agents.length) failures.push("agent_binding_count_mismatch");
+for(const a of agents) if(!boundAgentIds.has(a.id)) failures.push("agent_missing_binding:"+a.id);
+for(const b of bindingRegistry) {
+  if(!agentIds.has(b.agent)) failures.push("binding_unknown_agent:"+b.agent);
+  if(!adapterIds.has(b.adapter)) failures.push("binding_unknown_adapter:"+b.adapter);
+  if((b.fallback === "human-gate" || b.adapter === "human-gate") && !String(b.action||"").length) failures.push("human_gate_missing_action:"+b.agent);
+}
+
 
 const requiredCapIds=new Set(caps.map(c=>c.id));
 const providerCapCoverage=new Set(providers.flatMap(p=>p.capabilities));
