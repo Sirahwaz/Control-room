@@ -109,6 +109,18 @@
       "artifact_integrity",
       "artifact_identity",
       "managed_signing_for_production",
+      "customer_delivery_certificate",
+      "runtime_smoke",
+      "delivery_certificate_evidence"
+    ],
+    "customer_delivery_required": [
+      "production_channel",
+      "managed_signing",
+      "source_certification",
+      "contract_smoke",
+      "artifact_certification",
+      "runtime_smoke",
+      "sha256",
       "customer_delivery_certificate"
     ]
   },
