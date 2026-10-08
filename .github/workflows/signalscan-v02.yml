@@ -53,6 +53,9 @@ jobs:
           ! grep -RInE '-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY' mobile/web
           grep -q 'sb_publishable_' mobile/web/signal-scanner.js
           grep -q 'signalscan_brain' mobile/web/signal-scanner.js
+          grep -q 'openWatchlist' mobile/web/signal-scanner.js
+          grep -q 'openAlerts' mobile/web/signal-scanner.js
+          grep -q 'openLab' mobile/web/signal-scanner.js
       - name: Brain endpoint smoke — no AI charge
         shell: bash
         run: |
