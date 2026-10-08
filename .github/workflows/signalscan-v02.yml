@@ -1,0 +1,176 @@
+name: SignalScan AI v0.2 — Factory Build & Full Gate
+on:
+  push:
+    branches: [product/signal-scanner-v0.2.0]
+    paths:
+      - "mobile/factory/products/signal-scanner.json"
+      - "mobile/factory/factory.config.json"
+      - "mobile/factory/product.schema.json"
+      - "mobile/factory/render.mjs"
+      - "mobile/factory/quality-gate.mjs"
+      - "mobile/web/signal-scanner.html"
+      - "mobile/web/signal-scanner.css"
+      - "mobile/web/signal-scanner.js"
+      - "supabase/functions/signalscan_brain/**"
+      - ".github/workflows/signalscan-v02.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Resolve product
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs signal-scanner
+          jq -e '.product_key=="signal-scanner"' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.version=="0.2.0"' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.app_id=="ai.signalscan.scanner"' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.live_financial_execution==false' mobile/factory/runtime-product.json >/dev/null
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+      - name: Factory quality gate
+        run: node mobile/factory/quality-gate.mjs signal-scanner
+      - name: App JavaScript syntax
+        run: node --check mobile/web/signal-scanner.js
+      - name: HTML/CSS/JS payload audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s mobile/web/signal-scanner.html
+          test -s mobile/web/signal-scanner.css
+          test -s mobile/web/signal-scanner.js
+          ! grep -RInE '-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY' mobile/web
+          grep -q 'sb_publishable_' mobile/web/signal-scanner.js
+          grep -q 'signalscan_brain' mobile/web/signal-scanner.js
+      - name: Brain endpoint smoke — no AI charge
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESP="$(curl -sS --fail-with-body --max-time 25             -H 'content-type: application/json'             -H 'apikey: sb_publishable_d1NSXEMDhCrAWSLdingJbQ_0VEAmm1L'             -H 'x-signalscan-device: ci-smoke-2026-10-08'             -d '{"device_id":"ci-smoke-2026-10-08","want_ai":false,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain')"
+          echo "$RESP" | jq -e '.ok==true and .consensus.score >= 5 and .adversarial != null and .limits.live_orders==false'
+      - name: Brain endpoint AI smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESP="$(curl -sS --fail-with-body --max-time 45             -H 'content-type: application/json'             -H 'apikey: sb_publishable_d1NSXEMDhCrAWSLdingJbQ_0VEAmm1L'             -H 'x-signalscan-device: ci-ai-smoke-2026-10-08'             -d '{"device_id":"ci-ai-smoke-2026-10-08","want_ai":true,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain')"
+          echo "$RESP" | jq -e '.ok==true and (.ai_explanation==null or (.ai_explanation|length)>0)'
+      - name: Setup Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+      - name: Prepare web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf mobile/www
+          mkdir -p mobile/www
+          cp mobile/web/signal-scanner.html mobile/www/index.html
+          cp mobile/web/signal-scanner.css mobile/www/
+          cp mobile/web/signal-scanner.js mobile/www/
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android
+      - name: Sync Android
+        working-directory: mobile
+        run: npx cap sync android
+      - name: Install SignalScan icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile/android/app/src/main/res/drawable
+          cp mobile/factory/products/signal-scanner-icon.xml mobile/android/app/src/main/res/drawable/signal_scanner_icon.xml
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("mobile/android/app/src/main/AndroidManifest.xml")
+          s=p.read_text()
+          s=s.replace('android:icon="@mipmap/ic_launcher"','android:icon="@drawable/signal_scanner_icon"')
+          s=s.replace('android:roundIcon="@mipmap/ic_launcher_round"','android:roundIcon="@drawable/signal_scanner_icon"')
+          p.write_text(s)
+          PY
+      - name: Set version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          m=json.loads(Path("mobile/factory/runtime-product.json").read_text())
+          code=sum(int(x)*w for x,w in zip(m["version"].split("."),(10000,100,1)))
+          p=Path("mobile/android/app/build.gradle")
+          s=p.read_text()
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {code}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{m["version"]}"',s,count=1)
+          p.write_text(s)
+          PY
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Sign and verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$SRC"
+          mkdir -p dist signing
+          keytool -genkeypair -v -keystore signing/signalscan.jks -storepass "signalscan-factory-temp" -keypass "signalscan-factory-temp" -alias signalscanfactory -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SignalScan AI Factory, OU=SignalScan AI, O=SignalScan AI, L=Global, ST=Global, C=XX"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          OUT="dist/SignalScan-AI-v0.2.0-release.apk"
+          "$APKSIGNER" sign --ks signing/signalscan.jks --ks-pass pass:signalscan-factory-temp --key-pass pass:signalscan-factory-temp --ks-key-alias signalscanfactory --out "$OUT" "$SRC"
+          "$APKSIGNER" verify --verbose "$OUT"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
+          cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+          rm -rf signing
+      - name: Artifact integrity audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t dist/SignalScan-AI-v0.2.0-release.apk >/dev/null
+          unzip -l dist/SignalScan-AI-v0.2.0-release.apk | grep -q 'assets/public/signal-scanner.js'
+          unzip -l dist/SignalScan-AI-v0.2.0-release.apk | grep -q 'assets/public/signal-scanner.css'
+          unzip -l dist/SignalScan-AI-v0.2.0-release.apk | grep -q 'assets/public/index.html'
+          ! unzip -p dist/SignalScan-AI-v0.2.0-release.apk assets/public/signal-scanner.js | grep -qE '-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY'
+          jq -e '.app_id=="ai.signalscan.scanner" and .version=="0.2.0" and .features.live_financial_execution==false' dist/product-manifest.json >/dev/null
+      - name: Reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/build-report.json <<'EOF'
+          {"product_key":"signal-scanner","version":"0.2.0","factory":"PASSED","android_build":"PASSED","apk_signature":"PASSED","artifact_integrity":"PASSED"}
+          EOF
+          cat > dist/test-report.json <<'EOF'
+          {"manifest":"PASSED","quality_gate":"PASSED","js_syntax":"PASSED","brain_smoke":"PASSED","ai_smoke":"PASSED","runtime_device_smoke":"PENDING"}
+          EOF
+          cat > dist/learning-report.json <<'EOF'
+          {"learning":"ENABLED","initial_state":"PENDING_USER_FEEDBACK","note":"Capture scan outcomes, false positives, UX feedback and revenue outcomes."}
+          EOF
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalScan-AI-v0.2.0-release
+          path: |
+            dist/*.apk
+            dist/*.sha256
+            dist/*.json
