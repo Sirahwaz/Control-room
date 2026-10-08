@@ -109,8 +109,19 @@ jobs:
           if(r.counts.completed < 20 && r.counts.cached < 20) throw new Error('DAG did not complete');
           if(r.counts.cached < 20) throw new Error('cache reuse not verified: expected at least 20 cached tasks');
           if(r.parallelism.max_parallel_tasks < 40) throw new Error('parallel task capacity not preserved');
+          if(r.parallelism.observed_peak_concurrency < 2) throw new Error('parallel scheduler did not demonstrate concurrency');
           console.log(JSON.stringify({ok:true,state:r.state,tasks:r.counts.tasks,completed:r.counts.completed,cached:r.counts.cached,discovery:r.discovery_queue.length}));
           NODE
+
+      - name: Upload Factory X execution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-x-execution-report
+          if-no-files-found: error
+          path: |
+            mobile/factory/x/runtime-plan.json
+            mobile/factory/x/preflight-report.json
+            mobile/factory/x/execution-report.json
 
       - name: Security text scan
         run: |
