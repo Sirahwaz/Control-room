@@ -1,0 +1,120 @@
+name: SignalScan AI Android
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/factory/products/signalscan-ai.json"
+      - "mobile/web/signalscan/**"
+      - ".github/workflows/signalscan-ai-android.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Resolve SignalScan factory product
+        shell: bash
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs signalscan-ai
+          jq -e '.product_key=="signalscan-ai"' mobile/factory/runtime-product.json >/dev/null
+          jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
+      - name: Setup Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+      - name: Install Capacitor dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+      - name: Prepare SignalScan web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf mobile/www
+          mkdir -p mobile/www
+          cp mobile/web/signalscan/index.html mobile/www/index.html
+          cp mobile/web/signalscan/signalscan.css mobile/www/signalscan.css
+          cp mobile/web/signalscan/signalscan.js mobile/www/signalscan.js
+      - name: Add Android platform
+        working-directory: mobile
+        run: npx cap add android
+      - name: Sync Android
+        working-directory: mobile
+        run: npx cap sync android
+      - name: Set Android version
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(jq -r '.version' factory/runtime-product.json)"
+          VERSION_CODE="$(node -e 'const v=process.argv[1].split(".").map(Number); console.log(v[0]*10000+v[1]*100+v[2])' "$VERSION_NAME")"
+          export VERSION_NAME VERSION_CODE
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,re
+          p=Path("android/app/build.gradle")
+          s=p.read_text()
+          if len(re.findall(r'\bversionCode\s+\d+',s)) != 1: raise SystemExit("versionCode count mismatch")
+          if len(re.findall(r'\bversionName\s+"[^"]+"',s)) != 1: raise SystemExit("versionName count mismatch")
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
+          p.write_text(s)
+          PY
+      - name: Factory quality gate
+        run: node mobile/factory/quality-gate.mjs signalscan-ai
+      - name: JavaScript syntax audit
+        run: node --check mobile/web/signalscan/signalscan.js
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Sign installable APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "$APK_SRC"
+          mkdir -p dist signing
+          keytool -genkeypair -v -keystore signing/signalscan-factory.jks -storepass "signalscan-temp" -keypass "signalscan-temp" -alias signalscan -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SignalScan AI, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          OUT="dist/SignalScan-AI-v$(jq -r '.version' mobile/factory/runtime-product.json)-release.apk"
+          "$APKSIGNER" sign --ks signing/signalscan-factory.jks --ks-pass pass:signalscan-temp --key-pass pass:signalscan-temp --ks-key-alias signalscan --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" verify --verbose "$OUT"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
+          cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/build-report.json
+          printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/test-report.json
+          printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
+          rm -rf signing
+      - name: Upload SignalScan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalScan-AI-v${{ fromJSON('{"version":"0.3.1"}').version }}-release
+          path: |
+            dist/*.apk
+            dist/*.sha256
+            dist/product-manifest.json
+            dist/factory-runtime.json
+            dist/build-report.json
+            dist/test-report.json
+            dist/learning-report.json
