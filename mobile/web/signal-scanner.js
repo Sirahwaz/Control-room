@@ -15,7 +15,40 @@ const S={lang:localStorage.getItem("ss_lang")||"ar",interval:localStorage.getIte
 const $=id=>document.getElementById(id),T=k=>(I[S.lang]||I.en)[k]||I.en[k]||k;
 const n=v=>Number.isFinite(Number(v))?Number(v):0, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), fmt=v=>n(v).toLocaleString(undefined,{maximumFractionDigits:n(v)>=1000?2:4}), pct=v=>(n(v)>=0?"+":"")+n(v).toFixed(2)+"%";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function get(url,ms=10000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);const u=new URL(url);let target,headers={accept:"application/json",apikey:SUPABASE_PUBLISHABLE_KEY,"x-signalscan-device":DEVICE_ID};if(u.hostname==="api.binance.com"&&u.pathname==="/api/v3/ticker/24hr"){target=MARKET_ROUTER+"?kind=ticker"}else if(u.hostname==="api.binance.com"&&u.pathname==="/api/v3/klines"){target=MARKET_ROUTER+"?kind=kline&symbol="+encodeURIComponent(u.searchParams.get("symbol")||"BTCUSDT")+"&interval="+encodeURIComponent(u.searchParams.get("interval")||"1h")+"&limit="+encodeURIComponent(u.searchParams.get("limit")||"140")}else if(u.hostname==="api.binance.com"&&u.pathname==="/api/v3/depth"){target=MARKET_ROUTER+"?kind=depth&symbol="+encodeURIComponent(u.searchParams.get("symbol")||"BTCUSDT")+"&limit="+encodeURIComponent(u.searchParams.get("limit")||"20")}else{target=MARKET_PROXY+"?url="+encodeURIComponent(url)}try{const r=await fetch(target,{headers,signal:c.signal});const provider=r.headers.get("x-signalscan-provider");if(provider)MARKET_PROVIDERS.add(provider);if(!r.ok){let detail="HTTP "+r.status;try{const j=await r.json();if(j?.detail)detail+=" "+j.detail}catch{}throw Error(detail)}return await r.json()}finally{clearTimeout(tm)}}
+async function requestJson(target,ms=15000){
+  const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);
+  try{
+    const r=await fetch(target,{method:"GET",headers:{accept:"application/json",apikey:SUPABASE_PUBLISHABLE_KEY,"x-signalscan-device":DEVICE_ID},cache:"no-store",signal:c.signal});
+    const provider=r.headers.get("x-signalscan-provider"); if(provider)MARKET_PROVIDERS.add(provider);
+    const body=await r.text(); let data; try{data=JSON.parse(body)}catch{throw Error("invalid_json:"+body.slice(0,160))}
+    if(!r.ok) throw Error("HTTP "+r.status+" "+(data?.detail||data?.error||"request_failed"));
+    return data;
+  } finally { clearTimeout(tm); }
+}
+async function get(url,ms=10000){
+  const u=new URL(url);
+  const core=u.hostname==="api.binance.com"&&["/api/v3/ticker/24hr","/api/v3/klines","/api/v3/depth"].includes(u.pathname);
+  if(!core) return requestJson(MARKET_PROXY+"?url="+encodeURIComponent(url),ms);
+  const targets=[];
+  if(u.pathname==="/api/v3/ticker/24hr") targets.push(MARKET_ROUTER+"?kind=ticker");
+  else if(u.pathname==="/api/v3/klines") targets.push(MARKET_ROUTER+"?kind=kline&symbol="+encodeURIComponent(u.searchParams.get("symbol")||"BTCUSDT")+"&interval="+encodeURIComponent(u.searchParams.get("interval")||"1h")+"&limit="+encodeURIComponent(u.searchParams.get("limit")||"140"));
+  else targets.push(MARKET_ROUTER+"?kind=depth&symbol="+encodeURIComponent(u.searchParams.get("symbol")||"BTCUSDT")+"&limit="+encodeURIComponent(u.searchParams.get("limit")||"20"));
+  targets.push(MARKET_PROXY+"?url="+encodeURIComponent(url));
+  let last="";
+  for(const t of targets){ try{return await requestJson(t,ms);}catch(e){last=String(e?.message||e);} }
+  try{
+    const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);
+    try{
+      const r=await fetch(url,{headers:{accept:"application/json"},cache:"no-store",signal:c.signal});
+      if(!r.ok)throw Error("DIRECT HTTP "+r.status);
+      return await r.json();
+    }finally{clearTimeout(tm);}
+  }catch(e){throw Error(last||String(e?.message||e)||"market_request_failed")}
+}
+async function marketScan(universe,interval,ms=30000){
+  const target=MARKET_ROUTER+"?kind=scan&universe="+encodeURIComponent(Math.min(12,Math.max(3,Number(universe)||10)))+"&interval="+encodeURIComponent(interval||"1h");
+  return requestJson(target,ms);
+}
 const mean=(a,p)=>a.length<p?a.reduce((x,y)=>x+y,0)/Math.max(1,a.length):a.slice(-p).reduce((x,y)=>x+y,0)/p;
 function ema(a,p){if(a.length<p)return mean(a,p);let e=mean(a.slice(0,p),p),k=2/(p+1);for(let i=p;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
 function rsi(a,p=14){if(a.length<=p)return 50;let g=0,l=0;for(let i=1;i<=p;i++){let d=a[i]-a[i-1];g+=Math.max(0,d);l+=Math.max(0,-d)}g/=p;l/=p;for(let i=p+1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(p-1)+Math.max(0,d))/p;l=(l*(p-1)+Math.max(0,-d))/p}return l?100-100/(1+g/l):100}
@@ -47,68 +80,38 @@ async function renderAdvanced(){const r=S.rows.slice(0,5),b=n(S.market.breadth,5
 async function openLab(kind){const top=S.rows[0];if(!top){toast(T("ready"));return}if(kind==="neural"){$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">NEURAL CONSENSUS</div><h3>'+T("neural_consensus")+'</h3></div><span class="badge good">VERIFIED</span></div><div class="insight-body">'+esc(S.brain?.ai_explanation||T("brain_unavailable"))+'</div><div class="detail-grid"><div class="detail-box"><span>Direction</span><b>'+esc(S.brain?.consensus?.direction||"LOCAL")+'</b></div><div class="detail-box"><span>Score</span><b>'+Math.round(n(S.brain?.consensus?.score,top.score))+'/100</b></div><div class="detail-box"><span>Robustness</span><b>'+Math.round(n(S.brain?.consensus?.robustness,0))+'/100</b></div><div class="detail-box"><span>Stress</span><b>'+esc(S.brain?.adversarial?.verdict||"PENDING")+'</b></div></div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close;return}if(kind==="genealogy"){$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">SIGNAL DNA</div><h3>'+T("genealogy")+'</h3></div><span class="badge neutral">'+esc($("marketFingerprint").textContent||"----")+'</span></div><div class="timeline">'+S.genealogy.map(x=>'<div class="timeline-row"><b>'+esc(x.symbol)+'</b><span>'+x.score+' · '+(x.delta>=0?"+":"")+Math.round(x.delta)+' · '+T(x.status==="EMERGING"?"emerging":x.status==="DECAYING"?"decaying":"stable")+'</span></div>').join("")+'</div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close;return}const A=S.brain?.adversarial?.remove_one_factor_survival||[];$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">'+(kind==="counterfactual"?"COUNTERFACTUAL":"ADVERSARIAL")+'</div><h3>'+T(kind==="counterfactual"?"counterfactual":"adversarial")+'</h3></div><span class="badge '+(S.brain?.adversarial?.verdict==="FRAGILE"?"bad":"good")+'">'+esc(S.brain?.adversarial?.verdict||"LOCAL")+'</span></div><div class="insight-body">'+(kind==="counterfactual"?"أزل عاملًا واحدًا في كل مرة: إذا بقي الاتجاه فالإشارة أكثر استقلالية؛ إذا انقلب فالعامل حاسم.":"الهدف ليس إثبات الإشارة بل محاولة كسرها: الانقلاب بعد حذف عامل يعني هشاشة أعلى.")+'</div><div class="factor-list">'+A.map(x=>'<div class="factor"><span>'+esc(x.factor)+'</span><strong>'+esc(x.direction)+' · '+x.score+(x.flip?" · FLIP":"")+'</strong></div>').join("")+'</div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close}
 
 async function scan(){
-  $("scanBtn").disabled=true;
-  $("statusText").textContent=T("scan");
-  MARKET_PROVIDERS.clear();
-  S.networkError="";
+  $("scanBtn").disabled=true; $("statusText").textContent=T("scan"); MARKET_PROVIDERS.clear(); S.networkError="";
   try{
-    const ticks=(await get(API+"/ticker/24hr"))
-      .filter(x=>/USDT$/.test(x.symbol)&&!/(USDC|BUSD|FDUSD)USDT$/.test(x.symbol))
-      .sort((a,b)=>n(b.quoteVolume)-n(a.quoteVolume))
-      .slice(0,S.universe);
-    if(ticks.length<3)throw Error("ticker_empty");
-    let out=[],failed=0;
-    for(let i=0;i<ticks.length;i+=4){
-      const chunk=ticks.slice(i,i+4);
-      const vals=await Promise.all(chunk.map(async s=>{
-        try{
-          const [a,b]=await Promise.all([
-            get(API+"/klines?symbol="+s.symbol+"&interval="+S.interval+"&limit=140"),
-            get(API+"/klines?symbol="+s.symbol+"&interval="+(S.interval==="1d"?"1d":"4h")+"&limit=140")
-          ]);
-          const c1=k(a),c4=k(b);
-          if(c1.length<25||c4.length<25)throw Error("kline_insufficient:"+s.symbol);
-          return make(s,c1,c4);
-        }catch(e){failed++;S.networkError=String(e?.message||e);return null}
-      }));
-      out.push(...vals.filter(Boolean));
+    const payload=await marketScan(S.universe,S.interval,30000);
+    const map=new Map((payload.tickers||[]).map(x=>[x.symbol,x]));
+    const rows=[];
+    for(const row of (payload.candles||[])){
+      const tick=map.get(row.symbol); if(!tick)continue;
+      const c1=k(row.primary),c4=k(row.secondary);
+      if(c1.length<25||c4.length<25)continue;
+      rows.push(make(tick,c1,c4));
     }
-    S.rows=out.sort((a,b)=>b.score-a.score);
-    if(!S.rows.length)throw Error(S.networkError||"all_symbols_failed");
+    S.rows=rows.sort((x,y)=>y.score-x.score);
+    if(!S.rows.length)throw Error("live_scan_no_rows");
 
-    // Advanced enrichment is intentionally limited to top 6 to keep mobile latency bounded.
-    const top=S.rows.slice(0,6);
-    const enriched=await Promise.all(top.map(enrichSymbol));
-    const bySymbol=new Map(enriched.map(x=>[x.symbol,x]));
-    S.rows=S.rows.map(x=>bySymbol.get(x.symbol)||x);
-
-    await buildMarketContext(ticks);
+    const enriched=await Promise.all(S.rows.slice(0,6).map(enrichSymbol));
+    const emap=new Map(enriched.map(x=>[x.symbol,x]));
+    S.rows=S.rows.map(x=>emap.get(x.symbol)||x);
+    await buildMarketContext(payload.tickers||[]);
     await updateGenealogy();
     $("marketFingerprint").textContent=await makeFingerprint();
     await callBrain();
     await checkAlerts();
 
     const providers=[...MARKET_PROVIDERS];
-    S.source="LIVE • "+(providers.length?providers.slice(0,5).join(" + "):"MULTI-SOURCE");
-    $("statusText").textContent=failed?("LIVE · "+failed+" skipped"):T("ready");
+    S.source="LIVE • "+(providers.length?providers.join(" + "):"SERVER SCAN");
+    const skipped=(payload.failed||[]).length;
+    $("statusText").textContent=skipped?("LIVE · "+skipped+" skipped"):T("ready");
   }catch(e){
-    S.rows=demo.map((d,i)=>({
-      symbol:d[0],price:d[1],change:d[2],score:[78,71,66][i],confidence:[.86,.79,.76][i],
-      dir:i===2?"SHORT":"LONG",regime:"TREND",entryLo:d[1]*.998,entryHi:d[1]*1.002,
-      invalidation:d[1]*(i===2?1.01:.99),
-      targets:[d[1]*(i===2?.985:1.015),d[1]*(i===2?.975:1.025),d[1]*(i===2?.965:1.035)],
-      factors:{rsi:55,volumeRatio:1.5,momentum:d[2],atr:d[1]*.01,emaSpread:.3,mtfSpread:.5,sweep:"none",fvg:"none",structure:"range"},
-      reasons:["SAFE DEMO FALLBACK","Network: "+String(e?.message||"unavailable").slice(0,90)]
-    }));
-    S.source="DEMO / OFFLINE";
-    S.networkError=String(e?.message||"market_unavailable");
-    $("statusText").textContent=T("error");
+    S.rows=demo.map((x,i)=>({symbol:x[0],price:x[1],change:x[2],score:[78,71,66][i],confidence:[.86,.79,.76][i],dir:i===2?"SHORT":"LONG",regime:"TREND",entryLo:x[1]*.998,entryHi:x[1]*1.002,invalidation:x[1]*(i===2?1.01:.99),targets:[x[1]*(i===2?.985:1.015),x[1]*(i===2?.975:1.025),x[1]*(i===2?.965:1.035)],factors:{rsi:55,volumeRatio:1.5,momentum:x[2],atr:x[1]*.01,emaSpread:.3,mtfSpread:.5,sweep:"none",fvg:"none",structure:"range"},reasons:["SAFE DEMO FALLBACK","Network: "+String(e?.message||"unavailable").slice(0,140)]}));
+    S.source="DEMO / OFFLINE"; S.networkError=String(e?.message||"market_unavailable"); $("statusText").textContent=T("error");
   }
-  $("dataSource").textContent=S.source;
-  $("lastUpdated").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-  $("scanBtn").disabled=false;
-  render();
-  if(S.rows[0])insight(S.rows[0]);
+  $("dataSource").textContent=S.source; $("lastUpdated").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); $("scanBtn").disabled=false; render(); if(S.rows[0])insight(S.rows[0]);
 }
 function render(){
 const r=S.rows,L=r.filter(x=>x.score>=S.min),v=L.length?L:r.slice(0,5),long=r.filter(x=>x.dir==="LONG").length,short=r.filter(x=>x.dir==="SHORT").length,b=r[0]?.score||0;
