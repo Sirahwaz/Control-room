@@ -206,8 +206,8 @@ jobs:
           p=Path("mobile/android/app/build.gradle")
           s=p.read_text()
           code=sum(int(x)*w for x,w in zip(m["version"].split("."),(10000,100,1)))
-          s=re.sub(r'\\bversionCode\\s+\\d+',f'versionCode {code}',s,count=1)
-          s=re.sub(r'\\bversionName\\s+"[^"]+"',f'versionName "{m["version"]}"',s,count=1)
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {code}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{m["version"]}"',s,count=1)
           p.write_text(s)
           PY
 
@@ -268,7 +268,7 @@ jobs:
             "version":"0.2.0",
             "factory_execution_ms_uncached":first,
             "factory_execution_ms_cached":cached,
-            "factory_cache_reuse":cached>=0 and first>0 and cached>0,
+            "factory_cache_reuse":cached>=20,
             "factory_cache_speedup_x":round(first/cached,3) if cached>0 else None,
             "configured_parallel_agents":32,
             "configured_parallel_tasks":64,
