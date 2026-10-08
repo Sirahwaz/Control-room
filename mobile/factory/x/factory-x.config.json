@@ -9,17 +9,20 @@
     "minimum_provider_evidence": 0.75,
     "minimum_capability_fit": 0.8,
     "allow_multiple_providers": true,
-    "require_fallback_for_critical_capabilities": true
+    "require_fallback_for_critical_capabilities": true,
+    "differentiation_gate": "competitive_gap_audit"
   },
   "execution": {
-    "max_parallel_agents": 24,
-    "max_parallel_tasks": 48,
+    "max_parallel_agents": 32,
+    "max_parallel_tasks": 64,
     "max_provider_discovery_tasks": 8,
     "default_task_timeout_seconds": 900,
     "max_repair_attempts_per_incident": 3,
     "prefer_cached_artifacts": true,
     "prefer_incremental_builds": true,
-    "parallel_independent_checks": true
+    "parallel_independent_checks": true,
+    "scale_policy": "capacity_adaptive",
+    "agent_pool_strategy": "dynamic_role_selection"
   },
   "quality": {
     "fail_closed_on_security_gate": true,
@@ -32,7 +35,10 @@
       "automation_plan_exists",
       "security_boundary",
       "missing_surface_audit",
-      "fallback_coverage"
+      "fallback_coverage",
+      "competitive_gap_audit",
+      "privacy_baseline",
+      "performance_budget_plan"
     ],
     "required_release_checks": [
       "static_audit",
@@ -40,7 +46,11 @@
       "dependency_audit",
       "artifact_integrity",
       "installability",
-      "runtime_smoke_when_device_available"
+      "runtime_smoke_when_device_available",
+      "privacy_store_gate",
+      "visual_device_qa",
+      "dependency_supply_chain_audit",
+      "growth_readiness_check"
     ]
   },
   "registries": {
@@ -53,7 +63,11 @@
   },
   "learning": {
     "enabled": true,
-    "scopes": ["global", "product", "tenant"],
+    "scopes": [
+      "global",
+      "product",
+      "tenant"
+    ],
     "store": "supabase:midad-ai",
     "never_learn_from": [
       "secrets",
