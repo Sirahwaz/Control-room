@@ -27,6 +27,7 @@ const agents = readJson("mobile/factory/x/agents.registry.json").agents;
 const maxTasks = Math.max(1, Number(cfg.execution.max_parallel_tasks || 1));
 const maxAgents = Math.max(1, Number(cfg.execution.max_parallel_agents || 1));
 const maxRetries = Math.min(3, Math.max(0, Number(cfg.execution.max_repair_attempts_per_incident || 3)));
+const taskTimeoutMs = Math.max(1000, Number(request.task_timeout_seconds || cfg.execution.default_task_timeout_seconds || 900) * 1000);
 const runId = `fx-${Date.now()}`;
 const cacheDir = path.join(root, ".factory-cache");
 const cachePath = path.join(cacheDir, "execution-cache.json");
@@ -203,6 +204,8 @@ function runnable(status) {
 }
 
 const status = Object.fromEntries(tasks.map(t => [t.id, "PENDING"]));
+const schedulerStarted = Date.now();
+const maxSchedulerMs = Math.max(taskTimeoutMs * 2, 120000);
 const attempts = Object.fromEntries(tasks.map(t => [t.id, 0]));
 const outputs = {};
 const timings = [];
@@ -228,7 +231,14 @@ async function runTask(t) {
 
   try {
     const upstream = Object.fromEntries(t.deps.map(d => [d, outputs[d]]));
-    const output = await t.fn(upstream);
+    let timer;
+    const output = await Promise.race([
+      Promise.resolve().then(() => t.fn(upstream)),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Task timeout after ${taskTimeoutMs}ms: ${t.id}`)), taskTimeoutMs);
+      })
+    ]);
+    clearTimeout(timer);
     outputs[t.id] = output;
     status[t.id] = "DONE";
     const telemetry = {
@@ -256,6 +266,15 @@ async function runTask(t) {
 }
 
 while (true) {
+  if (Date.now() - schedulerStarted > maxSchedulerMs) {
+    for (const t of tasks) if (status[t.id] === "PENDING" || status[t.id] === "RUNNING") status[t.id] = "BLOCKED";
+    writeJson("mobile/factory/x/execution-report.json", {
+      ok:false, factory:"MIDAD Mobile Factory X", run_id:runId,
+      state:"WATCHDOG_TIMEOUT", statuses:status, attempts, timings, events,
+      scheduler_runtime_ms:Date.now()-schedulerStarted
+    });
+    process.exit(1);
+  }
   if (Object.values(status).includes("FAILED")) break;
   if (tasks.every(t => statusIsTerminal(status[t.id]))) break;
 
@@ -274,6 +293,13 @@ while (true) {
     continue;
   }
 
+  console.log(JSON.stringify({
+    event:"SCHEDULER_BATCH",
+    runnable:ready.slice(0, capacity).map(t=>t.id),
+    active:active.size,
+    completed:Object.values(status).filter(s=>s==="DONE"||s==="CACHED").length,
+    capacity
+  }));
   await Promise.all(ready.slice(0, capacity).map(t => runTask(t).catch(() => {})));
 }
 
@@ -295,6 +321,7 @@ const report = {
   state:"PLANNED_EXECUTION_VERIFIED",
   counts:{tasks:tasks.length,completed:Object.values(status).filter(x=>x==="DONE").length,cached:Object.values(status).filter(x=>x==="CACHED").length},
   parallelism:{max_parallel_agents:maxAgents,max_parallel_tasks:maxTasks,observed_peak_concurrency:peakConcurrency},
+  timing:{task_timeout_ms:taskTimeoutMs,scheduler_runtime_ms:Date.now()-schedulerStarted},
   discovery_queue:discoveryQueue.map(x => ({capability:x.capability,candidates:x.candidates,reason:x.reason})),
   statuses:status,
   attempts,
