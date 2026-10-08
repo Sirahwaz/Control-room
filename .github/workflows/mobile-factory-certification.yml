@@ -42,16 +42,33 @@ jobs:
       - name: Certify every product source
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           found=0
+          failed=0
           for manifest in mobile/factory/products/*.json; do
             [ -f "$manifest" ] || continue
             found=1
             key="$(basename "$manifest" .json)"
             echo "=== CERTIFY $key ==="
-            node mobile/factory/certification-gate.mjs "$key"
+            if node mobile/factory/certification-gate.mjs "$key"; then
+              echo "=== CERTIFICATION_PASS $key ==="
+            else
+              rc=$?
+              failed=$((failed+1))
+              echo "=== CERTIFICATION_FAIL $key rc=$rc ==="
+            fi
+            report="mobile/factory/reports/$key-certification.json"
+            if [ -f "$report" ]; then
+              echo "--- REPORT $key ---"
+              cat "$report"
+              echo "--- END REPORT $key ---"
+            else
+              echo "NO_REPORT $key"
+            fi
           done
           test "$found" -eq 1
+          echo "CERTIFICATION_SUMMARY total=$found failed=$failed"
+          [ "$failed" -eq 0 ]
 
       - name: Validate factory JSON
         shell: bash
