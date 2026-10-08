@@ -51,11 +51,22 @@ if(m){
     if(jsRefs.length===0) warnings.push({gate:"html_contract",message:"No local script reference found in HTML"});
   }
 
-  const productDir=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
-  const jsFiles=[];
-  const walk=rel=>{const abs=path.join(root,rel);if(!fs.existsSync(abs))return;for(const ent of fs.readdirSync(abs,{withFileTypes:true})){const child=path.posix.join(rel,ent.name);if(ent.isDirectory())walk(child);else if(ent.isFile()&&ent.name.endsWith(".js"))jsFiles.push(child);}};
-  walk(productDir);
-
+  const jsFiles=new Set();
+  const configuredAssets=Array.isArray(m.web_assets)?m.web_assets:[];
+  for(const asset of configuredAssets){
+    if(asset.endsWith(".js")&&exists(asset)) jsFiles.add(asset);
+  }
+  if(exists(m.web_entry)){
+    const html=read(m.web_entry);
+    for(const ref of [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(x=>x[1]).filter(x=>!/^https?:/.test(x))){
+      const base=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
+      const repoPath=path.posix.normalize(path.posix.join(base,ref));
+      if(exists(repoPath)) jsFiles.add(repoPath);
+      else if(!ref.startsWith(".")&&exists(ref)) jsFiles.add(ref);
+    }
+  }
+  const jsList=[...jsFiles];
+  if(jsList.length===0) warnings.push({gate:"javascript_scope",message:"No product-scoped JavaScript files discovered; inline-only or missing asset declaration"});
   let syntaxFailures=0;
   const secretHits=[];
   const secretRegexes=[
@@ -66,7 +77,7 @@ if(m){
     /xox[baprs]-[0-9A-Za-z-]{20,}/
   ];
 
-  for(const file of jsFiles){
+  for(const file of jsList){
     const r=spawnSync(process.execPath,["--check",path.join(root,file)],{encoding:"utf8"});
     if(r.status!==0){syntaxFailures++;bad("javascript_syntax","JavaScript syntax failure",{file,detail:r.stderr||r.stdout});}
     const content=read(file);
@@ -78,21 +89,25 @@ if(m){
     const html=read(m.web_entry);
     const ids=new Set([...html.matchAll(/\bid=["']([^"']+)["']/gi)].map(x=>x[1]));
     const missingDom=[];
-    for(const file of jsFiles){
+    for(const file of jsList){
       const content=read(file);
       for(const x of content.matchAll(/getElementById\((["'])([^"']+)\1\)/g)) if(!ids.has(x[2])) missingDom.push({file,id:x[2]});
     }
     if(missingDom.length) bad("ui_js_contract","JavaScript references missing DOM ids",{missingDom});
   }
-
   const smoke=m.factory?.quality?.smoke_script;
   if(smoke){
     if(!exists(smoke)) bad("contract_smoke","Configured smoke script missing",{smoke});
     else {const r=spawnSync(process.execPath,[path.join(root,smoke)],{encoding:"utf8"});if(r.status!==0)bad("contract_smoke","Product smoke failed",{smoke,detail:r.stderr||r.stdout});}
   } else warnings.push({gate:"contract_smoke",message:"No product-specific smoke script configured"});
 
-  if(m.factory?.localization?.supported_seed){
-    const productText=jsFiles.map(read).join("\\n");\n    for(const lang of m.factory.localization.supported_seed) if(!new RegExp("\\\\b"+lang+":\\\\s*\\\\{").test(productText)) warnings.push({gate:"localization_contract",message:"Locale presence not statically proven",evidence:{lang}});
+  if(m.factory?.localization?.supported_seed&&jsList.length){
+    const productText=jsList.map(read).join("\n");
+    for(const lang of m.factory.localization.supported_seed){
+      if(!new RegExp("\\b"+lang+":\\s*\\{").test(productText)){
+        warnings.push({gate:"localization_contract",message:"Locale presence not statically proven",evidence:{lang}});
+      }
+    }
   }
 }
 
