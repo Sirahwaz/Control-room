@@ -1,0 +1,54 @@
+{
+  "product_key": "factory-x-self-test",
+  "display_name": "Factory X Self Test",
+  "app_id": "ai.midad.factoryx.selftest",
+  "version": "0.1.0",
+  "objective": "Validate that Factory X can identify reusable mobile capabilities, provider candidates, agents, automations, security gates, and discovery-on-gap behavior before a product build.",
+  "target_markets": [
+    "global_remote",
+    "north_america",
+    "arab_gcc",
+    "europe_uk",
+    "east_southeast_asia"
+  ],
+  "languages": [
+    "ar",
+    "en",
+    "fa"
+  ],
+  "capability_tags": [
+    "android",
+    "ios",
+    "responsive",
+    "touch",
+    "rtl",
+    "i18n",
+    "offline",
+    "auth",
+    "server-side",
+    "push",
+    "crash",
+    "subscriptions",
+    "s3",
+    "figma",
+    "scrape",
+    "api-docs",
+    "issues",
+    "apk",
+    "agents",
+    "llm"
+  ],
+  "constraints": [
+    "preserve existing factory",
+    "no privileged credentials in client",
+    "no live financial execution"
+  ],
+  "acceptance_tests": [
+    "factory_preflight",
+    "capability_plan",
+    "provider_plan",
+    "agent_plan",
+    "automation_plan",
+    "security_gate"
+  ]
+}
