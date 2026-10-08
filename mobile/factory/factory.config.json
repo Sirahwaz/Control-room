@@ -1,19 +1,48 @@
 {
   "$schema": "./factory.config.schema.json",
-  "factory_version": 2,
+  "factory_version": 3,
   "engine": "midad-mobile-factory",
+  "extensions": {
+    "intelligent_parallel_app_factory": {
+      "enabled": true,
+      "engine": "midad-mobile-factory-x",
+      "config": "./x/factory-x.config.json",
+      "registries": [
+        "./x/capabilities.registry.json",
+        "./x/providers.registry.json",
+        "./x/plugins.registry.json",
+        "./x/agents.registry.json",
+        "./x/automations.registry.json",
+        "./x/selection.policy.json"
+      ],
+      "preflight": "./x/preflight.mjs",
+      "planner": "./x/plan.mjs",
+      "policy": "NEED → CAPABILITY → PROVIDER → REUSE/ADAPT/BUILD → AGENT GRAPH → PARALLEL EXECUTION → AUDIT → VERIFY"
+    }
+  },
   "principles": [
     "AUDIT",
+    "VERIFY",
     "PRESERVE",
     "REPAIR",
     "INTEGRATE",
     "UPGRADE",
-    "VERIFY"
+    "NEED_FIRST_PROVIDER_SECOND",
+    "REUSE_BEFORE_REBUILD",
+    "PARALLEL_BY_DEFAULT",
+    "DISCOVER_ON_GAP",
+    "LEARN_BACK_INTO_FACTORY"
   ],
   "default_pipeline": [
     "request_intake",
     "requirements_normalization",
+    "factory_x_preflight",
+    "capability_discovery",
+    "provider_discovery_when_needed",
+    "reuse_resolution",
     "product_manifest",
+    "agent_graph_planning",
+    "parallel_task_plan",
     "ui_content_generation",
     "static_audit",
     "dependency_audit",
@@ -34,14 +63,22 @@
       "security_boundary",
       "artifact_exists",
       "artifact_installability",
-      "hash_recorded"
+      "hash_recorded",
+      "factory_x_preflight",
+      "capability_plan",
+      "provider_plan",
+      "reuse_plan",
+      "agent_plan",
+      "automation_plan",
+      "fallback_coverage"
     ],
     "optional_gates": [
       "ui_smoke",
       "runtime_smoke",
       "accessibility",
       "localization",
-      "offline_degradation"
+      "offline_degradation",
+      "performance_budget"
     ],
     "release_states": [
       "PLANNED",
@@ -93,7 +130,11 @@
       "retry_strategy",
       "test_depth",
       "release_channel",
-      "monetization_surface"
+      "monetization_surface",
+      "agent_allocation",
+      "automation_selection",
+      "build_strategy",
+      "cache_strategy"
     ]
   },
   "data": {
@@ -148,7 +189,10 @@
     "need_first_provider_second": true,
     "external_send_default": "human_gate",
     "financial_action_default": "human_gate",
-    "credential_entry": "never_automated"
+    "credential_entry": "never_automated",
+    "parallel_independent_tasks": true,
+    "dynamic_agent_pool": true,
+    "provider_discovery_on_gap": true
   },
   "delivery": {
     "artifacts": [
@@ -157,7 +201,9 @@
       "product_manifest",
       "build_report",
       "test_report",
-      "learning_report"
+      "learning_report",
+      "factory_x_plan",
+      "factory_x_preflight"
     ],
     "naming": "<artifact_name>-v<version>",
     "release_channels": [
