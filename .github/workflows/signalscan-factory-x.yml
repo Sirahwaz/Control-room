@@ -157,6 +157,9 @@ jobs:
           grep -q "sb_publishable_" mobile/web/signal-scanner.js
           grep -q "signalscan_brain" mobile/web/signal-scanner.js
           grep -q "signalscan_market_router" mobile/web/signal-scanner.js
+          grep -q "kind=scan" mobile/web/signal-scanner.js
+          grep -q "marketScan(" mobile/web/signal-scanner.js
+          grep -q "requestJson(" mobile/web/signal-scanner.js
           grep -q "signalscan_market_proxy" mobile/web/signal-scanner.js
           test "$(grep -o "enrichSymbol" mobile/web/signal-scanner.js | wc -l)" -ge 2
           test "$(grep -o "buildMarketContext(" mobile/web/signal-scanner.js | wc -l)" -ge 2
@@ -185,6 +188,14 @@ jobs:
           curl -sS --fail-with-body --max-time 25             -H "apikey: $SIGNALSCAN_PUBLIC_KEY"             -H 'x-signalscan-device: ci-router-smoke-2026-10-08'             -D /tmp/router-depth-headers.txt             -o /tmp/router-depth.json             "$MARKET_ROUTER?kind=depth&symbol=BTCUSDT&limit=20"
           jq -e '(.bids|type=="array") and (.asks|type=="array") and (.bids|length>0) and (.asks|length>0)' /tmp/router-depth.json
           grep -qi '^x-signalscan-provider:' /tmp/router-depth-headers.txt
+          curl -sS --fail-with-body --max-time 35 \
+            -H "apikey: $SIGNALSCAN_PUBLIC_KEY" \
+            -H 'x-signalscan-device: ci-router-smoke-2026-10-08' \
+            -D /tmp/router-scan-headers.txt \
+            -o /tmp/router-scan.json \
+            "$MARKET_ROUTER?kind=scan&universe=6&interval=1h"
+          jq -e '.ok==true and .state=="VERIFIED" and (.tickers|length)>=3 and (.candles|length)>=1 and all(.candles[]; (.primary|length)>=25 and (.secondary|length)>=25)' /tmp/router-scan.json
+          grep -qi '^x-signalscan-provider:' /tmp/router-scan-headers.txt
 
       - name: Brain endpoint smoke — deterministic
         shell: bash
