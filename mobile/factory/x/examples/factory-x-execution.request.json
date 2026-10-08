@@ -1,0 +1,14 @@
+{
+  "product_key":"factory-x-execution-self-test",
+  "display_name":"Factory X Execution Self Test",
+  "app_id":"ai.midad.factoryx.execution",
+  "version":"0.1.0",
+  "objective":"Validate DAG scheduling, parallel task execution, cache reuse, provider selection, discovery queueing, and quality gates.",
+  "target_markets":["global_remote"],
+  "languages":["ar","en","fa"],
+  "capability_tags":["android","responsive","rtl","offline","auth","privacy","performance","agents","llm","api-docs"],
+  "discovery_mode":"need_only",
+  "constraints":["preserve-existing-factory"],
+  "monetization_models":["custom_build"],
+  "acceptance_tests":["execution_engine","parallel_scheduler","cache","provider_discovery","security_gate","delivery_plan"]
+}
