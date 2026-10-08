@@ -48,9 +48,9 @@ try{
     await successPage.goto("http://127.0.0.1:"+port+"/index.html",{waitUntil:"domcontentloaded"});
     checks.launch=await successPage.title()==="SignalScan AI";
     await successPage.locator("#scanBtn").click();
-    await successPage.waitForFunction(()=>document.querySelector("#status")?.textContent.includes("4/4"),null,{timeout:10000});
+    await successPage.waitForFunction(()=>document.querySelector("#stateText")?.textContent.includes("4/4"),null,{timeout:10000});
     checks.four_provider_quorum=await successPage.locator("#evidence").textContent()==="4";
-    checks.signal_bias=await successPage.locator("#signal").textContent().then(t=>t.trim().includes("BUY BIAS"));
+    checks.signal_bias=await successPage.locator("#signal").evaluate(el=>el.classList.contains("buy"));
     checks.explainability=await successPage.locator("#explanationText").textContent().then(t=>t.includes("FACT")&&t.includes("INFERENCE")&&t.includes("ACTION"));
     await successPage.locator("#langBtn").click();
     checks.locale_en=await successPage.evaluate(()=>document.documentElement.lang==="en");
