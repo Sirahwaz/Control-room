@@ -118,10 +118,10 @@ jobs:
           mkdir -p dist signing
           CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
           if [ "$CHANNEL" = "production" ]; then
-            test -n "\${ANDROID_KEYSTORE_B64:-}" || { echo "BLOCKED: production keystore secret missing"; exit 1; }
-            test -n "\${ANDROID_KEYSTORE_PASSWORD:-}" || { echo "BLOCKED: production keystore password missing"; exit 1; }
-            test -n "\${ANDROID_KEY_ALIAS:-}" || { echo "BLOCKED: production key alias missing"; exit 1; }
-            test -n "\${ANDROID_KEY_PASSWORD:-}" || { echo "BLOCKED: production key password missing"; exit 1; }
+            test -n "${ANDROID_KEYSTORE_B64:-}" || { echo "BLOCKED: production keystore secret missing"; exit 1; }
+            test -n "${ANDROID_KEYSTORE_PASSWORD:-}" || { echo "BLOCKED: production keystore password missing"; exit 1; }
+            test -n "${ANDROID_KEY_ALIAS:-}" || { echo "BLOCKED: production key alias missing"; exit 1; }
+            test -n "${ANDROID_KEY_PASSWORD:-}" || { echo "BLOCKED: production key password missing"; exit 1; }
             printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > signing/release.jks
             KS_PATH="signing/release.jks"
             KS_PASS="$ANDROID_KEYSTORE_PASSWORD"
