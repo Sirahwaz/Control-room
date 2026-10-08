@@ -116,6 +116,83 @@ const tasks = [
     }),false)
 ];
 
+
+tasks.push(
+  makeTask("ui-plan","implementation",["architecture-synthesis"],"ui-architect","responsive-ui",r=>({
+    responsive:true,
+    touch_targets:"large",
+    typography:"readable",
+    localization:r["architecture-synthesis"].capabilities.includes("rtl-l10n")
+  })),
+  makeTask("backend-plan","implementation",["architecture-synthesis"],"backend-architect","auth",r=>({
+    backend:request.backend ?? {strategy:"provider-selected"},
+    secrets:"server-side-only"
+  })),
+  makeTask("platform-plan","implementation",["architecture-synthesis"],"android-agent","mobile-shell",r=>({
+    android:true,
+    ios_ready:true,
+    shared_shell_reuse:true
+  })),
+  makeTask("ai-plan","implementation",["architecture-synthesis"],"ai-agent","model-routing",r=>({
+    routing:"evidence_weighted",
+    fallback_required:true
+  })),
+  makeTask("security-plan","implementation",["architecture-synthesis"],"security-agent","secure-secrets",r=>({
+    privileged_client_secrets:false,
+    irreversible_external_actions:"human_gate"
+  })),
+  makeTask("localization-plan","implementation",["ui-plan"],"localization-agent","rtl-l10n",r=>({
+    languages:request.languages ?? ["ar","en","fa"],
+    rtl_first:true
+  })),
+  makeTask("monetization-plan","implementation",["architecture-synthesis"],"monetization-agent","payments",r=>({
+    models:request.monetization_models ?? ["subscription","custom_build"],
+    entitlements:"planned"
+  })),
+  makeTask("test-plan","quality",["ui-plan","backend-plan","platform-plan"],"test-agent","quality-audit",r=>({
+    static:true,
+    security:true,
+    wiring:true,
+    runtime_smoke_when_device_available:true,
+    visual_regression:true,
+    accessibility:true
+  })),
+  makeTask("dependency-plan","quality",["architecture-synthesis"],"dependency-agent",null,r=>({
+    supply_chain_audit:true,
+    lockfile_check:true,
+    license_check:true,
+    vulnerability_check:true
+  })),
+  makeTask("integration-plan","integration",[
+    "ui-plan","backend-plan","platform-plan","ai-plan","security-plan",
+    "localization-plan","monetization-plan","test-plan","dependency-plan"
+  ],"factory-governor",null,r=>({
+    ready:true,
+    modules:["ui","backend","platform","ai","security","localization","monetization","qa","dependencies"]
+  }),false),
+  makeTask("prebuild-audit","gates",["integration-plan"],"audit-agent","quality-audit",r=>({
+    checks:{
+      requirements:true,
+      capability_plan:true,
+      provider_plan:true,
+      reuse_plan:true,
+      security:true,
+      integration:true,
+      fallback_coverage:true
+    },
+    blockers:[]
+  }),false),
+  makeTask("execution-gate","gates",["prebuild-audit"],"factory-governor",null,r=>{
+    if(r["prebuild-audit"].blockers.length) throw new Error("Execution gate blocked");
+    return {passed:true, irreversible_actions:"human_gate"};
+  },false),
+  makeTask("delivery-plan","delivery",["execution-gate"],"release-agent","artifact-delivery",r=>({
+    channels:["debug","internal","beta","production"],
+    artifacts:["apk","aab","sha256","manifest","build_report","test_report","learning_report"],
+    external_publish:"human_gate"
+  }),false)
+);
+
 function statusIsTerminal(s) { return s === "DONE" || s === "CACHED"; }
 function runnable(status) {
   return tasks.filter(t => status[t.id] === "PENDING" && t.deps.every(d => statusIsTerminal(status[d])));
