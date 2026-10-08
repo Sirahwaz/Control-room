@@ -29,7 +29,9 @@ jobs:
 
       - name: JSON registry parse
         run: |
-          node -e "for (const f of [
+          node - <<'NODE'
+          const fs = require('fs');
+          const files = [
             'mobile/factory/x/factory-x.config.json',
             'mobile/factory/x/factory-x.config.schema.json',
             'mobile/factory/x/capabilities.registry.json',
@@ -38,8 +40,14 @@ jobs:
             'mobile/factory/x/agents.registry.json',
             'mobile/factory/x/automations.registry.json',
             'mobile/factory/x/selection.policy.json',
-            'mobile/factory/x/examples/factory-x-self-test.request.json'
-          ]) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON OK', f)"
+            'mobile/factory/x/examples/factory-x-self-test.request.json',
+            'mobile/factory/x/examples/factory-x-execution.request.json'
+          ];
+          for (const f of files) {
+            JSON.parse(fs.readFileSync(f, 'utf8'));
+            console.log('JSON OK', f);
+          }
+          NODE
 
       - name: JavaScript syntax
         run: |
