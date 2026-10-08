@@ -26,6 +26,8 @@ on:
       - "mobile/factory/products/signal-scanner.json"
       - "mobile/factory/products/signal-scanner-icon.xml"
       - "supabase/functions/signalscan_brain/**"
+      - "supabase/functions/signalscan_market_router/**"
+      - "supabase/functions/signalscan_market_proxy/**"
       - ".github/workflows/signalscan-factory-x.yml"
 
 concurrency:
@@ -285,7 +287,7 @@ jobs:
           unzip -l "$APK" | grep -q "assets/public/signal-scanner.css"
           unzip -l "$APK" | grep -q "assets/public/index.html"
           ! unzip -p "$APK" assets/public/signal-scanner.js | grep -qE -- "-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY"
-          jq -e '.app_id=="ai.signalscan.scanner" and .version=="0.2.0" and .features.live_financial_execution==false' dist/product-manifest.json
+          jq -e '.app_id=="ai.signalscan.scanner" and .version=="0.2.1" and .features.live_financial_execution==false' dist/product-manifest.json
           ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           "$APKSIGNER" verify "$APK"
@@ -294,7 +296,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="dist/SignalScan-AI-v0.2.0-factory-x.apk"
+          APK="dist/SignalScan-AI-v0.2.1-factory-x.apk"
           SIZE=$(stat -c%s "$APK")
           BASELINE=6214492
           python3 - "$SIZE" "$BASELINE" "${FX_FIRST_MS:-0}" "${FX_CACHED_MS:-0}" "${ANDROID_BUILD_SECONDS:-0}" <<'PY'
@@ -303,7 +305,7 @@ jobs:
           report={
             "factory":"MIDAD Mobile Factory X",
             "product":"SignalScan AI",
-            "version":"0.2.0",
+            "version":"0.2.1",
             "factory_execution_ms_uncached":first,
             "factory_execution_ms_cached":cached,
             "factory_cache_reuse":cached>=20,
