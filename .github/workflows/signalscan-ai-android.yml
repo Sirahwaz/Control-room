@@ -95,6 +95,11 @@ jobs:
         run: node mobile/factory/product-smoke/signalscan-ai.mjs
       - name: JavaScript syntax audit
         run: node --check mobile/web/signalscan/signalscan.js
+      - name: Install Playwright runtime verifier
+        working-directory: mobile
+        run: npm install --no-fund --no-audit --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Runtime smoke certification
+        run: node mobile/factory/runtime-smoke/signalscan-ai.mjs
       - name: Build release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
@@ -170,3 +175,5 @@ jobs:
             dist/build-report.json
             dist/test-report.json
             dist/learning-report.json
+            dist/artifact-certification.json
+            mobile/factory/reports/signalscan-ai-runtime-smoke.json
