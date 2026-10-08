@@ -256,8 +256,22 @@ async function depth(symbol:string, limit:number){
       bids:j?.result?.b||[],
       asks:j?.result?.a||[]
     };
-    if(!validDepth(data)) throw new Error("invalid_bybit_depth");
+    if(j?.retCode!==0 || !validDepth(data)) throw new Error("invalid_bybit_depth");
     return {data,provider:"BYBIT"};
+  })());
+
+  jobs.push((async()=>{
+    const base=symbol.replace(/USDT$/,"");
+    const j=JSON.parse(await hit(
+      SRC.kucoin+"/api/v1/market/orderbook/level2_"+Math.min(20,n)+"?symbol="+encodeURIComponent(base+"-USDT")
+    ));
+    const data={
+      lastUpdateId:Number(j?.data?.sequence||j?.data?.time||0),
+      bids:j?.data?.bids||[],
+      asks:j?.data?.asks||[]
+    };
+    if(j?.code!=="200000" || !validDepth(data)) throw new Error("invalid_kucoin_depth");
+    return {data,provider:"KUCOIN"};
   })());
 
   return firstValid(jobs);
