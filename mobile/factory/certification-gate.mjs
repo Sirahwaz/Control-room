@@ -43,8 +43,10 @@ if(m){
     const siteFiles=Array.isArray(m.factory?.bundle?.site_files)?m.factory.bundle.site_files:[];
     const bundleTargets=new Set(["index.html",...webAssetTargets,...siteFiles.map(a=>"site/"+path.posix.basename(a))]);
     const badSourceRefs=refs.filter(r=>{
+      const clean=r.replace(/^\.\//,"");
       const base=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
-      return !exists(path.posix.normalize(path.posix.join(base,r)));
+      const sourcePath=path.posix.normalize(path.posix.join(base,clean));
+      return !exists(sourcePath) && !bundleTargets.has(clean);
     });
     const badBundleRefs=refs.filter(r=>!bundleTargets.has(r.replace(/^\.\//,"")));
     if(badSourceRefs.length) bad("html_asset_integrity","HTML references missing local source assets",{badSourceRefs});
