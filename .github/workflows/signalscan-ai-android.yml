@@ -79,8 +79,14 @@ jobs:
           s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
+      - name: Factory X preflight
+        run: node mobile/factory/x/preflight.mjs
+      - name: Source certification gate
+        run: node mobile/factory/certification-gate.mjs signalscan-ai
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs signalscan-ai
+      - name: Product contract smoke
+        run: node mobile/factory/product-smoke/signalscan-ai.mjs
       - name: JavaScript syntax audit
         run: node --check mobile/web/signalscan/signalscan.js
       - name: Build release APK
@@ -105,6 +111,14 @@ jobs:
           printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/build-report.json
           printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/test-report.json
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+          APKSIGNER="$APKSIGNER" AAPT="$AAPT" node mobile/factory/artifact-certification.mjs signalscan-ai "$OUT"
+          jq -e ".status==\"CERTIFIED_ARTIFACT\"" mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
+          jq -e ".checks.apksigner==\"VERIFIED\"" mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
+          jq -e ".product_key==\"signalscan-ai\"" mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
           rm -rf signing
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
