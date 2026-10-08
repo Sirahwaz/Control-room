@@ -11,6 +11,7 @@ on:
       - "mobile/factory/products/signal-scanner.json"
       - "mobile/factory/products/signal-scanner-icon.xml"
       - "supabase/functions/signalscan_brain/**"
+      - "supabase/functions/signalscan_brain_v3/**"
       - "supabase/functions/signalscan_market_router/**"
       - "supabase/functions/signalscan_market_proxy/**"
       - ".github/workflows/signalscan-factory-x.yml"
@@ -190,7 +191,7 @@ jobs:
           SIGNALSCAN_PUBLIC_KEY: sb_publishable_d1NSXEMDhCrAWSLdingJbQ_0VEAmm1L
         run: |
           set -euo pipefail
-          RESP="$(curl -sS --fail-with-body --max-time 25             -H 'content-type: application/json'             -H "apikey: $SIGNALSCAN_PUBLIC_KEY"             -H 'x-signalscan-device: ci-factory-x-2026-10-08'             -d '{"device_id":"ci-factory-x-2026-10-08","want_ai":false,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain')"
+          RESP="$(curl -sS --fail-with-body --max-time 25             -H 'content-type: application/json'             -H "apikey: $SIGNALSCAN_PUBLIC_KEY"             -H 'x-signalscan-device: ci-factory-x-2026-10-08'             -d '{"device_id":"ci-factory-x-2026-10-08","want_ai":false,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain_v3')"
           echo "$RESP" | jq -e '.ok==true and .consensus.score >= 5 and .adversarial != null and .limits.live_orders==false and .limits.withdrawals==false'
 
       - name: Setup Java 21
