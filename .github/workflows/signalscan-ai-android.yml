@@ -51,15 +51,10 @@ jobs:
       - name: Install Capacitor dependencies
         working-directory: mobile
         run: npm install --no-fund --no-audit
-      - name: Prepare SignalScan web surface
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf mobile/www
-          mkdir -p mobile/www
-          cp mobile/web/signalscan/index.html mobile/www/index.html
-          cp mobile/web/signalscan/signalscan.css mobile/www/signalscan.css
-          cp mobile/web/signalscan/signalscan.js mobile/www/signalscan.js
+      - name: Source certification gate
+        run: node mobile/factory/certification-gate.mjs signalscan-ai
+      - name: Prepare manifest-driven web bundle
+        run: node mobile/factory/prepare-web-bundle.mjs signalscan-ai
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -87,8 +82,6 @@ jobs:
           PY
       - name: Factory X preflight
         run: node mobile/factory/x/preflight.mjs
-      - name: Source certification gate
-        run: node mobile/factory/certification-gate.mjs signalscan-ai
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs signalscan-ai
       - name: Product contract smoke
@@ -152,6 +145,7 @@ jobs:
           jq -e '.checks.apksigner=="VERIFIED"' mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
           jq -e '.product_key=="signalscan-ai"' mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
           printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","source_certification":"PASSED","artifact_certification":"PASSED"}\n' > dist/build-report.json
+          printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
           cp mobile/factory/reports/signalscan-ai-artifact-certification.json dist/artifact-certification.json
           rm -rf signing
       - name: Customer delivery gate
@@ -166,7 +160,7 @@ jobs:
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SignalScan-AI-v${{ fromJSON('{"version":"0.3.1"}').version }}-release
+          name: SignalScan-AI-v${{ steps.product.outputs.version }}-release
           path: |
             dist/*.apk
             dist/*.sha256
