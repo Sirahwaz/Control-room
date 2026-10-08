@@ -51,11 +51,11 @@ for (const agentId of requested) {
   const fit = binding.capabilities.filter(c => requestedCaps.size === 0 || requestedCaps.has(c)).length;
   const fitScore = binding.capabilities.length ? Number((fit / binding.capabilities.length).toFixed(3)) : 0;
 
+  const irreversible = ["publish","transfer","withdraw","execute","delete","credential","production"].some(
+    token => String(binding.action).toLowerCase().includes(token)
+  );
   const safety =
-    binding.adapter === "human-gate" ||
-    binding.action.includes("release") ||
-    binding.action.includes("publish") ||
-    binding.action.includes("migration")
+    binding.adapter === "human-gate" || irreversible
       ? "HUMAN_GATE_OR_POLICY_CHECK"
       : "AUTO_ALLOWED";
 
@@ -87,14 +87,23 @@ for (const agentId of requested) {
 }
 
 const waves = [];
-const remaining = [...tasks];
-while (remaining.length) {
-  const safe = remaining.splice(
-    0,
-    maxParallel
-  );
-  waves.push(safe);
+let safeWave = [];
+for (const item of tasks) {
+  if (!item.parallel_safe) {
+    if (safeWave.length) {
+      waves.push(safeWave);
+      safeWave = [];
+    }
+    waves.push([item]);
+    continue;
+  }
+  safeWave.push(item);
+  if (safeWave.length >= maxParallel) {
+    waves.push(safeWave);
+    safeWave = [];
+  }
 }
+if (safeWave.length) waves.push(safeWave);
 
 const result = {
   ok:blockers.length===0,
