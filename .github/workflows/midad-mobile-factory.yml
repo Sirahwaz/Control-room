@@ -9,7 +9,7 @@ on:
         default: "midad-omni-agent"
         type: string
       release_channel:
-        description: "Optional release channel override"
+        description: "Expected release channel; must match the product manifest"
         required: false
         default: "debug"
         type: choice
@@ -55,6 +55,8 @@ jobs:
           APP_ID="$(jq -r '.app_id' mobile/factory/runtime-product.json)"
           WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
           CHANNEL="${{ inputs.release_channel }}"
+          MANIFEST_CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
+          test "$CHANNEL" = "$MANIFEST_CHANNEL" || { echo "BLOCKED: release_channel input does not match manifest"; exit 1; }
           {
             echo "product_key=$PRODUCT_KEY"
             echo "version=$VERSION"
@@ -125,7 +127,7 @@ jobs:
 
       - name: JavaScript syntax audit
         working-directory: mobile
-        run: node --check web/omni-agent.js
+        run: node --check mobile/factory/prepare-web-bundle.mjs
 
       - name: Build release APK
         working-directory: mobile/android
@@ -139,9 +141,10 @@ jobs:
           test -f "$APK_SRC"
           mkdir -p dist signing
           keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "midad-factory-temp"             -keypass "midad-factory-temp"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "$TMP_PASS"             -keypass "$TMP_PASS"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           OUT="dist/${{ steps.product.outputs.artifact_name }}-release.apk"
-          "$APKSIGNER" sign             --ks signing/midad-factory-temp.jks             --ks-pass pass:midad-factory-temp             --key-pass pass:midad-factory-temp             --ks-key-alias midadfactory             --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" sign             --ks signing/midad-factory-temp.jks             --ks-pass pass:$TMP_PASS             --key-pass pass:$TMP_PASS             --ks-key-alias midadfactory             --out "$OUT" "$APK_SRC"
           "$APKSIGNER" verify --verbose "$OUT"
           sha256sum "$OUT" | tee "$OUT.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
@@ -192,6 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          RUNTIME_STATUS="$(jq -r '.status // "UNKNOWN"' mobile/factory/reports/${{ steps.product.outputs.product_key }}-runtime-smoke.json 2>/dev/null || echo UNKNOWN)"
           cat > dist/build-report.json <<EOF
           {
             "product_key": "${{ steps.product.outputs.product_key }}",
@@ -208,7 +212,7 @@ jobs:
             "static_js_syntax": "PASSED",
             "secret_scan": "PASSED",
             "artifact_verification": "PASSED",
-            "runtime_smoke": "NOT_RUN_IN_CI"
+            "runtime_smoke": "$RUNTIME_STATUS"
           }
           EOF
           cat > dist/learning-report.json <<EOF
@@ -233,3 +237,7 @@ jobs:
             dist/build-report.json
             dist/test-report.json
             dist/learning-report.json
+            dist/artifact-certification.json
+            mobile/factory/reports/*-certification.json
+            mobile/factory/reports/*-runtime-smoke.json
+            mobile/factory/reports/*-customer-delivery-certificate.json
