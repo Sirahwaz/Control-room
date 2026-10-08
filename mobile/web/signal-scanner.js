@@ -6,13 +6,14 @@ Object.assign(I.ar,{brand_sub:"Market Intelligence Scanner",ready:"جاهز لل
 const SUPABASE_URL="https://froegigfmpmvtecztfbf.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_d1NSXEMDhCrAWSLdingJbQ_0VEAmm1L";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/signalscan_brain";
+const MARKET_PROXY=SUPABASE_URL+"/functions/v1/signalscan_market_proxy";
 const DEVICE_ID=localStorage.getItem("ss_device")||(()=>{const x=(crypto.randomUUID?crypto.randomUUID():"ss-"+Date.now()+"-"+Math.random().toString(36).slice(2));localStorage.setItem("ss_device",x);return x})();
 const demo=[["BTCUSDT",69000,2.7],["ETHUSDT",2500,1.9],["SOLUSDT",160,-2.1]];
 const S={lang:localStorage.getItem("ss_lang")||"ar",interval:localStorage.getItem("ss_interval")||"1h",universe:+localStorage.getItem("ss_universe")||10,risk:localStorage.getItem("ss_risk")||"balanced",min:+localStorage.getItem("ss_min")||65,watch:JSON.parse(localStorage.getItem("ss_watch")||"[]"),rows:[],source:"PUBLIC DATA",market:{},brain:null,genealogy:[],previousSnapshot:[]};
 const $=id=>document.getElementById(id),T=k=>(I[S.lang]||I.en)[k]||I.en[k]||k;
 const n=v=>Number.isFinite(Number(v))?Number(v):0, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), fmt=v=>n(v).toLocaleString(undefined,{maximumFractionDigits:n(v)>=1000?2:4}), pct=v=>(n(v)>=0?"+":"")+n(v).toFixed(2)+"%";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function get(url,ms=10000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{headers:{accept:"application/json"},signal:c.signal});if(!r.ok)throw Error("HTTP "+r.status);return await r.json()}finally{clearTimeout(tm)}}
+async function get(url,ms=10000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);const target=MARKET_PROXY+"?url="+encodeURIComponent(url);try{const r=await fetch(target,{headers:{accept:"application/json",apikey:SUPABASE_PUBLISHABLE_KEY,"x-signalscan-device":DEVICE_ID},signal:c.signal});if(!r.ok){let detail="HTTP "+r.status;try{const j=await r.json();if(j?.detail)detail+=" "+j.detail}catch{}throw Error(detail)}return await r.json()}finally{clearTimeout(tm)}}
 const mean=(a,p)=>a.length<p?a.reduce((x,y)=>x+y,0)/Math.max(1,a.length):a.slice(-p).reduce((x,y)=>x+y,0)/p;
 function ema(a,p){if(a.length<p)return mean(a,p);let e=mean(a.slice(0,p),p),k=2/(p+1);for(let i=p;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
 function rsi(a,p=14){if(a.length<=p)return 50;let g=0,l=0;for(let i=1;i<=p;i++){let d=a[i]-a[i-1];g+=Math.max(0,d);l+=Math.max(0,-d)}g/=p;l/=p;for(let i=p+1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(p-1)+Math.max(0,d))/p;l=(l*(p-1)+Math.max(0,-d))/p}return l?100-100/(1+g/l):100}
