@@ -69,7 +69,8 @@
     "quality": {
       "minimum_confidence": 0.9,
       "max_repair_attempts_per_incident": 3,
-      "fail_closed_on_security_gate": true
+      "fail_closed_on_security_gate": true,
+      "smoke_script": "mobile/factory/product-smoke/signalscan-ai.mjs"
     },
     "data": {
       "backend": "provider-router",
