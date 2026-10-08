@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "name": "NEED_FIRST_PROVIDER_SECOND",
+  "steps": [
+    "normalize_need",
+    "derive_requirements",
+    "map_requirements_to_capabilities",
+    "check_existing_factory_components",
+    "check_existing_plugins",
+    "discover_provider_candidates_when_needed",
+    "score_candidates",
+    "select_primary",
+    "select_fallback",
+    "verify_contracts",
+    "record_decision"
+  ],
+  "scoring": {
+    "capability_fit": 0.28,
+    "reliability": 0.18,
+    "security": 0.16,
+    "latency": 0.10,
+    "cost": 0.10,
+    "integration_effort": 0.08,
+    "portability": 0.06,
+    "ecosystem": 0.04
+  },
+  "rules": [
+    "never_choose_provider_from_availability_alone",
+    "prefer_reuse_before_new_build",
+    "prefer_adapter_over_vendor_lock_in",
+    "critical_capabilities_require_fallback_or_explicit_exception",
+    "unknown_provider_requires_current_evidence",
+    "connection_is_not_selection",
+    "selection_is_not_connection",
+    "connection_is_not_license_approval",
+    "production_external_publish_requires_human_gate",
+    "never_put_privileged_credentials_in_client"
+  ]
+}
