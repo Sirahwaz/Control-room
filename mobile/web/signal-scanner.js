@@ -11,7 +11,7 @@ const MARKET_ROUTER=SUPABASE_URL+"/functions/v1/signalscan_market_router";
 const MARKET_PROVIDERS=new Set();
 const DEVICE_ID=localStorage.getItem("ss_device")||(()=>{const x=(crypto.randomUUID?crypto.randomUUID():"ss-"+Date.now()+"-"+Math.random().toString(36).slice(2));localStorage.setItem("ss_device",x);return x})();
 const demo=[["BTCUSDT",69000,2.7],["ETHUSDT",2500,1.9],["SOLUSDT",160,-2.1]];
-const S={lang:localStorage.getItem("ss_lang")||"ar",interval:localStorage.getItem("ss_interval")||"1h",universe:+localStorage.getItem("ss_universe")||10,risk:localStorage.getItem("ss_risk")||"balanced",min:+localStorage.getItem("ss_min")||65,watch:JSON.parse(localStorage.getItem("ss_watch")||"[]"),rows:[],source:"PUBLIC DATA",market:{},brain:null,genealogy:[],previousSnapshot:[]};
+const S={lang:localStorage.getItem("ss_lang")||"ar",interval:localStorage.getItem("ss_interval")||"1h",universe:+localStorage.getItem("ss_universe")||10,risk:localStorage.getItem("ss_risk")||"balanced",min:+localStorage.getItem("ss_min")||65,watch:JSON.parse(localStorage.getItem("ss_watch")||"[]"),rows:[],source:"PUBLIC DATA",networkError:"",market:{},brain:null,genealogy:[],previousSnapshot:[]};
 const $=id=>document.getElementById(id),T=k=>(I[S.lang]||I.en)[k]||I.en[k]||k;
 const n=v=>Number.isFinite(Number(v))?Number(v):0, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), fmt=v=>n(v).toLocaleString(undefined,{maximumFractionDigits:n(v)>=1000?2:4}), pct=v=>(n(v)>=0?"+":"")+n(v).toFixed(2)+"%";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -29,8 +29,8 @@ function make(sig,c1,c4){
 const a=atr(c1),cl=c1.map(x=>x.c),cl4=c4.map(x=>x.c),p=cl.at(-1),e20=ema(cl,20),e50=ema(cl,50),e204=ema(cl4,20),e504=ema(cl4,50),rr=rsi(cl),mom=(p/cl[Math.max(0,cl.length-7)]-1)*100,vr=c1.at(-1).v/Math.max(.00001,mean(c1.slice(-21,-1).map(x=>x.v),20)),sl=slope(cl),sl4=slope(cl4),sw=sweep(c1),fg=fvg(c1),st=structure(c1);
 let raw=0;raw+=e20>e50?16:-16;raw+=e204>e504?20:-20;raw+=sl>0?8:-8;raw+=sl4>0?7:-7;raw+=mom>0?Math.min(12,mom*2):-Math.min(12,Math.abs(mom)*2);raw+=(vr>=1.3?(mom>=0?9:-9):(mom>=0?3:-3));if(rr>52&&rr<72)raw+=6;else if(rr<48&&rr>28)raw-=6;if(sw==="bullish")raw+=10;if(sw==="bearish")raw-=10;if(fg==="bullish")raw+=6;if(fg==="bearish")raw-=6;if(st==="break_up")raw+=9;if(st==="break_down")raw-=9;
 let score=Math.round(clamp(50+raw*.52,5,95)),dir=score>=64?"LONG":score<=36?"SHORT":"WATCH",conf=clamp(.55+Math.abs(raw)/100*.35+(sw!=="none"?.05:0)+(fg!=="none"?0.03:0),.52,.96),regime=Math.abs(e20-e50)/p>.005?"TREND":a/p>.018?"HIGH VOL":"RANGE";
-const side=dir==="SHORT"?-1:1,zone=Math.max(a*.28,p*.002)*(S.risk==="conservative"?1.25:S.risk==="aggressive"?.82:1),risk=Math.max(a*.9,p*.004),reasons=[];if((dir==="LONG"&&e20>e50)||(dir==="SHORT"&&e20<e50))reasons.push("EMA trend aligned");if((dir==="LONG"&&e204>e504)||(dir==="SHORT"&&e204<e504))reasons.push("4H MTF alignment");if(vr>=1.3)reasons.push("Volume expansion x"+vr.toFixed(1));if(sw!=="none")reasons.push("Liquidity sweep proxy: "+sw);if(fg!=="none")reasons.push("FVG proxy: "+fg);if(st!=="range")reasons.push("Structure: "+st.replace("_"," "));if(Math.abs(mom)>=1)reasons.push("Momentum "+pct(mom));if(!reasons.length)reasons.push("No dominant confluence");
-return {symbol:sig.symbol,price:p,change:n(sig.priceChangePercent),volume:n(sig.quoteVolume),score,confidence,dir,regime,entryLo:p-zone,entryHi:p+zone,invalidation:p-side*risk,targets:[p+side*risk*1.2,p+side*risk*2,p+side*risk*3],factors:{rsi:rr,volumeRatio:vr,momentum:mom,atr:a,emaSpread:(e20/e50-1)*100,mtfSpread:(e204/e504-1)*100,sweep:sw,fvg:fg,structure:st},reasons:reasons.slice(0,6)}}
+const side=dir==="SHORT"?-1:dir==="LONG"?1:0,zone=Math.max(a*.28,p*.002)*(S.risk==="conservative"?1.25:S.risk==="aggressive"?.82:1),risk=Math.max(a*.9,p*.004),reasons=[];if((dir==="LONG"&&e20>e50)||(dir==="SHORT"&&e20<e50))reasons.push("EMA trend aligned");if((dir==="LONG"&&e204>e504)||(dir==="SHORT"&&e204<e504))reasons.push("4H MTF alignment");if(vr>=1.3)reasons.push("Volume expansion x"+vr.toFixed(1));if(sw!=="none")reasons.push("Liquidity sweep proxy: "+sw);if(fg!=="none")reasons.push("FVG proxy: "+fg);if(st!=="range")reasons.push("Structure: "+st.replace("_"," "));if(Math.abs(mom)>=1)reasons.push("Momentum "+pct(mom));if(!reasons.length)reasons.push("No dominant confluence");
+return {symbol:sig.symbol,price:p,change:n(sig.priceChangePercent),volume:n(sig.quoteVolume),score,confidence,dir,regime,entryLo:p-zone,entryHi:p+zone,invalidation:side?p-side*risk:p,targets:side?[p+side*risk*1.2,p+side*risk*2,p+side*risk*3]:[p,p,p],factors:{rsi:rr,volumeRatio:vr,momentum:mom,atr:a,emaSpread:(e20/e50-1)*100,mtfSpread:(e204/e504-1)*100,sweep:sw,fvg:fg,structure:st},reasons:reasons.slice(0,6)}}
 async function checkAlerts(){let a=[];try{a=JSON.parse(localStorage.getItem("ss_alerts")||"[]")}catch{};const hits=[];for(const r of a.filter(x=>x.enabled)){const s=S.rows.find(x=>x.symbol===r.symbol);if(!s)continue;const p=n(s.price),v=n(r.price);if(r.condition==="above"&&p>=v)hits.push(r);if(r.condition==="below"&&p<=v)hits.push(r)}if(hits.length)hits.slice(0,3).forEach(r=>toast((r.symbol||"Signal")+" alert"))}
 function saveAlerts(a){localStorage.setItem("ss_alerts",JSON.stringify(a))}
 function openWatchlist(){const w=S.rows.filter(x=>S.watch.includes(x.symbol));$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">WATCHLIST</div><h3>'+T("watch")+'</h3></div><span class="badge neutral">'+w.length+'</span></div>'+(w.length?'<div class="factor-list">'+w.map(s=>'<div class="factor"><span>'+esc(s.symbol)+' · '+s.dir+' · '+s.score+'</span><strong><button data-rm="'+esc(s.symbol)+'">×</button></strong></div>').join("")+'</div>':'<div class="insight-body">'+T("watch")+'</div>')+'<div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{S.watch=S.watch.filter(x=>x!==b.dataset.rm);localStorage.setItem("ss_watch",JSON.stringify(S.watch));openWatchlist()});$("close").onclick=close}
@@ -47,14 +47,68 @@ async function renderAdvanced(){const r=S.rows.slice(0,5),b=n(S.market.breadth,5
 async function openLab(kind){const top=S.rows[0];if(!top){toast(T("ready"));return}if(kind==="neural"){$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">NEURAL CONSENSUS</div><h3>'+T("neural_consensus")+'</h3></div><span class="badge good">VERIFIED</span></div><div class="insight-body">'+esc(S.brain?.ai_explanation||T("brain_unavailable"))+'</div><div class="detail-grid"><div class="detail-box"><span>Direction</span><b>'+esc(S.brain?.consensus?.direction||"LOCAL")+'</b></div><div class="detail-box"><span>Score</span><b>'+Math.round(n(S.brain?.consensus?.score,top.score))+'/100</b></div><div class="detail-box"><span>Robustness</span><b>'+Math.round(n(S.brain?.consensus?.robustness,0))+'/100</b></div><div class="detail-box"><span>Stress</span><b>'+esc(S.brain?.adversarial?.verdict||"PENDING")+'</b></div></div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close;return}if(kind==="genealogy"){$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">SIGNAL DNA</div><h3>'+T("genealogy")+'</h3></div><span class="badge neutral">'+esc($("marketFingerprint").textContent||"----")+'</span></div><div class="timeline">'+S.genealogy.map(x=>'<div class="timeline-row"><b>'+esc(x.symbol)+'</b><span>'+x.score+' · '+(x.delta>=0?"+":"")+Math.round(x.delta)+' · '+T(x.status==="EMERGING"?"emerging":x.status==="DECAYING"?"decaying":"stable")+'</span></div>').join("")+'</div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close;return}const A=S.brain?.adversarial?.remove_one_factor_survival||[];$("detailModal").innerHTML='<div class="section-head"><div><div class="eyebrow">'+(kind==="counterfactual"?"COUNTERFACTUAL":"ADVERSARIAL")+'</div><h3>'+T(kind==="counterfactual"?"counterfactual":"adversarial")+'</h3></div><span class="badge '+(S.brain?.adversarial?.verdict==="FRAGILE"?"bad":"good")+'">'+esc(S.brain?.adversarial?.verdict||"LOCAL")+'</span></div><div class="insight-body">'+(kind==="counterfactual"?"أزل عاملًا واحدًا في كل مرة: إذا بقي الاتجاه فالإشارة أكثر استقلالية؛ إذا انقلب فالعامل حاسم.":"الهدف ليس إثبات الإشارة بل محاولة كسرها: الانقلاب بعد حذف عامل يعني هشاشة أعلى.")+'</div><div class="factor-list">'+A.map(x=>'<div class="factor"><span>'+esc(x.factor)+'</span><strong>'+esc(x.direction)+' · '+x.score+(x.flip?" · FLIP":"")+'</strong></div>').join("")+'</div><div class="modal-actions"><button id="close">'+T("close")+'</button></div>';$("modalBackdrop").hidden=false;$("close").onclick=close}
 
 async function scan(){
-$("scanBtn").disabled=true;$("statusText").textContent=T("scan");
-try{
-const ticks=(await get(API+"/ticker/24hr")).filter(x=>/USDT$/.test(x.symbol)&&!/(USDC|BUSD|FDUSD)USDT$/.test(x.symbol)).sort((a,b)=>n(b.quoteVolume)-n(a.quoteVolume)).slice(0,S.universe);
-let out=[];for(let i=0;i<ticks.length;i+=4){const chunk=ticks.slice(i,i+4);const vals=await Promise.all(chunk.map(async s=>{try{const [a,b]=await Promise.all([get(API+"/klines?symbol="+s.symbol+"&interval="+S.interval+"&limit=140"),get(API+"/klines?symbol="+s.symbol+"&interval="+(S.interval==="1d"?"1d":"4h")+"&limit=140")]);return make(s,k(a),k(b))}catch{return null}}));out.push(...vals.filter(Boolean))}
-S.rows=out.sort((a,b)=>b.score-a.score);S.source=MARKET_PROVIDERS.size?"LIVE • "+[...MARKET_PROVIDERS].slice(0,4).join(" + "):"LIVE MULTI-SOURCE";
-if(!S.rows.length)throw Error("empty");
-}catch(e){S.rows=demo.map((d,i)=>({symbol:d[0],price:d[1],change:d[2],score:[78,71,66][i],confidence:[.86,.79,.76][i],dir:i===2?"SHORT":"LONG",regime:"TREND",entryLo:d[1]*.998,entryHi:d[1]*1.002,invalidation:d[1]*(i===2?1.01:.99),targets:[d[1]*(i===2?.985:1.015),d[1]*(i===2?.975:1.025),d[1]*(i===2?.965:1.035)],factors:{rsi:55,volumeRatio:1.5,momentum:d[2],atr:d[1]*.01,emaSpread:.3,mtfSpread:.5,sweep:"none",fvg:"none",structure:"range"},reasons:["EMA trend aligned","4H MTF alignment","Volume expansion"]}));S.source="DEMO / OFFLINE";$("statusText").textContent=T("error")}
-$("dataSource").textContent=S.source;$("lastUpdated").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});$("scanBtn").disabled=false;render();if(S.rows[0])insight(S.rows[0])
+  $("scanBtn").disabled=true;
+  $("statusText").textContent=T("scan");
+  MARKET_PROVIDERS.clear();
+  S.networkError="";
+  try{
+    const ticks=(await get(API+"/ticker/24hr"))
+      .filter(x=>/USDT$/.test(x.symbol)&&!/(USDC|BUSD|FDUSD)USDT$/.test(x.symbol))
+      .sort((a,b)=>n(b.quoteVolume)-n(a.quoteVolume))
+      .slice(0,S.universe);
+    if(ticks.length<3)throw Error("ticker_empty");
+    let out=[],failed=0;
+    for(let i=0;i<ticks.length;i+=4){
+      const chunk=ticks.slice(i,i+4);
+      const vals=await Promise.all(chunk.map(async s=>{
+        try{
+          const [a,b]=await Promise.all([
+            get(API+"/klines?symbol="+s.symbol+"&interval="+S.interval+"&limit=140"),
+            get(API+"/klines?symbol="+s.symbol+"&interval="+(S.interval==="1d"?"1d":"4h")+"&limit=140")
+          ]);
+          const c1=k(a),c4=k(b);
+          if(c1.length<25||c4.length<25)throw Error("kline_insufficient:"+s.symbol);
+          return make(s,c1,c4);
+        }catch(e){failed++;S.networkError=String(e?.message||e);return null}
+      }));
+      out.push(...vals.filter(Boolean));
+    }
+    S.rows=out.sort((a,b)=>b.score-a.score);
+    if(!S.rows.length)throw Error(S.networkError||"all_symbols_failed");
+
+    // Advanced enrichment is intentionally limited to top 6 to keep mobile latency bounded.
+    const top=S.rows.slice(0,6);
+    const enriched=await Promise.all(top.map(enrichSymbol));
+    const bySymbol=new Map(enriched.map(x=>[x.symbol,x]));
+    S.rows=S.rows.map(x=>bySymbol.get(x.symbol)||x);
+
+    await buildMarketContext(ticks);
+    await updateGenealogy();
+    $("marketFingerprint").textContent=await makeFingerprint();
+    await callBrain();
+    await checkAlerts();
+
+    const providers=[...MARKET_PROVIDERS];
+    S.source="LIVE • "+(providers.length?providers.slice(0,5).join(" + "):"MULTI-SOURCE");
+    $("statusText").textContent=failed?("LIVE · "+failed+" skipped"):T("ready");
+  }catch(e){
+    S.rows=demo.map((d,i)=>({
+      symbol:d[0],price:d[1],change:d[2],score:[78,71,66][i],confidence:[.86,.79,.76][i],
+      dir:i===2?"SHORT":"LONG",regime:"TREND",entryLo:d[1]*.998,entryHi:d[1]*1.002,
+      invalidation:d[1]*(i===2?1.01:.99),
+      targets:[d[1]*(i===2?.985:1.015),d[1]*(i===2?.975:1.025),d[1]*(i===2?.965:1.035)],
+      factors:{rsi:55,volumeRatio:1.5,momentum:d[2],atr:d[1]*.01,emaSpread:.3,mtfSpread:.5,sweep:"none",fvg:"none",structure:"range"},
+      reasons:["SAFE DEMO FALLBACK","Network: "+String(e?.message||"unavailable").slice(0,90)]
+    }));
+    S.source="DEMO / OFFLINE";
+    S.networkError=String(e?.message||"market_unavailable");
+    $("statusText").textContent=T("error");
+  }
+  $("dataSource").textContent=S.source;
+  $("lastUpdated").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  $("scanBtn").disabled=false;
+  render();
+  if(S.rows[0])insight(S.rows[0]);
 }
 function render(){
 const r=S.rows,L=r.filter(x=>x.score>=S.min),v=L.length?L:r.slice(0,5),long=r.filter(x=>x.dir==="LONG").length,short=r.filter(x=>x.dir==="SHORT").length,b=r[0]?.score||0;
