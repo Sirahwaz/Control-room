@@ -61,7 +61,7 @@ function consensus(signals:any[],market:any){
   const spread=src.map(x=>x.score??50);
   const avg=spread.reduce((a,b)=>a+Number(b),0)/Math.max(1,spread.length);
   const dispersion=Math.sqrt(spread.reduce((a,b)=>a+(Number(b)-avg)**2,0)/Math.max(1,spread.length));
-  const confidence=clamp(.52+Math.min(.34,Math.abs(raw)/180)+Math.min(.10,Math.abs(breadth-50)/50)-Math.min(.12,dispersion/100),.5,.96)/100*100;
+  const confidence=clamp(.52+Math.min(.34,Math.abs(raw)/180)+Math.min(.10,Math.abs(breadth-50)/50)-Math.min(.12,dispersion/100),.5,.96);
   const independent=Math.max(1,["trend","structure","flow","anomaly"].filter((_,i)=>Math.abs([trend,structure,flow,anomaly][i])>2).length);
   const fragilities:string[]=[];
   if(Math.abs(flow)<Math.abs(raw)*.18)fragilities.push("flow_not_decisive");
@@ -70,7 +70,7 @@ function consensus(signals:any[],market:any){
   if(dispersion>14)fragilities.push("signal_dispersion_high");
   if(direction==="NEUTRAL")fragilities.push("no_directional_edge");
   const robustness=clamp(55+independent*10-dispersion*1.4-(fragilities.length*5),0,100);
-  return {direction,score,confidence:confidence/100,robustness,fragilities,agents:{
+  return {direction,score,confidence,robustness,fragilities,agents:{
     trend:Math.round(trend),structure:Math.round(structure),flow:Math.round(flow),anomaly:Math.round(anomaly),regime:Math.round(regime)
   }};
 }
