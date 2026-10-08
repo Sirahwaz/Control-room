@@ -149,6 +149,15 @@ jobs:
           printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","source_certification":"PASSED","artifact_certification":"PASSED"}\n' > dist/build-report.json
           cp mobile/factory/reports/signalscan-ai-artifact-certification.json dist/artifact-certification.json
           rm -rf signing
+      - name: Customer delivery gate
+        if: \${{ inputs.customer_delivery }}
+        shell: bash
+        env:
+          RUNTIME_REPORT: mobile/factory/reports/signalscan-ai-runtime-smoke.json
+        run: |
+          set -euo pipefail
+          test -f "$RUNTIME_REPORT" || { echo "BLOCKED: runtime smoke evidence is required for customer delivery"; exit 1; }
+          CUSTOMER_DELIVERY=true node mobile/factory/customer-delivery-gate.mjs signalscan-ai
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
         with:
