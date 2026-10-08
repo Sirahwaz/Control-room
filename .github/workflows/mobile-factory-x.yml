@@ -97,6 +97,9 @@ jobs:
           if(bindings.length < 38) throw new Error('agent binding registry incomplete');
           if(adapters.length < 8) throw new Error('adapter registry incomplete');
           if(r.parallelism.max_dispatch_per_wave < 20) throw new Error('fabric parallel ceiling too low');
+          if(r.counts.waves < 3) throw new Error('fabric did not create parallel/serial execution lanes');
+          if(!r.waves.some(w=>w.length > 1)) throw new Error('parallel lane not demonstrated');
+          if(!r.waves.some(w=>w.length === 1)) throw new Error('serial gate lane not demonstrated');
           console.log(JSON.stringify({ok:true,tasks:r.counts.dispatch_tasks,waves:r.counts.waves,blockers:r.counts.blockers,bindings:bindings.length,adapters:adapters.length}));
           NODE
 
@@ -154,3 +157,4 @@ jobs:
             mobile/factory/x/runtime-plan.json
             mobile/factory/x/preflight-report.json
             mobile/factory/x/execution-report.json
+            mobile/factory/x/fabric-plan.json
