@@ -38,10 +38,19 @@ if(m){
 
   if(exists(m.web_entry)){
     const html=read(m.web_entry);
-    const refs=[...html.matchAll(/(?:src|href)=(["'])([^"']+)\1/gi)].map(x=>x[2]).filter(x=>!/^(https?:|data:|#|mailto:|tel:)/.test(x));
-    const base=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
-    const badRefs=refs.filter(r=>!exists(path.posix.normalize(path.posix.join(base,r))));
-    if(badRefs.length) bad("html_asset_integrity","HTML references missing local assets",{badRefs});
+    const refs=[...html.matchAll(/(?:src|href)=(["'])([^"']+)\1/gi)].map(x=>x[2].split("#")[0].split("?")[0]).filter(x=>!/^(https?:|data:|#|mailto:|tel:)/.test(x));
+    const webAssetTargets=new Set((Array.isArray(m.web_assets)?m.web_assets:[]).map(a=>path.posix.basename(a)));
+    const siteFiles=Array.isArray(m.factory?.bundle?.site_files)?m.factory.bundle.site_files:[];
+    const bundleTargets=new Set(["index.html",...webAssetTargets,...siteFiles.map(a=>"site/"+path.posix.basename(a))]);
+    const badSourceRefs=refs.filter(r=>{
+      const base=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
+      return !exists(path.posix.normalize(path.posix.join(base,r)));
+    });
+    const badBundleRefs=refs.filter(r=>!bundleTargets.has(r.replace(/^\\.\\//,"")));
+    if(badSourceRefs.length) bad("html_asset_integrity","HTML references missing local source assets",{badSourceRefs});
+    if(badBundleRefs.length) bad("bundle_integrity","HTML references assets not declared for the APK bundle",{badBundleRefs,bundleTargets:[...bundleTargets]});
+    const missingBundleSources=siteFiles.filter(a=>!exists(a));
+    if(missingBundleSources.length) bad("bundle_integrity","Declared nested bundle assets are missing from repository",{missingBundleSources});
 
     const ids=[...html.matchAll(/\bid=["']([^"']+)["']/gi)].map(x=>x[1]);
     const dup=[...new Set(ids.filter((v,i)=>ids.indexOf(v)!==i))];
