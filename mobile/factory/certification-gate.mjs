@@ -92,7 +92,7 @@ if(m){
   } else warnings.push({gate:"contract_smoke",message:"No product-specific smoke script configured"});
 
   if(m.factory?.localization?.supported_seed){
-    for(const lang of m.factory.localization.supported_seed) if(!new RegExp("\\\\b"+lang+":\\\\s*\\\\{").test(read("mobile/web/"+key.replace(/-ai$/,"")+"/index.html"))) warnings.push({gate:"localization_contract",message:"Locale presence not statically proven",{lang}});
+    const productText=jsFiles.map(read).join("\\n");\n    for(const lang of m.factory.localization.supported_seed) if(!new RegExp("\\\\b"+lang+":\\\\s*\\\\{").test(productText)) warnings.push({gate:"localization_contract",message:"Locale presence not statically proven",evidence:{lang}});
   }
 }
 
