@@ -43,7 +43,7 @@ const missing=[];
 for(const [bundleHtml,sourceHtml] of htmlFiles){
   const html=fs.readFileSync(path.join(root,sourceHtml),"utf8");
   for(const ref of [...html.matchAll(/(?:src|href)=(["'])([^"']+)\1/gi)].map(x=>x[2].split("#")[0].split("?")[0]).filter(x=>!/^(https?:|data:|#|mailto:|tel:)/.test(x))){
-    const normalized=path.posix.normalize(path.posix.join(path.posix.dirname(bundleHtml),ref)).replace(/^\\.\\//,"");
+    const normalized=path.posix.normalize(path.posix.join(path.posix.dirname(bundleHtml),ref)).replace(/^\.\//,"");
     if(!fs.existsSync(path.join(root,"mobile","www",normalized))) missing.push({html:bundleHtml,ref,target:normalized});
   }
 }
