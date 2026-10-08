@@ -1,0 +1,65 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "signalscan-ai",
+  "display_name": "SignalScan AI",
+  "version": "0.3.0",
+  "app_id": "ai.midad.signalscan",
+  "artifact_name": "SignalScan-AI-v0.3.0",
+  "web_entry": "mobile/web/signalscan/index.html",
+  "product_mode": "market-signal-scanner",
+  "release_channel": "debug",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": false,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true,
+    "provider_router": true,
+    "offline_operator": true,
+    "trust_boundary_ui": true,
+    "adaptive_recovery": true,
+    "evidence_capture": true
+  },
+  "surfaces": ["signal-scanner", "market-data", "evidence"],
+  "target_markets": ["global_remote_crypto", "europe_uk", "arab_gcc", "east_southeast_asia", "south_asia"],
+  "monetization_models": ["subscription", "one_time", "b2b_license", "white_label"],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "request-driven-signal-scanner",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": ["ar", "en", "fa"],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": ["global", "product"],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "provider-router",
+      "offline_first": true,
+      "sync_strategy": "cache_then_reconcile"
+    },
+    "delivery": {
+      "outputs": ["apk", "sha256", "manifest", "build_report", "test_report", "learning_report"]
+    }
+  },
+  "web_assets": [
+    "mobile/web/signalscan/signalscan.css",
+    "mobile/web/signalscan/signalscan.js"
+  ]
+}

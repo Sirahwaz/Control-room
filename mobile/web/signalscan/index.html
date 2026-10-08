@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071018">
+  <title>SignalScan AI</title>
+  <link rel="stylesheet" href="signalscan.css">
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div>
+        <div class="eyebrow">MIDAD / MARKET INTELLIGENCE</div>
+        <h1>SignalScan <span>AI</span></h1>
+        <p id="subtitle">فحص السوق بالأدلة — بدون بيانات وهمية.</p>
+      </div>
+      <button id="langBtn" class="ghost" aria-label="Language">AR</button>
+    </header>
+
+    <section class="panel controls">
+      <div class="field">
+        <label id="assetLabel">الأصل</label>
+        <select id="asset">
+          <option value="BTCUSDT">BTC / USDT</option>
+          <option value="ETHUSDT">ETH / USDT</option>
+          <option value="SOLUSDT">SOL / USDT</option>
+          <option value="BNBUSDT">BNB / USDT</option>
+        </select>
+      </div>
+      <button id="scanBtn" class="primary">فحص الآن</button>
+      <button id="retryBtn" class="secondary hidden">إعادة المحاولة</button>
+    </section>
+
+    <section id="state" class="status pending">
+      <span class="dot"></span><span id="stateText">جاهز للفحص</span>
+    </section>
+
+    <section class="hero panel">
+      <div>
+        <div class="muted" id="priceLabel">السعر الموثق</div>
+        <div id="price" class="price">—</div>
+        <div id="freshness" class="muted">لم يتم الفحص بعد</div>
+      </div>
+      <div class="score">
+        <div id="signal" class="signal neutral">NEUTRAL</div>
+        <div id="confidence" class="muted">Confidence —</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel metric"><span id="changeLabel">24h change</span><strong id="change">—</strong></article>
+      <article class="panel metric"><span id="quorumLabel">Provider quorum</span><strong id="quorum">—</strong></article>
+      <article class="panel metric"><span id="spreadLabel">Cross-source spread</span><strong id="spread">—</strong></article>
+      <article class="panel metric"><span id="evidenceLabel">Evidence</span><strong id="evidence">0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="sectionTitle"><h2 id="providersTitle">مصادر البيانات</h2><span id="routerState">ROUTER READY</span></div>
+      <div id="providers" class="providers"></div>
+    </section>
+
+    <section class="panel explanation">
+      <div class="sectionTitle"><h2 id="whyTitle">لماذا هذه الإشارة؟</h2></div>
+      <div id="explanationText">ابدأ الفحص للحصول على FACT → INFERENCE → ACTION.</div>
+    </section>
+
+    <footer>
+      <span>SignalScan AI · Paper/analysis only</span>
+      <span id="updated">—</span>
+    </footer>
+  </main>
+  <script src="signalscan.js"></script>
+</body>
+</html>

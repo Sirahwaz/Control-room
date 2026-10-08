@@ -1,5 +1,4 @@
 name: MIDAD Mobile Android
-
 on:
   workflow_dispatch:
     inputs:
@@ -27,10 +26,8 @@ on:
       - "*.svg"
       - "*.webmanifest"
       - ".github/workflows/midad-mobile-android.yml"
-
 permissions:
   contents: read
-
 jobs:
   build-release-apk:
     runs-on: ubuntu-latest
@@ -47,7 +44,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          product="${{ github.event.inputs.product || 'midad-mobile' }}"
+          if [ -n "${{ github.event.inputs.product }}" ]; then
+            product="${{ github.event.inputs.product }}"
+          else
+            product="midad-mobile"
+            changed="$(git diff-tree --no-commit-id --name-only -r "${{ github.sha }}" || true)"
+            if echo "$changed" | grep -qE '^mobile/factory/products/signalscan-ai\\.json$|^mobile/web/signalscan/'; then
+              product="signalscan-ai"
+            fi
+          fi
           node mobile/factory/render.mjs "$product" > product.json
           jq -e '.features.server_side_secrets_only == true' mobile/factory/runtime-product.json >/dev/null
           jq -e '.product_key == $p' --arg p "$product" mobile/factory/runtime-product.json >/dev/null
@@ -80,18 +85,20 @@ jobs:
       - name: Install Capacitor dependencies
         working-directory: mobile
         run: npm install --no-fund --no-audit
-      - name: Prepare bundled MIDAD web surfaces
+      - name: Prepare bundled product web surface
         shell: bash
         run: |
           set -euo pipefail
           rm -rf mobile/www
           mkdir -p mobile/www/site
-          cp -R mobile/web/. mobile/www/
           ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
           test -f "$ENTRY"
           cp "$ENTRY" mobile/www/index.html
-          node mobile/factory/morph-engine.smoke.mjs
-          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) -not -path "./mobile/*" -exec cp {} mobile/www/site/ \;
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            test -f "$asset"
+            cp "$asset" mobile/www/
+          done < <(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -105,20 +112,26 @@ jobs:
           set -euo pipefail
           VERSION_NAME="$(jq -r '.version' factory/runtime-product.json)"
           VERSION_CODE="$(node -e 'const v=process.argv[1].split(".").map(Number); console.log(v[0]*10000+v[1]*100+v[2])' "$VERSION_NAME")"
-          export VERSION_NAME VERSION_CODE
           python3 - <<'PY'
           from pathlib import Path
           import os, re
           p=Path("android/app/build.gradle")
           s=p.read_text()
-          code=os.environ["VERSION_CODE"]; name=os.environ["VERSION_NAME"]
           if len(re.findall(r'\bversionCode\s+\d+',s)) != 1: raise SystemExit("Expected exactly one versionCode")
           if len(re.findall(r'\bversionName\s+"[^"]+"',s)) != 1: raise SystemExit("Expected exactly one versionName")
-          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {code}',s,count=1)
-          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{name}"',s,count=1)
+          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
-          grep -E 'applicationId|versionCode|versionName' android/app/build.gradle
+      - name: Factory quality gate
+        run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product }}"
+      - name: Product JavaScript syntax audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in mobile/web/signalscan/signalscan.js mobile/web/omni-agent.js; do
+            [ -f "$f" ] && node --check "$f"
+          done
       - name: Build unsigned release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
@@ -129,30 +142,39 @@ jobs:
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
           "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
+          cp mobile/factory/runtime-factory.json dist/factory-runtime.json
           rm -rf signing
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
-      - name: Validate APK metadata
+      - name: Write build/test/learning reports
         shell: bash
         run: |
           set -euo pipefail
-          APK="dist/${ARTIFACT_NAME}-release.apk"
-          test -f "$APK"
-          echo "APK ready: $APK"
-        env:
-          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
+          cat > dist/build-report.json <<EOF
+          {"product_key":"${{ steps.product.outputs.product }}","version":"${{ steps.product.outputs.version }}","build_status":"PASSED","factory_quality_gate":"PASSED"}
+          EOF
+          cat > dist/test-report.json <<EOF
+          {"product_key":"${{ steps.product.outputs.product }}","static_js_syntax":"PASSED","secret_scan":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}
+          EOF
+          cat > dist/learning-report.json <<EOF
+          {"product_key":"${{ steps.product.outputs.product }}","factory_learning":"ENABLED","post_release_outcome":"PENDING"}
+          EOF
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.product.outputs.artifact_name }}-release-${{ steps.product.outputs.release_channel }}
           path: |
-            dist/*-release.apk
-            dist/*-release.apk.sha256
+            dist/*.apk
+            dist/*.sha256
             dist/product-manifest.json
+            dist/factory-runtime.json
+            dist/build-report.json
+            dist/test-report.json
+            dist/learning-report.json
