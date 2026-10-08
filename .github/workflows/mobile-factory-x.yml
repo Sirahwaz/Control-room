@@ -7,10 +7,12 @@ on:
       - main
     paths:
       - 'mobile/factory/x/**'
+      - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
   pull_request:
     paths:
       - 'mobile/factory/x/**'
+      - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
   workflow_dispatch:
 
@@ -44,6 +46,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const files = [
+            'mobile/factory/factory.config.json',
             'mobile/factory/x/factory-x.config.json',
             'mobile/factory/x/factory-x.config.schema.json',
             'mobile/factory/x/capabilities.registry.json',
@@ -69,6 +72,20 @@ jobs:
           node --check mobile/factory/x/preflight.mjs
           node --check mobile/factory/x/execution-engine.mjs
           node --check mobile/factory/x/execution-fabric.mjs
+
+      - name: Factory contract registration
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const f=JSON.parse(fs.readFileSync('mobile/factory/factory.config.json'));
+          const x=f.extensions?.intelligent_parallel_app_factory;
+          const fabric=x?.agent_fabric;
+          if(x?.enabled!==true) throw new Error('Factory X not enabled in parent contract');
+          if(fabric?.enabled!==true) throw new Error('Agent Execution Fabric not registered in parent contract');
+          if(fabric?.protocol!=='MIDAD-FX-1') throw new Error('Fabric protocol not registered');
+          if(!fabric?.adapters || !fabric?.bindings || !fabric?.executor) throw new Error('Fabric contract paths incomplete');
+          console.log(JSON.stringify({ok:true,protocol:fabric.protocol,executor:fabric.executor}));
+          NODE
 
       - name: Factory X preflight
         run: node mobile/factory/x/preflight.mjs
