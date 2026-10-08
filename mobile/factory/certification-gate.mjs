@@ -46,7 +46,7 @@ if(m){
       const base=path.posix.dirname(m.web_entry.replaceAll("\\","/"));
       return !exists(path.posix.normalize(path.posix.join(base,r)));
     });
-    const badBundleRefs=refs.filter(r=>!bundleTargets.has(r.replace(/^\\.\\//,"")));
+    const badBundleRefs=refs.filter(r=>!bundleTargets.has(r.replace(/^\.\//,"")));
     if(badSourceRefs.length) bad("html_asset_integrity","HTML references missing local source assets",{badSourceRefs});
     if(badBundleRefs.length) bad("bundle_integrity","HTML references assets not declared for the APK bundle",{badBundleRefs,bundleTargets:[...bundleTargets]});
     const missingBundleSources=siteFiles.filter(a=>!exists(a));
