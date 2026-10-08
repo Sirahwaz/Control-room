@@ -43,11 +43,11 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          found=0
+          total=0
           failed=0
           for manifest in mobile/factory/products/*.json; do
             [ -f "$manifest" ] || continue
-            found=1
+            total=$((total+1))
             key="$(basename "$manifest" .json)"
             echo "=== CERTIFY $key ==="
             if node mobile/factory/certification-gate.mjs "$key"; then
@@ -66,8 +66,8 @@ jobs:
               echo "NO_REPORT $key"
             fi
           done
-          test "$found" -eq 1
-          echo "CERTIFICATION_SUMMARY total=$found failed=$failed"
+          test "$total" -gt 0
+          echo "CERTIFICATION_SUMMARY total=$total failed=$failed"
           [ "$failed" -eq 0 ]
 
       - name: Validate factory JSON
