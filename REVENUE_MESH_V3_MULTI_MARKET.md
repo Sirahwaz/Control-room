@@ -19,7 +19,10 @@ MIDAD must not restrict revenue discovery to a fixed list of connected platforms
 9. MIDAD product sales: fixed-scope services, audits, data rescue, code health, revenue rescue, API products
 10. Content/video: HeyGen-driven sales assets and affiliate/product discovery content
 11. Open-source/grants: Gitcoin, OnlyDust and future verified mechanisms
-12. Continuous discovery: add new markets when they satisfy the need, not because they are already connected
+12. Security research / bug bounty: HackerOne, Bugcrowd, Immunefi — authorized in-scope research only
+13. API marketplaces / developer products: RapidAPI Provider, Apify Store, x402-compatible venues
+14. Agent/work marketplaces: Speedbot and future verified A2A markets
+15. Continuous discovery: add new markets when they satisfy the need, not because they are already connected
 
 ## Current verified market evidence
 - Khamsat officially supports selling digital services across programming/development, AI, data, writing, design and other categories.
@@ -33,6 +36,8 @@ MIDAD must not restrict revenue discovery to a fixed list of connected platforms
 - PartnerStack offers affiliate/partner programs with recurring commission models.
 - Awin and CJ are active affiliate-network surfaces.
 - WorkUSDC, DevGhouse and Payrelayer currently expose crypto-native work/API monetization surfaces.
+- LaborX and CryptoTask currently expose crypto-native freelance work; OpenTrain and Mindrift expose current AI-training work; Ureed provides an Arabic/MENA freelance market.
+- HackerOne, Bugcrowd and Immunefi provide legitimate bounty channels for authorized vulnerability research; RapidAPI and Apify provide monetization surfaces for developer products.
 
 ## Automation policy
 DISCOVER → VERIFY → RANK → PREPARE → SUBMIT_WHERE_AUTHORIZED → BUILD → QA → DELIVER → VERIFY_PAYMENT → RECONCILE → LEARN → RECOVER
