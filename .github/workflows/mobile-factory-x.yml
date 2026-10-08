@@ -45,12 +45,19 @@ jobs:
         run: |
           node --check mobile/factory/x/plan.mjs
           node --check mobile/factory/x/preflight.mjs
+          node --check mobile/factory/x/execution-engine.mjs
 
       - name: Factory X preflight
         run: node mobile/factory/x/preflight.mjs
 
       - name: Factory X planning
         run: node mobile/factory/x/plan.mjs mobile/factory/x/examples/factory-x-self-test.request.json
+
+      - name: Factory X execution engine
+        run: node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/factory-x-execution.request.json --no-cache
+
+      - name: Factory X cache reuse
+        run: node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/factory-x-execution.request.json
 
       - name: Assert parallelism and registries
         run: |
@@ -73,6 +80,19 @@ jobs:
             automations:autos.length,
             providers:providers.length
           }));
+          NODE
+
+      - name: Execution report assertions
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('mobile/factory/x/execution-report.json'));
+          if(!r.ok) throw new Error('execution report not ok');
+          if(r.state!=='PLANNED_EXECUTION_VERIFIED') throw new Error('execution state invalid');
+          if(r.counts.tasks < 20) throw new Error('DAG task count too low');
+          if(r.counts.completed < 20 && r.counts.cached < 20) throw new Error('DAG did not complete');
+          if(r.parallelism.max_parallel_tasks < 40) throw new Error('parallel task capacity not preserved');
+          console.log(JSON.stringify({ok:true,state:r.state,tasks:r.counts.tasks,completed:r.counts.completed,cached:r.counts.cached,discovery:r.discovery_queue.length}));
           NODE
 
       - name: Security text scan
