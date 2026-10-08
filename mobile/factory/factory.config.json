@@ -17,7 +17,15 @@
       ],
       "preflight": "./x/preflight.mjs",
       "planner": "./x/plan.mjs",
-      "policy": "NEED → CAPABILITY → PROVIDER → REUSE/ADAPT/BUILD → AGENT GRAPH → PARALLEL EXECUTION → AUDIT → VERIFY"
+      "policy": "NEED → CAPABILITY → PROVIDER → REUSE/ADAPT/BUILD → AGENT GRAPH → PARALLEL EXECUTION → AUDIT → VERIFY",
+      "agent_fabric": {
+        "enabled": true,
+        "protocol": "MIDAD-FX-1",
+        "adapters": "./x/adapters.registry.json",
+        "bindings": "./x/agent-bindings.registry.json",
+        "executor": "./x/execution-fabric.mjs",
+        "contract": "./x/FABRIC_PROTOCOL.md"
+      }
     }
   },
   "principles": [
