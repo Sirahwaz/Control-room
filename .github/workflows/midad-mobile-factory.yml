@@ -129,26 +129,59 @@ jobs:
         working-directory: mobile
         run: node --check mobile/factory/prepare-web-bundle.mjs
 
+      - name: Install Playwright runtime verifier
+        working-directory: mobile
+        run: npm install --no-fund --no-audit --no-save playwright@1.63.0 && npx playwright install chromium
+
+      - name: Generic runtime smoke certification
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+        run: node mobile/factory/runtime-smoke/generic-web.mjs "$PRODUCT_KEY"
+
+      - name: Product-specific runtime smoke certification
+        if: ${{ steps.product.outputs.product_key == 'signalscan-ai' }}
+        run: node mobile/factory/runtime-smoke/signalscan-ai.mjs
       - name: Build release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Sign installable APK
         shell: bash
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "midad-factory-temp"             -keypass "midad-factory-temp"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
-          keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "$TMP_PASS"             -keypass "$TMP_PASS"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
-          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
+          if [ "$CHANNEL" = "production" ]; then
+            test -n "$ANDROID_KEYSTORE_B64" || { echo "BLOCKED: production keystore missing"; exit 1; }
+            test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "BLOCKED: production keystore password missing"; exit 1; }
+            test -n "$ANDROID_KEY_ALIAS" || { echo "BLOCKED: production key alias missing"; exit 1; }
+            test -n "$ANDROID_KEY_PASSWORD" || { echo "BLOCKED: production key password missing"; exit 1; }
+            printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > signing/release.jks
+            KS_PATH="signing/release.jks"; KS_PASS="$ANDROID_KEYSTORE_PASSWORD"; KEY_ALIAS="$ANDROID_KEY_ALIAS"; KEY_PASS="$ANDROID_KEY_PASSWORD"; PROD_SIGNING=true
+          else
+            TMP_PASS="$(openssl rand -hex 32)"
+            keytool -genkeypair -v -keystore signing/temporary.jks -storepass "$TMP_PASS" -keypass "$TMP_PASS" -alias midadfactory -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory Temporary, OU=MIDAD, O=MIDAD, C=XX"
+            KS_PATH="signing/temporary.jks"; KS_PASS="$TMP_PASS"; KEY_ALIAS="midadfactory"; KEY_PASS="$TMP_PASS"; PROD_SIGNING=false
+          fi
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"; test -x "$AAPT"
           OUT="dist/${{ steps.product.outputs.artifact_name }}-release.apk"
-          "$APKSIGNER" sign             --ks signing/midad-factory-temp.jks             --ks-pass pass:$TMP_PASS             --key-pass pass:$TMP_PASS             --ks-key-alias midadfactory             --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" sign --ks "$KS_PATH" --ks-pass "pass:$KS_PASS" --key-pass "pass:$KEY_PASS" --ks-key-alias "$KEY_ALIAS" --out "$OUT" "$APK_SRC"
           "$APKSIGNER" verify --verbose "$OUT"
           sha256sum "$OUT" | tee "$OUT.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+          APKSIGNER="$APKSIGNER" AAPT="$AAPT" PRODUCTION_SIGNING="$PROD_SIGNING" CUSTOMER_DELIVERY=false node mobile/factory/artifact-certification.mjs "${{ steps.product.outputs.product_key }}" "$OUT"
+          cp mobile/factory/reports/${{ steps.product.outputs.product_key }}-artifact-certification.json dist/artifact-certification.json
+          jq -e '.status=="CERTIFIED_ARTIFACT"' dist/artifact-certification.json >/dev/null
 
 
       - name: Artifact certification
@@ -172,17 +205,7 @@ jobs:
           PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
         run: |
           set -euo pipefail
-          SCRIPT="$(jq -r '.factory.quality.runtime_smoke_script // empty' mobile/factory/runtime-product.json)"
-          CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
-          if [ -n "$SCRIPT" ]; then
-            node "$SCRIPT"
-          elif [ "$CHANNEL" = "production" ]; then
-            echo "BLOCKED: production delivery requires runtime_smoke_script"
-            exit 1
-          else
-            printf '{"product_key":"%s","status":"NOT_RUN","reason":"No runtime smoke script configured"}\n' "$PRODUCT_KEY" > "mobile/factory/reports/${PRODUCT_KEY}-runtime-smoke.json"
-          fi
-
+          test -f "mobile/factory/reports/${PRODUCT_KEY}-runtime-smoke.json"
       - name: Customer delivery gate
         if: ${{ inputs.customer_delivery }}
         env:
