@@ -27,6 +27,7 @@ on:
       - "mobile/factory/products/signal-scanner.json"
       - "mobile/factory/products/signal-scanner-icon.xml"
       - "supabase/functions/signalscan_brain/**"
+      - "supabase/functions/signalscan_brain_v3/**"
       - "supabase/functions/signalscan_market_router/**"
       - "supabase/functions/signalscan_market_proxy/**"
       - ".github/workflows/signalscan-factory-x.yml"
