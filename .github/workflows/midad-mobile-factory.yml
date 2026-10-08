@@ -18,6 +18,11 @@ on:
           - internal
           - beta
           - production
+      customer_delivery:
+        description: "Run final customer-delivery certification"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -80,22 +85,15 @@ jobs:
         working-directory: mobile
         run: npm install --no-fund --no-audit
 
-      - name: Prepare web surface
-        shell: bash
-        run: |
-          set -euo pipefail
-          WEB_ENTRY="${{ steps.product.outputs.web_entry }}"
-          test -f "$WEB_ENTRY"
-          rm -rf mobile/www
-          mkdir -p mobile/www/site
-          cp "$WEB_ENTRY" mobile/www/index.html
-          ASSETS="$(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)"
-          while IFS= read -r asset; do
-            [ -z "$asset" ] && continue
-            test -f "$asset"
-            cp "$asset" mobile/www/
-          done <<< "$ASSETS"
+      - name: Source certification
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+        run: node mobile/factory/certification-gate.mjs "$PRODUCT_KEY"
 
+      - name: Prepare web bundle from manifest
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+        run: node mobile/factory/prepare-web-bundle.mjs "$PRODUCT_KEY"
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -149,6 +147,47 @@ jobs:
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
 
+
+      - name: Artifact certification
+        shell: bash
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          APK_PATH="dist/${ARTIFACT_NAME}-release.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -f "$APK_PATH"
+          APKSIGNER="$APKSIGNER" AAPT="$AAPT" PRODUCTION_SIGNING=false CUSTOMER_DELIVERY=false node mobile/factory/artifact-certification.mjs "$PRODUCT_KEY" "$APK_PATH"
+          cp "mobile/factory/reports/${PRODUCT_KEY}-artifact-certification.json" dist/artifact-certification.json
+          jq -e '.status=="CERTIFIED_ARTIFACT"' dist/artifact-certification.json >/dev/null
+
+      - name: Runtime smoke certification
+        shell: bash
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+        run: |
+          set -euo pipefail
+          SCRIPT="$(jq -r '.factory.quality.runtime_smoke_script // empty' mobile/factory/runtime-product.json)"
+          CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
+          if [ -n "$SCRIPT" ]; then
+            node "$SCRIPT"
+          elif [ "$CHANNEL" = "production" ]; then
+            echo "BLOCKED: production delivery requires runtime_smoke_script"
+            exit 1
+          else
+            printf '{"product_key":"%s","status":"NOT_RUN","reason":"No runtime smoke script configured"}\n' "$PRODUCT_KEY" > "mobile/factory/reports/${PRODUCT_KEY}-runtime-smoke.json"
+          fi
+
+      - name: Customer delivery gate
+        if: ${{ inputs.customer_delivery }}
+        env:
+          PRODUCT_KEY: ${{ steps.product.outputs.product_key }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CUSTOMER_DELIVERY=true node mobile/factory/customer-delivery-gate.mjs "$PRODUCT_KEY"
       - name: Write build and learning reports
         shell: bash
         run: |
