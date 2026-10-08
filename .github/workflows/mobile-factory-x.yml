@@ -113,6 +113,14 @@ jobs:
           console.log(JSON.stringify({ok:true,state:r.state,tasks:r.counts.tasks,completed:r.counts.completed,cached:r.counts.cached,discovery:r.discovery_queue.length}));
           NODE
 
+      - name: Security text scan
+        run: |
+          if grep -RInE --exclude-dir=.git --exclude='*.lock'             'BEGIN (RSA|OPENSSH|PRIVATE) KEY|SUPABASE_SERVICE_ROLE_KEY|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}'             mobile/factory/x; then
+            echo "Potential secret pattern found"
+            exit 1
+          fi
+          echo "Security scan PASS"
+
       - name: Upload Factory X execution artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -122,11 +130,3 @@ jobs:
             mobile/factory/x/runtime-plan.json
             mobile/factory/x/preflight-report.json
             mobile/factory/x/execution-report.json
-
-      - name: Security text scan
-        run: |
-          if grep -RInE --exclude-dir=.git --exclude='*.lock'             'BEGIN (RSA|OPENSSH|PRIVATE) KEY|SUPABASE_SERVICE_ROLE_KEY|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}'             mobile/factory/x; then
-            echo "Potential secret pattern found"
-            exit 1
-          fi
-          echo "Security scan PASS"
