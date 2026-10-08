@@ -1,0 +1,296 @@
+name: SignalScan AI — Factory X Rebuild & Efficiency Gate
+
+on:
+  push:
+    branches: [factory-x/signal-scanner-v0.3.0]
+    paths:
+      - "mobile/factory/**"
+      - "mobile/web/signal-scanner.html"
+      - "mobile/web/signal-scanner.css"
+      - "mobile/web/signal-scanner.js"
+      - "mobile/factory/products/signal-scanner.json"
+      - "mobile/factory/products/signal-scanner-icon.xml"
+      - "supabase/functions/signalscan_brain/**"
+      - ".github/workflows/signalscan-factory-x.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: signalscan-factory-x-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Factory X JSON and syntax audit
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          files=[
+            "mobile/factory/factory.config.json",
+            "mobile/factory/products/signal-scanner.json",
+            "mobile/factory/x/factory-x.config.json",
+            "mobile/factory/x/factory-x.config.schema.json",
+            "mobile/factory/x/capabilities.registry.json",
+            "mobile/factory/x/providers.registry.json",
+            "mobile/factory/x/plugins.registry.json",
+            "mobile/factory/x/agents.registry.json",
+            "mobile/factory/x/automations.registry.json",
+            "mobile/factory/x/selection.policy.json",
+            "mobile/factory/x/adapters.registry.json",
+            "mobile/factory/x/agent-bindings.registry.json",
+            "mobile/factory/x/examples/signal-scanner.request.json",
+          ]
+          for f in files:
+              json.loads(Path(f).read_text())
+              print("JSON OK", f)
+          PY
+          node --check mobile/factory/x/preflight.mjs
+          node --check mobile/factory/x/plan.mjs
+          node --check mobile/factory/x/execution-engine.mjs
+          node --check mobile/factory/x/execution-fabric.mjs
+
+      - name: Factory X preflight
+        run: |
+          set -euo pipefail
+          node mobile/factory/x/preflight.mjs
+
+      - name: Factory X product planning
+        run: |
+          set -euo pipefail
+          node mobile/factory/x/plan.mjs mobile/factory/x/examples/signal-scanner.request.json
+          jq -e '.ok==true' mobile/factory/x/runtime-plan.json
+          jq -e '.request.product_key=="signal-scanner"' mobile/factory/x/runtime-plan.json
+          jq -e '.agents.selected|length >= 20' mobile/factory/x/runtime-plan.json
+
+      - name: Factory X execution — uncached
+        run: |
+          set -euo pipefail
+          rm -f mobile/factory/x/execution-report.json
+          rm -rf .factory-cache
+          T0=$(date +%s)
+          node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/signal-scanner.request.json --no-cache
+          T1=$(date +%s)
+          echo "FX_FIRST_SECONDS=$((T1-T0))" >> "$GITHUB_ENV"
+          jq -e '.ok==true and .counts.tasks>=20 and .counts.completed>=20' mobile/factory/x/execution-report.json
+
+      - name: Factory X execution — cached efficiency pass
+        run: |
+          set -euo pipefail
+          T0=$(date +%s)
+          node mobile/factory/x/execution-engine.mjs mobile/factory/x/examples/signal-scanner.request.json
+          T1=$(date +%s)
+          echo "FX_CACHED_SECONDS=$((T1-T0))" >> "$GITHUB_ENV"
+          jq -e '.ok==true and .counts.cached>=20' mobile/factory/x/execution-report.json
+
+      - name: Agent Execution Fabric — product dispatch plan
+        run: |
+          set -euo pipefail
+          node mobile/factory/x/execution-fabric.mjs mobile/factory/x/examples/signal-scanner.request.json
+          jq -e '.ok==true and .counts.dispatch_tasks>=20 and .counts.blockers==0' mobile/factory/x/fabric-plan.json
+          jq -e '.waves|length >= 3' mobile/factory/x/fabric-plan.json
+          jq -e '[.waves[]|select(length>1)]|length >= 1' mobile/factory/x/fabric-plan.json
+          jq -e '[.waves[]|select(length==1)]|length >= 1' mobile/factory/x/fabric-plan.json
+
+      - name: Resolve SignalScan product
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs signal-scanner
+          jq -e '.product_key=="signal-scanner"' mobile/factory/runtime-product.json
+          jq -e '.version=="0.2.0"' mobile/factory/runtime-product.json
+          jq -e '.app_id=="ai.signalscan.scanner"' mobile/factory/runtime-product.json
+          jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json
+          jq -e '.features.live_financial_execution==false' mobile/factory/runtime-product.json
+          jq -e '.factory.learning.enabled==true' mobile/factory/runtime-product.json
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install --no-fund --no-audit
+
+      - name: Factory legacy compatibility quality gate
+        run: node mobile/factory/quality-gate.mjs signal-scanner
+
+      - name: SignalScan source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s mobile/web/signal-scanner.html
+          test -s mobile/web/signal-scanner.css
+          test -s mobile/web/signal-scanner.js
+          node --check mobile/web/signal-scanner.js
+          ! grep -RInE -- "-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY" mobile/web
+          grep -q "sb_publishable_" mobile/web/signal-scanner.js
+          grep -q "signalscan_brain" mobile/web/signal-scanner.js
+          grep -q "openWatchlist" mobile/web/signal-scanner.js
+          grep -q "openAlerts" mobile/web/signal-scanner.js
+          grep -q "openLab" mobile/web/signal-scanner.js
+          grep -q "Counterfactual" mobile/web/signal-scanner.js
+          grep -q "Adversarial" mobile/web/signal-scanner.js
+
+      - name: Brain endpoint smoke — deterministic
+        shell: bash
+        env:
+          SIGNALSCAN_PUBLIC_KEY: sb_publishable_d1NSXEMDhCrAWSLdingJbQ_0VEAmm1L
+        run: |
+          set -euo pipefail
+          RESP="$(curl -sS --fail-with-body --max-time 25             -H 'content-type: application/json'             -H "apikey: $SIGNALSCAN_PUBLIC_KEY"             -H 'x-signalscan-device: ci-factory-x-2026-10-08'             -d '{"device_id":"ci-factory-x-2026-10-08","want_ai":false,"language":"en","market":{"breadth":55,"btcChange":1.2},"signals":[{"symbol":"BTCUSDT","direction":"LONG","score":72,"confidence":0.8,"regime":"TREND","factors":{"mtfSpread":0.4,"volumeRatio":1.4,"orderbookImbalance":0.2,"crossVenueDelta":0.01,"fundingPressure":0.3,"takerBias":0.1,"structure":"break_up","sweep":"bullish","fvg":"bullish"}}]}'             'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/signalscan_brain')"
+          echo "$RESP" | jq -e '.ok==true and .consensus.score >= 5 and .adversarial != null and .limits.live_orders==false and .limits.withdrawals==false'
+
+      - name: Prepare Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Prepare web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf mobile/www
+          mkdir -p mobile/www
+          cp mobile/web/signal-scanner.html mobile/www/index.html
+          cp mobile/web/signal-scanner.css mobile/www/
+          cp mobile/web/signal-scanner.js mobile/www/
+
+      - name: Create Capacitor Android project
+        working-directory: mobile
+        run: npx cap add android
+
+      - name: Sync Capacitor Android
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Install SignalScan icon and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mobile/android/app/src/main/res/drawable
+          cp mobile/factory/products/signal-scanner-icon.xml mobile/android/app/src/main/res/drawable/signal_scanner_icon.xml
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          m=json.loads(Path("mobile/factory/runtime-product.json").read_text())
+          p=Path("mobile/android/app/src/main/AndroidManifest.xml")
+          s=p.read_text()
+          s=s.replace('android:icon="@mipmap/ic_launcher"','android:icon="@drawable/signal_scanner_icon"')
+          s=s.replace('android:roundIcon="@mipmap/ic_launcher_round"','android:roundIcon="@drawable/signal_scanner_icon"')
+          p.write_text(s)
+          p=Path("mobile/android/app/build.gradle")
+          s=p.read_text()
+          code=sum(int(x)*w for x,w in zip(m["version"].split("."),(10000,100,1)))
+          s=re.sub(r'\\bversionCode\\s+\\d+',f'versionCode {code}',s,count=1)
+          s=re.sub(r'\\bversionName\\s+"[^"]+"',f'versionName "{m["version"]}"',s,count=1)
+          p.write_text(s)
+          PY
+
+      - name: Build release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          T0=$(date +%s)
+          (cd mobile/android && ./gradlew assembleRelease --no-daemon --stacktrace)
+          T1=$(date +%s)
+          echo "ANDROID_BUILD_SECONDS=$((T1-T0))" >> "$GITHUB_ENV"
+          test -s mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Sign and verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist signing
+          keytool -genkeypair -v             -keystore signing/signalscan-factory-x-temp.jks             -storepass "signalscan-factory-x-temp"             -keypass "signalscan-factory-x-temp"             -alias signalscanfactoryx             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=SignalScan AI Factory X, OU=SignalScan AI, O=SignalScan AI, L=Global, ST=Global, C=XX"
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          OUT="dist/SignalScan-AI-v0.2.0-factory-x.apk"
+          "$APKSIGNER" sign             --ks signing/signalscan-factory-x-temp.jks             --ks-pass pass:signalscan-factory-x-temp             --key-pass pass:signalscan-factory-x-temp             --ks-key-alias signalscanfactoryx             --out "$OUT"             mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          "$APKSIGNER" verify --verbose "$OUT"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+          cp mobile/factory/runtime-product.json dist/product-manifest.json
+          cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+          rm -rf signing
+
+      - name: APK integrity, installability and security audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="dist/SignalScan-AI-v0.2.0-factory-x.apk"
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | grep -q "assets/public/signal-scanner.js"
+          unzip -l "$APK" | grep -q "assets/public/signal-scanner.css"
+          unzip -l "$APK" | grep -q "assets/public/index.html"
+          ! unzip -p "$APK" assets/public/signal-scanner.js | grep -qE -- "-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-|SUPABASE_SERVICE_ROLE_KEY"
+          jq -e '.app_id=="ai.signalscan.scanner" and .version=="0.2.0" and .features.live_financial_execution==false' dist/product-manifest.json
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify "$APK"
+
+      - name: Efficiency and release reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="dist/SignalScan-AI-v0.2.0-factory-x.apk"
+          SIZE=$(stat -c%s "$APK")
+          BASELINE=6214492
+          python3 - "$SIZE" "$BASELINE" "${FX_FIRST_SECONDS:-0}" "${FX_CACHED_SECONDS:-0}" "${ANDROID_BUILD_SECONDS:-0}" <<'PY'
+          import json,sys
+          size,baseline,first,cached,android=map(int,sys.argv[1:])
+          report={
+            "factory":"MIDAD Mobile Factory X",
+            "product":"SignalScan AI",
+            "version":"0.2.0",
+            "factory_execution_seconds_uncached":first,
+            "factory_execution_seconds_cached":cached,
+            "factory_cache_reuse":cached>=0,
+            "configured_parallel_agents":32,
+            "configured_parallel_tasks":64,
+            "apk_bytes":size,
+            "baseline_v0_2_0_bytes":baseline,
+            "apk_size_delta_bytes":size-baseline,
+            "apk_size_delta_percent":round((size-baseline)*100/baseline,3) if baseline else None,
+            "android_build_seconds":android,
+            "runtime_device_smoke":"PENDING_NO_CONNECTED_DEVICE",
+            "stable_production_signing":"NOT_CONFIGURED",
+            "state":"VERIFIED_WITH_DEVICE_SIGNOFF_PENDING"
+          }
+          open("dist/efficiency-report.json","w").write(json.dumps(report,indent=2)+"\n")
+          PY
+          cat > dist/build-report.json <<EOF
+          {"product_key":"signal-scanner","version":"0.2.0","factory":"FACTORY_X_VERIFIED","factory_preflight":"PASSED","agent_fabric":"PASSED","android_build":"PASSED","apk_signature":"PASSED","artifact_integrity":"PASSED"}
+          EOF
+          cat > dist/test-report.json <<EOF
+          {"factory_x":"PASSED","quality_gate":"PASSED","js_syntax":"PASSED","brain_smoke":"PASSED","runtime_device_smoke":"PENDING_NO_CONNECTED_DEVICE","stable_production_signing":"NOT_CONFIGURED"}
+          EOF
+          cat > dist/learning-report.json <<EOF
+          {"learning":"ENABLED","initial_state":"PENDING_USER_FEEDBACK","objective":"Measure false positives, scan outcomes, UX friction, and revenue conversion."}
+          EOF
+
+      - name: Upload Factory X rebuild artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalScan-AI-v0.2.0-Factory-X-Rebuild
+          if-no-files-found: error
+          path: |
+            dist/*
+            mobile/factory/x/runtime-plan.json
+            mobile/factory/x/preflight-report.json
+            mobile/factory/x/execution-report.json
+            mobile/factory/x/fabric-plan.json
