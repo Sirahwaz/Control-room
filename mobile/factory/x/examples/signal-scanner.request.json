@@ -1,7 +1,7 @@
 {
   "product_key":"signal-scanner",
-  "product_version":"0.2.0",
-  "run_key":"signalscan-factory-x-rebuild-001",
+  "product_version":"0.2.1",
+  "run_key":"signalscan-factory-x-rebuild-002",
   "mode":"product-rebuild",
   "objective":"Rebuild the existing standalone SignalScan AI Android product through MIDAD Mobile Factory X without changing its security boundary or live-trading prohibition; preserve proven features, improve orchestration efficiency, and verify build integrity.",
   "languages":["ar","en","fa"],
