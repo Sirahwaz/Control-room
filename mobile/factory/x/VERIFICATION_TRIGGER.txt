@@ -1,0 +1,4 @@
+MIDAD Mobile Factory X
+verification_trigger=2026-10-08T01:16:00Z
+engine=bounded-parallel-dag
+cache=persistent-actions-cache
