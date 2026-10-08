@@ -70,3 +70,17 @@ Rejected, expired, stale, blocked, or failed opportunities must be converted int
 
 n8n is optional orchestration. Supabase remains the durable core. Browser agents and external tools are adapters around policy-controlled actions, never privileged bypass paths.
 
+## Revenue Mesh v2 — Critical Execution Mode
+
+**Primary metric:** verified receipt.
+
+**Execution pattern:**
+`DISCOVER (parallel) → VERIFY → RANK → PROPOSE/CLAIM → BUILD → QA → DELIVER → ACCEPT → VERIFY PAYMENT → RECONCILE → LEARN`
+
+**Anti-stagnation rule:** a blocked lane must not stall the swarm. MIDAD must open the next qualified lane while retaining the blocked lane for recovery.
+
+**Proposal quality rule:** external proposals must be task-specific and materially differentiated. Repeated/generic submissions are treated as a technical defect.
+
+**Direct-sale rule:** productized services may be sold through MIDAD Public Checkout with the existing USDC/Solana receipt-verification pipeline.
+
+**Persistence:** this mesh is a project operating policy and should be restored when MIDAD resumes after interruptions.
