@@ -1,0 +1,134 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "signal-scanner",
+  "display_name": "SignalScan AI",
+  "version": "0.2.1",
+  "app_id": "ai.signalscan.scanner",
+  "artifact_name": "SignalScan-AI-v0.2.1",
+  "web_entry": "mobile/web/signal-scanner.html",
+  "product_mode": "standalone-neural-scanner",
+  "release_channel": "internal",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": false,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true,
+    "local_notifications": false,
+    "provider_router": true,
+    "adaptive_recovery": true,
+    "evidence_capture": true,
+    "trust_boundary_ui": true,
+    "event_bus": false,
+    "smart_inspector": true
+  },
+  "surfaces": [
+    "scanner",
+    "signals",
+    "signal-detail",
+    "neural-consensus",
+    "signal-genealogy",
+    "counterfactual-lab",
+    "market-fingerprint",
+    "replay-verify",
+    "watchlist",
+    "alerts",
+    "settings"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "east_southeast_asia"
+  ],
+  "monetization_models": [
+    "subscription",
+    "freemium",
+    "one_time",
+    "white_label",
+    "b2b_license"
+  ],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "request-driven-product-v2",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": [
+        "global",
+        "product",
+        "tenant"
+      ],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true,
+      "objective": "Standalone real-time market intelligence scanner with multi-timeframe confluence, market microstructure proxies, cross-venue divergence, futures crowd-pressure signals, anomaly detection, adversarial robustness testing, signal genealogy, counterfactual explanation, and server-side neural consensus."
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true,
+      "acceptance_tests": [
+        "standalone_app_id",
+        "no_server_secrets_in_client",
+        "javascript_syntax",
+        "android_build",
+        "apk_signature",
+        "apk_installability",
+        "sha256",
+        "live_execution_disabled",
+        "ar_en_fa_localization",
+        "brain_endpoint_guarded",
+        "adversarial_counterfactual_available",
+        "offline_fallback"
+      ]
+    },
+    "data": {
+      "backend": "supabase",
+      "offline_first": true,
+      "sync_strategy": "outbox_then_reconcile",
+      "market_data": {
+        "primary": [
+          "binance-spot-public",
+          "binance-futures-public"
+        ],
+        "fallback": [
+          "coinex-public",
+          "coingecko-public"
+        ],
+        "client_secret_required": false
+      },
+      "neural_endpoint": "signalscan_brain"
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "learning_report"
+      ],
+      "artifact_name": "SignalScan-AI-v0.2.0"
+    }
+  },
+  "web_assets": [
+    "mobile/web/signal-scanner.css",
+    "mobile/web/signal-scanner.js"
+  ]
+}
