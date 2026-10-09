@@ -1,0 +1,82 @@
+name: MIDAD Mobile Factory Certification
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/**"
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Factory X preflight
+        run: node mobile/factory/x/preflight.mjs
+
+      - name: Factory script syntax audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do
+            node --check "$f"
+          done < <(find mobile/factory -type f -name "*.mjs" -not -path "*/node_modules/*" | sort)
+
+      - name: Certify every product source
+        shell: bash
+        run: |
+          set -uo pipefail
+          total=0
+          failed=0
+          for manifest in mobile/factory/products/*.json; do
+            [ -f "$manifest" ] || continue
+            total=$((total+1))
+            key="$(basename "$manifest" .json)"
+            echo "=== CERTIFY $key ==="
+            if node mobile/factory/certification-gate.mjs "$key"; then
+              echo "=== CERTIFICATION_PASS $key ==="
+            else
+              rc=$?
+              failed=$((failed+1))
+              echo "=== CERTIFICATION_FAIL $key rc=$rc ==="
+            fi
+            report="mobile/factory/reports/$key-certification.json"
+            if [ -f "$report" ]; then
+              echo "--- REPORT $key ---"
+              cat "$report"
+              echo "--- END REPORT $key ---"
+            else
+              echo "NO_REPORT $key"
+            fi
+          done
+          test "$total" -gt 0
+          echo "CERTIFICATION_SUMMARY total=$total failed=$failed"
+          [ "$failed" -eq 0 ]
+
+      - name: Validate factory JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          find mobile/factory -type f \( -name "*.json" -o -name "*.jsonc" \) -print0 |
+            while IFS= read -r -d "" f; do
+              case "$f" in
+                *.json) node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$f" ;;
+              esac
+            done

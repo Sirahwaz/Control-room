@@ -1,12 +1,25 @@
 name: SignalScan AI Android
 on:
   push:
-    branches: ["main"]
+    branches: ["main","factory-certification-v1"]
     paths:
       - "mobile/factory/products/signalscan-ai.json"
       - "mobile/web/signalscan/**"
+      - "mobile/factory/products/signalscan-ai.json"
+      - "mobile/factory/certification-gate.mjs"
+      - "mobile/factory/prepare-web-bundle.mjs"
+      - "mobile/factory/artifact-certification.mjs"
+      - "mobile/factory/product-smoke/**"
+      - "mobile/factory/runtime-smoke/**"
+      - "mobile/factory/x/**"
       - ".github/workflows/signalscan-ai-android.yml"
   workflow_dispatch:
+    inputs:
+      customer_delivery:
+        description: "Request customer-delivery certification (requires production channel and signing)"
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -45,15 +58,10 @@ jobs:
       - name: Install Capacitor dependencies
         working-directory: mobile
         run: npm install --no-fund --no-audit
-      - name: Prepare SignalScan web surface
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf mobile/www
-          mkdir -p mobile/www
-          cp mobile/web/signalscan/index.html mobile/www/index.html
-          cp mobile/web/signalscan/signalscan.css mobile/www/signalscan.css
-          cp mobile/web/signalscan/signalscan.js mobile/www/signalscan.js
+      - name: Source certification gate
+        run: node mobile/factory/certification-gate.mjs signalscan-ai
+      - name: Prepare manifest-driven web bundle
+        run: node mobile/factory/prepare-web-bundle.mjs signalscan-ai
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -79,37 +87,87 @@ jobs:
           s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
+      - name: Factory X preflight
+        run: node mobile/factory/x/preflight.mjs
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs signalscan-ai
+      - name: Product contract smoke
+        run: node mobile/factory/product-smoke/signalscan-ai.mjs
       - name: JavaScript syntax audit
         run: node --check mobile/web/signalscan/signalscan.js
+      - name: Install Playwright runtime verifier
+        working-directory: mobile
+        run: npm install --no-fund --no-audit --no-save playwright@1.63.0 && npx playwright install chromium
+      - name: Runtime smoke certification
+        run: node mobile/factory/runtime-smoke/signalscan-ai.mjs
       - name: Build release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
-      - name: Sign installable APK
+      - name: Sign and certify APK artifact
         shell: bash
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
+          CUSTOMER_DELIVERY: ${{ inputs.customer_delivery || false }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v -keystore signing/signalscan-factory.jks -storepass "signalscan-temp" -keypass "signalscan-temp" -alias signalscan -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SignalScan AI, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          CHANNEL="$(jq -r '.release_channel' mobile/factory/runtime-product.json)"
+          if [ "$CHANNEL" = "production" ]; then
+            test -n "${ANDROID_KEYSTORE_B64:-}" || { echo "BLOCKED: production keystore secret missing"; exit 1; }
+            test -n "${ANDROID_KEYSTORE_PASSWORD:-}" || { echo "BLOCKED: production keystore password missing"; exit 1; }
+            test -n "${ANDROID_KEY_ALIAS:-}" || { echo "BLOCKED: production key alias missing"; exit 1; }
+            test -n "${ANDROID_KEY_PASSWORD:-}" || { echo "BLOCKED: production key password missing"; exit 1; }
+            printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > signing/release.jks
+            KS_PATH="signing/release.jks"
+            KS_PASS="$ANDROID_KEYSTORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_KEY_ALIAS"
+            KEY_PASS="$ANDROID_KEY_PASSWORD"
+            PROD_SIGNING=true
+          else
+            TMP_PASS="$(openssl rand -hex 32)"
+            keytool -genkeypair -v -keystore signing/temporary.jks -storepass "$TMP_PASS" -keypass "$TMP_PASS" -alias signalscan -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SignalScan AI Temporary, OU=MIDAD, O=MIDAD, C=XX"
+            KS_PATH="signing/temporary.jks"
+            KS_PASS="$TMP_PASS"
+            KEY_ALIAS="signalscan"
+            KEY_PASS="$TMP_PASS"
+            PROD_SIGNING=false
+          fi
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
+          test -x "$AAPT"
           OUT="dist/SignalScan-AI-v$(jq -r '.version' mobile/factory/runtime-product.json)-release.apk"
-          "$APKSIGNER" sign --ks signing/signalscan-factory.jks --ks-pass pass:signalscan-temp --key-pass pass:signalscan-temp --ks-key-alias signalscan --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" sign --ks "$KS_PATH" --ks-pass "pass:$KS_PASS" --key-pass "pass:$KEY_PASS" --ks-key-alias "$KEY_ALIAS" --out "$OUT" "$APK_SRC"
           "$APKSIGNER" verify --verbose "$OUT"
           sha256sum "$OUT" | tee "$OUT.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
-          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/build-report.json
-          printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/test-report.json
+          APKSIGNER="$APKSIGNER" AAPT="$AAPT" PRODUCTION_SIGNING="$PROD_SIGNING" CUSTOMER_DELIVERY="$CUSTOMER_DELIVERY" node mobile/factory/artifact-certification.mjs signalscan-ai "$OUT"
+          jq -e '.status=="CERTIFIED_ARTIFACT"' mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
+          jq -e '.checks.apksigner=="VERIFIED"' mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
+          jq -e '.product_key=="signalscan-ai"' mobile/factory/reports/signalscan-ai-artifact-certification.json >/dev/null
+          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","source_certification":"PASSED","artifact_certification":"PASSED"}\n' > dist/build-report.json
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
+          cp mobile/factory/reports/signalscan-ai-artifact-certification.json dist/artifact-certification.json
           rm -rf signing
+      - name: Customer delivery gate
+        if: ${{ inputs.customer_delivery }}
+        shell: bash
+        env:
+          RUNTIME_REPORT: mobile/factory/reports/signalscan-ai-runtime-smoke.json
+        run: |
+          set -euo pipefail
+          test -f "$RUNTIME_REPORT" || { echo "BLOCKED: runtime smoke evidence is required for customer delivery"; exit 1; }
+          CUSTOMER_DELIVERY=true node mobile/factory/customer-delivery-gate.mjs signalscan-ai
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SignalScan-AI-v${{ fromJSON('{"version":"0.3.1"}').version }}-release
+          name: SignalScan-AI-v${{ steps.product.outputs.version }}-release
           path: |
             dist/*.apk
             dist/*.sha256
@@ -118,3 +176,5 @@ jobs:
             dist/build-report.json
             dist/test-report.json
             dist/learning-report.json
+            dist/artifact-certification.json
+            mobile/factory/reports/signalscan-ai-runtime-smoke.json

@@ -69,7 +69,9 @@
     "quality": {
       "minimum_confidence": 0.9,
       "max_repair_attempts_per_incident": 3,
-      "fail_closed_on_security_gate": true
+      "fail_closed_on_security_gate": true,
+      "smoke_script": "mobile/factory/product-smoke/signalscan-ai.mjs",
+      "runtime_smoke_script": "mobile/factory/runtime-smoke/signalscan-ai.mjs"
     },
     "data": {
       "backend": "provider-router",
@@ -85,7 +87,9 @@
         "test_report",
         "learning_report"
       ]
-    }
+    },
+    "certification_version": "1.0",
+    "certification_revision": 1
   },
   "web_assets": [
     "mobile/web/signalscan/signalscan.css",
