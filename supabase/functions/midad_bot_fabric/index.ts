@@ -123,7 +123,8 @@ Deno.serve(async(req)=>{
         // Best-effort audit write; routing result remains authoritative.
       }
 
-      return json({ok:result.ok,route:r.route_key,source_bot:r.source_bot_key,destination:r.destination_service,action:mapped,human_gate:r.human_gate,result:result.data},result.ok?200:502);
+      const responseStatus = result.ok ? 200 : ([400,401,403,404,409,422].includes(result.http) ? result.http : 502);
+      return json({ok:result.ok,route:r.route_key,source_bot:r.source_bot_key,destination:r.destination_service,action:mapped,human_gate:r.human_gate,result:result.data},responseStatus);
     }
 
     if(action==="queue"){
