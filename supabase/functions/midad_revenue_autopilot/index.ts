@@ -415,13 +415,13 @@ async function processPaidStoreOrders(){
   return {ok:true,checked,opened,existing,items};
 }
 
-async function launchOffers(p:any){
+async function ugigSubmissionGate(p:any){
   // Independent account-health hard gate: policy toggles alone must never override an external spam/suspension flag.
   const {data:ugigAccount,error:ugigHealthError}=await db.from("midad_platform_accounts")
     .select("account_status,metadata,verification_snapshot")
     .eq("platform_key","ugig").eq("owner_scope","midad").eq("brand_key","midad_ai").maybeSingle();
   if(ugigHealthError || !ugigAccount) {
-    return {selected:0,submitted:0,skipped:0,reason:"ugig_account_health_unavailable_fail_closed"};
+    return {allowed:false,reason:"ugig_account_health_unavailable_fail_closed",account_status:ugigAccount?.account_status||null};
   }
   const ugigMetadata=ugigAccount.metadata||{};
   const ugigVerification=ugigAccount.verification_snapshot||{};
@@ -431,16 +431,21 @@ async function launchOffers(p:any){
   if(externalSpamFlag || ["BLOCKED","SUSPENDED","REJECTED"].includes(String(ugigAccount.account_status||"").toUpperCase()) ||
      String(ugigMetadata.submission_gate||"").toUpperCase()==="BLOCKED") {
     return {
-      selected:0,submitted:0,skipped:0,
-      reason:"ugig_external_account_health_block",
+      allowed:false,reason:"ugig_external_account_health_block",
       account_status:ugigAccount.account_status||null,
       external_profile_status:ugigMetadata.external_profile_status||null,
       external_profile_is_spam:Boolean(externalSpamFlag),
       next_action:"obtain_official_platform_clearance_before_reenabling_submissions"
     };
   }
-  if(!p.enabled || p.default_automation!=="auto" || !p.allow_auto_submission) return {selected:0,submitted:0,skipped:0,reason:"policy_gate"};
-  if(p.allow_auto_ugig===false) return {selected:0,submitted:0,skipped:0,reason:"ugig_channel_paused_by_policy"};
+  if(!p.enabled || p.default_automation!=="auto" || !p.allow_auto_submission) return {allowed:false,reason:"policy_gate",account_status:ugigAccount.account_status};
+  if(p.allow_auto_ugig===false) return {allowed:false,reason:"ugig_channel_paused_by_policy",account_status:ugigAccount.account_status};
+  return {allowed:true,reason:null,account_status:ugigAccount.account_status};
+}
+
+async function launchOffers(p:any){
+  const gate=await ugigSubmissionGate(p);
+  if(!gate.allowed) return {selected:0,submitted:0,skipped:0,reason:gate.reason,health_gate:gate};
   const since1h=new Date(Date.now()-3600000).toISOString();
   const since1d=new Date(Date.now()-86400000).toISOString();
   const {count:h}=await db.from("midad_revenue_runs").select("id",{count:"exact",head:true}).eq("action","auto_submit_ugig").eq("ok",true).gte("created_at",since1h);
@@ -660,6 +665,7 @@ async function main(req:Request){
     const p=await policy();
     const body=await req.json().catch(()=>({}));
     const action=clip(body.action||"cycle",40);
+    if(action==="submission_gate") return json({ok:true,gate:await ugigSubmissionGate(p)});
     if(action==="wallet_watch") return json({ok:true,watch:await watchSolanaWallets()});
     if(action==="poll_applications") return json({ok:true,poll:await pollUGIGApplications()});
     if(action==="reconcile_bountybook") return json({ok:true,reconcile:await reconcileBountyBook()});
