@@ -91,6 +91,7 @@ Deno.serve(async(req)=>{
           assess_platform:"assess_platform",
           prepare_profile:"prepare_profile",
           queue_onboarding:"queue_onboarding",
+          register_agent_identity:"register_agent_identity",
           list_accounts:"list_accounts",
           list_runs:"list_runs"
         }
