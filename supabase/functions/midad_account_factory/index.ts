@@ -146,6 +146,10 @@ function assessPlatform(platform: any) {
   if (!profilePrepAllowed) {
     blockers.push({ code: "PROFILE_AUTOMATION_SCOPE_UNKNOWN", detail: "The platform's allowed automation scope does not explicitly cover profile preparation." });
   }
+  const registrationPrepAllowed = allowed.registration_prepare === true || allowed.registration === true;
+  if (!registrationPrepAllowed) {
+    blockers.push({ code: "REGISTRATION_AUTOMATION_NOT_VERIFIED", detail: "Profile drafting is permitted, but automated registration has not been explicitly verified as allowed for this platform." });
+  }
   const hardRejected = blockers.some(b => ["CRYPTO_PAYOUT_UNAVAILABLE", "KYC_REQUIRED", "GOVERNMENT_ID_REQUIRED", "REGION_NOT_SUPPORTED", "AUTOMATION_NOT_ALLOWED"].includes(b.code));
   return {
     status: hardRejected ? "REJECTED" : blockers.length ? "POLICY_REVIEW" : "ELIGIBLE",
@@ -334,9 +338,31 @@ async function main(req: Request) {
       }
 
       const automation = obj(platform.allowed_automation);
-      const registrationAutomationAllowed = automation.registration_prepare === true || automation.registration === true || automation.profile_fill === true;
+      const registrationAutomationAllowed = automation.registration_prepare === true || automation.registration === true;
       if (!registrationAutomationAllowed) {
-        return json({ ok: false, status: "BLOCKED", error: "registration_automation_not_confirmed", next_action: "verify_official_automation_policy" }, 409);
+        const blockers = [{ code: "REGISTRATION_AUTOMATION_NOT_VERIFIED", detail: "The platform's registration automation permission has not been verified. Profile preparation can continue, but new-account registration is blocked." }];
+        const run = await createRun({
+          platformKey, accountId: account.id, taskType: "registration_prepare", state: "BLOCKED",
+          inputPayload: { mode: "preflight_passed_registration_policy_unknown" },
+          blockers, evidence: arr(platform.payout_policy_evidence),
+          nextAction: "verify_official_registration_automation_policy",
+          runKey: "registration_prepare:" + platformKey + ":midad_ai:v1"
+        });
+        await db.from("midad_platform_accounts").update({
+          account_status: "POLICY_REVIEW",
+          last_error_code: blockers[0].code,
+          last_error_detail: blockers[0].detail,
+          verification_snapshot: { ...gate.checks, evaluated_at: new Date().toISOString() }
+        }).eq("id", account.id);
+        await writeEvent({
+          account_id: account.id, run_id: run.id, platform_key: platformKey,
+          actor_key: "midad_platform_policy_verifier",
+          event_type: "onboarding_blocked_automation_policy",
+          from_state: account.account_status, to_state: "POLICY_REVIEW",
+          evidence: arr(platform.payout_policy_evidence),
+          details: { blocker_code: blockers[0].code }
+        });
+        return json({ ok: false, status: "BLOCKED", account_id: account.id, run_id: run.id, blockers, next_action: "verify_official_registration_automation_policy" }, 409);
       }
 
       const { data: browserProvider, error: providerError } = await db.from("midad_browser_providers")
