@@ -3,22 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#05070b">
-<meta name="description" content="MIDAD — Neural Control Room v2">
+<meta name="theme-color" content="#07111a">
+<meta name="description" content="MIDAD — Neural Control Room: explainable intelligence, execution, revenue and verified delivery.">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./midad-pwa-icon.svg">
 <title>MIDAD — Neural Control Room</title>
-<link rel="stylesheet" href="./midad-control-v2.css?v=20261003">
+<link rel="stylesheet" href="./midad-control-v2.css?v=20261011-fix1">
+<link rel="stylesheet" href="./midad-fix-v1.css?v=20261011-1">
 </head>
 <body>
-<div id="app" aria-live="polite"><div style="min-height:100dvh;display:grid;place-items:center;padding:32px;background:#05070b;color:#eef4fb;font-family:system-ui,sans-serif"><div style="text-align:center"><div style="font-size:11px;letter-spacing:.16em;color:#718095">MIDAD / CONTROL ROOM</div><h1 style="margin:12px 0;font-size:30px">جاري فتح المقود…</h1><p style="color:#92a0b2;line-height:1.8">يتم تحميل واجهة القيادة الجديدة.</p></div></div></div>
-<noscript><div style="padding:30px;color:#fff;background:#05070b">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
+<div id="app" aria-live="polite"><div style="min-height:100dvh;display:grid;place-items:center;padding:32px;background:#07111a;color:#f4fbff;font-family:system-ui,sans-serif"><div style="text-align:center;max-width:560px"><div style="font-size:12px;letter-spacing:.14em;color:#8ca6b9">MIDAD / CONTROL ROOM · FIX v1</div><h1 style="margin:14px 0;font-size:clamp(30px,7vw,42px)">جاري فتح المقود…</h1><p style="color:#b6c7d5;line-height:1.9;font-size:15px">نجهّز الواجهة ونحافظ على اتصال النواة والبيانات الحالية.</p></div></div></div>
+<noscript><div style="padding:30px;color:#fff;background:#07111a">MIDAD Control Room يحتاج JavaScript للعمل.</div></noscript>
 <script>(function(){try{var q=new URLSearchParams(location.search);if(q.get("view")==="revenue"){location.replace("./revenue-forge.html"+location.search);return;}if(q.get("bot")==="viabtc"){location.replace("./viabtc.html"+location.search);return;}}catch(e){}})();</script>
 <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
-<script defer src="./midad-control-v2.js?v=20261003"></script>
-<script defer src="./midad-human-bridge-control.js?v=20261007"></script>
+<script defer src="./midad-control-v2.js?v=20261011-fix1"></script>
+<script defer src="./midad-human-bridge-control.js?v=20261011-fix1"></script>
+<script defer src="./midad-fix-v1.js?v=20261011-1"></script>
 <script>
-if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./service-worker.js?v=20261003").catch(function(){});});}
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./service-worker.js?v=20261011-fix1").catch(function(){});});}
 </script>
 </body>
 </html>

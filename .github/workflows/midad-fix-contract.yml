@@ -1,0 +1,64 @@
+name: MIDAD FIX Contract
+
+on:
+  push:
+    branches: [main, "midad-fix/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Parse active and additive JavaScript
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const files = ['midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.js','iaitrader.js','midad-cockpit.js'];
+          for (const f of files) {
+            if (!fs.existsSync(f)) throw new Error('Missing JS file: '+f);
+            new Function(fs.readFileSync(f,'utf8'));
+          }
+          console.log('MIDAD_FIX_JS_SYNTAX_OK');
+          NODE
+      - name: Verify page, cache and UX contracts
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const fail=m=>{throw new Error(m)};
+          const html=fs.readFileSync('index.html','utf8');
+          const css=fs.readFileSync('midad-fix-v1.css','utf8');
+          const js=fs.readFileSync('midad-fix-v1.js','utf8');
+          const sw=fs.readFileSync('service-worker.js','utf8');
+          for(const x of ['midad-control-v2.css','midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.css','midad-fix-v1.js','telegram-web-app.js']) if(!html.includes(x)) fail('index.html missing '+x);
+          if(!html.includes('lang="ar" dir="rtl"')) fail('Arabic RTL contract missing');
+          if(!css.includes('.navbtn span{font-size:11px')) fail('Readable bottom navigation contract missing');
+          if(!css.includes('#midadLiveOps.mlo-hidden{display:none!important}')) fail('LIVE OPS containment contract missing');
+          if(!js.includes('aria-current')) fail('Accessible active navigation contract missing');
+          if(!js.includes('midad_fix_live_ops_mobile_open')) fail('LIVE OPS restore preference missing');
+          if(!sw.includes('midad-control-v5-20261011-fix1')) fail('Service worker cache version not bumped');
+          for(const f of ['midad-fix-v1.css','midad-fix-v1.js','midad-human-bridge-control.js']) if(!sw.includes(f)) fail('Service worker precache missing '+f);
+          const publicFiles=[html,css,js,sw];
+          if(publicFiles.some(s=>/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(s))) fail('Private key material found in public assets');
+          if(publicFiles.some(s=>/SUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*['"][^'"]+['"]/.test(s))) fail('Hard-coded service role key pattern found');
+          console.log('MIDAD_FIX_UI_CACHE_SECURITY_CONTRACT_OK');
+          NODE
+      - name: Preserve critical product gates
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('iaitrader.html','utf8');
+          const manifest=JSON.parse(fs.readFileSync('mobile/factory/products/midad-mobile.json','utf8'));
+          if(manifest.app_id!=='ai.midad.mobile') throw new Error('Canonical Android app ID changed');
+          if(manifest.features?.live_financial_execution!==false) throw new Error('Live financial execution gate weakened');
+          if(!html.includes('midad_iaitrader_station')) throw new Error('Canonical iAiTrader API binding missing');
+          console.log('MIDAD_CRITICAL_GATES_OK');
+          NODE
