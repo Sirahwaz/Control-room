@@ -273,7 +273,7 @@ async function main(req: Request) {
         service: "midad_account_factory",
         contract: "midad-platform-account-factory-v1",
         state: "ACTIVE",
-        actions: ["capabilities", "list_platforms", "assess_platform", "prepare_profile", "queue_onboarding", "list_accounts", "list_runs"],
+        actions: ["capabilities", "list_platforms", "assess_platform", "prepare_profile", "register_agent_identity", "queue_onboarding", "list_accounts", "list_runs"],
         pipeline: ["DISCOVER", "VERIFY_PAYOUT_AND_IDENTITY", "COMPOSE_PROFILE", "PREPARE_ACCOUNT", "AUTHORIZED_BROWSER_ONBOARDING", "QUALIFY_OPPORTUNITY", "DELIVER", "VERIFY_CRYPTO_RECEIPT"],
         hard_blocks: ["fiat_only_payout", "mandatory_kyc", "government_id_required", "bypass_captcha", "bypass_2fa", "impersonation", "false_claims", "duplicate_account_creation", "unapproved_terms_acceptance", "withdrawal_or_transfer"],
         notes: ["Profile preparation is not proof of external account creation.", "Unknown payout or identity requirements block external onboarding.", "Final legal acceptance and mandatory human verification remain human-gated."]
