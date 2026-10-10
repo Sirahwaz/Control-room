@@ -676,54 +676,77 @@ async function main(req: Request) {
 
       const apiKey = await readPlatformSecret(String(account.credential_vault_ref));
       const take = Math.min(50, Math.max(1, Number(body.take || 20)));
-      const listingUrl = "https://superteam.fun/api/agents/listings/live?take=" + take;
+      const feedTypes = ["bounty", "project", "hackathon"];
+      const listingUrls = feedTypes.map(type => "https://superteam.fun/api/agents/listings/live?take=" + take + "&type=" + type);
       const scanStartedAt = new Date().toISOString();
       const run = await createRun({
         platformKey, accountId: account.id, taskType: "discover_agent_eligible_listings", state: "RUNNING",
-        inputPayload: { take, agent_id: account.platform_account_ref, api_key_vaulted: true },
+        inputPayload: { take, feed_types: feedTypes, agent_id: account.platform_account_ref, api_key_vaulted: true },
         blockers: [], evidence: [{ url: "https://superteam.fun/earn/agents", official: true }],
-        nextAction: "fetch_agent_eligible_listing_feed",
+        nextAction: "fetch_agent_eligible_listing_feeds",
         runKey: "superteam_agent_discovery:" + new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)
       });
-      let response: Response;
-      try {
-        response = await fetch(listingUrl, {
-          method: "GET",
-          headers: { "accept": "application/json", "authorization": "Bearer " + apiKey }
-        });
-      } catch (_) {
-        const detail = "The official Superteam agent listings endpoint could not be reached.";
+
+      const feedResults = await Promise.all(listingUrls.map(async (url, index) => {
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            headers: { "accept": "application/json", "authorization": "Bearer " + apiKey },
+            signal: AbortSignal.timeout(12000)
+          });
+          if (!response.ok) return { ok: false, url, type: feedTypes[index], http_status: response.status, items: [] as any[] };
+          const feed = await response.json().catch(() => null);
+          const items = Array.isArray(feed) ? feed :
+            Array.isArray(feed?.listings) ? feed.listings :
+            Array.isArray(feed?.data) ? feed.data :
+            Array.isArray(feed?.items) ? feed.items : [];
+          return { ok: true, url, type: feedTypes[index], http_status: response.status, items };
+        } catch (_) {
+          return { ok: false, url, type: feedTypes[index], http_status: null, items: [] as any[] };
+        }
+      }));
+
+      const successfulFeeds = feedResults.filter(feed => feed.ok);
+      if (successfulFeeds.length === 0) {
+        const statusCodes = feedResults.map(feed => ({ type: feed.type, http_status: feed.http_status }));
+        const authFailure = feedResults.some(feed => feed.http_status === 401 || feed.http_status === 403);
+        const detail = authFailure
+          ? "Superteam rejected the agent API credential. Check Vault reference and rotate credentials if needed."
+          : "All official Superteam agent listing feeds failed.";
+        const state = authFailure ? "BLOCKED" : "FAILED";
         await db.from("midad_account_factory_runs").update({
-          state: "BLOCKED", blockers: [{ code: "AGENT_LISTING_FEED_UNREACHABLE", detail }],
-          next_action: "retry_listing_discovery", last_error: "provider_fetch_failed",
+          state,
+          blockers: [{ code: authFailure ? "AGENT_LISTING_AUTH_FAILED" : "AGENT_LISTING_FEEDS_FAILED", detail }],
+          output_payload: { feeds: statusCodes },
+          next_action: authFailure ? "repair_agent_api_key" : "retry_listing_discovery",
+          last_error: "no_successful_listing_feed",
           updated_at: new Date().toISOString()
         }).eq("id", run.id);
-        return json({ ok: false, status: "BLOCKED", run_id: run.id, error: "agent_listing_feed_unreachable" }, 502);
-      }
-      if (!response.ok) {
-        const detail = "The official Superteam agent listing feed returned an HTTP error.";
-        await db.from("midad_account_factory_runs").update({
-          state: response.status === 401 || response.status === 403 ? "BLOCKED" : "FAILED",
-          blockers: [{ code: "AGENT_LISTING_FEED_HTTP_ERROR", detail }],
-          output_payload: { provider_http_status: response.status },
-          next_action: response.status === 401 ? "repair_agent_api_key" : "retry_listing_discovery",
-          last_error: "provider_http_" + response.status,
-          updated_at: new Date().toISOString()
-        }).eq("id", run.id);
-        return json({ ok: false, status: "FAILED", run_id: run.id, provider_http_status: response.status, error: "agent_listing_feed_http_error" }, response.status === 401 || response.status === 403 ? 409 : 502);
+        return json({ ok: false, status: state, run_id: run.id, error: authFailure ? "agent_listing_auth_failed" : "agent_listing_feeds_failed", feeds: statusCodes }, authFailure ? 409 : 502);
       }
 
-      const feed = await response.json().catch(() => null);
-      const rawListings = Array.isArray(feed) ? feed :
-        Array.isArray(feed?.listings) ? feed.listings :
-        Array.isArray(feed?.data) ? feed.data :
-        Array.isArray(feed?.items) ? feed.items : [];
+      const rawById = new Map<string, any>();
+      for (const feed of successfulFeeds) {
+        for (const item of feed.items) {
+          const identity = clean(item?.id || item?.listingId || item?.listing_id || item?.slug || item?.slugId || item?.slug_id, 180);
+          if (!identity) continue;
+          if (!rawById.has(identity)) rawById.set(identity, { ...item, _midad_source_url: feed.url, _midad_feed_type: feed.type });
+        }
+      }
+      const rawListings = Array.from(rawById.values());
       const eligible = rawListings.filter((item:any) =>
         ["AGENT_ALLOWED", "AGENT_ONLY"].includes(String(item?.agentAccess || item?.agent_access || "").toUpperCase())
       );
       const { data: ownerProfile } = await db.from("profiles").select("id").limit(1).maybeSingle();
       const summary: any[] = [];
-      const counters = { received: rawListings.length, agent_eligible: eligible.length, saved: 0, crypto_candidates: 0, policy_review: 0, kyc_blocked: 0, errors: 0 };
+      const counters = {
+        received: rawListings.length,
+        agent_eligible: eligible.length,
+        feeds_queried: feedTypes.length,
+        feeds_succeeded: successfulFeeds.length,
+        feed_errors: feedResults.filter(feed => !feed.ok).map(feed => ({ type: feed.type, http_status: feed.http_status })),
+        saved: 0, crypto_candidates: 0, policy_review: 0, kyc_blocked: 0, errors: 0
+      };
 
       for (const listing of eligible) {
         const externalId = clean(listing.id || listing.listingId || listing.listing_id || listing.slug, 180);
@@ -778,9 +801,10 @@ async function main(req: Request) {
           Array.isArray(listing.tags) ? listing.tags.map((x:any)=>String(x)).slice(0,40) : [];
         const evidence = {
           source: "superteam_agent_api",
-          source_url: listingUrl,
+          source_url: listing._midad_source_url || listingUrls.join(";"),
           official_listing_url: url,
           official_agent_docs: "https://superteam.fun/earn/agents",
+          feed_type: listing._midad_feed_type || null,
           checked_at: scanStartedAt,
           external_id: externalId,
           slug,
@@ -887,7 +911,7 @@ async function main(req: Request) {
       const completedAt = new Date().toISOString();
       await db.from("midad_account_factory_runs").update({
         state: "COMPLETED",
-        output_payload: { ...counters, listings: summary, api_key_vaulted: true, raw_api_key_returned: false },
+        output_payload: { ...counters, listings: summary, feed_types: feedTypes, api_key_vaulted: true, raw_api_key_returned: false },
         blockers: counters.policy_review ? [{ code: "LISTING_PAYOUT_POLICY_REVIEW", count: counters.policy_review, detail: "Listing payout/KYC/region eligibility needs official per-listing verification." }] : [],
         next_action: counters.crypto_candidates ? "verify_candidate_listing_details_before_submission" : "scan_other_verified_crypto_income_lanes",
         completed_at: completedAt,
