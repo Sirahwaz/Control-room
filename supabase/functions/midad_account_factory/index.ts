@@ -921,7 +921,7 @@ async function main(req: Request) {
         account_id: account.id, run_id: run.id, platform_key: platformKey,
         actor_key: "midad_platform_scout", event_type: "agent_eligible_listings_discovered",
         from_state: "RUNNING", to_state: "COMPLETED",
-        evidence: [{ url: listingUrl, official: true }, { url: "https://superteam.fun/earn/agents", official: true }],
+        evidence: [...listingUrls.map(url => ({ url, official: true })), { url: "https://superteam.fun/earn/agents", official: true }],
         details: { ...counters, crypto_candidates: counters.crypto_candidates, submissions_sent: 0, wallet_signatures: 0 }
       });
       return json({
