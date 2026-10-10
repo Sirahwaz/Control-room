@@ -117,13 +117,24 @@ function assessPlatform(platform: any) {
 
   const kycRequired = identity.kyc_required;
   const govIdRequired = identity.government_id_required;
+  const kycNotRequired = [false, "false", "not_required", "no"].includes(typeof kycRequired === "string" ? kycRequired.toLowerCase() : kycRequired);
+  const govIdNotRequired = [false, "false", "not_required", "no"].includes(typeof govIdRequired === "string" ? govIdRequired.toLowerCase() : govIdRequired);
   if (kycRequired === true || ["required", "mandatory"].includes(String(kycRequired).toLowerCase())) {
     blockers.push({ code: "KYC_REQUIRED", detail: "Mandatory KYC is incompatible with the current MIDAD account policy; do not bypass it." });
   } else if (govIdRequired === true || ["required", "mandatory"].includes(String(govIdRequired).toLowerCase())) {
     blockers.push({ code: "GOVERNMENT_ID_REQUIRED", detail: "Government identity-document submission is excluded by the current MIDAD account policy." });
-  } else if (identityStatus !== "verified" || ![false, "false", "not_required", "no"].includes(typeof kycRequired === "string" ? kycRequired.toLowerCase() : kycRequired) ||
-             ![false, "false", "not_required", "no"].includes(typeof govIdRequired === "string" ? govIdRequired.toLowerCase() : govIdRequired)) {
+  } else if (identityStatus !== "verified" || !kycNotRequired || !govIdNotRequired) {
     blockers.push({ code: "IDENTITY_POLICY_UNVERIFIED", detail: "Verify official identity/KYC requirements. Unknown or conditional requirements remain blocked until reviewed." });
+  }
+
+  const regionValue = identity.region_eligibility;
+  const regionStatus = String(regionValue ?? "unknown").toLowerCase();
+  const regionAllowed = [true, "true", "verified", "eligible", "supported", "allowed"].includes(regionStatus === "true" ? true : regionStatus);
+  const regionDenied = [false, "false", "unsupported", "not_supported", "restricted", "ineligible"].includes(regionStatus === "false" ? false : regionStatus);
+  if (regionDenied) {
+    blockers.push({ code: "REGION_NOT_SUPPORTED", detail: "Official platform eligibility evidence indicates the owner's region is unsupported or restricted." });
+  } else if (!regionAllowed) {
+    blockers.push({ code: "REGION_ELIGIBILITY_UNVERIFIED", detail: "Confirm official account and payout availability for the owner's actual region before onboarding." });
   }
   if (verification.captcha === "required" || verification.captcha === true) {
     blockers.push({ code: "HUMAN_CHECKPOINT_REQUIRED", detail: "The platform requires a human verification step. CAPTCHA will not be bypassed." });
@@ -135,7 +146,7 @@ function assessPlatform(platform: any) {
   if (!profilePrepAllowed) {
     blockers.push({ code: "PROFILE_AUTOMATION_SCOPE_UNKNOWN", detail: "The platform's allowed automation scope does not explicitly cover profile preparation." });
   }
-  const hardRejected = blockers.some(b => ["CRYPTO_PAYOUT_UNAVAILABLE", "KYC_REQUIRED", "GOVERNMENT_ID_REQUIRED", "AUTOMATION_NOT_ALLOWED"].includes(b.code));
+  const hardRejected = blockers.some(b => ["CRYPTO_PAYOUT_UNAVAILABLE", "KYC_REQUIRED", "GOVERNMENT_ID_REQUIRED", "REGION_NOT_SUPPORTED", "AUTOMATION_NOT_ALLOWED"].includes(b.code));
   return {
     status: hardRejected ? "REJECTED" : blockers.length ? "POLICY_REVIEW" : "ELIGIBLE",
     eligible_for_automated_onboarding: !hardRejected && blockers.length === 0,
@@ -352,7 +363,7 @@ async function main(req: Request) {
       const { data: profile } = await db.from("profiles").select("id").limit(1).maybeSingle();
       if (!profile?.id) return json({ ok: false, status: "BLOCKED", error: "midad_owner_profile_missing" }, 409);
 
-      const objective = "Prepare the existing MIDAD AI brand account/profile on " + platform.name + ". Use only the approved profile draft. Stop before accepting legal terms, submitting irreversible declarations, handling identity verification, CAPTCHA, or 2FA. Never bypass platform controls. Record evidence and create a human checkpoint if required.";
+      const objective = "Audit the authenticated session first to determine whether the MIDAD AI account already exists. Never create a duplicate. If it exists, prepare or update only the existing account; if it does not, prepare registration fields without final submission. Use only the approved profile draft. Stop before accepting legal terms, submitting irreversible declarations, handling identity verification, CAPTCHA, or 2FA. Never bypass platform controls. Record evidence and create a human checkpoint if required.";
       const gatewayUrl = SUPABASE_URL + "/functions/v1/midad_browser_agent_gateway";
       const gatewayResponse = await fetch(gatewayUrl, {
         method: "POST",
