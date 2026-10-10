@@ -168,6 +168,16 @@ function assessPlatform(platform: any) {
   };
 }
 
+async function storePlatformSecret(secretValue: string, secretName: string, description: string) {
+  const { data, error } = await db.rpc("midad_store_platform_secret", {
+    new_secret: secretValue,
+    new_name: secretName,
+    new_description: description
+  });
+  if (error || !data) throw new Error("platform_secret_vault_store_failed");
+  return String(data);
+}
+
 async function writeEvent(input: {
   event_key?: string; account_id?: string | null; run_id?: string | null;
   platform_key: string; actor_key: string; event_type: string;
@@ -311,6 +321,338 @@ async function main(req: Request) {
         details: { brand: "MIDAD AI", gate_status: gate.status, blocker_codes: blockers.map((b:any)=>b.code), external_publish: false }
       });
       return json({ ok: true, account_id: account.id, account_status: account.account_status, run_id: run.id, run_state: run.state, platform: { key: platform.platform_key, name: platform.name }, profile_payload: profilePayload, eligibility: gate, next_action: run.next_action });
+    }
+
+    if (action === "register_agent_identity") {
+      const platformKey = clean(body.platform_key || "superteam_fun", 120);
+      if (platformKey !== "superteam_fun") {
+        return json({ ok: false, error: "official_agent_api_not_supported_for_platform" }, 400);
+      }
+      if (body.owner_approved !== true) {
+        return json({ ok: false, error: "explicit_owner_approval_required", next_action: "owner_approval" }, 403);
+      }
+
+      const { data: account, error: accountError } = await db.from("midad_platform_accounts")
+        .select("*").eq("platform_key", platformKey).eq("owner_scope", "midad").eq("brand_key", "midad_ai").maybeSingle();
+      if (accountError) throw new Error("platform_account_lookup_failed");
+      if (!account) return json({ ok: false, error: "profile_draft_required_first", next_action: "prepare_profile" }, 409);
+
+      const existingMeta = obj(account.metadata);
+      if (account.platform_account_ref && existingMeta.external_actor_type === "autonomous_agent") {
+        return json({
+          ok: true, idempotent: true, status: account.account_status,
+          account_id: account.id, agent_id: account.platform_account_ref,
+          public_profile_url: account.public_profile_url || null,
+          claim_status: existingMeta.claim_status || "UNKNOWN",
+          next_action: existingMeta.next_action || "inspect_existing_agent_state"
+        });
+      }
+      if (existingMeta.agent_registration_attempted_at) {
+        return json({
+          ok: false, status: account.account_status, account_id: account.id,
+          error: "prior_registration_attempt_requires_reconciliation",
+          next_action: "reconcile_superteam_agent_before_retry",
+          note: "MIDAD will not blindly repeat an external account-creation request."
+        }, 409);
+      }
+
+      const platform = await platformRecord(platformKey);
+      const automation = obj(platform.allowed_automation);
+      const officialAgentSource = arr(platform.payout_policy_evidence).some((item:any) =>
+        item?.official === true && String(item?.url || "").startsWith("https://superteam.fun/earn/agents")
+      );
+      if (automation.agent_api_registration !== true || !officialAgentSource) {
+        return json({
+          ok: false, status: "POLICY_REVIEW",
+          error: "official_agent_api_registration_policy_not_verified",
+          next_action: "verify_official_agent_api_contract"
+        }, 409);
+      }
+
+      const startedAt = new Date().toISOString();
+      const metadataStarted = {
+        ...existingMeta,
+        external_actor_type: "autonomous_agent",
+        external_account_status: "REGISTRATION_PENDING",
+        agent_registration_attempted: true,
+        agent_registration_attempted_at: startedAt,
+        agent_registration_source: "official_superteam_agent_api",
+        duplicate_creation_allowed: false,
+        next_action: "await_agent_registration_result"
+      };
+      const startedUpdate = await db.from("midad_platform_accounts").update({
+        account_status: "REGISTRATION_PENDING",
+        metadata: metadataStarted,
+        last_error_code: null,
+        last_error_detail: null,
+        updated_at: startedAt
+      }).eq("id", account.id);
+      if (startedUpdate.error) throw new Error("registration_attempt_state_write_failed");
+
+      const run = await createRun({
+        platformKey,
+        accountId: account.id,
+        taskType: "register_agent_identity",
+        state: "RUNNING",
+        inputPayload: {
+          registration_mode: "official_agent_api",
+          owner_approved: true,
+          no_human_profile_or_payout_claim_performed: true
+        },
+        blockers: [],
+        evidence: [{ url: "https://superteam.fun/earn/agents", official: true, claim: "Official agent registration and human payout claim flow" }],
+        nextAction: "call_official_agent_registration_api",
+        runKey: "superteam_agent_registration:midad_ai:v1"
+      });
+      await db.from("midad_account_factory_runs").update({ attempt_count: 1, started_at: startedAt }).eq("id", run.id);
+      await writeEvent({
+        account_id: account.id, run_id: run.id, platform_key: platformKey,
+        actor_key: "midad_account_factory", event_type: "agent_registration_started",
+        from_state: account.account_status, to_state: "REGISTRATION_PENDING",
+        evidence: [{ url: "https://superteam.fun/earn/agents", official: true }],
+        details: { owner_approved: true, secret_storage: "supabase_vault", no_submission: true, no_wallet_signature: true }
+      });
+
+      let response: Response;
+      try {
+        response = await fetch("https://superteam.fun/api/agents", {
+          method: "POST",
+          headers: { "content-type": "application/json", "accept": "application/json" },
+          body: JSON.stringify({ name: "MIDAD AI AHWAZ Technical Delivery Agent" })
+        });
+      } catch (_) {
+        const reason = "The official registration endpoint did not return a definite response. Reconcile the provider before any retry.";
+        await db.from("midad_platform_accounts").update({
+          account_status: "HUMAN_CHECKPOINT",
+          last_error_code: "REGISTRATION_RESULT_UNCERTAIN",
+          last_error_detail: reason,
+          metadata: { ...metadataStarted, external_account_status: "REGISTRATION_RESULT_UNCERTAIN", next_action: "reconcile_superteam_agent_before_retry" },
+          updated_at: new Date().toISOString()
+        }).eq("id", account.id);
+        await db.from("midad_account_factory_runs").update({
+          state: "HUMAN_CHECKPOINT",
+          blockers: [{ code: "REGISTRATION_RESULT_UNCERTAIN", detail: reason }],
+          next_action: "reconcile_superteam_agent_before_retry",
+          last_error: "provider_response_uncertain",
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "HUMAN_CHECKPOINT", account_id: account.id, run_id: run.id, error: "provider_response_uncertain", next_action: "reconcile_superteam_agent_before_retry" }, 502);
+      }
+
+      if (!response.ok) {
+        const definitiveRejection = response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429;
+        const nextState = definitiveRejection ? "BLOCKED" : "HUMAN_CHECKPOINT";
+        const code = definitiveRejection ? "PROVIDER_REGISTRATION_REJECTED" : "REGISTRATION_RESULT_UNCERTAIN";
+        const detail = definitiveRejection
+          ? "The official agent API rejected the registration request. No automatic retry will be attempted."
+          : "The official agent API returned a transient or ambiguous status. Reconcile before retrying.";
+        await db.from("midad_platform_accounts").update({
+          account_status: nextState,
+          last_error_code: code,
+          last_error_detail: detail,
+          metadata: { ...metadataStarted, external_account_status: code, registration_http_status: response.status, next_action: "review_provider_response" },
+          updated_at: new Date().toISOString()
+        }).eq("id", account.id);
+        await db.from("midad_account_factory_runs").update({
+          state: nextState,
+          blockers: [{ code, detail }],
+          next_action: "review_provider_response",
+          last_error: "provider_http_" + response.status,
+          output_payload: { provider_http_status: response.status },
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: nextState, account_id: account.id, run_id: run.id, error: code, provider_http_status: response.status, next_action: "review_provider_response" }, definitiveRejection ? 409 : 502);
+      }
+
+      const registration = await response.json().catch(() => null);
+      const agentId = clean(registration?.agentId || registration?.agent_id || registration?.id, 160);
+      const apiKey = clean(registration?.apiKey || registration?.api_key, 2000);
+      const claimCode = clean(registration?.claimCode || registration?.claim_code, 500);
+      const username = clean(registration?.username || registration?.slug, 160);
+      if (!agentId || !apiKey || !claimCode || !username) {
+        const reason = "The provider returned a successful response but not the documented agent credentials/identity fields. Do not retry registration until reconciled.";
+        await db.from("midad_platform_accounts").update({
+          account_status: "HUMAN_CHECKPOINT",
+          platform_account_ref: agentId || null,
+          public_profile_url: username ? "https://superteam.fun/earn/t/" + encodeURIComponent(username) : null,
+          last_error_code: "AGENT_REGISTRATION_RESPONSE_INCOMPLETE",
+          last_error_detail: reason,
+          metadata: {
+            ...metadataStarted,
+            external_actor_type: "autonomous_agent",
+            external_account_created_by_midad: true,
+            external_account_status: "REGISTRATION_RESPONSE_INCOMPLETE",
+            agent_username: username || null,
+            next_action: "reconcile_superteam_agent_before_retry"
+          },
+          updated_at: new Date().toISOString()
+        }).eq("id", account.id);
+        await db.from("midad_account_factory_runs").update({
+          state: "HUMAN_CHECKPOINT",
+          blockers: [{ code: "AGENT_REGISTRATION_RESPONSE_INCOMPLETE", detail: reason }],
+          next_action: "reconcile_superteam_agent_before_retry",
+          last_error: "provider_response_contract_mismatch",
+          output_payload: { http_status: response.status, agent_id_received: Boolean(agentId), username_received: Boolean(username), credential_fields_received: Boolean(apiKey && claimCode) },
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "HUMAN_CHECKPOINT", account_id: account.id, run_id: run.id, error: "agent_registration_response_incomplete", next_action: "reconcile_superteam_agent_before_retry" }, 502);
+      }
+
+      const profileUrl = "https://superteam.fun/earn/t/" + encodeURIComponent(username);
+      const registeredAt = new Date().toISOString();
+      const providerRegisteredMeta = {
+        ...metadataStarted,
+        external_actor_type: "autonomous_agent",
+        external_account_created_by_midad: true,
+        external_account_status: "REGISTERED_SECRET_STORAGE_PENDING",
+        agent_id: agentId,
+        agent_username: username,
+        agent_registration_completed_at: registeredAt,
+        claim_status: "UNCLAIMED",
+        payout_eligibility: "HUMAN_CLAIM_AND_LISTING_POLICY_REVIEW",
+        listing_kyc_policy: "CHECK_EACH_LISTING",
+        api_secret_storage_status: "PENDING",
+        next_action: "store_agent_credentials_in_vault"
+      };
+      const registeredUpdate = await db.from("midad_platform_accounts").update({
+        platform_account_ref: agentId,
+        public_profile_url: profileUrl,
+        account_status: "REGISTERED_UNVERIFIED",
+        last_verified_at: registeredAt,
+        metadata: providerRegisteredMeta,
+        last_error_code: null,
+        last_error_detail: null,
+        updated_at: registeredAt
+      }).eq("id", account.id);
+      if (registeredUpdate.error) {
+        return json({
+          ok: false, status: "HUMAN_CHECKPOINT", error: "external_agent_created_but_registry_write_failed",
+          agent_id: agentId, public_profile_url: profileUrl,
+          next_action: "reconcile_registry_without_recreating_agent"
+        }, 502);
+      }
+
+      let apiKeyRef: string;
+      try {
+        apiKeyRef = await storePlatformSecret(
+          apiKey,
+          "midad:platform:superteam_fun:agent_api_key:" + agentId,
+          "MIDAD Superteam Earn agent API key; service-role access only."
+        );
+      } catch (_) {
+        const detail = "Agent exists, but API credential storage failed. Do not create another agent; repair Vault storage for this existing identity.";
+        await db.from("midad_platform_accounts").update({
+          metadata: { ...providerRegisteredMeta, api_secret_storage_status: "FAILED", next_action: "repair_vault_storage_for_existing_agent" },
+          last_error_code: "AGENT_API_KEY_VAULT_STORE_FAILED",
+          last_error_detail: detail,
+          updated_at: new Date().toISOString()
+        }).eq("id", account.id);
+        await db.from("midad_account_factory_runs").update({
+          state: "BLOCKED",
+          blockers: [{ code: "AGENT_API_KEY_VAULT_STORE_FAILED", detail }],
+          next_action: "repair_vault_storage_for_existing_agent",
+          last_error: "vault_store_failed",
+          output_payload: { agent_id: agentId, public_profile_url: profileUrl },
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "BLOCKED", account_id: account.id, agent_id: agentId, public_profile_url: profileUrl, error: "agent_api_key_vault_store_failed", next_action: "repair_vault_storage_for_existing_agent" }, 502);
+      }
+
+      await db.from("midad_platform_accounts").update({
+        credential_vault_ref: apiKeyRef,
+        metadata: { ...providerRegisteredMeta, agent_api_key_vault_ref: apiKeyRef, api_secret_storage_status: "API_KEY_STORED", next_action: "store_claim_code_in_vault" },
+        updated_at: new Date().toISOString()
+      }).eq("id", account.id);
+
+      let claimCodeRef: string;
+      try {
+        claimCodeRef = await storePlatformSecret(
+          claimCode,
+          "midad:platform:superteam_fun:claim_code:" + agentId,
+          "MIDAD Superteam Earn agent claim code; disclose only through an owner-approved claim handoff."
+        );
+      } catch (_) {
+        const detail = "Agent API key is vaulted, but the human-claim code could not be stored. Do not recreate the agent; repair claim-code storage.";
+        await db.from("midad_platform_accounts").update({
+          metadata: { ...providerRegisteredMeta, agent_api_key_vault_ref: apiKeyRef, api_secret_storage_status: "PARTIAL", next_action: "repair_claim_code_storage" },
+          credential_vault_ref: apiKeyRef,
+          last_error_code: "AGENT_CLAIM_CODE_VAULT_STORE_FAILED",
+          last_error_detail: detail,
+          updated_at: new Date().toISOString()
+        }).eq("id", account.id);
+        await db.from("midad_account_factory_runs").update({
+          state: "BLOCKED",
+          blockers: [{ code: "AGENT_CLAIM_CODE_VAULT_STORE_FAILED", detail }],
+          next_action: "repair_claim_code_storage",
+          last_error: "claim_code_vault_store_failed",
+          output_payload: { agent_id: agentId, public_profile_url: profileUrl, api_key_vaulted: true },
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "BLOCKED", account_id: account.id, agent_id: agentId, public_profile_url: profileUrl, api_key_vaulted: true, error: "claim_code_vault_store_failed", next_action: "repair_claim_code_storage" }, 502);
+      }
+
+      const completedAt = new Date().toISOString();
+      const completedMeta = {
+        ...providerRegisteredMeta,
+        agent_api_key_vault_ref: apiKeyRef,
+        claim_code_vault_ref: claimCodeRef,
+        api_secret_storage_status: "VAULTED",
+        external_account_status: "REGISTERED_AGENT_UNCLAIMED",
+        claim_status: "UNCLAIMED",
+        next_action: "discover_agent_eligible_crypto_listings_then_human_claim_before_payout"
+      };
+      const finalUpdate = await db.from("midad_platform_accounts").update({
+        account_status: "REGISTERED_UNVERIFIED",
+        credential_vault_ref: apiKeyRef,
+        verification_snapshot: {
+          ...obj(account.verification_snapshot),
+          agent_identity_registration: "VERIFIED",
+          human_claim_required_for_payout: true,
+          payout_eligibility: "HUMAN_CLAIM_AND_LISTING_POLICY_REVIEW",
+          per_listing_kyc_check_required: true,
+          evaluated_at: completedAt
+        },
+        metadata: completedMeta,
+        updated_at: completedAt
+      }).eq("id", account.id);
+      if (finalUpdate.error) throw new Error("agent_registration_finalize_failed");
+
+      await db.from("midad_account_factory_runs").update({
+        state: "COMPLETED",
+        blockers: [{ code: "HUMAN_CLAIM_REQUIRED_FOR_PAYOUT", detail: "A human must claim the agent before payout. Only pursue listings whose payment flow is compatible with the owner's identity-document policy." }],
+        output_payload: {
+          agent_id: agentId,
+          username,
+          public_profile_url: profileUrl,
+          agent_api_key_vaulted: true,
+          claim_code_vaulted: true,
+          raw_credentials_returned: false,
+          claim_status: "UNCLAIMED",
+          payout_policy: "listing_specific_review"
+        },
+        next_action: completedMeta.next_action,
+        completed_at: completedAt,
+        updated_at: completedAt
+      }).eq("id", run.id);
+      await writeEvent({
+        account_id: account.id, run_id: run.id, platform_key: platformKey,
+        actor_key: "midad_account_factory", event_type: "agent_identity_registered",
+        from_state: "REGISTRATION_PENDING", to_state: "REGISTERED_UNVERIFIED",
+        evidence: [{ url: "https://superteam.fun/earn/agents", official: true }],
+        details: {
+          agent_id: agentId, username, public_profile_url: profileUrl,
+          api_key_vaulted: true, claim_code_vaulted: true,
+          claim_status: "UNCLAIMED", payout_eligibility: "HUMAN_CLAIM_AND_LISTING_POLICY_REVIEW"
+        }
+      });
+      return json({
+        ok: true, status: "REGISTERED_UNVERIFIED", account_id: account.id, run_id: run.id,
+        platform: "superteam_fun", agent_id: agentId, username, public_profile_url: profileUrl,
+        api_key_vaulted: true, claim_code_vaulted: true, raw_credentials_returned: false,
+        claim_status: "UNCLAIMED", human_claim_required_for_payout: true,
+        next_action: "discover_agent_eligible_crypto_listings_then_human_claim_before_payout",
+        note: "Only agent identity was created. No listing was submitted, no wallet was signed, and no payout or KYC flow was initiated."
+      });
     }
 
     if (action === "queue_onboarding") {
