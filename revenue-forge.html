@@ -60,7 +60,18 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 <section id="checkout" class="card section">
 <span class="tag">CRYPTO CHECKOUT</span>
 <h2>الدفع المباشر — USDC / Solana</h2>
-<p class="small">اختر الخدمة، وسينشئ MIDAD طلب دفع مستقل. عند وصول المبلغ إلى محفظة الاستقبال، تتم مراقبة العملية والتحقق منها تلقائيًا.</p>
+<p class="small">اكتب المطلوب أولاً، ثم اختر الخدمة لإنشاء فاتورة مرتبطة بوصفك. لا تعتبر الطلب مدفوعًا حتى يتحقق MIDAD من معاملة الاستقبال فعليًا.</p>
+<div class="card" style="margin:14px 0;background:#0a1017">
+  <h2 style="margin-top:0">تفاصيل الطلب / Request Brief</h2>
+  <label for="checkout-name" class="small" style="display:block;margin:10px 0 5px">الاسم أو اسم المشروع (اختياري)</label>
+  <input id="checkout-name" type="text" maxlength="120" autocomplete="name" placeholder="MIDAD / Project name" style="display:block;width:100%;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11;color:#edf3fb">
+  <label for="checkout-email" class="small" style="display:block;margin:10px 0 5px">بريد استلام التحديثات (اختياري)</label>
+  <input id="checkout-email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com" style="display:block;width:100%;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11;color:#edf3fb">
+  <label for="checkout-requirements" class="small" style="display:block;margin:10px 0 5px">ما المطلوب تسليمه؟ اذكر النطاق ومعايير القبول أو رابط ملف عام غير حساس.</label>
+  <textarea id="checkout-requirements" required maxlength="5000" rows="4" placeholder="Describe the issue, input/output, desired result and acceptance criteria..." style="display:block;width:100%;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11;color:#edf3fb;resize:vertical"></textarea>
+  <div class="small" style="margin-top:8px">لا تضع كلمات مرور أو مفاتيح خاصة أو عبارات استرداد في وصف الطلب.</div>
+  <div id="checkout-form-status" class="copyok" role="status" aria-live="polite"></div>
+</div>
 <div class="grid">
 <article class="card"><h2>Miner Microscope Audit</h2><div class="price">$39 USDC</div><button class="btn" onclick="makeCheckout('miner-microscope-v1')">إنشاء فاتورة</button></article>
 <article class="card"><h2>Opportunity Radar Pack</h2><div class="price">$25 USDC</div><button class="btn" onclick="makeCheckout('opportunity-radar-v1')">إنشاء فاتورة</button></article>
@@ -129,20 +140,97 @@ async function copyOffer(s, button){
 <script>
 const MIDAD_CHECKOUT="https://froegigfmpmvtecztfb.supabase.co/functions/v1/midad_public_checkout";
 function checkoutKey(product){
+  const name=document.getElementById("checkout-name")?.value.trim()||"";
+  const email=document.getElementById("checkout-email")?.value.trim().toLowerCase()||"";
+  const brief=document.getElementById("checkout-requirements")?.value.trim()||"";
   const base=localStorage.getItem("midadRevenueOrderKey")||Math.random().toString(36).slice(2)+Date.now().toString(36);
   localStorage.setItem("midadRevenueOrderKey",base);
-  return base+"-"+product;
+  let hash=2166136261;
+  for(const ch of product+"|"+name+"|"+email+"|"+brief){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619);}
+  return base+"-"+product+"-"+(hash>>>0).toString(36);
+}
+function addCheckoutText(parent,tag,text){
+  const node=document.createElement(tag);
+  node.textContent=String(text??"");
+  parent.appendChild(node);
+  return node;
 }
 async function makeCheckout(product){
   const box=document.getElementById("checkout-result");
+  const status=document.getElementById("checkout-form-status");
+  const brief=document.getElementById("checkout-requirements");
+  const name=document.getElementById("checkout-name").value.trim();
+  const email=document.getElementById("checkout-email").value.trim();
+  const requirements=brief.value.trim();
+  if(!requirements){
+    status.textContent="اكتب وصف المهمة ومعايير القبول أولاً، ثم أنشئ الفاتورة.";
+    brief.focus();
+    return;
+  }
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    status.textContent="صيغة البريد الإلكتروني غير صحيحة. صححها أو اترك الحقل فارغًا.";
+    document.getElementById("checkout-email").focus();
+    return;
+  }
   box.style.display="block";
+  box.replaceChildren();
   box.textContent="جاري إنشاء الفاتورة…";
+  status.textContent="";
+  const buttons=Array.from(document.querySelectorAll('button[onclick^="makeCheckout"]'));
+  buttons.forEach(b=>b.disabled=true);
   try{
-    const r=await fetch(MIDAD_CHECKOUT,{method:"POST",headers:{"content-type":"application/json","x-order-key":checkoutKey(product)},body:JSON.stringify({product_id:product,order_key:checkoutKey(product)})});
-    const d=await r.json();
-    if(!d.ok) throw new Error(d.error||"checkout_failed");
-    box.innerHTML="<strong>"+d.product.name+"</strong><br>المبلغ: <b>"+d.payment.quoted_crypto_amount+" USDC</b><br>الشبكة: Solana<br>عنوان الاستقبال:<br><code style='word-break:break-all'>"+d.payment.wallet_address+"</code><br><br>بعد الإرسال، سيقوم MIDAD بالمراقبة والتحقق تلقائيًا.";
-  }catch(e){ box.textContent="تعذر إنشاء الفاتورة: "+e.message; }
+    const orderKey=checkoutKey(product);
+    const r=await fetch(MIDAD_CHECKOUT,{
+      method:"POST",
+      headers:{"content-type":"application/json","x-order-key":orderKey},
+      body:JSON.stringify({
+        product_id:product,order_key:orderKey,customer_name:name,
+        customer_email:email,customer_requirements:requirements,
+        attribution:{utm_source:"midad_revenue_forge",landing_path:"/Control-room/revenue-forge.html"}
+      })
+    });
+    const d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
+    if(!r.ok||!d.ok) throw new Error(d.error||"checkout_failed");
+    box.replaceChildren();
+    addCheckoutText(box,"strong",d.product.name);
+    addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
+    addCheckoutText(box,"p","الشبكة: Solana");
+    addCheckoutText(box,"p","أرسل المبلغ الدقيق فقط إلى عنوان الاستقبال التالي:");
+    const address=document.createElement("code");
+    address.style.cssText="display:block;word-break:break-all;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11";
+    address.textContent=String(d.payment.wallet_address||"");
+    box.appendChild(address);
+    const copy=document.createElement("button");
+    copy.className="btn secondary";
+    copy.type="button";
+    copy.textContent="نسخ عنوان الاستقبال";
+    copy.addEventListener("click",async()=>{
+      try{
+        if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(String(d.payment.wallet_address||""));
+        else {const ta=document.createElement("textarea");ta.value=String(d.payment.wallet_address||"");document.body.appendChild(ta);ta.select();const ok=document.execCommand("copy");ta.remove();if(!ok)throw new Error("copy_failed");}
+        copy.textContent="✓ تم نسخ العنوان";
+      }catch(_){window.prompt("انسخ عنوان الاستقبال يدويًا:",String(d.payment.wallet_address||""));}
+    });
+    box.appendChild(copy);
+    if(d.payment.expires_at) addCheckoutText(box,"p","تنتهي صلاحية الفاتورة: "+new Date(d.payment.expires_at).toLocaleString());
+    if(d.payment_uri && String(d.payment_uri).startsWith("solana:")){
+      const link=document.createElement("a");
+      link.className="btn";
+      link.href=String(d.payment_uri);
+      link.textContent="فتح في محفظة Solana";
+      link.rel="noopener noreferrer";
+      box.appendChild(link);
+    }
+    addCheckoutText(box,"p",d.instructions||"تحقق من المبلغ والشبكة قبل الإرسال.");
+    addCheckoutText(box,"p","رقم الطلب: "+String(d.payment.id||"غير متاح"));
+    addCheckoutText(box,"p","الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
+  }catch(e){
+    box.replaceChildren();
+    addCheckoutText(box,"strong","تعذر إنشاء الفاتورة");
+    addCheckoutText(box,"p",String(e.message||e));
+  }finally{
+    buttons.forEach(b=>b.disabled=false);
+  }
 }
 </script></body>
 </html>
