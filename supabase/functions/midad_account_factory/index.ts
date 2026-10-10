@@ -203,7 +203,16 @@ async function ensureAccount(platformKey: string, profilePayload: Record<string,
     payout_policy_snapshot: obj(platform.payout_policy),
     verification_snapshot: { ...gate.checks, evaluated_at: new Date().toISOString() },
     evidence: [...arr(platform.payout_policy_evidence)],
-    metadata: { brand: "MIDAD AI", owner_label: "AHWAZ", source: "midad_account_factory", last_policy_decision: gate.status }
+    metadata: {
+      brand: "MIDAD AI",
+      owner_label: "AHWAZ",
+      source: "midad_account_factory",
+      last_policy_decision: gate.status,
+      external_account_status: "UNVERIFIED",
+      external_account_created_by_midad: false,
+      onboarding_started: false,
+      duplicate_creation_allowed: false
+    }
   };
   const { data, error } = await db.from("midad_platform_accounts")
     .upsert(record, { onConflict: "platform_key,owner_scope,brand_key" })
