@@ -106,18 +106,22 @@ Deno.serve(async(req)=>{
       if(r.action==="scan"&&r.destination_service==="midad_money_hunter")payload={...payload};
       const result=await invoke(r.destination_service,payload);
 
-      await sb.from("midad_audit_log").insert({
-        user_id:(await sb.from("profiles").select("id").limit(1).maybeSingle()).data?.id,
-        event_type:"bot_fabric_route",
-        actor_type:"agent",
-        action:r.action,
-        subject_type:"service_route",
-        subject_id:r.id,
-        status:result.ok?"completed":"failed",
-        risk_class:r.risk_class||"low",
-        summary:"Bot Fabric routed a request to an internal MIDAD service.",
-        details:{route_key:r.route_key,source_bot_key:r.source_bot_key,destination:r.destination_service,http:result.http,human_gate:r.human_gate}
-      }).catch(()=>{});
+      try {
+        await sb.from("midad_audit_log").insert({
+          user_id:(await sb.from("profiles").select("id").limit(1).maybeSingle()).data?.id,
+          event_type:"bot_fabric_route",
+          actor_type:"agent",
+          action:r.action,
+          subject_type:"service_route",
+          subject_id:r.id,
+          status:result.ok?"completed":"failed",
+          risk_class:r.risk_class||"low",
+          summary:"Bot Fabric routed a request to an internal MIDAD service.",
+          details:{route_key:r.route_key,source_bot_key:r.source_bot_key,destination:r.destination_service,http:result.http,human_gate:r.human_gate}
+        });
+      } catch (_) {
+        // Best-effort audit write; routing result remains authoritative.
+      }
 
       return json({ok:result.ok,route:r.route_key,source_bot:r.source_bot_key,destination:r.destination_service,action:mapped,human_gate:r.human_gate,result:result.data},result.ok?200:502);
     }
