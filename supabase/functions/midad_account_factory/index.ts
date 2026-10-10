@@ -168,6 +168,12 @@ function assessPlatform(platform: any) {
   };
 }
 
+async function readPlatformSecret(secretId: string) {
+  const { data, error } = await db.rpc("midad_read_platform_secret", { secret_id: secretId });
+  if (error || !data) throw new Error("platform_secret_vault_read_failed");
+  return String(data);
+}
+
 async function storePlatformSecret(secretValue: string, secretName: string, description: string) {
   const { data, error } = await db.rpc("midad_store_platform_secret", {
     new_secret: secretValue,
@@ -273,7 +279,7 @@ async function main(req: Request) {
         service: "midad_account_factory",
         contract: "midad-platform-account-factory-v1",
         state: "ACTIVE",
-        actions: ["capabilities", "list_platforms", "assess_platform", "prepare_profile", "register_agent_identity", "queue_onboarding", "list_accounts", "list_runs"],
+        actions: ["capabilities", "list_platforms", "assess_platform", "prepare_profile", "register_agent_identity", "list_agent_eligible_listings", "queue_onboarding", "list_accounts", "list_runs"],
         pipeline: ["DISCOVER", "VERIFY_PAYOUT_AND_IDENTITY", "COMPOSE_PROFILE", "PREPARE_ACCOUNT", "AUTHORIZED_BROWSER_ONBOARDING", "QUALIFY_OPPORTUNITY", "DELIVER", "VERIFY_CRYPTO_RECEIPT"],
         hard_blocks: ["fiat_only_payout", "mandatory_kyc", "government_id_required", "bypass_captcha", "bypass_2fa", "impersonation", "false_claims", "duplicate_account_creation", "unapproved_terms_acceptance", "withdrawal_or_transfer"],
         notes: ["Profile preparation is not proof of external account creation.", "Unknown payout or identity requirements block external onboarding.", "Final legal acceptance and mandatory human verification remain human-gated."]
@@ -652,6 +658,253 @@ async function main(req: Request) {
         claim_status: "UNCLAIMED", human_claim_required_for_payout: true,
         next_action: "discover_agent_eligible_crypto_listings_then_human_claim_before_payout",
         note: "Only agent identity was created. No listing was submitted, no wallet was signed, and no payout or KYC flow was initiated."
+      });
+    }
+
+    if (action === "list_agent_eligible_listings") {
+      const platformKey = clean(body.platform_key || "superteam_fun", 120);
+      if (platformKey !== "superteam_fun") {
+        return json({ ok: false, error: "agent_listing_api_not_supported_for_platform" }, 400);
+      }
+      const { data: account, error: accountError } = await db.from("midad_platform_accounts")
+        .select("id,platform_key,platform_account_ref,public_profile_url,credential_vault_ref,metadata")
+        .eq("platform_key", platformKey).eq("owner_scope", "midad").eq("brand_key", "midad_ai").maybeSingle();
+      if (accountError) throw new Error("platform_account_lookup_failed");
+      if (!account || !account.platform_account_ref || !account.credential_vault_ref || obj(account.metadata).external_actor_type !== "autonomous_agent") {
+        return json({ ok: false, status: "BLOCKED", error: "registered_superteam_agent_and_vault_reference_required" }, 409);
+      }
+
+      const apiKey = await readPlatformSecret(String(account.credential_vault_ref));
+      const take = Math.min(50, Math.max(1, Number(body.take || 20)));
+      const listingUrl = "https://superteam.fun/api/agents/listings/live?take=" + take;
+      const scanStartedAt = new Date().toISOString();
+      const run = await createRun({
+        platformKey, accountId: account.id, taskType: "discover_agent_eligible_listings", state: "RUNNING",
+        inputPayload: { take, agent_id: account.platform_account_ref, api_key_vaulted: true },
+        blockers: [], evidence: [{ url: "https://superteam.fun/earn/agents", official: true }],
+        nextAction: "fetch_agent_eligible_listing_feed",
+        runKey: "superteam_agent_discovery:" + new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)
+      });
+      let response: Response;
+      try {
+        response = await fetch(listingUrl, {
+          method: "GET",
+          headers: { "accept": "application/json", "authorization": "Bearer " + apiKey }
+        });
+      } catch (_) {
+        const detail = "The official Superteam agent listings endpoint could not be reached.";
+        await db.from("midad_account_factory_runs").update({
+          state: "BLOCKED", blockers: [{ code: "AGENT_LISTING_FEED_UNREACHABLE", detail }],
+          next_action: "retry_listing_discovery", last_error: "provider_fetch_failed",
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "BLOCKED", run_id: run.id, error: "agent_listing_feed_unreachable" }, 502);
+      }
+      if (!response.ok) {
+        const detail = "The official Superteam agent listing feed returned an HTTP error.";
+        await db.from("midad_account_factory_runs").update({
+          state: response.status === 401 || response.status === 403 ? "BLOCKED" : "FAILED",
+          blockers: [{ code: "AGENT_LISTING_FEED_HTTP_ERROR", detail }],
+          output_payload: { provider_http_status: response.status },
+          next_action: response.status === 401 ? "repair_agent_api_key" : "retry_listing_discovery",
+          last_error: "provider_http_" + response.status,
+          updated_at: new Date().toISOString()
+        }).eq("id", run.id);
+        return json({ ok: false, status: "FAILED", run_id: run.id, provider_http_status: response.status, error: "agent_listing_feed_http_error" }, response.status === 401 || response.status === 403 ? 409 : 502);
+      }
+
+      const feed = await response.json().catch(() => null);
+      const rawListings = Array.isArray(feed) ? feed :
+        Array.isArray(feed?.listings) ? feed.listings :
+        Array.isArray(feed?.data) ? feed.data :
+        Array.isArray(feed?.items) ? feed.items : [];
+      const eligible = rawListings.filter((item:any) =>
+        ["AGENT_ALLOWED", "AGENT_ONLY"].includes(String(item?.agentAccess || item?.agent_access || "").toUpperCase())
+      );
+      const { data: ownerProfile } = await db.from("profiles").select("id").limit(1).maybeSingle();
+      const summary: any[] = [];
+      const counters = { received: rawListings.length, agent_eligible: eligible.length, saved: 0, crypto_candidates: 0, policy_review: 0, kyc_blocked: 0, errors: 0 };
+
+      for (const listing of eligible) {
+        const externalId = clean(listing.id || listing.listingId || listing.listing_id || listing.slug, 180);
+        if (!externalId) { counters.errors++; continue; }
+        const slug = clean(listing.slug || listing.slugId || listing.slug_id || externalId, 180);
+        const title = clean(listing.title || listing.name || "Superteam agent-eligible listing", 250);
+        const description = clean(listing.description || listing.summary || listing.brief || listing.content, 8000);
+        const url = clean(listing.url || listing.publicUrl || listing.public_url || listing.link, 1500) ||
+          ("https://superteam.fun/earn/listing/" + encodeURIComponent(slug));
+        const sponsorObj = obj(listing.sponsor);
+        const sponsorName = clean(sponsorObj.name || listing.sponsorName || listing.sponsor_name || listing.organizationName || listing.organization_name, 180);
+        const type = clean(listing.type || listing.listingType || listing.listing_type || "unknown", 80);
+        const access = String(listing.agentAccess || listing.agent_access || "").toUpperCase();
+        const rewardObj = obj(listing.compensation || listing.reward || listing.budget);
+        const nestedToken = obj(rewardObj.token);
+        const asset = clean(
+          listing.paymentAsset || listing.payment_asset || listing.currency ||
+          rewardObj.asset || rewardObj.currency || rewardObj.tokenSymbol || nestedToken.symbol || nestedToken.name ||
+          listing.rewardToken || listing.reward_token, 40
+        ).toUpperCase();
+        const amountInput = listing.amount ?? listing.rewardAmount ?? listing.reward_amount ??
+          listing.budgetAmount ?? listing.budget_amount ?? rewardObj.amount ?? rewardObj.value ?? 0;
+        const amountText = String(amountInput ?? "");
+        const amountMatch = amountText.match(/([0-9]+(?:\.[0-9]+)?)/);
+        const amount = Number.isFinite(Number(amountInput)) ? Number(amountInput) : (amountMatch ? Number(amountMatch[1]) : 0);
+        const stableOrCryptoAsset = /^(USDC|USDG|USDT|SOL|BTC|ETH|POL|BNB|BONK|JTO|JUP)$/i.test(asset);
+        const sponsorLower = sponsorName.toLowerCase();
+        const listingText = JSON.stringify({
+          title, description, sponsor: sponsorName,
+          eligibility: listing.eligibility || listing.eligibilityQuestions || listing.eligibility_questions || [],
+          payout: listing.payout || listing.payment || rewardObj,
+          terms: listing.terms || listing.requirements || listing.notes || ""
+        }).toLowerCase();
+        const explicitKyc = /\b(kyc required|requires kyc|post kyc|must complete kyc|identity verification required|government[- ]issued id required)\b/.test(listingText);
+        const noKycClaim = /\b(no[- ]kyc|kyc not required|without kyc|no identity documents required)\b/.test(listingText);
+        const firstPartyKycRisk = /superteam|solana foundation/.test(sponsorLower);
+        const globalRegion = String(listing.region || listing.regions || listing.eligibility?.region || "").toLowerCase().includes("global") ||
+          String(listing.location || "").toLowerCase().includes("worldwide");
+        let payoutGate = "POLICY_REVIEW";
+        let payoutGateReason = "Listing-specific payout/KYC/region terms are not proven by the feed. Verify sponsor terms before claiming or submitting.";
+        if (firstPartyKycRisk || explicitKyc) {
+          payoutGate = "BLOCKED_KYC";
+          payoutGateReason = firstPartyKycRisk
+            ? "Superteam/Solana-sponsored payouts are documented as requiring KYC; this lane is excluded by the owner identity policy."
+            : "The listing text explicitly indicates KYC or identity verification is required.";
+        } else if (stableOrCryptoAsset && noKycClaim && globalRegion) {
+          payoutGate = "CRYPTO_NO_KYC_CANDIDATE";
+          payoutGateReason = "The listing explicitly states no KYC, has a crypto payout asset, and advertises global eligibility; recheck before submission.";
+        }
+        const numericUsd = /^(USDC|USDG|USDT)$/i.test(asset) && amount > 0 ? amount : null;
+        const skills = Array.isArray(listing.skills) ? listing.skills.map((x:any)=>String(x)).slice(0,40) :
+          Array.isArray(listing.tags) ? listing.tags.map((x:any)=>String(x)).slice(0,40) : [];
+        const evidence = {
+          source: "superteam_agent_api",
+          source_url: listingUrl,
+          official_listing_url: url,
+          official_agent_docs: "https://superteam.fun/earn/agents",
+          checked_at: scanStartedAt,
+          external_id: externalId,
+          slug,
+          agent_access: access,
+          listing_type: type,
+          sponsor: sponsorName || null,
+          compensation: { amount: amount > 0 ? amount : null, asset: asset || null },
+          deadline: listing.deadline || listing.deadlineAt || listing.deadline_at || null,
+          regions: listing.regions || listing.region || listing.location || null,
+          payout_gate: payoutGate,
+          payout_gate_reason: payoutGateReason,
+          kyc_terms_detection: { explicit_kyc: explicitKyc, explicit_no_kyc: noKycClaim, first_party_sponsor_risk: firstPartyKycRisk },
+          raw_evidence_fields: {
+            eligibility_questions: listing.eligibilityQuestions || listing.eligibility_questions || listing.eligibility || [],
+            payout: listing.payout || listing.payment || rewardObj || null,
+            required_skills: skills
+          }
+        };
+        const incomeRow = {
+          source_slug: "superteam_agent_api",
+          external_id: externalId,
+          title,
+          url,
+          payment_asset: asset || null,
+          amount_usd: numericUsd,
+          skills,
+          status: payoutGate === "CRYPTO_NO_KYC_CANDIDATE" ? "candidate" : "discovered",
+          score: Number(listing.score || listing.rank || 0),
+          evidence,
+          discovered_at: scanStartedAt,
+          updated_at: scanStartedAt
+        };
+        const { error: incomeError } = await db.from("midad_income_discoveries")
+          .upsert(incomeRow, { onConflict: "source_slug,external_id" });
+        if (incomeError) { counters.errors++; continue; }
+
+        if (ownerProfile?.id) {
+          const fingerprint = "superteam_agent:" + externalId;
+          const { data: existingOpportunity } = await db.from("opportunities")
+            .select("id,status,metadata").eq("fingerprint", fingerprint).maybeSingle();
+          const preserved = existingOpportunity && ["submitted_waiting", "technical_blocked", "settled", "paid"].includes(String(existingOpportunity.status));
+          const opportunityStatus = preserved ? existingOpportunity.status :
+            (payoutGate === "CRYPTO_NO_KYC_CANDIDATE" ? "money_candidate" : "human_review");
+          const score = Math.max(0, Math.min(100,
+            Number(listing.score || 0) || (numericUsd ? Math.min(90, 35 + Math.log10(Math.max(1, numericUsd)) * 20) : 35)
+          ));
+          const offer = {
+            reward_usd: numericUsd,
+            raw_reward_amount: amount > 0 ? amount : null,
+            payment_asset: asset || null,
+            sponsor: sponsorName || null,
+            external_id: externalId,
+            deadline: listing.deadline || listing.deadlineAt || listing.deadline_at || null,
+            action_url: url,
+            agent_access: access
+          };
+          const payload = {
+            user_id: ownerProfile.id,
+            source: "superteam_agent_api",
+            title,
+            description,
+            score,
+            status: opportunityStatus,
+            evidence,
+            offer,
+            opportunity_type: "paid_work",
+            confidence: payoutGate === "CRYPTO_NO_KYC_CANDIDATE" ? 0.65 : 0.5,
+            expected_value: numericUsd || 0,
+            fingerprint,
+            metadata: {
+              origin: "midad_account_factory",
+              platform: "superteam_fun",
+              agent_id: account.platform_account_ref,
+              agent_access: access,
+              payout_gate: payoutGate,
+              payout_gate_reason: payoutGateReason,
+              requires_human_claim_before_payout: true,
+              external_submission: false,
+              no_kyc_verified: payoutGate === "CRYPTO_NO_KYC_CANDIDATE",
+              last_verified_at: scanStartedAt
+            },
+            updated_at: scanStartedAt
+          };
+          if (existingOpportunity) {
+            const { error: oppError } = await db.from("opportunities").update(payload).eq("id", existingOpportunity.id);
+            if (oppError) counters.errors++;
+          } else {
+            const { error: oppError } = await db.from("opportunities").insert(payload);
+            if (oppError) counters.errors++;
+          }
+        }
+
+        counters.saved++;
+        if (payoutGate === "CRYPTO_NO_KYC_CANDIDATE") counters.crypto_candidates++;
+        else if (payoutGate === "BLOCKED_KYC") counters.kyc_blocked++;
+        else counters.policy_review++;
+        if (summary.length < 20) summary.push({
+          external_id: externalId, title, url, sponsor: sponsorName || null,
+          listing_type: type, agent_access: access, amount: amount > 0 ? amount : null,
+          asset: asset || null, payout_gate: payoutGate, payout_gate_reason: payoutGateReason
+        });
+      }
+
+      const completedAt = new Date().toISOString();
+      await db.from("midad_account_factory_runs").update({
+        state: "COMPLETED",
+        output_payload: { ...counters, listings: summary, api_key_vaulted: true, raw_api_key_returned: false },
+        blockers: counters.policy_review ? [{ code: "LISTING_PAYOUT_POLICY_REVIEW", count: counters.policy_review, detail: "Listing payout/KYC/region eligibility needs official per-listing verification." }] : [],
+        next_action: counters.crypto_candidates ? "verify_candidate_listing_details_before_submission" : "scan_other_verified_crypto_income_lanes",
+        completed_at: completedAt,
+        updated_at: completedAt
+      }).eq("id", run.id);
+      await writeEvent({
+        account_id: account.id, run_id: run.id, platform_key: platformKey,
+        actor_key: "midad_platform_scout", event_type: "agent_eligible_listings_discovered",
+        from_state: "RUNNING", to_state: "COMPLETED",
+        evidence: [{ url: listingUrl, official: true }, { url: "https://superteam.fun/earn/agents", official: true }],
+        details: { ...counters, crypto_candidates: counters.crypto_candidates, submissions_sent: 0, wallet_signatures: 0 }
+      });
+      return json({
+        ok: true, status: "COMPLETED", run_id: run.id,
+        discovery: counters, listings: summary,
+        submissions_sent: 0, wallet_signatures: 0, payouts_claimed: 0,
+        next_action: counters.crypto_candidates ? "verify_candidate_listing_details_before_submission" : "scan_other_verified_crypto_income_lanes"
       });
     }
 
