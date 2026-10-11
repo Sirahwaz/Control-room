@@ -80,13 +80,13 @@ try {
     requests += 1;
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/token-profiles/latest/v1")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ chainId: "solana", tokenAddress: "mock-token-address", symbol: "MOCK", name: "Mock Momentum" }]) });
+      await route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify([{ chainId: "solana", tokenAddress: "mock-token-address", symbol: "MOCK", name: "Mock Momentum" }]) });
     } else if (url.pathname.endsWith("/token-boosts/latest/v1")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      await route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: "[]" });
     } else if (url.pathname.includes("/tokens/v1/")) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([pair()]) });
+      await route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify([pair()]) });
     } else {
-      await route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+      await route.fulfill({ status: 404, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: "{}" });
     }
   });
 
