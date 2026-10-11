@@ -93,6 +93,7 @@ try {
 
   // Reprice the same token below stop-loss. Only a fresh mocked quote may close it.
   phase = 1;
+  await page.locator('[data-view="radar"]').click();
   await page.locator("#scan-btn").click();
   await waitFor(page, () => document.querySelector("#stat-open")?.textContent === "0", "stop-loss did not auto-close the paper position on a fresh falling quote");
   await page.locator('[data-view="journal"]').click();
