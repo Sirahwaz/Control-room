@@ -49,13 +49,13 @@ jobs:
           else
             product="midad-mobile"
             changed="$(git diff --name-only "${{ github.sha }}^" "${{ github.sha }}" || true)"
-            if echo "$changed" | grep -qE '^mobile/factory/products/midad-meme-trader\\.json$|^mobile/web/meme-trader/'; then
+            if printf '%s\\n' "$changed" | grep -Fxq 'mobile/factory/products/midad-meme-trader.json' || printf '%s\\n' "$changed" | grep -Eq '^mobile/web/meme-trader/'; then
               product="midad-meme-trader"
-            elif echo "$changed" | grep -qE '^mobile/factory/products/signalscan-ai\\.json$|^mobile/web/signalscan/'; then
+            elif printf '%s\\n' "$changed" | grep -Fxq 'mobile/factory/products/signalscan-ai.json' || printf '%s\\n' "$changed" | grep -Eq '^mobile/web/signalscan/'; then
               product="signalscan-ai"
             fi
           fi
-          node mobile/factory/render.mjs "$product" > product.json
+          node mobile/factory/render.mjsnode mobile/factory/render.mjs "$product" > product.json
           jq -e '.features.server_side_secrets_only == true' mobile/factory/runtime-product.json >/dev/null
           jq -e '.product_key == $p' --arg p "$product" mobile/factory/runtime-product.json >/dev/null
           {
