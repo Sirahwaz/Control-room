@@ -161,7 +161,7 @@ async function scan(withAI){
  try{
   const j=await request("scan",withAI?{ai_review:true}:{});
   S.lastScan=j;note("اكتمل الفحص: "+n(j.summary&&j.summary.assets_scored,0)+" أصل محلل، "+n(j.summary&&j.summary.signals_upserted,0)+" إشارة جديدة، "+n(j.summary&&j.summary.paper_trades_opened,0)+" صفقة محاكاة جديدة. لا توجد أوامر حقيقية.","green");
-  await loadOverview(true);
+  S.busy=false;await loadOverview(true);
  }catch(e){note("فشل الفحص: "+e.message,"red");setChip("apiChip","SCAN FAILED","bad")}
  finally{S.busy=false;$("#scanBtn").disabled=false;$("#aiBtn").disabled=false}
 }
