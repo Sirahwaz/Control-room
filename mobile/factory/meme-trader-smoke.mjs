@@ -18,11 +18,22 @@ const mime = {
 let phase = 0;
 let requests = 0;
 let pageErrors = [];
+let consoleErrors = [];
+let failedRequests = [];
 let browser;
 const fail = (message) => { throw new Error("MEME_TRADER_SMOKE_FAIL: " + message); };
 const waitFor = async (page, fn, message) => {
   try { await page.waitForFunction(fn, null, { timeout: 8000 }); }
-  catch (_) { fail(message); }
+  catch (_) {
+    const details = await page.evaluate(() => ({
+      feedState: document.querySelector("#feed-state")?.textContent,
+      marketStatus: document.querySelector("#market-status")?.innerText,
+      stats: document.querySelector("#stat-assets")?.textContent,
+      tokenList: document.querySelector("#token-list")?.innerText?.slice(0, 500)
+    })).catch(() => ({}));
+    fail(message + " | page=" + JSON.stringify(details) + " | pageErrors=" + JSON.stringify(pageErrors) +
+      " | consoleErrors=" + JSON.stringify(consoleErrors) + " | failedRequests=" + JSON.stringify(failedRequests));
+  }
 };
 const pair = () => ({
   chainId: "solana",
@@ -63,6 +74,8 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (msg) => { if (msg.type() === "error") consoleErrors.push(msg.text()); });
+  page.on("requestfailed", (request) => failedRequests.push(request.url() + " :: " + (request.failure()?.errorText || "failed")));
   await page.route("https://api.dexscreener.com/**", async (route) => {
     requests += 1;
     const url = new URL(route.request().url());
