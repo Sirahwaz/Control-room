@@ -48,8 +48,10 @@ jobs:
             product="${{ github.event.inputs.product }}"
           else
             product="midad-mobile"
-            changed="$(git diff-tree --no-commit-id --name-only -r "${{ github.sha }}" || true)"
-            if echo "$changed" | grep -qE '^mobile/factory/products/signalscan-ai\\.json$|^mobile/web/signalscan/'; then
+            changed="$(git diff --name-only "${{ github.sha }}^" "${{ github.sha }}" || true)"
+            if echo "$changed" | grep -qE '^mobile/factory/products/midad-meme-trader\\.json$|^mobile/web/meme-trader/'; then
+              product="midad-meme-trader"
+            elif echo "$changed" | grep -qE '^mobile/factory/products/signalscan-ai\\.json$|^mobile/web/signalscan/'; then
               product="signalscan-ai"
             fi
           fi
@@ -130,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in mobile/web/signalscan/signalscan.js mobile/web/omni-agent.js; do
+          for f in mobile/web/signalscan/signalscan.js mobile/web/meme-trader/meme-trader.js mobile/web/omni-agent.js; do
             [ -f "$f" ] && node --check "$f"
           done
       - name: Build unsigned release APK

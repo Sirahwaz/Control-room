@@ -22,7 +22,7 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const files = ['midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.js','iaitrader.js','midad-cockpit.js'];
+          const files = ['midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.js','iaitrader.js','midad-cockpit.js','mobile/web/meme-trader/meme-trader.js'];
           const memeHtml=fs.readFileSync('meme-scout.html','utf8');
           for(const m of memeHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) if(m[1].trim()) new Function(m[1]);
           for (const f of files) {
@@ -72,4 +72,30 @@ jobs:
           if(manifest.features?.live_financial_execution!==false) throw new Error('Live financial execution gate weakened');
           if(!html.includes('midad_iaitrader_station')) throw new Error('Canonical iAiTrader API binding missing');
           console.log('MIDAD_CRITICAL_GATES_OK');
+          NODE
+
+      - name: Verify standalone Meme Trader Android product
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const fail=m=>{throw new Error(m)};
+          const manifest=JSON.parse(fs.readFileSync('mobile/factory/products/midad-meme-trader.json','utf8'));
+          const html=fs.readFileSync('mobile/web/meme-trader/index.html','utf8');
+          const css=fs.readFileSync('mobile/web/meme-trader/meme-trader.css','utf8');
+          const js=fs.readFileSync('mobile/web/meme-trader/meme-trader.js','utf8');
+          if(manifest.product_key!=='midad-meme-trader') fail('Meme Trader factory key mismatch');
+          if(manifest.app_id!=='ai.midad.meme.trader') fail('Meme Trader must have its own Android application ID');
+          if(manifest.web_entry!=='mobile/web/meme-trader/index.html') fail('Meme Trader web entry is not standalone');
+          if(manifest.features?.server_side_secrets_only!==true) fail('Meme Trader server-side secret boundary missing');
+          if(manifest.features?.live_financial_execution!==false || manifest.features?.wallet_signing!==false) fail('Live trading safety gate weakened');
+          if(manifest.features?.paper_trading!==true) fail('Paper trading feature missing');
+          if(!html.includes('lang="ar" dir="rtl"')) fail('Arabic RTL UI missing');
+          if(!html.includes('No Control Room session required')) fail('Standalone app independence contract missing');
+          if(!html.includes('trade-dialog') || !html.includes('view-portfolio')) fail('Trading and portfolio surfaces missing');
+          if(!js.includes('/token-profiles/latest/v1') || !js.includes('/tokens/v1/')) fail('Public DEX market-data integration missing');
+          if(!js.includes('BUY_PAPER') || !js.includes('SELL_PAPER')) fail('Local paper-trade ledger missing');
+          if(/control_session_token|midad-control-v2|meme-scout\.html/.test(html+js)) fail('Standalone app depends on the Control Room module/session');
+          if(!css.includes('.token-card') || !css.includes('@media(max-width:760px)')) fail('Mobile responsive styles missing');
+          if(/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(html+css+js)) fail('Private key material found in app assets');
+          console.log('MIDAD_MEME_TRADER_STANDALONE_CONTRACT_OK');
           NODE

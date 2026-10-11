@@ -1,0 +1,94 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-meme-trader",
+  "display_name": "MIDAD Meme Trader",
+  "version": "0.1.0",
+  "app_id": "ai.midad.meme.trader",
+  "artifact_name": "MIDAD-Meme-Trader-v0.1.0",
+  "web_entry": "mobile/web/meme-trader/index.html",
+  "product_mode": "meme-coin-trader",
+  "release_channel": "internal",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": false,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "wallet_signing": false,
+    "paper_trading": true,
+    "direct_public_market_data": true,
+    "risk_classification": true,
+    "local_trade_journal": true,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true
+  },
+  "surfaces": [
+    "standalone-market-radar",
+    "supported-chain-filter",
+    "risk-classification",
+    "watchlist",
+    "paper-trading",
+    "portfolio",
+    "trade-journal",
+    "risk-settings"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "europe_uk",
+    "arab_gcc",
+    "arab_levant",
+    "east_southeast_asia",
+    "south_asia",
+    "north_america"
+  ],
+  "monetization_models": [
+    "subscription",
+    "one_time",
+    "b2b_license",
+    "white_label"
+  ],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "standalone-meme-market-radar-paper-trader",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": ["ar", "en", "fa"],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": ["global", "product"],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "public-market-data-plus-local-paper-ledger",
+      "offline_first": true,
+      "sync_strategy": "local_storage_then_reconcile"
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "learning_report"
+      ]
+    }
+  },
+  "web_assets": [
+    "mobile/web/meme-trader/meme-trader.css",
+    "mobile/web/meme-trader/meme-trader.js"
+  ]
+}
