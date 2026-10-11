@@ -8,7 +8,7 @@ import path from "node:path";
 import http from "node:http";
 import { chromium } from "playwright";
 
-const root = path.resolve(process.cwd(), "mobile/web/meme-trader");
+const root = path.resolve(process.cwd(), "mobile/www");
 const mime = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
