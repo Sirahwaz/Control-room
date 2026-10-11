@@ -30,7 +30,7 @@
   const chainLabel = (v) => ({ solana: 'Solana', base: 'Base', ethereum: 'Ethereum', bsc: 'BNB Chain', arbitrum: 'Arbitrum' })[v] || String(v || 'Unknown');
   const riskLabels = { MOMENTUM_WATCH: 'زخم محتمل', OBSERVE: 'مراقبة', EXHAUSTION_RISK: 'اندفاع مفرط', DUMP_RISK: 'خطر هبوط', LIQUIDITY_RISK: 'خطر سيولة' };
 
-  const defaultSettings = { capital: 10000, orderSize: 25, minLiquidity: 10000, stopLoss: 15, takeProfit: 30 };
+  const defaultSettings = { capital: 10000, orderSize: 25, minLiquidity: 10000, stopLoss: 15, takeProfit: 30, slippagePct: 0.5, feePct: 0.3 };
   function loadJson(key, fallback) {
     try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fallback : v; }
     catch (_) { return fallback; }
@@ -177,10 +177,17 @@
       if (!state.tokens.length) throw new Error('Market feed returned no matching priced tokens on supported chains.');
       state.tokens.forEach((p) => { p._score = classify(p); });
       state.lastScan = Date.now();
+      const triggeredExits = [];
       ledger.positions.forEach((pos) => {
         const match = unique.get(tokenKey(pos.chainId, pos.tokenAddress));
-        if (match) { pos.lastPrice = num(match.priceUsd); pos.lastSeen = Date.now(); }
+        if (!match) return; // Never trigger an automatic paper exit from stale prices.
+        pos.lastPrice = num(match.priceUsd);
+        pos.lastSeen = Date.now();
+        const movePct = num(pos.entryPrice) > 0 ? (pos.lastPrice / num(pos.entryPrice) - 1) * 100 : 0;
+        if (movePct <= -Math.abs(num(pos.stopLoss))) triggeredExits.push({ id: pos.id, reason: 'STOP_LOSS' });
+        else if (movePct >= Math.abs(num(pos.takeProfit))) triggeredExits.push({ id: pos.id, reason: 'TAKE_PROFIT' });
       });
+      triggeredExits.forEach((exit) => sellPaper(exit.id, exit.reason, true));
       persistLedger();
       $('feed-state').textContent = 'بيانات السوق متاحة';
       $('last-scan').textContent = 'آخر مسح: ' + new Date(state.lastScan).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -189,7 +196,7 @@
       updateSummary();
       renderPortfolio();
       renderWatchlist();
-      toast('اكتمل المسح: ' + state.tokens.length + ' أصلًا مسعّرًا.');
+      toast('اكتمل المسح: ' + state.tokens.length + ' أصلًا مسعّرًا.' + (triggeredExits.length ? ' إغلاق ورقي آلي: ' + triggeredExits.length + ' وفق حدود المخاطرة.' : ''));
     } catch (err) {
       const message = err && err.name === 'AbortError' ? 'انتهت مهلة الاتصال بمصدر السوق. حاول مرة أخرى.' : (err && err.message) || 'تعذر جلب البيانات.';
       $('feed-state').textContent = 'تعذر تحديث المصدر';
@@ -293,34 +300,47 @@
     if (amount > Number(settings.orderSize) * 3) { toast('تجاوزت 3 أضعاف حجم الصفقة المحدد. غيّر الإعدادات أولًا.'); return; }
     const key = tokenKey(p.chainId, p._tokenAddress);
     if (ledger.positions.some((pos) => tokenKey(pos.chainId, pos.tokenAddress) === key)) { toast('لديك مركز ورقي مفتوح لهذا الأصل بالفعل.'); return; }
-    const qty = amount / price;
+    const slippagePct = Math.max(0, Math.min(10, num(settings.slippagePct)));
+    const feePct = Math.max(0, Math.min(5, num(settings.feePct)));
+    const executionPrice = price * (1 + slippagePct / 100);
+    const qty = (amount / (1 + feePct / 100)) / executionPrice;
     ledger.cash = Math.max(0, num(ledger.cash) - amount);
-    ledger.positions.push({ id: String(Date.now()), chainId: p.chainId, tokenAddress: p._tokenAddress, symbol: p._tokenSymbol, name: p._tokenName, amountUsd: amount, qty, entryPrice: price, lastPrice: price, lastSeen: Date.now(), openedAt: Date.now(), pairUrl: dexsUrl(p), stopLoss: Number(settings.stopLoss), takeProfit: Number(settings.takeProfit) });
+    ledger.positions.push({ id: String(Date.now()), chainId: p.chainId, tokenAddress: p._tokenAddress, symbol: p._tokenSymbol, name: p._tokenName, amountUsd: amount, qty, entryPrice: executionPrice, marketEntryPrice: price, lastPrice: price, lastSeen: Date.now(), openedAt: Date.now(), pairUrl: dexsUrl(p), stopLoss: Number(settings.stopLoss), takeProfit: Number(settings.takeProfit), slippagePct, feePct });
     addJournal('BUY_PAPER', p, amount, price, 0);
     persistLedger();
     $('trade-dialog').close();
     renderPortfolio(); renderJournal(); updateSummary();
     toast('تم فتح صفقة ورقية بقيمة ' + money(amount) + ' — لم يتم إرسال أي أمر حقيقي.');
   }
-  function sellPaper(id) {
+  function netExitValue(pos, marketPrice) {
+    const slippagePct = Math.max(0, Math.min(10, num(pos.slippagePct)));
+    const feePct = Math.max(0, Math.min(5, num(pos.feePct)));
+    return num(pos.qty) * num(marketPrice) * (1 - slippagePct / 100) * (1 - feePct / 100);
+  }
+  function sellPaper(id, exitReason, silent) {
     const idx = ledger.positions.findIndex((p) => p.id === id);
     if (idx < 0) return;
     const pos = ledger.positions[idx];
     const price = num(pos.lastPrice || pos.entryPrice);
-    if (!(price > 0)) { toast('السعر الحالي غير متاح. حدّث السوق قبل الإغلاق.'); return; }
-    const proceeds = num(pos.qty) * price;
+    if (!(price > 0)) { if (!silent) toast('السعر الحالي غير متاح. حدّث السوق قبل الإغلاق.'); return; }
+    const slippagePct = Math.max(0, Math.min(10, num(pos.slippagePct)));
+    const exitExecutionPrice = price * (1 - slippagePct / 100);
+    const proceeds = netExitValue(pos, price);
     const pnl = proceeds - num(pos.amountUsd);
     ledger.cash = num(ledger.cash) + proceeds;
     ledger.realized = num(ledger.realized) + pnl;
-    addJournal('SELL_PAPER', pos, proceeds, price, pnl);
+    const journalType = exitReason === 'STOP_LOSS' ? 'SELL_PAPER_STOP' : exitReason === 'TAKE_PROFIT' ? 'SELL_PAPER_TAKE' : 'SELL_PAPER';
+    addJournal(journalType, pos, proceeds, exitExecutionPrice, pnl);
     ledger.positions.splice(idx, 1);
     persistLedger();
-    renderPortfolio(); renderJournal(); updateSummary();
-    toast('أُغلق المركز الورقي. النتيجة المسجلة: ' + money(pnl) + '.');
+    if (!silent) {
+      renderPortfolio(); renderJournal(); updateSummary();
+      toast('أُغلق المركز الورقي. النتيجة بعد الرسوم والانزلاق: ' + money(pnl) + '.');
+    }
   }
   function portfolioMetrics() {
     let market = 0, unrealized = 0;
-    ledger.positions.forEach((p) => { const value = num(p.qty) * num(p.lastPrice || p.entryPrice); market += value; unrealized += value - num(p.amountUsd); });
+    ledger.positions.forEach((p) => { const value = netExitValue(p, p.lastPrice || p.entryPrice); market += value; unrealized += value - num(p.amountUsd); });
     return { market, unrealized, equity: num(ledger.cash) + market, realized: num(ledger.realized) };
   }
   function updateSummary() {
@@ -340,8 +360,9 @@
     const host = $('open-positions');
     $('portfolio-empty').classList.toggle('show', ledger.positions.length === 0);
     host.innerHTML = ledger.positions.map((p) => {
-      const current = num(p.lastPrice || p.entryPrice), value = num(p.qty) * current, pnl = value - num(p.amountUsd);
-      const auto = pnl <= -num(p.amountUsd) * num(p.stopLoss) / 100 ? ' · تجاوز وقف الخسارة الورقي' : pnl >= num(p.amountUsd) * num(p.takeProfit) / 100 ? ' · وصل حد الربح الورقي' : '';
+      const current = num(p.lastPrice || p.entryPrice), value = netExitValue(p, current), pnl = value - num(p.amountUsd);
+      const movePct = num(p.entryPrice) > 0 ? (current / num(p.entryPrice) - 1) * 100 : 0;
+      const auto = movePct <= -Math.abs(num(p.stopLoss)) ? ' · سيغلق ورقيًا عند تحديث سعر صالح' : movePct >= Math.abs(num(p.takeProfit)) ? ' · سيغلق ورقيًا عند تحديث سعر صالح' : '';
       return '<article class="position-card"><div class="position-main"><strong>' + esc(p.name || p.symbol) + ' · $' + esc(p.symbol) + '</strong><small>' + esc(chainLabel(p.chainId)) + ' · الدخول ' + esc(money(p.entryPrice)) + ' · الحالي ' + esc(money(current)) + '<br>قيمة المركز ' + esc(money(value)) + ' · الكمية ' + esc(Number(p.qty).toPrecision(6)) + esc(auto) + '</small></div><div class="position-right"><strong class="' + (pnl >= 0 ? 'positive' : 'negative') + '">' + esc(money(pnl)) + '</strong><small>' + esc(pct(num(p.entryPrice) ? ((current / num(p.entryPrice)) - 1) * 100 : 0)) + '</small><button class="btn btn-small btn-ghost" data-action="sell" data-id="' + esc(p.id) + '">إغلاق ورقي</button></div></article>';
     }).join('');
     updateSummary();
@@ -385,6 +406,8 @@
     $('setting-liquidity').value = settings.minLiquidity;
     $('setting-stop').value = settings.stopLoss;
     $('setting-take').value = settings.takeProfit;
+    $('setting-slippage').value = settings.slippagePct;
+    $('setting-fee').value = settings.feePct;
   }
   function saveSettings() {
     const next = {
@@ -392,7 +415,9 @@
       orderSize: Math.max(5, Math.min(1000, num($('setting-order').value))),
       minLiquidity: Math.max(1000, Math.min(10000000, num($('setting-liquidity').value))),
       stopLoss: Math.max(1, Math.min(80, num($('setting-stop').value))),
-      takeProfit: Math.max(5, Math.min(500, num($('setting-take').value)))
+      takeProfit: Math.max(5, Math.min(500, num($('setting-take').value))),
+      slippagePct: Math.max(0, Math.min(10, num($('setting-slippage').value))),
+      feePct: Math.max(0, Math.min(5, num($('setting-fee').value)))
     };
     settings = next;
     saveJson(SETTINGS_KEY, settings);
