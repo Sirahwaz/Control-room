@@ -306,7 +306,7 @@
     const qty = (amount / (1 + feePct / 100)) / executionPrice;
     ledger.cash = Math.max(0, num(ledger.cash) - amount);
     ledger.positions.push({ id: String(Date.now()), chainId: p.chainId, tokenAddress: p._tokenAddress, symbol: p._tokenSymbol, name: p._tokenName, amountUsd: amount, qty, entryPrice: executionPrice, marketEntryPrice: price, lastPrice: price, lastSeen: Date.now(), openedAt: Date.now(), pairUrl: dexsUrl(p), stopLoss: Number(settings.stopLoss), takeProfit: Number(settings.takeProfit), slippagePct, feePct });
-    addJournal('BUY_PAPER', p, amount, price, 0);
+    addJournal('BUY_PAPER', p, amount, executionPrice, 0);
     persistLedger();
     $('trade-dialog').close();
     renderPortfolio(); renderJournal(); updateSummary();
@@ -323,6 +323,10 @@
     const pos = ledger.positions[idx];
     const price = num(pos.lastPrice || pos.entryPrice);
     if (!(price > 0)) { if (!silent) toast('السعر الحالي غير متاح. حدّث السوق قبل الإغلاق.'); return; }
+    if (!silent && (!pos.lastSeen || Date.now() - num(pos.lastSeen) > 90000)) {
+      toast('السعر المخزّن قديم. حدّث السوق أولًا حتى لا تُسجَّل نتيجة ورقية على سعر قديم.');
+      return;
+    }
     const slippagePct = Math.max(0, Math.min(10, num(pos.slippagePct)));
     const exitExecutionPrice = price * (1 - slippagePct / 100);
     const proceeds = netExitValue(pos, price);
