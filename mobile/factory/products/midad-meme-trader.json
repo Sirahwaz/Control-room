@@ -3,9 +3,9 @@
   "schema_version": 1,
   "product_key": "midad-meme-trader",
   "display_name": "MIDAD Meme Trader",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "app_id": "ai.midad.meme.trader",
-  "artifact_name": "MIDAD-Meme-Trader-v0.1.0",
+  "artifact_name": "MIDAD-Meme-Trader-v0.1.1",
   "web_entry": "mobile/web/meme-trader/index.html",
   "product_mode": "meme-coin-trader",
   "release_channel": "internal",
@@ -57,12 +57,19 @@
     "dynamic_content": true,
     "localization": {
       "default_language": "ar",
-      "supported_seed": ["ar", "en", "fa"],
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
       "expand_on_demand": true
     },
     "learning": {
       "enabled": true,
-      "scope": ["global", "product"],
+      "scope": [
+        "global",
+        "product"
+      ],
       "decision_policy": "evidence_weighted",
       "feedback_required": true
     },
