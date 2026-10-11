@@ -103,15 +103,15 @@ try {
   await buyButton.click();
   await page.locator("#confirm-paper-buy").click();
   await waitFor(page, () => document.querySelector("#stat-open")?.textContent === "1", "paper buy did not open one local simulated position");
-  await page.locator('[data-view="portfolio"]').click();
+  await page.locator('.nav-item[data-view="portfolio"]').click();
   await waitFor(page, () => document.querySelector("#open-positions")?.innerText.includes("Mock Momentum"), "paper portfolio did not render the opened position");
 
   // Reprice the same token below stop-loss. Only a fresh mocked quote may close it.
   phase = 1;
-  await page.locator('[data-view="radar"]').click();
+  await page.locator('.nav-item[data-view="radar"]').click();
   await page.locator("#scan-btn").click();
   await waitFor(page, () => document.querySelector("#stat-open")?.textContent === "0", "stop-loss did not auto-close the paper position on a fresh falling quote");
-  await page.locator('[data-view="journal"]').click();
+  await page.locator('.nav-item[data-view="journal"]').click();
   await waitFor(page, () => document.querySelector("#journal-items")?.innerText.includes("بيع ورقي"), "paper close was not written to the journal");
 
   if (requests < 6) fail("market-data route was not exercised enough times");
