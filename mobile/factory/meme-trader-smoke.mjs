@@ -92,6 +92,8 @@ try {
 
   await page.goto("http://127.0.0.1:" + port + "/index.html", { waitUntil: "domcontentloaded" });
   await waitFor(page, () => document.querySelector("#stat-assets")?.textContent === "1", "market scanner failed to render the mocked token");
+  const cssLoaded = await page.evaluate(() => Array.from(document.styleSheets).some((sheet) => (sheet.href || "").endsWith("/meme-trader.css")));
+  if (!cssLoaded) fail("bundled Meme Trader CSS did not load");
   const tokenCard = page.locator("article.token-card").first();
   if (!(await tokenCard.isVisible())) fail("token card is not visible on a 390px viewport");
   if (!(await tokenCard.innerText()).includes("MOCK")) fail("token symbol did not render");
