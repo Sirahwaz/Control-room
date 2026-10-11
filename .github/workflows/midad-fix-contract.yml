@@ -95,6 +95,7 @@ jobs:
           if(!js.includes('/token-profiles/latest/v1') || !js.includes('/tokens/v1/')) fail('Public DEX market-data integration missing');
           if(!js.includes('BUY_PAPER') || !js.includes('SELL_PAPER')) fail('Local paper-trade ledger missing');
           if(!js.includes('netExitValue') || !js.includes('slippagePct') || !js.includes('feePct')) fail('Conservative paper execution-cost model missing');
+          if(!js.includes('minimumFractionDigits: Math.min(2, digits)')) fail('USD currency formatter can crash on whole-dollar balances');
           if(!js.includes('STOP_LOSS') || !js.includes('TAKE_PROFIT') || !js.includes('Never trigger an automatic paper exit from stale prices')) fail('Fresh-price stop/take-profit guard missing');
           if(/control_session_token|midad-control-v2|meme-scout\.html/.test(html+js)) fail('Standalone app depends on the Control Room module/session');
           if(!css.includes('.token-card') || !css.includes('@media(max-width:760px)')) fail('Mobile responsive styles missing');
