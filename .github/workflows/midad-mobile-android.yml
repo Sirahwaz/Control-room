@@ -51,7 +51,7 @@ jobs:
           else
             product="midad-mobile"
             changed="$(git diff --name-only "${{ github.sha }}^" "${{ github.sha }}" || true)"
-            if echo "$changed" | grep -Fxq 'mobile/factory/products/midad-meme-trader.json' || echo "$changed" | grep -Eq '^mobile/web/meme-trader/'; then
+            if echo "$changed" | grep -Fxq 'mobile/factory/products/midad-meme-trader.json' || echo "$changed" | grep -Fxq 'mobile/factory/meme-trader-smoke.mjs' || echo "$changed" | grep -Eq '^mobile/web/meme-trader/'; then
               product="midad-meme-trader"
             elif echo "$changed" | grep -Fxq 'mobile/factory/products/signalscan-ai.json' || echo "$changed" | grep -Eq '^mobile/web/signalscan/'; then
               product="signalscan-ai"
