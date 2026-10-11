@@ -103,6 +103,18 @@ jobs:
             test -f "$asset"
             cp "$asset" mobile/www/
           done < <(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)
+      - name: Install Playwright for Meme Trader runtime smoke
+        if: steps.product.outputs.product == 'midad-meme-trader'
+        working-directory: mobile
+        run: npm install --no-save --no-audit --no-fund playwright
+      - name: Install Chromium for Meme Trader runtime smoke
+        if: steps.product.outputs.product == 'midad-meme-trader'
+        working-directory: mobile
+        run: npx playwright install --with-deps chromium
+      - name: Run bundled Meme Trader mobile smoke tests
+        if: steps.product.outputs.product == 'midad-meme-trader'
+        run: node mobile/factory/meme-trader-smoke.mjs
+
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -152,6 +164,12 @@ jobs:
           test -x "$APKSIGNER"
           "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$AAPT"
+          BADGING="$("$AAPT" dump badging "dist/${ARTIFACT_NAME}-release.apk")"
+          echo "$BADGING" | grep -F "package: name='${{ steps.product.outputs.app_id }}'" >/dev/null
+          echo "$BADGING" | grep -F "versionName='${{ steps.product.outputs.version }}'" >/dev/null
+          echo "ANDROID_PACKAGE_ID_AND_VERSION_VERIFIED"
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
@@ -165,8 +183,10 @@ jobs:
           cat > dist/build-report.json <<EOF
           {"product_key":"${{ steps.product.outputs.product }}","version":"${{ steps.product.outputs.version }}","build_status":"PASSED","factory_quality_gate":"PASSED"}
           EOF
+          RUNTIME_SMOKE="NOT_APPLICABLE"
+          if [ "${{ steps.product.outputs.product }}" = "midad-meme-trader" ]; then RUNTIME_SMOKE="PASSED"; fi
           cat > dist/test-report.json <<EOF
-          {"product_key":"${{ steps.product.outputs.product }}","static_js_syntax":"PASSED","secret_scan":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}
+          {"product_key":"${{ steps.product.outputs.product }}","static_js_syntax":"PASSED","secret_scan":"PASSED","artifact_verification":"PASSED","package_id_and_version":"PASSED","runtime_smoke":"$RUNTIME_SMOKE"}
           EOF
           cat > dist/learning-report.json <<EOF
           {"product_key":"${{ steps.product.outputs.product }}","factory_learning":"ENABLED","post_release_outcome":"PENDING"}
