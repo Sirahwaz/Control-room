@@ -15,7 +15,7 @@
   const money = (v) => {
     const n = num(v);
     const digits = Math.abs(n) >= 100 ? 0 : Math.abs(n) >= 1 ? 2 : Math.abs(n) >= 0.01 ? 4 : 8;
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: digits, minimumFractionDigits: digits > 4 ? 0 : 2 }).format(n);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: digits, minimumFractionDigits: Math.min(2, digits) }).format(n);
   };
   const compact = (v) => {
     const n = num(v);
