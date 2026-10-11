@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080d14">
+  <meta name="description" content="MIDAD Meme Trader — standalone crypto meme-coin radar, risk labels, and local paper trading.">
+  <title>MIDAD Meme Trader</title>
+  <link rel="stylesheet" href="./meme-trader.css">
+  <script defer src="./meme-trader.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">M</div>
+        <div>
+          <div class="brand-title">MIDAD <span>MEME TRADER</span></div>
+          <div class="brand-sub">NEURAL MARKET LAB · ANDROID</div>
+        </div>
+      </div>
+      <div class="header-state"><i class="pulse"></i><span id="feed-state">المصدر العام جاهز</span></div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">STANDALONE CRYPTO TERMINAL</div>
+          <h1>اكتشف الحركة.<br><em>اختبر القرار قبل المخاطرة.</em></h1>
+          <p>رادار مستقل لعملات الميم والمشروعات عالية المخاطر: بيانات سوق عامة، تصنيف إشارات، قائمة مراقبة، ومحفظة تداول ورقي محفوظة على الهاتف.</p>
+          <div class="hero-badges">
+            <span class="badge live-feed">● بيانات سوق عامة</span>
+            <span class="badge paper-badge">● PAPER MODE</span>
+            <span class="badge locked-badge">● التداول الحقيقي مغلق</span>
+          </div>
+          <div class="hero-actions">
+            <button class="btn btn-primary" id="scan-btn">⌁ امسح السوق الآن</button>
+            <button class="btn btn-ghost" data-view="portfolio">▣ محفظتي الورقية</button>
+          </div>
+        </div>
+        <div class="hero-orbit"><div class="orbit-ring"></div><div class="orbit-core">M<span>+</span></div><div class="orbit-point"></div></div>
+      </section>
+
+      <section class="stat-grid" aria-label="ملخص">
+        <article class="stat-card"><span>الأصول المرصودة</span><strong id="stat-assets">—</strong><small>من مصادر DEX العامة</small></article>
+        <article class="stat-card"><span>فرص تستحق المراقبة</span><strong id="stat-watch">—</strong><small>ليست توصية شراء</small></article>
+        <article class="stat-card"><span>القيمة الافتراضية</span><strong id="stat-equity">$10,000</strong><small>رصيد محاكاة محلي</small></article>
+        <article class="stat-card"><span>مراكز مفتوحة</span><strong id="stat-open">0</strong><small>تداول ورقي فقط</small></article>
+      </section>
+
+      <nav class="main-nav" aria-label="التنقل">
+        <button class="nav-item active" data-view="radar"><span>⌁</span> الرادار</button>
+        <button class="nav-item" data-view="portfolio"><span>▣</span> المحفظة</button>
+        <button class="nav-item" data-view="watchlist"><span>☆</span> المراقبة</button>
+        <button class="nav-item" data-view="journal"><span>≋</span> سجل التداول</button>
+        <button class="nav-item" data-view="settings"><span>⚙</span> الإعدادات</button>
+      </nav>
+
+      <section id="view-radar" class="view active">
+        <div class="section-heading">
+          <div><div class="eyebrow">MARKET INTELLIGENCE</div><h2>رادار السوق</h2><p>تصنيف استدلالي مبني على السيولة والحركة والحجم وعمر الزوج؛ العقود غير متحققة افتراضيًا.</p></div>
+          <span class="stamp" id="last-scan">لم يتم المسح بعد</span>
+        </div>
+        <div class="toolbar">
+          <label class="select-wrap"><span>الشبكة</span><select id="chain-filter"><option value="all">كل الشبكات</option><option value="solana">Solana</option><option value="base">Base</option><option value="ethereum">Ethereum</option><option value="bsc">BNB Chain</option><option value="arbitrum">Arbitrum</option></select></label>
+          <label class="select-wrap"><span>الترتيب</span><select id="sort-filter"><option value="score">درجة الرصد</option><option value="volume">حجم 24 ساعة</option><option value="change">تغير ساعة</option><option value="liquidity">السيولة</option></select></label>
+          <button class="btn btn-small btn-ghost" id="refresh-btn">↻ تحديث</button>
+        </div>
+        <div class="risk-legend">
+          <button class="filter active" data-risk="ALL">الكل</button>
+          <button class="filter" data-risk="MOMENTUM_WATCH">زخم محتمل</button>
+          <button class="filter" data-risk="OBSERVE">مراقبة</button>
+          <button class="filter" data-risk="EXHAUSTION_RISK">اندفاع مفرط</button>
+          <button class="filter" data-risk="DUMP_RISK">خطر هبوط</button>
+          <button class="filter" data-risk="LIQUIDITY_RISK">خطر سيولة</button>
+        </div>
+        <div class="source-note"><strong>حدود الدقة:</strong> المصدر DEX Screener. درجة الرصد قواعد تقديرية وليست تنبؤًا مضمونًا. لا يجري فحص honeypot أو ملكية العقد في هذا الإصدار؛ تعامل مع كل عقد على أنه غير متحقق.</div>
+        <div id="market-status" class="status-panel"><div class="loader"></div><span>اضغط «امسح السوق الآن» لجلب آخر بيانات السوق العامة.</span></div>
+        <div id="token-list" class="token-grid"></div>
+      </section>
+
+      <section id="view-portfolio" class="view">
+        <div class="section-heading"><div><div class="eyebrow">PAPER EXECUTION</div><h2>المحفظة الورقية</h2><p>محاكاة محلية فقط؛ لا يتم إرسال أوامر إلى بلوكتشين أو منصة تداول.</p></div><span class="stamp paper-badge">PAPER ONLY</span></div>
+        <div class="portfolio-grid">
+          <article class="portfolio-card"><span>الرصيد النقدي</span><strong id="portfolio-cash">$10,000</strong></article>
+          <article class="portfolio-card"><span>قيمة المراكز</span><strong id="portfolio-market">$0</strong></article>
+          <article class="portfolio-card"><span>ربح/خسارة غير محققة</span><strong id="portfolio-unrealized">$0</strong></article>
+          <article class="portfolio-card"><span>ربح/خسارة محققة</span><strong id="portfolio-realized">$0</strong></article>
+        </div>
+        <div id="open-positions" class="list-stack"></div>
+        <div id="portfolio-empty" class="empty-state">لا توجد مراكز مفتوحة. اختر أصلًا من الرادار لبدء تجربة ورقية صغيرة.</div>
+      </section>
+
+      <section id="view-watchlist" class="view">
+        <div class="section-heading"><div><div class="eyebrow">LOCAL WATCHLIST</div><h2>قائمة المراقبة</h2><p>تُحفظ على هذا الهاتف فقط.</p></div></div>
+        <div id="watchlist-items" class="list-stack"></div>
+        <div id="watchlist-empty" class="empty-state">لم تضف أصولًا بعد. استخدم ☆ على بطاقة أي عملة.</div>
+      </section>
+
+      <section id="view-journal" class="view">
+        <div class="section-heading"><div><div class="eyebrow">TRADE JOURNAL</div><h2>سجل التداول</h2><p>قرارات الشراء والبيع الورقية والنتائج المسجلة محليًا.</p></div><button class="btn btn-small btn-ghost" id="export-journal">تصدير CSV</button></div>
+        <div id="journal-items" class="list-stack"></div>
+        <div id="journal-empty" class="empty-state">سيظهر سجل العمليات بعد فتح أو إغلاق صفقة ورقية.</div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <div class="section-heading"><div><div class="eyebrow">RISK CONTROLS</div><h2>إعدادات المحاكاة</h2><p>تغيّر هذه الإعدادات التداول الورقي فقط.</p></div></div>
+        <div class="settings-grid">
+          <label class="setting-card"><span>رأس المال الافتراضي ($)</span><input id="setting-capital" type="number" min="100" max="10000000" step="100" value="10000"><small>يُستخدم عند إعادة ضبط المحاكاة فقط.</small></label>
+          <label class="setting-card"><span>حجم الصفقة الورقية ($)</span><input id="setting-order" type="number" min="5" max="1000" step="5" value="25"><small>لن يتجاوز الرصيد النقدي المتاح.</small></label>
+          <label class="setting-card"><span>الحد الأدنى للسيولة ($)</span><input id="setting-liquidity" type="number" min="1000" max="10000000" step="1000" value="10000"><small>قيد محاكاة لتقليل مخاطر الأزواج شديدة الضعف.</small></label>
+          <label class="setting-card"><span>وقف الخسارة الورقي (%)</span><input id="setting-stop" type="number" min="1" max="80" step="1" value="15"><small>تنبيه/إجراء داخل التطبيق؛ لا ينفذ أمرًا حقيقيًا.</small></label>
+          <label class="setting-card"><span>جني الربح الورقي (%)</span><input id="setting-take" type="number" min="5" max="500" step="5" value="30"><small>تنبيه/إجراء داخل التطبيق؛ لا ينفذ أمرًا حقيقيًا.</small></label>
+        </div>
+        <div class="settings-actions"><button class="btn btn-primary" id="save-settings">حفظ الإعدادات</button><button class="btn btn-danger" id="reset-paper">إعادة ضبط المحاكاة</button></div>
+        <div class="source-note warning-note"><strong>تنبيه مالي:</strong> هذه أصول شديدة التقلب وقد تفقد كامل قيمتها. لا يوجد اتصال بمحفظة ولا توقيع معاملات ولا تداول حقيقي في الإصدار 0.1.0. لا تضع مفتاحًا خاصًا أو عبارة استرداد داخل التطبيق.</div>
+      </section>
+
+      <footer class="app-footer">
+        <div><strong>MIDAD Meme Trader v0.1.0</strong><span>Independent Android app · No Control Room session required</span></div>
+        <a href="https://docs.dexscreener.com/api/reference" target="_blank" rel="noreferrer">توثيق مصدر البيانات ↗</a>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="trade-dialog" class="trade-dialog">
+    <form method="dialog" class="dialog-card" id="trade-form">
+      <button type="button" class="dialog-close" id="close-trade" aria-label="إغلاق">×</button>
+      <div class="eyebrow">SIMULATED ORDER</div>
+      <h2 id="trade-token-name">صفقة ورقية</h2>
+      <p id="trade-token-meta" class="muted"></p>
+      <div class="quote-grid"><div><span>السعر الحالي</span><strong id="trade-price">—</strong></div><div><span>السيولة</span><strong id="trade-liquidity">—</strong></div></div>
+      <label class="form-label">قيمة الصفقة بالدولار<input id="trade-amount" type="number" min="5" step="5" value="25" required></label>
+      <div class="source-note">تقدير المحاكاة لا يمثل تنفيذًا فعليًا؛ قد تختلف الأسعار والانزلاقات عن بيانات السوق.</div>
+      <button type="submit" class="btn btn-primary full-width" id="confirm-paper-buy">تأكيد شراء ورقي فقط</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
