@@ -24,7 +24,7 @@ jobs:
           const fs = require('fs');
           const files = ['midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.js','iaitrader.js','midad-cockpit.js'];
           const memeHtml=fs.readFileSync('meme-scout.html','utf8');
-          for(const m of memeHtml.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)) if(m[1].trim()) new Function(m[1]);
+          for(const m of memeHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) if(m[1].trim()) new Function(m[1]);
           for (const f of files) {
             if (!fs.existsSync(f)) throw new Error('Missing JS file: '+f);
             new Function(fs.readFileSync(f,'utf8'));
