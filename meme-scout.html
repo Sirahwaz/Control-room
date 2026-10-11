@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b12">
+<meta name="description" content="MIDAD Meme Scout — evidence-led meme-coin momentum and dump-risk intelligence. Paper trading only.">
+<title>MIDAD Meme Scout — Neural Market Radar</title>
+<script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+<style>
+:root{color-scheme:dark;--bg:#070b12;--panel:#0e1521;--panel2:#111c2b;--line:#253548;--text:#edf5ff;--muted:#94a6bd;--cyan:#6de6ee;--violet:#b2a0ff;--green:#6ce5b2;--amber:#ffd27b;--red:#ff8193;--shadow:0 18px 45px #0005}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(850px 440px at 85% -15%,#54478a36,transparent 70%),radial-gradient(700px 480px at 0% 20%,#156b7540,transparent 70%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}button,a,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}.wrap{max-width:1180px;margin:auto;padding:12px 14px 36px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:20;padding:8px 0 13px;background:linear-gradient(var(--bg) 75%,transparent)}.brand{display:flex;gap:10px;align-items:center}.logo{width:44px;height:44px;border:1px solid #3c6177;border-radius:15px;display:grid;place-items:center;font-size:22px;font-weight:900;color:var(--cyan);background:linear-gradient(145deg,#182b3d,#0a1019);box-shadow:0 0 30px #5ce4eb16}.brand h1{font-size:15px;letter-spacing:.12em;margin:0}.brand p{margin:4px 0 0;color:var(--muted);font-size:11px}.top-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.chip{border:1px solid var(--line);background:#101926;border-radius:999px;padding:7px 10px;font-size:11px;color:var(--muted);white-space:nowrap}.chip.good{color:var(--green);border-color:#285847}.chip.warn{color:var(--amber);border-color:#5f4b2b}.chip.bad{color:var(--red);border-color:#65313b}.btn{border:1px solid var(--line);border-radius:12px;background:#111c2b;color:var(--text);padding:10px 13px;font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn.primary{background:linear-gradient(135deg,#b2a0ff,#62dfe8);border:0;color:#09111a}.btn:disabled{opacity:.55;cursor:wait}.hero{border:1px solid #344459;background:linear-gradient(120deg,#151a2aee,#0d1b28ee);border-radius:24px;padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:240px;height:240px;border-radius:50%;border:1px solid #6de6ee2a;box-shadow:0 0 0 28px #6de6ee0d,0 0 0 56px #6de6ee08;left:-88px;top:-112px;pointer-events:none}.eyebrow{font-size:10px;letter-spacing:.17em;color:var(--cyan);font-weight:800}.hero h2{font-size:clamp(25px,4vw,38px);line-height:1.25;margin:12px 0 9px;max-width:780px}.hero p{line-height:1.9;color:#b5c4d7;font-size:13px;max-width:780px;margin:0}.hero-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0}.stat,.panel{border:1px solid var(--line);background:linear-gradient(155deg,#111b29,#0c131e);border-radius:18px;padding:15px;min-width:0}.stat span{display:block;color:var(--muted);font-size:11px}.stat b{display:block;font-size:clamp(19px,3vw,26px);margin-top:9px;overflow-wrap:anywhere}.stat small{display:block;color:var(--muted);margin-top:5px;font-size:10px}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:12px}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.panel h3{font-size:16px;margin:0 0 6px}.sub{font-size:11px;line-height:1.7;color:var(--muted);margin:0}.filters{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.filter{border:1px solid var(--line);border-radius:999px;background:#0a111b;color:var(--muted);padding:7px 11px;font-size:11px}.filter.active{background:#26354b;color:var(--text);border-color:#7384a4}.cards{display:grid;gap:9px}.asset{border:1px solid #26374b;border-radius:15px;padding:13px;background:linear-gradient(130deg,#111b28,#0b111a);min-width:0}.asset-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.token{display:flex;align-items:center;gap:9px;min-width:0}.coinmark{width:37px;height:37px;display:grid;place-items:center;border-radius:12px;background:#1c2b3e;border:1px solid #34485f;font-weight:900;color:var(--cyan);flex-shrink:0}.token h4{font-size:14px;margin:0;overflow-wrap:anywhere}.token small{display:block;font-size:10px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}.badge{font-size:10px;border:1px solid var(--line);padding:5px 8px;border-radius:999px;color:var(--muted);white-space:nowrap}.badge.MOMENTUM_WATCH{color:var(--green);border-color:#2a654c}.badge.DUMP_RISK,.badge.EXHAUSTION_RISK,.badge.LIQUIDITY_RISK{color:var(--red);border-color:#69323c}.badge.OBSERVE{color:var(--amber)}.metricgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:12px}.metric{padding:8px;border-radius:10px;background:#090f18;border:1px solid #202c3b;min-width:0}.metric span{display:block;font-size:9px;color:var(--muted)}.metric b{display:block;font-size:12px;margin-top:5px;overflow-wrap:anywhere}.pos{color:var(--green)!important}.neg{color:var(--red)!important}.neutral{color:var(--amber)!important}.asset-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.scores{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.score{font-size:10px;color:var(--muted)}.score b{color:var(--text);font-size:12px}.asset-links{display:flex;gap:8px;flex-wrap:wrap}.link{color:var(--cyan);font-size:11px;text-decoration:underline;text-underline-offset:3px}.reason{margin:10px 0 0;color:#aebdd0;font-size:11px;line-height:1.8;overflow-wrap:anywhere}.notice{border:1px solid #55482b;background:#1e1910;border-radius:13px;padding:11px;color:#eed4a1;font-size:11px;line-height:1.8;margin-top:10px}.notice.red{border-color:#61313b;background:#1f1117;color:#ffb1bd}.notice.green{border-color:#285747;background:#0d1e18;color:#a7f0d0}.empty{padding:30px 15px;text-align:center;border:1px dashed #314155;border-radius:14px;color:var(--muted);font-size:12px;line-height:1.9}.tablewrap{overflow:auto}.trade{border:1px solid #243244;border-radius:13px;padding:11px;margin-top:8px;background:#0a111b}.trade-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px}.trade small{color:var(--muted);display:block;font-size:10px;margin-top:6px;line-height:1.7}.section{margin-top:12px}.foot{color:var(--muted);font-size:10px;line-height:1.9;text-align:center;padding:18px 8px 4px}.loading{display:inline-block;width:13px;height:13px;border:2px solid #b1dce1;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.dot{width:6px;height:6px;border-radius:50%;display:inline-block;background:currentColor;margin-inline-end:5px}.modal{position:fixed;inset:0;background:#02050bdc;display:grid;place-items:center;padding:20px;z-index:100}.modal-card{max-width:540px;width:100%;border:1px solid #304257;border-radius:20px;background:#0e1724;padding:22px}.modal-card h3{margin-top:0}.modal-card p{line-height:1.9;color:#b3c1d3;font-size:13px}.hide{display:none!important}
+@media(max-width:760px){.wrap{padding:8px 10px 25px}.top{align-items:flex-start}.top-actions{gap:4px}.chip{padding:6px 8px;font-size:9px}.brand h1{font-size:12px}.brand p{font-size:9px}.logo{width:38px;height:38px}.hero{padding:17px;border-radius:19px}.hero:after{left:-150px}.hero h2{font-size:25px}.hero p{font-size:12px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{padding:12px;border-radius:14px}.stat b{font-size:21px}.grid{grid-template-columns:1fr}.panel{padding:12px;border-radius:16px}.metricgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.asset{padding:11px}.asset-top{gap:7px}.btn{font-size:12px;padding:10px}.hide-mobile{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="./index.html?view=more" aria-label="العودة إلى MIDAD Control Room"><div class="logo">M</div><div><h1>MIDAD / MEME SCOUT</h1><p>NEURAL MARKET-RISK LAB · v0.1.0</p></div></a>
+  <div class="top-actions"><span class="chip good" id="modeChip">PAPER ONLY</span><span class="chip bad">LIVE DISABLED</span><span class="chip warn" id="apiChip">API CHECKING</span></div>
+</header>
+<section class="hero">
+  <div class="eyebrow">DEX SIGNALS → RISK FILTER → PAPER EXPERIMENT → LEARNING</div>
+  <h2>لا نطارد الشمعة الخضراء.<br><span style="color:var(--cyan)">نبحث عن الدليل ونراقب خطر الانهيار.</span></h2>
+  <p>رادار للعملات الصغيرة وMeme Coins يراقب التسارع القصير، حجم السيولة، نسب الشراء والبيع، عمر الـPool، ومخاطر الـDump. الإشارة تحليل احتمالي وليست ضماناً للصعود أو توصية مؤكدة.</p>
+  <div class="hero-actions">
+    <button class="btn primary" id="scanBtn">◉ امسح السوق الآن</button>
+    <button class="btn" id="aiBtn">✦ فحص Neural++ للأفضل</button>
+    <button class="btn" id="refreshBtn">↻ تحديث البيانات</button>
+    <a class="btn" href="./index.html?view=more">← المقود الرئيسي</a>
+  </div>
+  <div id="statusNote" class="notice">المحرك يجمع بيانات عامة من DEX Screener. التنفيذ المالي الحقيقي معطّل؛ التداول في هذه التجربة محاكاة فقط.</div>
+</section>
+<section class="stats">
+  <div class="stat"><span>الأصول المرصودة · Assets</span><b id="statAssets">—</b><small>عناوين فريدة في MIDAD DB</small></div>
+  <div class="stat"><span>إشارات محفوظة · Signals</span><b id="statSignals">—</b><small>بصمة + دليل + توقيت</small></div>
+  <div class="stat"><span>Paper trades مفتوحة</span><b id="statOpen">—</b><small>افتراضية وليست أموالاً حقيقية</small></div>
+  <div class="stat"><span>آخر فحص · Last scan</span><b id="statLast" style="font-size:15px">—</b><small id="statLastDetail">لم يبدأ الفحص بعد</small></div>
+</section>
+<div class="grid">
+  <section class="panel">
+    <div class="panel-head"><div><h3>رادار السوق</h3><p class="sub">النتائج مرتّبة حسب زخم السوق مع عرض مستقل لدرجة المخاطر.</p></div><span class="chip" id="assetCount">0 Assets</span></div>
+    <div class="filters" id="filters">
+      <button class="filter active" data-filter="ALL">الكل</button><button class="filter" data-filter="MOMENTUM_WATCH">مراقبة الزخم</button><button class="filter" data-filter="DUMP_RISK">خطر Dump</button><button class="filter" data-filter="EXHAUSTION_RISK">اندفاع مُنهك</button><button class="filter" data-filter="LIQUIDITY_RISK">خطر السيولة</button><button class="filter" data-filter="OBSERVE">مراقبة فقط</button>
+    </div>
+    <div class="cards" id="assetList"><div class="empty">تسجيل الدخول مطلوب. افتح الصفحة من المقود الرئيسي داخل MIDAD أو من جلسة iAiTrader المخوّلة.</div></div>
+  </section>
+  <aside>
+    <section class="panel"><div class="panel-head"><div><h3>Paper Trading Ledger</h3><p class="sub">تجربة دخول/خروج تشمل انزلاقاً ورسومًا افتراضية.</p></div><span class="chip warn">SIMULATED</span></div><div id="tradeList"><div class="empty">لا توجد معاملات محاكاة بعد.</div></div><div class="notice red">قيمة الصفقة الافتراضية 10 USD. الأرباح والخسائر المحسوبة ليست أموالاً حقيقية ولا تُنقل إلى أي محفظة.</div></section>
+    <section class="panel section"><div class="panel-head"><div><h3>Evidence & Risk Gate</h3><p class="sub">ما نعرفه، وما لا نعرفه، ولماذا تتغير الإشارة.</p></div></div><div id="riskStatus"><div class="notice">لم تصل بيانات من المحرك بعد.</div></div><div id="sourceStatus" class="sub" style="margin-top:10px">Data sources: pending</div></section>
+    <section class="panel section"><div class="panel-head"><div><h3>MIDAD Learning</h3><p class="sub">يُسجل المحرك نتائج المحاكاة للتقييم اللاحق.</p></div></div><div class="notice green">كل دورة تسجل الـsnapshot والإشارة ووقت الرصد. لا نعتمد على نتيجة واحدة لبناء ثقة زائفة.</div><button class="btn" style="width:100%;margin-top:10px" id="loginHelpBtn">لماذا لا أرى البيانات؟</button></section>
+  </aside>
+</div>
+<footer class="foot">MIDAD AI · MEME SCOUT EXPERIMENT v0.1.0<br>مصدر السوق: DEX Screener API · الأمان: UNVERIFIED ما لم تُجرَ مراجعة عقد موثوقة.<br>محرك مستقل للبحث والمحاكاة، وليس أداة للتلاعب بالسوق أو تنسيق Pump & Dump.</footer>
+</div>
+<div class="modal hide" id="authModal"><div class="modal-card"><h3>الجلسة المطلوبة</h3><p>لأمان البيانات، لا تُفتح قاعدة MIDAD مباشرة من صفحة عامة. افتح <b>المقود الرئيسي → المزيد → MIDAD Meme Scout</b> حتى تنتقل جلسة Control Room الحالية، أو افتحها من Telegram بعد تخويل الحساب.</p><div class="hero-actions"><a class="btn primary" href="./index.html?view=more">فتح Control Room</a><a class="btn" href="https://t.me/iAiTrader_bot" target="_blank" rel="noopener noreferrer">فتح iAiTrader</a><button class="btn" id="closeAuthBtn">إغلاق</button></div></div></div>
+<script>
+(function(){
+"use strict";
+const API="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_meme_scout";
+const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
+const S={sessionToken:"",data:null,filter:"ALL",busy:false,authenticated:false,lastScan:null};
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const esc=v=>String(v??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const n=(v,d=2)=>v===null||v===undefined||v===""||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:d});
+const usd=v=>v===null||v===undefined||v===""?"—":"$"+n(v,4);
+const pct=v=>v===null||v===undefined||v===""?"—":(Number(v)>0?"+":"")+n(v,2)+"%";
+const date=v=>{if(!v)return"—";const d=new Date(v);return Number.isNaN(d.getTime())?"—":d.toLocaleString("ar",{month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})};
+const tone=v=>Number(v)>0?"pos":Number(v)<0?"neg":"neutral";
+const TG_SAFE=()=>{try{const t=TG();if(t){t.ready();t.expand();return String(t.initData||"")}return""}catch{return""}};
+function setChip(id,text,cls){const e=$("#"+id);if(e){e.textContent=text;e.className="chip "+(cls||"")}}
+function note(msg,cls){const e=$("#statusNote");if(e){e.textContent=msg;e.className="notice "+(cls||"")}}
+function lock(){S.authenticated=false;$("#authModal").classList.remove("hide");}
+function session(){
+  try{S.sessionToken=sessionStorage.getItem("midad_meme_access_token")||"";sessionStorage.removeItem("midad_meme_access_token")}catch{}
+}
+async function request(action,extra){
+ const body=Object.assign({action:action},extra||{});
+ const init=TG_SAFE();
+ if(init)body.telegram_init_data=init;
+ else if(S.sessionToken)body.control_session_token=S.sessionToken;
+ if(!body.telegram_init_data&&!body.control_session_token){lock();throw new Error("MIDAD_SESSION_REQUIRED")}
+ const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json","accept":"application/json"},body:JSON.stringify(body),cache:"no-store",credentials:"omit"});
+ let j={};try{j=await r.json()}catch{}
+ if(!r.ok||j.ok===false)throw new Error(String(j.error||"HTTP_"+r.status));
+ return j;
+}
+async function probe(){
+ try{
+  const r=await fetch(API,{method:"GET",headers:{"accept":"application/json"},cache:"no-store",credentials:"omit"});
+  const j=await r.json();
+  setChip("apiChip",r.ok&&j.ok?"API ONLINE":"API ERROR",r.ok&&j.ok?"good":"bad");
+  $("#sourceStatus").textContent="Backend: "+(j.service||"midad_meme_scout")+" · "+(j.data_provider||"DEX Screener")+" · Live execution: "+(j.live_execution===false?"DISABLED":"NOT VERIFIED")+" · Security: "+(j.security_provider||"UNVERIFIED");
+ }catch(e){setChip("apiChip","API UNREACHABLE","bad");$("#sourceStatus").textContent="تعذر الوصول للمحرك. افحص اتصال الشبكة وسجل Edge Function."}
+}
+function classLabel(v){return({"MOMENTUM_WATCH":"مراقبة زخم","DUMP_RISK":"خطر Dump","EXHAUSTION_RISK":"اندفاع مُنهك","LIQUIDITY_RISK":"خطر سيولة","OBSERVE":"مراقبة"})[v]||v||"غير مصنف"}
+function safeUrl(v){try{const u=new URL(String(v||""));return ["https:","http:"].includes(u.protocol)?u.href:""}catch{return""}}
+function listReasons(x){
+ const r=Array.isArray(x.rationale)?x.rationale:[];
+ const f=x.safety_evidence&&Array.isArray(x.safety_evidence.flags)?x.safety_evidence.flags:[];
+ const a=r.concat(f.map(v=>"Security flag: "+v));
+ if(x.safety_status!=="CHECKED_WITH_WARNINGS"&&x.safety_status!=="VERIFIED")a.push("حالة أمان العقد: "+String(x.safety_status||"UNVERIFIED"));
+ return a.slice(0,5).map(v=>"<div>• "+esc(v)+"</div>").join("");
+}
+function assetCard(x){
+ const url=safeUrl(x.pair_url),sym=esc(x.symbol||"UNKNOWN"),chain=esc(x.chain_id||"—");
+ const ai=x.ai_review&&x.ai_review.summary_ar?'<div class="reason"><b>Neural++:</b> '+esc(x.ai_review.summary_ar)+'</div>':"";
+ return '<article class="asset"><div class="asset-top"><div class="token"><div class="coinmark">'+esc((x.symbol||"?").slice(0,2).toUpperCase())+'</div><div><h4>'+sym+' <span style="color:var(--muted);font-size:10px;font-weight:400">'+esc(x.name||"")+'</span></h4><small>'+chain+' · '+esc(x.dex_id||"DEX")+ ' · '+(x.token_address?esc(x.token_address.slice(0,6)+"…"+x.token_address.slice(-5)):"")+'</small></div></div><span class="badge '+esc(x.signal_class||"OBSERVE")+'">'+esc(classLabel(x.signal_class))+'</span></div>'+
+ '<div class="metricgrid"><div class="metric"><span>السعر · Price</span><b>'+usd(x.price_usd)+'</b></div><div class="metric"><span>السيولة · Liquidity</span><b>'+usd(x.liquidity_usd)+'</b></div><div class="metric"><span>تغير 5m</span><b class="'+tone(x.price_change_5m_pct)+'">'+pct(x.price_change_5m_pct)+'</b></div><div class="metric"><span>تغير 1h</span><b class="'+tone(x.price_change_1h_pct)+'">'+pct(x.price_change_1h_pct)+'</b></div>'+
+ '<div class="metric"><span>تغير 24h</span><b class="'+tone(x.price_change_24h_pct)+'">'+pct(x.price_change_24h_pct)+'</b></div><div class="metric"><span>الحجم 5m</span><b>'+usd(x.volume_5m_usd)+'</b></div><div class="metric"><span>زخم · Momentum</span><b>'+n(x.momentum_score,0)+'/100</b></div><div class="metric"><span>خطر · Risk</span><b class="'+(Number(x.risk_score)>=60?"neg":Number(x.risk_score)>=35?"neutral":"pos")+'">'+n(x.risk_score,0)+'/100</b></div></div>'+
+ '<div class="asset-bottom"><div class="scores"><span class="score">Buy/Sell 5m: <b>'+n(x.buys_5m,0)+' / '+n(x.sells_5m,0)+'</b></span><span class="score">Safety: <b class="'+(x.safety_status==="VERIFIED"?"pos":"neutral")+'">'+esc(x.safety_status||"UNVERIFIED")+'</b></span></div><div class="asset-links">'+(url?'<a class="link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">فتح الزوج ↗</a>':"")+'<button class="filter" data-copy="'+esc(x.token_address||"")+'">نسخ العنوان</button></div></div>'+
+ '<div class="reason">'+listReasons(x)+'</div>'+ai+'</article>';
+}
+function renderAssets(){
+ let a=(S.data&&Array.isArray(S.data.assets)?S.data.assets:[]).slice();
+ if(S.filter!=="ALL")a=a.filter(x=>x.signal_class===S.filter);
+ a.sort((x,y)=>Number(y.momentum_score||0)-Number(x.momentum_score||0));
+ $("#assetCount").textContent=a.length+" Assets";
+ $("#assetList").innerHTML=a.length?a.slice(0,60).map(assetCard).join(""):'<div class="empty">لا توجد نتائج ضمن هذا الفلتر بعد. اضغط «امسح السوق الآن» لجمع بيانات حديثة، أو غيّر الفلتر.</div>';
+ $$("[data-copy]").forEach(b=>b.onclick=async()=>{const v=b.dataset.copy||"";if(!v)return;try{await navigator.clipboard.writeText(v);b.textContent="تم النسخ ✓"}catch{prompt("عنوان الرمز:",v)}});
+}
+function renderTrades(){
+ const a=S.data&&Array.isArray(S.data.paper_trades)?S.data.paper_trades:[];
+ $("#tradeList").innerHTML=a.length?a.slice(0,14).map(t=>{
+ const ret=t.realized_return_pct??t.mark_return_pct,cls=Number(ret)>0?"pos":Number(ret)<0?"neg":"neutral";
+ return '<div class="trade"><div class="trade-row"><b>'+esc(t.symbol||"UNKNOWN")+' · '+esc(t.chain_id||"")+'</b><span class="badge">'+esc(t.status||"OPEN")+'</span></div><div class="trade-row" style="margin-top:8px"><span>الدخول: '+usd(t.entry_price)+'</span><span>الحالي: '+usd(t.current_price)+'</span></div><small>حجم افتراضي: '+usd(t.notional_usd)+' · الكمية: '+n(t.quantity,6)+'<br>إغلاق: '+esc(t.exit_reason||"لم يتحقق شرط الخروج")+" · افتتحت: "+date(t.opened_at)+'</small><div style="font-size:13px;margin-top:8px" class="'+cls+'"><b>عائد محاكى بعد التكاليف: '+pct(ret)+'</b></div></div>'
+ }).join(""):'<div class="empty">لا توجد صفقات محاكاة. ستظهر هنا فقط بعد ظهور إشارة زخم تتجاوز شروط السلامة والسيولة.</div>';
+}
+function renderRisk(){
+ const counts={};(S.data&&Array.isArray(S.data.assets)?S.data.assets:[]).forEach(x=>counts[x.signal_class]=(counts[x.signal_class]||0)+1);
+ const saf=S.data&&S.data.safety?S.data.safety:{};
+ const risks=[
+  ["مصدر البيانات","DEX Screener · بيانات زوج التداول العامة"],
+  ["حالة العقود",saf.contract_security||"UNVERIFIED"],
+  ["إرسال أوامر حقيقية",saf.live_execution||"DISABLED"],
+  ["السحب والتحويل","DISABLED"],
+  ["حدود تصنيف الزخم","Heuristic score — وليس احتمال ربح مُعايراً"],
+  ["تصنيف الإشارات",Object.keys(counts).map(k=>classLabel(k)+": "+counts[k]).join(" · ")||"لا نتائج"]
+ ];
+ $("#riskStatus").innerHTML=risks.map(x=>'<div class="trade"><div class="trade-row"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div></div>').join("");
+ const runs=S.data&&Array.isArray(S.data.scan_runs)?S.data.scan_runs:[];
+ const last=runs[0]||null;
+ $("#statLast").textContent=last?date(last.completed_at||last.started_at):"—";
+ $("#statLastDetail").textContent=last?esc(last.state||"PENDING")+" · "+n(last.assets_upserted,0)+" assets":"لم يبدأ الفحص بعد";
+ $("#sourceStatus").textContent="DEX Screener: "+((last&&last.source_status&&Object.keys(last.source_status).length)?Object.entries(last.source_status).map(x=>x[0]+": "+x[1]).join(" · "):"PENDING")+" · Live execution: DISABLED";
+}
+function render(){
+ const c=S.data&&S.data.counts?S.data.counts:{};
+ $("#statAssets").textContent=n(c.assets,0);$("#statSignals").textContent=n(c.signals,0);$("#statOpen").textContent=n(c.open_paper_trades,0);
+ renderAssets();renderTrades();renderRisk();
+}
+async function loadOverview(silent){
+ if(S.busy)return;S.busy=true;$("#refreshBtn").disabled=true;
+ try{const j=await request("overview");S.data=j;S.authenticated=true;$("#authModal").classList.add("hide");render();setChip("apiChip","API VERIFIED","good");if(!silent)note("تم تحديث لقطة البيانات من MIDAD. اضغط مسح السوق لتحديث الأزواج والأسعار.", "green")}
+ catch(e){if(/SESSION_REQUIRED|unauthorized|not_authorized|telegram_init_data|expired/i.test(String(e.message)))lock();note("تعذر تحميل بيانات MIDAD: "+e.message,"red");setChip("apiChip","AUTH / API ERROR","bad")}
+ finally{S.busy=false;$("#refreshBtn").disabled=false}
+}
+async function scan(withAI){
+ if(S.busy)return;S.busy=true;$("#scanBtn").disabled=true;$("#aiBtn").disabled=true;note(withAI?"يفحص السوق ويطلب مراجعة Neural++ للدليل المتاح فقط…":"يفحص الرموز والأزواج ويحسب الزخم ومخاطر الـDump…");
+ try{
+  const j=await request("scan",withAI?{ai_review:true}:{});
+  S.lastScan=j;note("اكتمل الفحص: "+n(j.summary&&j.summary.assets_scored,0)+" أصل محلل، "+n(j.summary&&j.summary.signals_upserted,0)+" إشارة جديدة، "+n(j.summary&&j.summary.paper_trades_opened,0)+" صفقة محاكاة جديدة. لا توجد أوامر حقيقية.","green");
+  S.busy=false;await loadOverview(true);
+ }catch(e){note("فشل الفحص: "+e.message,"red");setChip("apiChip","SCAN FAILED","bad")}
+ finally{S.busy=false;$("#scanBtn").disabled=false;$("#aiBtn").disabled=false}
+}
+async function init(){
+ session();await probe();
+ if(TG_SAFE()||S.sessionToken){await loadOverview(true);if(!S.authenticated)lock()}else lock();
+}
+$("#scanBtn").onclick=()=>scan(false);$("#aiBtn").onclick=()=>scan(true);$("#refreshBtn").onclick=()=>loadOverview(false);
+$("#filters").addEventListener("click",e=>{const b=e.target.closest("[data-filter]");if(!b)return;S.filter=b.dataset.filter;$$("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));renderAssets()});
+$("#loginHelpBtn").onclick=lock;$("#closeAuthBtn").onclick=()=>$("#authModal").classList.add("hide");
+init();
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,8 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const files = ['midad-control-v2.js','midad-human-bridge-control.js','midad-fix-v1.js','iaitrader.js','midad-cockpit.js'];
+          const memeHtml=fs.readFileSync('meme-scout.html','utf8');
+          for(const m of memeHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) if(m[1].trim()) new Function(m[1]);
           for (const f of files) {
             if (!fs.existsSync(f)) throw new Error('Missing JS file: '+f);
             new Function(fs.readFileSync(f,'utf8'));
@@ -48,9 +50,14 @@ jobs:
           if(!css.includes('#midadLiveOps.mlo-hidden{display:none!important}')) fail('LIVE OPS containment contract missing');
           if(!js.includes('aria-current')) fail('Accessible active navigation contract missing');
           if(!js.includes('midad_fix_live_ops_mobile_open')) fail('LIVE OPS restore preference missing');
-          if(!sw.includes('midad-control-v6-20261011-fix2')) fail('Service worker cache version not bumped');
+          if(!sw.includes('midad-control-v7-20261011-meme-scout')) fail('Service worker cache version not bumped');
+          if(!sw.includes('./meme-scout.html')) fail('Meme Scout page missing from service-worker precache');
+          const meme=fs.readFileSync('meme-scout.html','utf8');
+          if(!meme.includes('midad_meme_scout')) fail('Meme Scout backend binding missing');
+          if(!meme.includes('LIVE DISABLED') || !meme.includes('MIDAD_SESSION_REQUIRED')) fail('Meme Scout financial/session safety gates missing');
+          if(!controlJs.includes('data-cmd="memeScout"')) fail('Control Room Meme Scout launcher missing');
           for(const f of ['midad-fix-v1.css','midad-fix-v1.js','midad-human-bridge-control.js']) if(!sw.includes(f)) fail('Service worker precache missing '+f);
-          const publicFiles=[html,css,js,sw];
+          const publicFiles=[html,css,js,sw,meme];
           if(publicFiles.some(s=>/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(s))) fail('Private key material found in public assets');
           if(publicFiles.some(s=>/SUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*['"][^'"]+['"]/.test(s))) fail('Hard-coded service role key pattern found');
           console.log('MIDAD_FIX_UI_CACHE_SECURITY_CONTRACT_OK');
