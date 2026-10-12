@@ -1,7 +1,7 @@
 (()=>{
 "use strict";
 window.MIDAD_COCKPIT_BOOTING=true;
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-10-01-neuralpp3"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"cockpit-2026-10-12-authfix1"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,user:null,data:null,telegram:null,miningAccounts:[],busy:false,aiBusy:false,aiMessages:[],error:"",ugigProfile:null,ugigApps:[],ugigBusy:false,botContext:null,botStatus:null,tradeData:null,tradeBusy:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -11,11 +11,11 @@ const usd=v=>v==null?"—":"$"+Number(v||0).toLocaleString("en-US",{maximumFract
 function toast(m,type="ok"){const b=$("#crToast");if(!b)return;const d=document.createElement("div");d.className="toast "+type;d.textContent=m;b.appendChild(d);setTimeout(()=>d.remove(),4200)}
 function savedKey(){try{return sessionStorage.getItem("midad_cockpit_key")||""}catch{return""}}
 function saveKey(v){try{sessionStorage.setItem("midad_cockpit_key",v)}catch{}}
-async function post(body,timeout=20000){
+async function post(body,timeout=20000,endpoint=CFG.fn){
  const c=new AbortController(),t=setTimeout(()=>c.abort(),timeout);
- try{const r=await fetch(CFG.url+CFG.fn,{method:"POST",headers:{"content-type":"application/json","x-midad-client":"midad-cockpit","x-midad-request-id":"cr-"+Date.now().toString(36)},body:JSON.stringify(body),signal:c.signal});
+ try{const r=await fetch(CFG.url+endpoint,{method:"POST",headers:{"content-type":"application/json","x-midad-client":"midad-cockpit","x-midad-request-id":"cr-"+Date.now().toString(36)},body:JSON.stringify(body),signal:c.signal});
  const j=await r.json().catch(()=>({}));
- if(!r.ok||j.error||j.ok===false)throw new Error(j.error||j.message||("HTTP "+r.status));
+ if(!r.ok||j.error||j.ok===false)throw new Error(j.error==="telegram_user_not_authorized"&&j.telegram_user_id?("telegram_user_not_authorized · Telegram ID: "+j.telegram_user_id+" · bot: "+(j.auth_bot||"unknown")):(j.error||j.message||("HTTP "+r.status)));
  return j;
  }finally{clearTimeout(t)}
 }
@@ -23,7 +23,7 @@ async function authenticate(){
  if(S.token)return S.token;
  const t=TG(),init=t&&t.initData||"",key=savedKey();
  if(!init&&!key)throw new Error("telegram_context_required");
- const j=init?await post({telegram_init_data:init,client:"midad-cockpit",client_version:CFG.build}):await post({access_key:key,client:"midad-cockpit",client_version:CFG.build});
+ const j=init?await post({telegram_init_data:init,client:"midad-cockpit",client_version:CFG.build},20000,"/functions/v1/midad_telegram_auth"):await post({access_key:key,client:"midad-cockpit",client_version:CFG.build});
  if(!j.token)throw new Error("session_token_missing");
  S.token=j.token;S.connected=true;S.user={telegram_user_id:j.telegram_user_id||null};return j.token;
 }
