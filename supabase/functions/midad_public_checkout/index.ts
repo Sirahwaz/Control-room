@@ -24,6 +24,11 @@ const PRODUCTS:any={
 
 const json=(v:any,s=200)=>new Response(JSON.stringify(v),{status:s,headers:H});
 const clean=(v:any,n=200)=>String(v??"").trim().slice(0,n);
+function jsonObject(value:any){
+  if(value&&typeof value==="object"&&!Array.isArray(value))return value;
+  if(typeof value==="string"){try{const parsed=JSON.parse(value);if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed))return parsed;}catch{}}
+  return {};
+}
 
 function publicPayment(intent:any){
   return {
@@ -83,14 +88,18 @@ async function chooseWallet(){
     const scannedAt=Date.parse(String(monitor?.last_scan_at||""));
     const scanAgeMs=Date.now()-scannedAt;
     const network=String(r.network||"").toLowerCase();
-    const tokenAccounts=Number(monitor?.metadata?.token_accounts||0);
+    // Older Solana monitor versions stored JSONB metadata as a JSON string. Parse it defensively;
+    // invoice readiness still requires the explicit version-32 verifier handshake below.
+    const monitorMetadata=jsonObject(monitor?.metadata);
+    const tokenAccounts=Number(monitorMetadata.token_accounts||0);
     const configuredMint=String(r.metadata?.verification?.token_mint||"");
-    const chainId=Number(monitor?.metadata?.chain_id||0);
-    const tokenContract=String(monitor?.metadata?.token_contract||"").toLowerCase();
+    const chainId=Number(monitorMetadata.chain_id||0);
+    const tokenContract=String(monitorMetadata.token_contract||"").toLowerCase();
+    const paymentReconciliationReady=monitorMetadata.payment_reconciliation_ready===true;
     const chainEvidenceReady=network==="solana"
-      ? tokenAccounts>0&&configuredMint===SOLANA_USDC_MINT
+      ? tokenAccounts>0&&configuredMint===SOLANA_USDC_MINT&&paymentReconciliationReady
       : network==="base"
-        ? chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()&&r.metadata?.checkout_reconciliation_verified===true
+        ? chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()&&paymentReconciliationReady
         : false;
     const ready=monitor?.status==="VERIFIED"
       && Number(monitor?.error_count||0)===0
@@ -99,7 +108,7 @@ async function chooseWallet(){
       && scanAgeMs>=-60_000
       && scanAgeMs<=10*60_000;
     if(!ready) continue;
-    return {route:r,wallet:w,monitor:{status:monitor.status,last_scan_at:monitor.last_scan_at,token_accounts:tokenAccounts,chain_id:chainId,token_contract:tokenContract}};
+    return {route:r,wallet:w,monitor:{status:monitor.status,last_scan_at:monitor.last_scan_at,token_accounts:tokenAccounts,chain_id:chainId,token_contract:tokenContract,payment_reconciliation_ready:paymentReconciliationReady}};
   }
   return null;
 }
