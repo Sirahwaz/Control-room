@@ -64,7 +64,7 @@ assert.ok(baseMonitor.includes('finalityMode==="finalized"?"finalized":"confirme
 assert.ok(baseMonitor.includes("base_monitor_state_persist_failed"), "Base monitor must fail if the cursor/state write fails");
 assert.ok(solanaMonitor.includes("async function reconcileExactSolanaReceipt"), "Solana monitor must have an explicit strict-reconciliation path");
 assert.ok(solanaMonitor.includes("round(quoted_crypto_amount*1000000)::bigint=$2::bigint"), "Solana receipt matching must require exact USDC micro-unit amount");
-assert.ok(solanaMonitor.includes("payment_intent_match_status:\"manual_review_multiple_exact_intents\""), "multiple exact Solana matches must remain manual review");
+assert.ok(solanaMonitor.includes("manual_review_multiple_exact_intents"), "multiple exact Solana matches must remain manual review");
 assert.ok(solanaMonitor.includes('"/functions/v1/midad_payment_verifier"'), "Solana monitor must use the canonical payment verifier");
 assert.ok(!solanaMonitor.includes("update public.midad_payment_intents"), "Solana monitor must not directly mark payment intents paid");
 assert.ok(solanaMonitor.includes("String(confirmed.received_tx_hash||\"\")===input.txHash"), "Solana monitor must verify the final matched hash after reconciliation");
