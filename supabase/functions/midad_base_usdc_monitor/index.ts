@@ -194,6 +194,7 @@ async function run(){
     },
     updated_at:new Date().toISOString()
   },{onConflict:"route_id"});
+  if(stateWrite.error)throw new Error("base_monitor_state_persist_failed:"+stateWrite.error.message);
 
   return {
     ok:true,
