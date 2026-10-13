@@ -84,6 +84,7 @@ assert.ok(solanaMonitor.includes("limit:1000"), "Solana monitor must page throug
 assert.ok(solanaMonitor.includes("signature_cursors_by_account:signatureCursorsByAccount"), "Solana monitor must persist a separate signature cursor for each token account");
 assert.ok(solanaMonitor.includes("options.before=before"), "Solana monitor must follow the per-account signature cursor with paginated RPC calls");
 assert.ok(solanaMonitor.includes("solana_signature_cursor_not_reached_within_page_limit"), "Solana monitor must fail closed rather than silently skip an unseen cursor");
+assert.ok(solanaMonitor.includes('if(accounts.length>0&&!paymentReconciliationReady)throw new Error("strict_payment_verifier_capability_unavailable")'), "Solana monitor must not advance cursors while strict payment verification is unavailable");
 assert.ok(solanaMonitor.includes("payment_reconciliation_ready:paymentReconciliationReady&&signatureScanComplete"), "Solana checkout readiness must be withheld if bootstrap pagination is incomplete");
 assert.ok(solanaMonitor.includes("blocked_strict_verifier_not_ready"), "Solana monitor must not mark a receipt matched against a legacy verifier");
 assert.ok(solanaMonitor.includes('callVerifier("reconcile",{tx_hash:input.txHash})'), "Solana monitor must reconcile the exact observed transaction hash");
