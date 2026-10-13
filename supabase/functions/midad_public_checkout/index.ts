@@ -118,7 +118,7 @@ async function main(req:Request){
       const {data:existing}=await db.from("midad_payment_intents")
         .select("id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata")
         .eq("user_id",oid).contains("metadata",{public_order_key:key})
-        .in("status",["created","quoted","detected","paid"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+        .in("status",["created","quoted","detected","verified","paid","reconciled"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
       if(existing){
         const payment=publicPayment(existing);
         const receiving={asset:payment.settlement_asset,network:payment.network,wallet_address:payment.wallet_address};
