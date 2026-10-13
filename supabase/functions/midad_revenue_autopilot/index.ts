@@ -242,7 +242,7 @@ async function reconcileBountyBook(){
   const {data:jobs,error}=await db.from("midad_revenue_jobs")
     .select("id,opportunity_id,external_ref,state,next_action,payout,metadata")
     .eq("platform","bountybook")
-    .in("state",["PENDING_PAYOUT","IN_PROGRESS"])
+    .in("state",["PAID","PENDING_PAYOUT","IN_PROGRESS"])
     .order("updated_at",{ascending:true})
     .limit(20);
   if(error) return {ok:false,error:error.message,checked:0,paid:0,verified:0,items:[]};
@@ -260,19 +260,40 @@ async function reconcileBountyBook(){
     const payoutStatus=String(ext.payout_status||"").toLowerCase();
     let newState=job.state;
     let next=job.next_action;
-    if(payoutStatus==="paid" || status==="paid" || status==="verified"){
-      newState="PAID"; next="reconcile_revenue"; paid++;
-      verified++;
+    const payoutTxHash=String(ext.payout_tx_hash||job.payout?.payout_tx_hash||"");
+    let chainReceipt:any=null;
+    if(payoutTxHash&&payoutStatus==="paid"){
+      const {data:receiptRows}=await db.from("midad_wallet_receipts")
+        .select("id,asset,network,amount,direction,commitment,evidence,mint")
+        .eq("tx_hash",payoutTxHash).eq("direction","inbound").limit(10);
+      chainReceipt=(receiptRows||[]).find((r:any)=>{
+        const ev=r.evidence&&typeof r.evidence==="object"?r.evidence:{};
+        return String(r.asset||"").toUpperCase()==="USDC"
+          &&String(r.network||"").toLowerCase()==="base"
+          &&String(r.mint||"").toLowerCase()==="0x833589fc d6edb6e08f4c7c32d4f71b54bda02913".replace(/ /g,"")
+          &&String(r.commitment||"").toLowerCase()==="finalized"
+          &&Number(r.amount)>0&&ev.independently_verified===true
+          &&ev.token_contract_verified===true&&Number(ev.chain_id)===8453
+          &&String(ev.contract_address||"").toLowerCase()==="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+      })||null;
+    }
+    const platformSaysPaid=payoutStatus==="paid"||status==="paid"||status==="verified";
+    if(platformSaysPaid&&chainReceipt){
+      newState="PAID";next="reconcile_revenue";paid++;verified++;
+    }else if(platformSaysPaid){
+      newState="PENDING_PAYOUT";next="verify_onchain_receipt";
     }else if(["submitted","verifying","in_review"].includes(status)){
-      newState="PENDING_PAYOUT"; next="verify_payout";
-    }else if(status==="open" && job.state==="PENDING_PAYOUT"){
-      newState="READY"; next="repair_or_reclaim";
+      newState="PENDING_PAYOUT";next="verify_payout";
+    }else if(status==="open"&&job.state==="PENDING_PAYOUT"){
+      newState="READY";next="repair_or_reclaim";
     }
     const payout={
       ...(job.payout||{}),
       budget_usdc:Number(ext.budget_usdc??job.payout?.budget_usdc??0),
       payout_status:ext.payout_status||job.payout?.payout_status||"none",
-      payout_tx_hash:ext.payout_tx_hash||job.payout?.payout_tx_hash||null,
+      payout_tx_hash:payoutTxHash||null,
+      chain_receipt_id:chainReceipt?.id||null,
+      chain_receipt_confirmed:Boolean(chainReceipt),
       verification_result:ext.verification_result||job.payout?.verification_result||null
     };
     const meta={
