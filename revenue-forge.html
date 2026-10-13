@@ -190,7 +190,7 @@ async function makeCheckout(product){
       })
     });
     const d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
-    if(!r.ok||!d.ok) throw new Error(d.error||"checkout_failed");
+    if(!r.ok||!d.ok) throw new Error(d.message||d.error||"checkout_failed");
     box.replaceChildren();
     addCheckoutText(box,"strong",d.product.name);
     addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
