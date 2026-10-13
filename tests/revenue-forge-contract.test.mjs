@@ -5,6 +5,7 @@ const checkout = fs.readFileSync("supabase/functions/midad_public_checkout/index
 const verifier = fs.readFileSync("supabase/functions/midad_payment_verifier/index.ts", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20261013000100_public_checkout_idempotency.sql", "utf8");
 const forge = fs.readFileSync("revenue-forge.html", "utf8");
+const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts", "utf8");
 
 assert.match(checkout, /function publicPayment\(intent:any\)/, "public payment projection must exist");
 for (const field of ["id:intent.id", "status:intent.status", "reconciliation_status:intent.reconciliation_status", "quoted_crypto_amount:intent.quoted_crypto_amount", "wallet_address:intent.wallet_address"]) {
@@ -26,4 +27,17 @@ assert.match(verifier, /const assetOk=Boolean\(intent\.settlement_asset&&latest\
 assert.match(verifier, /const networkOk=Boolean\(intent\.network&&latest\.network&&/, "verification must require explicit matching network");
 assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS midad_payment_intents_public_order_key_active_uidx/, "active order-key idempotency index must exist");
 assert.match(migration, /status IN \('created','quoted','detected','verified','paid','reconciled'\)/, "idempotency index must cover active payment states only");
+
+assert.match(radar, /version:9/, "revenue radar version 9 must be present");
+for (const provider of ["basebounty", "superteam", "laborx", "airdropalert"]) {
+  assert.ok(radar.includes('"'+provider+'"'), "new revenue source missing: "+provider);
+}
+assert.match(radar, /workerPayoutUsdc/, "BaseBounty must use explicit after-fee USDC reward field");
+assert.match(radar, /reward_units_verified:false/, "Superteam raw token reward units must not be converted to USD without evidence");
+assert.match(radar, /individual_gig_crypto_terms_verified:false/, "LaborX listing discovery must not presume each gig accepts crypto");
+assert.match(radar, /research_only:true/, "airdrop observations must be research-only");
+assert.match(radar, /payout_evidence_verified\\)\\&\\&Boolean\\(c\\.crypto_payout_verified\\)/, "automation must require payout and crypto evidence");
+assert.match(radar, /c\\.claim_mode!==["']wallet_signature["']/, "wallet-signature claims must remain outside autonomous execution");
+assert.match(radar, /const status=automationAllowed\\?"money_candidate":"human_review"/, "unverified payout opportunities must be held for review");
+
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
