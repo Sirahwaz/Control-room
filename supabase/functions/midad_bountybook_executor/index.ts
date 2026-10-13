@@ -5,6 +5,27 @@ const SUPABASE_URL=Deno.env.get("SUPABASE_URL")||"";
 const SERVICE_KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
 const db=createClient(SUPABASE_URL,SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const BOUNTY="https://api.bountybook.ai";
+const BASE_USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const BASE_CHAIN_ID=8453;
+
+function claimGate(job:any){
+  if(Deno.env.get("MIDAD_ALLOW_BOUNTYBOOK_MESSAGE_SIGNING")!=="true")
+    return {ok:false,reason:"wallet_message_signing_disabled"};
+  const escrow=job?.escrow&&typeof job.escrow==="object"?job.escrow:{};
+  const proof=job?.escrow_verification&&typeof job.escrow_verification==="object"?job.escrow_verification:{};
+  const contractJobId=Number(job?.contract_job_id??0);
+  const chainId=Number(escrow.chain_id??job?.chain_id??0);
+  const assetAddress=String(escrow.asset_address??"").toLowerCase();
+  const txHash=String(escrow.tx_hash??"").toLowerCase();
+  if(!(contractJobId>0))return {ok:false,reason:"bounty_escrow_contract_job_id_missing"};
+  if(chainId!==BASE_CHAIN_ID||assetAddress!==BASE_USDC.toLowerCase()||!/^0x[a-f0-9]{64}$/.test(txHash))
+    return {ok:false,reason:"bounty_escrow_route_unverified"};
+  if(proof.independently_verified!==true||proof.escrow_funded!==true||Number(proof.chain_id)!==BASE_CHAIN_ID
+    ||Number(proof.contract_job_id)!==contractJobId||String(proof.tx_hash||"").toLowerCase()!==txHash
+    ||String(proof.asset_address||"").toLowerCase()!==BASE_USDC.toLowerCase())
+    return {ok:false,reason:"independent_onchain_escrow_proof_missing"};
+  return {ok:true,reason:null};
+}
 
 const json=(v:any,s=200)=>new Response(JSON.stringify(v),{status:s,headers:{"content-type":"application/json","cache-control":"no-store"}});
 
@@ -75,11 +96,15 @@ async function ensureRevenueJob(job:any,state:string,extra:any={}){
   return ins.data.id;
 }
 async function claim(jobId:string){
-  const address=await getAgentAddress();
   const job=await getJob(jobId);
   if(String(job.status)!=="open"){
     return {ok:false,action:"claim",job_id:jobId,status:"NOT_OPEN",external_status:job.status,executor_address:job.executor_address||null};
   }
+  // Wallet message signing and claims remain off unless explicitly enabled AND independent
+  // Base USDC escrow evidence is available. Public API status alone is not funding proof.
+  const gate=claimGate(job);
+  if(!gate.ok)return {ok:false,action:"claim",blocked:true,job_id:jobId,reason:gate.reason,external_status:job.status};
+  const address=await getAgentAddress();
   const session=await authSession(address);
   const c=await fetchJson(`${BOUNTY}/jobs/${encodeURIComponent(jobId)}/claim`,{
     method:"POST",
@@ -108,8 +133,13 @@ async function claim(jobId:string){
   return {ok:true,action:"claim",job_id:jobId,executor_address:address,revenue_job_id:revenueJobId,external_status:c.status,job:claimed};
 }
 async function submit(jobId:string,outputData:any,outputCID?:string){
-  const address=await getAgentAddress(),job=await getJob(jobId);
+  const job=await getJob(jobId);
   if(job.status!=="claimed"&&job.status!=="in_progress"&&job.status!=="submitted")throw new Error(`job_not_submittable:${job.status}`);
+  const gate=claimGate(job);
+  if(!gate.ok)throw new Error(`bounty_claim_gate_blocked:${gate.reason}`);
+  const address=await getAgentAddress();
+  const assigned=String(job.executor_address||job.executorAddress||"").toLowerCase();
+  if(!assigned||assigned!==address.toLowerCase())throw new Error("job_not_assigned_to_midad_signer");
   const session=await authSession(address);
   const body:any={executorAddress:address};
   if(outputCID)body.outputCID=outputCID; else body.outputData=outputData;
