@@ -27,6 +27,9 @@ jobs:
       - name: JavaScript syntax
         run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
 
+      - name: Revenue Forge checkout contract
+        run: node tests/revenue-forge-contract.test.mjs
+
       - name: Required UI assets
         run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-control-v2.css','midad-control-v2.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); for(const x of ['iaitrader.html','iaitrader.css','iaitrader.js']) if(!fs.existsSync(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
 
