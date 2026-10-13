@@ -49,6 +49,11 @@ assert.ok(radar.includes('const status=automationAllowed?"money_candidate":"huma
 assert.ok(baseMonitor.includes('const RPC_POOL=[BASE_RPC,"https://base-rpc.publicnode.com","https://public.1rpc.io/base"]'), "Base monitor must have public RPC fallbacks");
 assert.ok(baseMonitor.includes('rpc("eth_chainId",[])'), "Base monitor must verify network identity before scanning");
 assert.ok(baseMonitor.includes("actualChainId!==CHAIN_ID"), "Base monitor must fail closed on wrong chain");
+assert.ok(baseMonitor.includes("const from=hasCursor?previous+1:Math.max(0,finalBlock-1999)"), "Base monitor must resume from the last successful cursor after outages");
+assert.ok(baseMonitor.includes("base_receipt_persist_failed"), "Base monitor must not advance past a receipt it failed to persist");
+assert.ok(baseMonitor.includes("group.raw+=raw"), "Base monitor must aggregate multiple USDC transfers within one transaction");
+assert.ok(baseMonitor.includes('finalityMode==="finalized"?"finalized":"confirmed"'), "Base monitor must not label confirmation fallback as finalized");
+assert.ok(baseMonitor.includes("base_monitor_state_persist_failed"), "Base monitor must fail if the cursor/state write fails");
 assert.ok(baseMonitor.includes('status:"DEGRADED"'), "Base monitor must persist degraded state after scan failures");
 assert.ok(baseMonitor.includes("base_rpc_all_providers_failed"), "Base monitor must expose aggregate provider failure without secrets");
 assert.ok(baseMonitor.includes("failure_stage:\"base_usdc_monitor\""), "Base monitor must store durable error context");
