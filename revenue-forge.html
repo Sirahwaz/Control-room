@@ -59,7 +59,7 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 
 <section id="checkout" class="card section">
 <span class="tag">CRYPTO CHECKOUT</span>
-<h2>الدفع المباشر — USDC / Solana</h2>
+<h2>الدفع المباشر — USDC على شبكة استقبال موثّقة</h2>
 <p class="small">اكتب المطلوب أولاً، ثم اختر الخدمة لإنشاء فاتورة مرتبطة بوصفك. لا تعتبر الطلب مدفوعًا حتى يتحقق MIDAD من معاملة الاستقبال فعليًا.</p>
 <div class="card" style="margin:14px 0;background:#0a1017">
   <h2 style="margin-top:0">تفاصيل الطلب / Request Brief</h2>
@@ -194,7 +194,9 @@ async function makeCheckout(product){
     box.replaceChildren();
     addCheckoutText(box,"strong",d.product.name);
     addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
-    addCheckoutText(box,"p","الشبكة: Solana");
+    const checkoutNetwork=String(d.payment.network||"").toLowerCase();
+    const checkoutNetworkLabel=checkoutNetwork==="base"?"Base mainnet":checkoutNetwork==="solana"?"Solana":checkoutNetwork||"غير معروفة";
+    addCheckoutText(box,"p","الشبكة: "+checkoutNetworkLabel);
     addCheckoutText(box,"p","أرسل المبلغ الدقيق فقط إلى عنوان الاستقبال التالي:");
     const address=document.createElement("code");
     address.style.cssText="display:block;word-break:break-all;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11";
