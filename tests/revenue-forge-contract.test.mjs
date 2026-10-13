@@ -12,6 +12,7 @@ const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts
 const baseMonitor = fs.readFileSync("supabase/functions/midad_base_usdc_monitor/index.ts", "utf8");
 const securityMigration = fs.readFileSync("supabase/migrations/20261013000200_security_perf_hardening.sql", "utf8");
 const ugigLifecycle = fs.readFileSync("supabase/functions/midad_ugig_lifecycle/index.ts", "utf8");
+const solanaMonitor = fs.readFileSync("supabase/functions/midad_wallet_receipt_monitor/index.ts", "utf8");
 
 assert.match(checkout, /function publicPayment\(intent:any\)/, "public payment projection must exist");
 for (const field of ["id:intent.id", "status:intent.status", "reconciliation_status:intent.reconciliation_status", "quoted_crypto_amount:intent.quoted_crypto_amount", "wallet_address:intent.wallet_address"]) {
@@ -61,6 +62,15 @@ assert.ok(baseMonitor.includes("base_receipt_persist_failed"), "Base monitor mus
 assert.ok(baseMonitor.includes("group.raw+=raw"), "Base monitor must aggregate multiple USDC transfers within one transaction");
 assert.ok(baseMonitor.includes('finalityMode==="finalized"?"finalized":"confirmed"'), "Base monitor must not label confirmation fallback as finalized");
 assert.ok(baseMonitor.includes("base_monitor_state_persist_failed"), "Base monitor must fail if the cursor/state write fails");
+assert.ok(solanaMonitor.includes("async function reconcileExactSolanaReceipt"), "Solana monitor must have an explicit strict-reconciliation path");
+assert.ok(solanaMonitor.includes("round(quoted_crypto_amount*1000000)::bigint=$2::bigint"), "Solana receipt matching must require exact USDC micro-unit amount");
+assert.ok(solanaMonitor.includes("payment_intent_match_status:\"manual_review_multiple_exact_intents\""), "multiple exact Solana matches must remain manual review");
+assert.ok(solanaMonitor.includes('"/functions/v1/midad_payment_verifier"'), "Solana monitor must use the canonical payment verifier");
+assert.ok(!solanaMonitor.includes("update public.midad_payment_intents"), "Solana monitor must not directly mark payment intents paid");
+assert.ok(solanaMonitor.includes("String(confirmed.received_tx_hash||\"\")===input.txHash"), "Solana monitor must verify the final matched hash after reconciliation");
+assert.ok(solanaMonitor.includes("current_receipt.evidence,'{}'::jsonb)||excluded.evidence"), "Solana receipt upserts must preserve earlier reconciliation evidence");
+assert.ok(solanaMonitor.includes("incoming.reduce((sum:number,delta:any)=>sum+Number(delta.deltaRaw||0),0)"), "Solana receipt amount must aggregate transaction-level token deltas");
+assert.ok(solanaMonitor.includes('mint!==DEFAULT_USDC_MINT'), "Solana monitor must reject non-canonical USDC mint configuration");
 assert.ok(baseMonitor.includes('status:"DEGRADED"'), "Base monitor must persist degraded state after scan failures");
 assert.ok(baseMonitor.includes("base_rpc_all_providers_failed"), "Base monitor must expose aggregate provider failure without secrets");
 assert.ok(baseMonitor.includes("failure_stage:\"base_usdc_monitor\""), "Base monitor must store durable error context");
