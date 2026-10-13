@@ -75,7 +75,7 @@ async function run(){
   if(finalBlock<0)finalBlock=0;
 
   const {data:state}=await db.from("midad_wallet_monitor_state")
-    .select("last_slot,latest_balance,metadata")
+    .select("last_slot,last_signature,latest_balance,metadata")
     .eq("route_id",route.id).maybeSingle();
   const previous=Number(state?.last_slot||0);
   const from=Math.max(previous+1,Math.max(0,finalBlock-2000));
