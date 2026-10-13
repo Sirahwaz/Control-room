@@ -21,11 +21,31 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check revenue Edge Functions
+        run: |
+          deno check --no-lock supabase/functions/midad_public_checkout/index.ts
+          deno check --no-lock supabase/functions/midad_payment_verifier/index.ts
+          deno check --no-lock supabase/functions/midad_fast_cash_radar/index.ts
+          deno check --no-lock supabase/functions/midad_base_usdc_monitor/index.ts
+          deno check --no-lock supabase/functions/midad_ugig_lifecycle/index.ts
+          deno check --no-lock supabase/functions/midad_revenue_autopilot/index.ts
+          deno check --no-lock supabase/functions/midad_bountybook_executor/index.ts
+          deno check --no-lock supabase/functions/midad_speedbot_fulfillment/index.ts
+          deno check --no-lock supabase/functions/midad_wallet_receipt_monitor/index.ts
+
       - name: Git diff check
         run: git diff --check
 
       - name: JavaScript syntax
         run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
+
+      - name: Revenue Forge checkout contract
+        run: node tests/revenue-forge-contract.test.mjs
 
       - name: Required UI assets
         run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-control-v2.css','midad-control-v2.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); for(const x of ['iaitrader.html','iaitrader.css','iaitrader.js']) if(!fs.existsSync(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"

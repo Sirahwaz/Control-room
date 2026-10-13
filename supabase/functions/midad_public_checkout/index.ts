@@ -24,6 +24,36 @@ const PRODUCTS:any={
 
 const json=(v:any,s=200)=>new Response(JSON.stringify(v),{status:s,headers:H});
 const clean=(v:any,n=200)=>String(v??"").trim().slice(0,n);
+function jsonObject(value:any){
+  if(value&&typeof value==="object"&&!Array.isArray(value))return value;
+  if(typeof value==="string"){try{const parsed=JSON.parse(value);if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed))return parsed;}catch{}}
+  return {};
+}
+
+function publicPayment(intent:any){
+  return {
+    id:intent.id,
+    status:intent.status,
+    reconciliation_status:intent.reconciliation_status||"pending",
+    amount_fiat:intent.amount_fiat,
+    fiat_currency:intent.fiat_currency,
+    settlement_asset:intent.settlement_asset,
+    network:intent.network,
+    quoted_crypto_amount:intent.quoted_crypto_amount,
+    wallet_address:intent.wallet_address,
+    expires_at:intent.expires_at
+  };
+}
+
+function reuseInstructions(payment:any){
+  const status=String(payment?.status||"").toLowerCase();
+  const reconciliation=String(payment?.reconciliation_status||"").toLowerCase();
+  if(status==="reconciled"||reconciliation==="matched")
+    return "تمت مطابقة الدفع في سجل MIDAD. لا ترسل دفعة أخرى؛ راجع حالة التسليم.";
+  if(["detected","verified","paid","waiting"].includes(status)||["manual_review","mismatch","unreconciled"].includes(reconciliation))
+    return "الدفع قيد التحقق أو يحتاج مراجعة. لا ترسل دفعة ثانية.";
+  return "تمت إعادة استخدام الفاتورة النشطة. ادفع المبلغ الدقيق فقط قبل انتهاء الصلاحية.";
+}
 
 async function ownerId(){
   const {data}=await db.from("profiles").select("id").limit(1).maybeSingle();
@@ -34,22 +64,54 @@ async function chooseWallet(){
   const {data:routes,error}=await db.from("midad_revenue_routes")
     .select("id,asset,network,wallet_id,address_ref,active,auto_route,requires_approval,metadata")
     .eq("active",true).eq("auto_route",true).eq("route_kind","receive")
-    .eq("asset","USDC").eq("network","solana")
+    .eq("asset","USDC").in("network",["solana","base"])
     .order("updated_at",{ascending:false});
   if(error) throw error;
   const sorted=(routes||[]).sort((a:any,b:any)=>{
     const pa=Number(a?.metadata?.priority??100), pb=Number(b?.metadata?.priority??100);
     return pa-pb;
   });
-  const r=sorted[0];
-  if(!r) return null;
-  const {data:w}=await db.from("midad_wallets")
-    .select("id,label,chain,address,purpose,watch_only,active")
-    .eq("id",r.wallet_id).eq("active",true).maybeSingle();
-  if(!w?.address) return null;
-  return {route:r,wallet:w};
+  const SOLANA_USDC_MINT="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+  const BASE_USDC_CONTRACT="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  // Only issue invoices for a fresh, verified receive route. Solana requires its canonical USDC mint/ATA;
+  // Base requires explicit mainnet chain ID + canonical USDC contract from the monitor.
+  for(const r of sorted){
+    const {data:w,error:walletError}=await db.from("midad_wallets")
+      .select("id,label,chain,address,purpose,watch_only,active")
+      .eq("id",r.wallet_id).eq("active",true).maybeSingle();
+    if(walletError) throw walletError;
+    if(!w?.address) continue;
+    const {data:monitor,error:monitorError}=await db.from("midad_wallet_monitor_state")
+      .select("status,error_count,last_scan_at,metadata")
+      .eq("route_id",r.id).maybeSingle();
+    if(monitorError) throw monitorError;
+    const scannedAt=Date.parse(String(monitor?.last_scan_at||""));
+    const scanAgeMs=Date.now()-scannedAt;
+    const network=String(r.network||"").toLowerCase();
+    // Older Solana monitor versions stored JSONB metadata as a JSON string. Parse it defensively;
+    // invoice readiness still requires the explicit version-32 verifier handshake below.
+    const monitorMetadata=jsonObject(monitor?.metadata);
+    const tokenAccounts=Number(monitorMetadata.token_accounts||0);
+    const configuredMint=String(r.metadata?.verification?.token_mint||"");
+    const chainId=Number(monitorMetadata.chain_id||0);
+    const tokenContract=String(monitorMetadata.token_contract||"").toLowerCase();
+    const paymentReconciliationReady=monitorMetadata.payment_reconciliation_ready===true;
+    const chainEvidenceReady=network==="solana"
+      ? tokenAccounts>0&&configuredMint===SOLANA_USDC_MINT&&paymentReconciliationReady
+      : network==="base"
+        ? chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()&&paymentReconciliationReady
+        : false;
+    const ready=monitor?.status==="VERIFIED"
+      && Number(monitor?.error_count||0)===0
+      && chainEvidenceReady
+      && Number.isFinite(scannedAt)
+      && scanAgeMs>=-60_000
+      && scanAgeMs<=10*60_000;
+    if(!ready) continue;
+    return {route:r,wallet:w,monitor:{status:monitor.status,last_scan_at:monitor.last_scan_at,token_accounts:tokenAccounts,chain_id:chainId,token_contract:tokenContract,payment_reconciliation_ready:paymentReconciliationReady}};
+  }
+  return null;
 }
-
 
 function cleanAttribution(v:any){
   const src=(v&&typeof v==="object")?v:{};
@@ -93,8 +155,12 @@ async function main(req:Request){
       const {data:existing}=await db.from("midad_payment_intents")
         .select("id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata")
         .eq("user_id",oid).contains("metadata",{public_order_key:key})
-        .in("status",["created","quoted","detected","paid"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
-      if(existing) return json({ok:true,reused:true,payment_intent:existing,product:p});
+        .in("status",["created","quoted","detected","verified","paid","reconciled"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+      if(existing){
+        const payment=publicPayment(existing);
+        const receiving={asset:payment.settlement_asset,network:payment.network,wallet_address:payment.wallet_address};
+        return json({ok:true,reused:true,payment,payment_intent:payment,product:p,receiving,instructions:reuseInstructions(payment)});
+      }
     }
 
     const {count}=await db.from("midad_payment_intents")
@@ -104,7 +170,7 @@ async function main(req:Request){
     if((count||0)>=30) return json({ok:false,error:"checkout_rate_limited"},429);
 
     const target=await chooseWallet();
-    if(!target) return json({ok:false,error:"revenue_receive_wallet_unavailable"},503);
+    if(!target) return json({ok:false,error:"revenue_receive_wallet_unavailable",reason:"RECEIVING_ROUTE_NOT_READY",message:"مسار استقبال USDC غير جاهز أو لم ينجح فحصه مؤخرًا. لم تُنشأ فاتورة؛ حاول لاحقًا بعد استعادة جاهزية الاستقبال."},503);
 
     const expires=Math.max(15,Math.min(180,Number(body.expires_in_minutes||60)));
     const metadata={
@@ -129,7 +195,7 @@ async function main(req:Request){
       amount_fiat:p.usd,
       fiat_currency:"USD",
       settlement_asset:"USDC",
-      network:"solana",
+      network:target.route.network,
       quoted_crypto_amount:p.usd,
       fx_rate:1,
       quote_source:"fixed_usdc_price",
@@ -167,7 +233,7 @@ async function main(req:Request){
       metadata:{
         price_usd:p.usd,
         settlement_asset:"USDC",
-        network:"solana",
+        network:target.route.network,
         route_id:target.route.id,
         wallet_id:target.wallet.id,
         source:"midad_public_checkout_v6",
@@ -176,26 +242,27 @@ async function main(req:Request){
     });
     if(orderError) throw orderError;
 
-    const mint=target.route.metadata?.verification?.token_mint||null;
-    const paymentUri=mint
+    const checkoutNetwork=String(target.route.network||"").toLowerCase();
+    const mint=checkoutNetwork==="solana"?(target.route.metadata?.verification?.token_mint||null):null;
+    const paymentUri=checkoutNetwork==="solana"&&mint
       ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8))
       : null;
 
     return json({
       ok:true,
       product:{id:productId,...p},
-      payment:{...updatedIntent,watch_only:target.wallet.watch_only},
-      receiving:{asset:"USDC",network:"solana",route_id:target.route.id,wallet_id:target.wallet.id,wallet_address:target.wallet.address,mint},
+      payment:publicPayment(updatedIntent),
+      receiving:{asset:"USDC",network:target.route.network,route_id:target.route.id,wallet_id:target.wallet.id,wallet_address:target.wallet.address,mint,chain_id:target.monitor.chain_id||null,token_contract:target.monitor.token_contract||null},
       fees:{
         midad_receive_fee_usd:Number(target.route.metadata?.fee_profile?.midad_receive_fee_usd??0),
         midad_outbound_fee_usd:Number(target.route.metadata?.fee_profile?.midad_outbound_fee_usd??0),
         payer_network_fee:Boolean(target.route.metadata?.fee_profile?.payer_network_fee??true),
-        payer_ata_creation_cost_possible:Boolean(target.route.metadata?.fee_profile?.payer_ata_creation_cost_possible??true)
+        payer_ata_creation_cost_possible:checkoutNetwork==="solana"&&Boolean(target.route.metadata?.fee_profile?.payer_ata_creation_cost_possible??true)
       },
       payment_uri:paymentUri,
       attribution,
       order:{status:"AWAITING_PAYMENT",customer_contact_collected:Boolean(customerEmail||customerName||customerRequirements)},
-      instructions:"Pay the exact quoted USDC amount on Solana to the displayed receiving address. The tiny micro-USDC component uniquely identifies this order; it is not a separate MIDAD fee. MIDAD charges no inbound receive fee; the sender/network may incur normal transaction or token-account creation costs. The system verifies the on-chain receipt automatically; no outbound transfer is performed."
+      instructions:`Pay the exact quoted USDC amount on ${checkoutNetwork==="base"?"Base mainnet":"Solana"} to the displayed receiving address. The tiny micro-USDC component uniquely identifies this order; it is not a separate MIDAD fee. MIDAD charges no inbound receive fee; normal sender/network transaction costs may apply. The system verifies the on-chain receipt automatically; no outbound transfer is performed.`
     });
   }catch(e){
     return json({ok:false,error:"public_checkout_error",detail:String(e).slice(0,400)},500);
