@@ -76,7 +76,7 @@ assert.ok(baseMonitor.includes("base_monitor_state_persist_failed"), "Base monit
 assert.ok(baseMonitor.includes("strict_payment_verifier_capability_unavailable"), "Base monitor must not scan/advance until the strict verifier is available");
 assert.ok(baseMonitor.includes("reconcileExactBaseReceipt"), "Base monitor must match detected receipts to exact invoice candidates");
 assert.ok(baseMonitor.includes('callVerifier("reconcile",{tx_hash:input.txHash})'), "Base monitor must reconcile the exact observed transaction hash");
-assert.ok(baseMonitor.includes("Number(confirmed?.received_tx_hash||\"\")===input.txHash"), "Base monitor must read back the exact reconciled transaction hash");
+assert.ok(baseMonitor.includes('String(confirmed?.received_tx_hash||"")===input.txHash'), "Base monitor must read back the exact reconciled transaction hash");
 assert.ok(baseMonitor.includes("payment_reconciliation_ready:paymentReconciliationReady"), "Base monitor must persist verifier readiness for checkout");
 assert.ok(baseMonitor.includes("block_timestamp:blockTimestamp"), "Base receipt evidence must use the actual chain block timestamp for invoice-window matching");
 assert.ok(solanaMonitor.includes("async function reconcileExactSolanaReceipt"), "Solana monitor must have an explicit strict-reconciliation path");
