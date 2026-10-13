@@ -37,7 +37,7 @@ assert.match(radar, /workerPayoutUsdc/, "BaseBounty must use explicit after-fee 
 assert.match(radar, /reward_units_verified:false/, "Superteam raw token reward units must not be converted to USD without evidence");
 assert.match(radar, /individual_gig_crypto_terms_verified:false/, "LaborX listing discovery must not presume each gig accepts crypto");
 assert.match(radar, /research_only:true/, "airdrop observations must be research-only");
-assert.ok(radar.includes("Boolean(c.payout_evidence_verified)&&Boolean(c.crypto_payout_verified)"), "automation must require payout and crypto evidence");
+assert.ok(radar.includes("Boolean(c.crypto_payout_verified)&&Boolean(c.payout_evidence_verified)"), "automation must require payout and crypto evidence");
 assert.ok(radar.includes('c.claim_mode!=="wallet_signature"'), "wallet-signature claims must remain outside autonomous execution");
 assert.ok(radar.includes('const status=automationAllowed?"money_candidate":"human_review"'), "unverified payout opportunities must be held for review");
 
