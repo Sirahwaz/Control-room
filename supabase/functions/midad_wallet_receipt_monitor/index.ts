@@ -230,7 +230,7 @@ async function run(){
    try{results.push(await scanRoute(route));}
    catch(error){
      const message=clip(error instanceof Error?error.message:error,400);
-     await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,status,error_count,last_error,metadata,updated_at) values($1,now(),'DEGRADED',1,$2,$3::jsonb,now()) on conflict(route_id) do update set last_scan_at=now(),status='DEGRADED',error_count=public.midad_wallet_monitor_state.error_count+1,last_error=excluded.last_error,metadata=excluded.metadata,updated_at=now()",[route.id,message,{provider:"solana_rpc",settlement_performed:false}]);
+     await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,status,error_count,last_error,metadata,updated_at) values($1,now(),'DEGRADED',1,$2,$3::jsonb,now()) on conflict(route_id) do update set last_scan_at=now(),status='DEGRADED',error_count=public.midad_wallet_monitor_state.error_count+1,last_error=excluded.last_error,metadata=excluded.metadata,updated_at=now()",[route.id,message,{provider:"solana_rpc",payment_reconciliation_ready:false,settlement_performed:false}]);
      results.push({route_id:route.id,status:"DEGRADED",error:message});
    }
  }
