@@ -58,4 +58,6 @@ assert.ok(ugigLifecycle.includes("const cryptoOnlyReceiveBridgeAvailable=false")
 assert.ok(ugigLifecycle.includes("crypto_only_onchain_invoice_bridge_not_implemented"), "uGig block reason must identify missing on-chain invoice bridge");
 assert.ok(ugigLifecycle.indexOf("cryptoOnlyReceiveBridgeAvailable") < ugigLifecycle.indexOf('action:"invoice_create"'), "uGig crypto-only gate must execute before invoice creation");
 assert.ok(ugigLifecycle.includes("USD/CoinPay invoice status is not accepted as on-chain income"), "uGig must not treat off-chain invoice status as wallet receipt proof");
+assert.ok(ugigLifecycle.includes('state:j.state,blocker_code:"CRYPTO_PAYOUT_NOT_VERIFIED"'), "uGig guard must preserve current job state rather than orphaning a live job");
+assert.ok(ugigLifecycle.includes("const alreadyGated=j.blocker_code"), "uGig guard must avoid repeated blocker writes every cron cycle");
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
