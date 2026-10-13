@@ -8,6 +8,7 @@ const forge = fs.readFileSync("revenue-forge.html", "utf8");
 const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts", "utf8");
 const baseMonitor = fs.readFileSync("supabase/functions/midad_base_usdc_monitor/index.ts", "utf8");
 const securityMigration = fs.readFileSync("supabase/migrations/20261013000200_security_perf_hardening.sql", "utf8");
+const ugigLifecycle = fs.readFileSync("supabase/functions/midad_ugig_lifecycle/index.ts", "utf8");
 
 assert.match(checkout, /function publicPayment\(intent:any\)/, "public payment projection must exist");
 for (const field of ["id:intent.id", "status:intent.status", "reconciliation_status:intent.reconciliation_status", "quoted_crypto_amount:intent.quoted_crypto_amount", "wallet_address:intent.wallet_address"]) {
@@ -52,4 +53,9 @@ assert.ok(securityMigration.includes("SET search_path = pg_catalog, public"), "w
 for (const indexName of ["midad_factory_artifacts_project_id_idx", "midad_factory_artifacts_run_id_idx", "midad_factory_projects_owner_user_id_idx", "midad_factory_runs_project_id_idx", "midad_platform_account_events_run_id_idx"]) {
   assert.ok(securityMigration.includes(indexName), "missing staged foreign-key performance index: "+indexName);
 }
+assert.ok(ugigLifecycle.includes("version:7"), "uGig lifecycle should use guarded version 7");
+assert.ok(ugigLifecycle.includes("const cryptoOnlyReceiveBridgeAvailable=false"), "uGig USD invoices must remain blocked until a crypto receipt bridge exists");
+assert.ok(ugigLifecycle.includes("crypto_only_onchain_invoice_bridge_not_implemented"), "uGig block reason must identify missing on-chain invoice bridge");
+assert.ok(ugigLifecycle.indexOf("cryptoOnlyReceiveBridgeAvailable") < ugigLifecycle.indexOf('action:"invoice_create"'), "uGig crypto-only gate must execute before invoice creation");
+assert.ok(ugigLifecycle.includes("USD/CoinPay invoice status is not accepted as on-chain income"), "uGig must not treat off-chain invoice status as wallet receipt proof");
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
