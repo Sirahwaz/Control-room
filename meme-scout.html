@@ -103,13 +103,27 @@ function listReasons(x){
  if(x.safety_status!=="CHECKED_WITH_WARNINGS"&&x.safety_status!=="VERIFIED")a.push("حالة أمان العقد: "+String(x.safety_status||"UNVERIFIED"));
  return a.slice(0,5).map(v=>"<div>• "+esc(v)+"</div>").join("");
 }
+function trustSwapUrl(x){
+ const net=String(x.chain_id||"").toLowerCase(),token=String(x.token_address||"").trim();
+ if(net==="ethereum"&&/^0x[a-fA-F0-9]{40}$/.test(token)){
+  const from="c60_t0xdAC17F958D2ee523a2206206994597C13D831ec7";
+  const to="c60_t"+token;
+  return "https://link.trustwallet.com/swap?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to);
+ }
+ if(net==="solana"&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(token)){
+  const from="c501_tEs9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+  const to="c501_t"+token;
+  return "https://link.trustwallet.com/swap?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to);
+ }
+ return "";
+}
 function assetCard(x){
- const url=safeUrl(x.pair_url),sym=esc(x.symbol||"UNKNOWN"),chain=esc(x.chain_id||"—");
+ const url=safeUrl(x.pair_url),swap=trustSwapUrl(x),sym=esc(x.symbol||"UNKNOWN"),chain=esc(x.chain_id||"—");
  const ai=x.ai_review&&x.ai_review.summary_ar?'<div class="reason"><b>Neural++:</b> '+esc(x.ai_review.summary_ar)+'</div>':"";
  return '<article class="asset"><div class="asset-top"><div class="token"><div class="coinmark">'+esc((x.symbol||"?").slice(0,2).toUpperCase())+'</div><div><h4>'+sym+' <span style="color:var(--muted);font-size:10px;font-weight:400">'+esc(x.name||"")+'</span></h4><small>'+chain+' · '+esc(x.dex_id||"DEX")+ ' · '+(x.token_address?esc(x.token_address.slice(0,6)+"…"+x.token_address.slice(-5)):"")+'</small></div></div><span class="badge '+esc(x.signal_class||"OBSERVE")+'">'+esc(classLabel(x.signal_class))+'</span></div>'+
  '<div class="metricgrid"><div class="metric"><span>السعر · Price</span><b>'+usd(x.price_usd)+'</b></div><div class="metric"><span>السيولة · Liquidity</span><b>'+usd(x.liquidity_usd)+'</b></div><div class="metric"><span>تغير 5m</span><b class="'+tone(x.price_change_5m_pct)+'">'+pct(x.price_change_5m_pct)+'</b></div><div class="metric"><span>تغير 1h</span><b class="'+tone(x.price_change_1h_pct)+'">'+pct(x.price_change_1h_pct)+'</b></div>'+
  '<div class="metric"><span>تغير 24h</span><b class="'+tone(x.price_change_24h_pct)+'">'+pct(x.price_change_24h_pct)+'</b></div><div class="metric"><span>الحجم 5m</span><b>'+usd(x.volume_5m_usd)+'</b></div><div class="metric"><span>زخم · Momentum</span><b>'+n(x.momentum_score,0)+'/100</b></div><div class="metric"><span>خطر · Risk</span><b class="'+(Number(x.risk_score)>=60?"neg":Number(x.risk_score)>=35?"neutral":"pos")+'">'+n(x.risk_score,0)+'/100</b></div></div>'+
- '<div class="asset-bottom"><div class="scores"><span class="score">Buy/Sell 5m: <b>'+n(x.buys_5m,0)+' / '+n(x.sells_5m,0)+'</b></span><span class="score">Safety: <b class="'+(x.safety_status==="VERIFIED"?"pos":"neutral")+'">'+esc(x.safety_status||"UNVERIFIED")+'</b></span></div><div class="asset-links">'+(url?'<a class="link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">فتح الزوج ↗</a>':"")+'<button class="filter" data-copy="'+esc(x.token_address||"")+'">نسخ العنوان</button></div></div>'+
+  '<div class="asset-bottom"><div class="scores"><span class="score">Buy/Sell 5m: <b>'+n(x.buys_5m,0)+' / '+n(x.sells_5m,0)+'</b></span><span class="score">Safety: <b class="'+(x.safety_status==="VERIFIED"?"pos":"neutral")+'">'+esc(x.safety_status||"UNVERIFIED")+'</b></span></div><div class="asset-links">'+(url?'<a class="link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">فتح الزوج ↗</a>':"")+(swap?'<a class="btn primary" href="'+esc(swap)+'" target="_blank" rel="noopener noreferrer">فتح Swap في Trust Wallet</a>':"")+'<button class="filter" data-copy="'+esc(x.token_address||"")+'">نسخ العنوان</button></div></div>'+
  '<div class="reason">'+listReasons(x)+'</div>'+ai+'</article>';
 }
 function renderAssets(){
