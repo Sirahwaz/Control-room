@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const SK=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
+const INGEST_KEY=Deno.env.get("MIDAD_INGEST_KEY")||"";
 const db=createClient(URL,SK,{auth:{persistSession:false,autoRefreshToken:false}});
 const BASE_RPC=Deno.env.get("MIDAD_BASE_RPC_URL")||"https://mainnet.base.org";
 const RPC_POOL=[BASE_RPC,"https://base-rpc.publicnode.com","https://public.1rpc.io/base"].filter((v,i,a)=>a.indexOf(v)===i);
@@ -46,6 +47,106 @@ async function authorized(req:Request){
   return !!data && k===String(data);
 }
 
+async function verifierReadiness(){
+  if(!URL||!SK||!INGEST_KEY)return false;
+  try{
+    const response=await fetch(URL+"/functions/v1/midad_payment_verifier",{
+      method:"POST",
+      headers:{"content-type":"application/json","authorization":"Bearer "+SK,"x-midad-ingest-key":INGEST_KEY},
+      body:JSON.stringify({action:"status"}),
+      signal:AbortSignal.timeout(10000)
+    });
+    const data=await response.json().catch(()=>({}));
+    const c=data?.capabilities||{};
+    return response.ok&&data?.ok===true&&data?.status==="ready"&&Number(data?.version)===32
+      &&c.exact_asset_network===true&&c.exact_usdc_micro_units===true
+      &&c.recipient_binding===true&&c.canonical_chain_token===true&&c.finality_evidence===true;
+  }catch{return false}
+}
+
+async function mergeReceiptEvidence(receiptId:string, patch:any){
+  const {data:row,error}=await db.from("midad_wallet_receipts").select("evidence").eq("id",receiptId).maybeSingle();
+  if(error)throw new Error("base_receipt_evidence_read_failed:"+error.message);
+  const current=row?.evidence&&typeof row.evidence==="object"&&!Array.isArray(row.evidence)?row.evidence:{};
+  const {error:writeError}=await db.from("midad_wallet_receipts").update({evidence:{...current,...patch}}).eq("id",receiptId);
+  if(writeError)throw new Error("base_receipt_evidence_write_failed:"+writeError.message);
+}
+
+async function reconcileExactBaseReceipt(input:{receiptId:string;walletAddress:string;txHash:string;amount:number;confirmations:number;evidence:any;}){
+  const blockTime=Number(input.evidence?.block_timestamp||0);
+  if(!Number.isFinite(blockTime)||blockTime<=0)throw new Error("base_receipt_block_timestamp_missing");
+  const observedAt=new Date(blockTime*1000).toISOString();
+  const {data:candidates,error:candidateError}=await db.from("midad_payment_intents")
+    .select("id,quoted_crypto_amount,created_at,expires_at,status,settlement_asset,network,wallet_address")
+    .eq("wallet_address",input.walletAddress).eq("settlement_asset","USDC").eq("network","base")
+    .in("status",["created","quoted","detected","verified"])
+    .lte("created_at",observedAt).gt("expires_at",observedAt)
+    .eq("quoted_crypto_amount",input.amount).limit(3);
+  if(candidateError)throw new Error("base_invoice_match_query_failed:"+candidateError.message);
+  const exact=(candidates||[]).filter((c:any)=>Number.isFinite(Number(c.quoted_crypto_amount))
+    &&Math.round(Number(c.quoted_crypto_amount)*1_000_000)===Math.round(input.amount*1_000_000));
+  if(exact.length!==1){
+    const patch={payment_intent_matched:false,payment_intent_match_status:exact.length===0?"unmatched_no_exact_active_intent":"manual_review_multiple_exact_intents",payment_intent_candidate_count:exact.length,payment_intent_match_checked_at:new Date().toISOString()};
+    await mergeReceiptEvidence(input.receiptId,patch);
+    return {...patch,payment_verifier_calls:0};
+  }
+  if(!INGEST_KEY)throw new Error("base_payment_verifier_ingest_key_missing");
+  const intentId=String(exact[0].id);
+  const callVerifier=async(action:string,extra:any={})=>{
+    const response=await fetch(URL+"/functions/v1/midad_payment_verifier",{
+      method:"POST",
+      headers:{"content-type":"application/json","authorization":"Bearer "+SK,"x-midad-ingest-key":INGEST_KEY},
+      body:JSON.stringify({action,payment_intent_id:intentId,...extra}),
+      signal:AbortSignal.timeout(15000)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok===false||data?.error)throw new Error("base_payment_verifier_"+action+":"+(data?.error||response.status));
+    return data;
+  };
+  const {data:prior,error:priorError}=await db.from("midad_payment_events")
+    .select("id,provider,asset,network,observed_amount,evidence")
+    .eq("payment_intent_id",intentId).eq("tx_hash",input.txHash)
+    .order("occurred_at",{ascending:false}).limit(1).maybeSingle();
+  if(priorError)throw new Error("base_prior_payment_event_query_failed:"+priorError.message);
+  if(prior){
+    const priorEvidence=prior.evidence&&typeof prior.evidence==="object"?prior.evidence:{};
+    const priorMatches=String(prior.asset||"").toUpperCase()==="USDC"
+      &&String(prior.network||"").toLowerCase()==="base"
+      &&Math.round(Number(prior.observed_amount||0)*1_000_000)===Math.round(input.amount*1_000_000)
+      &&String(priorEvidence.recipient||"").toLowerCase()===input.walletAddress.toLowerCase()
+      &&Number(priorEvidence.chain_id)===CHAIN_ID
+      &&String(priorEvidence.contract_address||"").toLowerCase()===USDC.toLowerCase()
+      &&priorEvidence.token_contract_verified===true;
+    if(!priorMatches){
+      const patch={payment_intent_matched:false,payment_intent_id:intentId,payment_intent_match_status:"manual_review_existing_event_mismatch",payment_intent_match_checked_at:new Date().toISOString()};
+      await mergeReceiptEvidence(input.receiptId,patch);
+      return {...patch,payment_verifier_calls:0};
+    }
+  }else{
+    await callVerifier("record_event",{
+      event_type:"onchain_receipt_observed",provider:"base_rpc",tx_hash:input.txHash,
+      asset:"USDC",network:"base",observed_amount:input.amount,confirmations:input.confirmations,
+      evidence:input.evidence,occurred_at:observedAt
+    });
+  }
+  const verified=await callVerifier("reconcile");
+  const {data:confirmed,error:confirmError}=await db.from("midad_payment_intents")
+    .select("status,reconciliation_status,received_tx_hash,paid_at").eq("id",intentId).maybeSingle();
+  if(confirmError)throw new Error("base_reconciled_intent_read_failed:"+confirmError.message);
+  const flags=verified?.reconciliation||{};
+  const matched=verified?.status==="reconciled"
+    &&flags.assetOk===true&&flags.networkOk===true&&flags.amountOk===true
+    &&flags.confirmationsOk===true&&flags.txOk===true
+    &&flags.recipientOk===true&&flags.chainEvidenceOk===true&&flags.independentEvidence===true
+    &&String(confirmed?.status||"")==="paid"
+    &&String(confirmed?.reconciliation_status||"")==="matched"
+    &&String(confirmed?.received_tx_hash||"")===input.txHash
+    &&Boolean(confirmed?.paid_at);
+  const patch={payment_intent_matched:matched,payment_intent_id:intentId,payment_intent_match_status:matched?"reconciled":String(verified?.status||"manual_review"),payment_verifier_result:flags,payment_intent_match_checked_at:new Date().toISOString()};
+  await mergeReceiptEvidence(input.receiptId,patch);
+  return {...patch,payment_verifier_calls:prior?1:2};
+}
+
 async function run(){
   let routeId:string|null=null;
   try{
@@ -62,6 +163,8 @@ async function run(){
     .eq("id",route.wallet_id).eq("active",true).maybeSingle();
   if(we)throw we;
   if(!wallet?.address)return {ok:false,status:"BLOCKED",reason:"base_usdc_wallet_missing"};
+  const paymentReconciliationReady=await verifierReadiness();
+  if(!paymentReconciliationReady)throw new Error("strict_payment_verifier_capability_unavailable");
 
   const actualChainId=hexToNum(await rpc("eth_chainId",[]));
   if(actualChainId!==CHAIN_ID)throw new Error("base_rpc_wrong_chain:"+actualChainId);
@@ -122,10 +225,18 @@ async function run(){
     if(!group.senders.some(x=>same(x,sender)))group.senders.push(sender);
   }
   const receipts:any[]=[];
+  const blockTimeCache=new Map<number,number>();
   for(const [txHash,group] of txGroups){
     const {block,log_indices,senders,raw}=group;
     const amount=Number(raw)/10**DECIMALS;
     if(!(amount>0)||!Number.isFinite(amount))continue;
+    let blockTimestamp=blockTimeCache.get(block)||0;
+    if(!blockTimestamp){
+      const header=await rpc("eth_getBlockByNumber",["0x"+block.toString(16),false]);
+      blockTimestamp=hexToNum(header?.timestamp||"0x0");
+      if(!(blockTimestamp>0))throw new Error("base_receipt_block_timestamp_missing:"+block);
+      blockTimeCache.set(block,blockTimestamp);
+    }
     const confirmations=Math.max(0,latest-block);
     const commitment=finalityMode==="finalized"?"finalized":"confirmed";
     const evidence={
@@ -141,6 +252,7 @@ async function run(){
       sender:senders.length===1?senders[0]:null,
       senders,
       block_number:block,
+      block_timestamp:blockTimestamp,
       log_indices,
       confirmations,
       finality:finalityMode==="finalized"?"finalized":"at_least_3_confirmations",
@@ -161,7 +273,10 @@ async function run(){
       evidence
     },{onConflict:"wallet_id,tx_hash,asset,mint,direction"}).select("id").maybeSingle();
     if(ins.error)throw new Error("base_receipt_persist_failed:"+ins.error.message);
-    receipts.push({receipt_id:ins.data?.id||null,tx_hash:txHash,amount,block,confirmations,senders,log_indices,commitment});
+    const reconciliation=ins.data?.id
+      ?await reconcileExactBaseReceipt({receiptId:ins.data.id,walletAddress:wallet.address,txHash,amount,confirmations,evidence})
+      :{payment_intent_matched:false,payment_intent_match_status:"receipt_id_unavailable",payment_verifier_calls:0};
+    receipts.push({receipt_id:ins.data?.id||null,tx_hash:txHash,amount,block,confirmations,senders,log_indices,commitment,...reconciliation});
   }
 
   let balance=0;
@@ -190,7 +305,9 @@ async function run(){
       finalized_block:finalBlock,
       scanned_from:from,
       scanned_to:to,
-      receipts_detected:receipts.length
+      receipts_detected:receipts.length,
+      payment_reconciliation_ready:paymentReconciliationReady,
+      payment_verifier_calls:receipts.reduce((sum:number,r:any)=>sum+Number(r.payment_verifier_calls||0),0)
     },
     updated_at:new Date().toISOString()
   },{onConflict:"route_id"});
@@ -208,6 +325,7 @@ async function run(){
     scanned_to:to,
     current_balance_usdc:balance,
     receipts_detected:receipts.length,
+    payment_reconciliation_ready:paymentReconciliationReady,
     receipts
   };
   }catch(e){
