@@ -18,6 +18,30 @@ async function secret(name:string){
  const rows=await d.unsafe("select decrypted_secret from vault.decrypted_secrets where name=$1 order by updated_at desc limit 1",[name]);
  return typeof rows[0]?.decrypted_secret==="string"?rows[0].decrypted_secret:"";
 }
+let cachedIngestKey=INGEST_KEY;
+async function readIngestKey(){
+ if(cachedIngestKey)return cachedIngestKey;
+ try{cachedIngestKey=await secret("MIDAD_INGEST_KEY")}catch{cachedIngestKey=""}
+ return cachedIngestKey;
+}
+async function verifierReadiness(){
+ if(!SUPABASE_URL||!SERVICE_ROLE_KEY)return false;
+ const ingestKey=await readIngestKey();
+ if(!ingestKey)return false;
+ try{
+   const response=await fetch(SUPABASE_URL+"/functions/v1/midad_payment_verifier",{
+     method:"POST",
+     headers:{"content-type":"application/json","authorization":"Bearer "+SERVICE_ROLE_KEY,"x-midad-ingest-key":ingestKey},
+     body:JSON.stringify({action:"status"}),
+     signal:AbortSignal.timeout(10000)
+   });
+   const data=await response.json().catch(()=>({}));
+   const c=data?.capabilities||{};
+   return response.ok&&data?.ok===true&&data?.status==="ready"&&Number(data?.version)===32
+     &&c.exact_asset_network===true&&c.exact_usdc_micro_units===true
+     &&c.recipient_binding===true&&c.canonical_chain_token===true&&c.finality_evidence===true;
+ }catch{return false}
+}
 async function authorized(req:Request){
  const got=req.headers.get("x-midad-autonomy-key")||"";
  const ingestGot=req.headers.get("x-midad-ingest-key")||"";
@@ -55,7 +79,12 @@ async function persistMatchEvidence(receiptId:string, patch:any){
  if(!rows.length)throw new Error("receipt_match_evidence_persist_failed");
 }
 
-async function reconcileExactSolanaReceipt(input:{receiptId:string;walletAddress:string;txHash:string;amount:number;evidence:any;}){
+async function reconcileExactSolanaReceipt(input:{receiptId:string;walletAddress:string;txHash:string;amount:number;evidence:any;verifierReady:boolean;}){
+ if(!input.verifierReady){
+   const patch={payment_intent_matched:false,payment_intent_match_status:"blocked_strict_verifier_not_ready",payment_intent_match_checked_at:new Date().toISOString()};
+   await persistMatchEvidence(input.receiptId,patch);
+   return {...patch,payment_verifier_calls:0};
+ }
  const d=needDb(),evidence=input.evidence||{};
  const blockTime=Number(evidence.block_time||0);
  if(!Number.isFinite(blockTime)||blockTime<=0){
@@ -88,8 +117,7 @@ async function reconcileExactSolanaReceipt(input:{receiptId:string;walletAddress
    await persistMatchEvidence(input.receiptId,patch);
    return {...patch,payment_verifier_calls:0};
  }
- let ingestKey=INGEST_KEY;
- if(!ingestKey){try{ingestKey=await secret("MIDAD_INGEST_KEY")}catch{}}
+ const ingestKey=await readIngestKey();
  if(!ingestKey){
    const patch={payment_intent_matched:false,payment_intent_match_status:"blocked_ingest_key_unavailable",payment_intent_match_checked_at:new Date().toISOString()};
    await persistMatchEvidence(input.receiptId,patch);
@@ -127,6 +155,8 @@ async function reconcileExactSolanaReceipt(input:{receiptId:string;walletAddress
      &&verified?.reconciliation?.networkOk===true
      &&verified?.reconciliation?.amountOk===true
      &&verified?.reconciliation?.txOk===true
+     &&verified?.reconciliation?.recipientOk===true
+     &&verified?.reconciliation?.chainEvidenceOk===true
      &&verified?.reconciliation?.independentEvidence===true
      &&String(confirmed.status||"")==="paid"
      &&String(confirmed.reconciliation_status||"")==="matched"
@@ -161,6 +191,7 @@ async function scanRoute(route:any){
  }
  const receipts:any[]=[];
  let paymentVerifierCalls=0;
+ const paymentReconciliationReady=await verifierReadiness();
  for(const [signature,sigInfo] of signatures){
    const tx=await solana("getTransaction",[signature,{commitment:"finalized",maxSupportedTransactionVersion:0,encoding:"jsonParsed"}]);
    if(!tx?.meta||tx.meta.err)continue;
@@ -178,7 +209,7 @@ async function scanRoute(route:any){
    const receiptId=String(inserted[0]?.id||"");
    let reconciliation:any={payment_intent_matched:false,payment_intent_match_status:"receipt_id_unavailable",payment_verifier_calls:0};
    if(receiptId&&inserted[0]?.evidence?.payment_intent_matched!==true){
-     reconciliation=await reconcileExactSolanaReceipt({receiptId,walletAddress:wallet.address,txHash:signature,amount,evidence});
+     reconciliation=await reconcileExactSolanaReceipt({receiptId,walletAddress:wallet.address,txHash:signature,amount,evidence,verifierReady:paymentReconciliationReady});
    }else if(inserted[0]?.evidence?.payment_intent_matched===true){
      reconciliation={payment_intent_matched:true,payment_intent_id:inserted[0]?.evidence?.payment_intent_id||null,payment_intent_match_status:"reconciled_previously",payment_verifier_calls:0};
    }
@@ -186,10 +217,10 @@ async function scanRoute(route:any){
    receipts.push({receipt_id:receiptId||null,tx_hash:signature,amount,evidence_status:reconciliation.payment_intent_matched?"ONCHAIN_FINALIZED_MATCHED":"ONCHAIN_FINALIZED_UNMATCHED",...reconciliation});
  }
  const stateStatus=accounts.length?"VERIFIED":"NO_TOKEN_ACCOUNT";
- const metadata={provider:"solana_rpc",mint,token_decimals:6,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,settlement_performed:false};
+ const metadata={provider:"solana_rpc",mint,token_decimals:6,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady,settlement_performed:false};
  const lastSlot=[...signatures.values()].reduce((m:number,x:any)=>Math.max(m,Number(x.slot||0)),0)||null;
  await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,last_signature,last_slot,latest_balance,latest_balance_updated_at,status,error_count,last_error,metadata,updated_at) values($1,now(),$2,$3,$4,now(),$5,0,null,$6::jsonb,now()) on conflict(route_id) do update set last_scan_at=excluded.last_scan_at,last_signature=excluded.last_signature,last_slot=excluded.last_slot,latest_balance=excluded.latest_balance,latest_balance_updated_at=excluded.latest_balance_updated_at,status=excluded.status,error_count=0,last_error=null,metadata=excluded.metadata,updated_at=now()",[route.id,[...signatures.keys()][0]||null,lastSlot,balanceRaw/1_000_000,stateStatus,metadata);
- return {route_id:route.id,wallet_id:wallet.id,network:"solana",asset:"USDC",token_accounts:accounts.length,balance:balanceRaw/1_000_000,scanned_signatures:signatures.size,payment_verifier_calls:paymentVerifierCalls,receipts};
+ return {route_id:route.id,wallet_id:wallet.id,network:"solana",asset:"USDC",token_accounts:accounts.length,balance:balanceRaw/1_000_000,scanned_signatures:signatures.size,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady,receipts};
 }
 async function run(){
  const d=needDb();
