@@ -184,10 +184,51 @@ async function scanRoute(route:any){
  const accounts=accountResult?.value||[];
  let balanceRaw=0;
  for(const a of accounts)balanceRaw+=Number(a?.account?.data?.parsed?.info?.tokenAmount?.amount||0);
+ // Resume independently for every token account. A single route cursor is insufficient if the wallet
+ // has more than one USDC account. Paginate backward until each account's last-seen signature is found.
+ const stateRows=await d.unsafe("select metadata from public.midad_wallet_monitor_state where route_id=$1 limit 1",[route.id]);
+ const rawMeta=stateRows[0]?.metadata;
+ let previousMetadata:any={};
+ try{
+   if(typeof rawMeta==="string"){
+     const parsed=JSON.parse(rawMeta);
+     if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed))previousMetadata=parsed;
+   }else if(rawMeta&&typeof rawMeta==="object"&&!Array.isArray(rawMeta))previousMetadata=rawMeta;
+ }catch{}
+ const previousCursors=previousMetadata.signature_cursors_by_account&&typeof previousMetadata.signature_cursors_by_account==="object"&&!Array.isArray(previousMetadata.signature_cursors_by_account)
+   ?previousMetadata.signature_cursors_by_account:{};
+ const signatureCursorsByAccount:any={...previousCursors};
  const signatures=new Map<string,any>();
+ let signatureScanComplete=true;
+ const maxSignaturePages=10;
  for(const a of accounts){
-   const list=await solana("getSignaturesForAddress",[a.pubkey,{commitment:"finalized",limit:25}]);
-   for(const x of list||[])if(!x.err&&x.signature)signatures.set(x.signature,x);
+   const previousCursor=typeof previousCursors[a.pubkey]==="string"?previousCursors[a.pubkey]:"";
+   let before:string|undefined;
+   let foundPreviousCursor=!previousCursor;
+   let newestSignature="";
+   let pageCount=0;
+   for(;pageCount<maxSignaturePages;pageCount++){
+     const options:any={commitment:"finalized",limit:1000};
+     if(before)options.before=before;
+     const list=await solana("getSignaturesForAddress",[a.pubkey,options]);
+     const page=Array.isArray(list)?list:[];
+     if(pageCount===0&&page[0]?.signature)newestSignature=String(page[0].signature);
+     let cursorHit=false;
+     for(const x of page){
+       if(!x?.signature)continue;
+       if(previousCursor&&x.signature===previousCursor){cursorHit=true;foundPreviousCursor=true;break;}
+       if(!x.err)signatures.set(x.signature,x);
+     }
+     if(cursorHit||page.length<1000)break;
+     before=String(page[page.length-1]?.signature||"");
+     if(!before)break;
+   }
+   if(previousCursor&&!foundPreviousCursor){
+     throw new Error("solana_signature_cursor_not_reached_within_page_limit:"+a.pubkey);
+   }
+   // During first bootstrap, a capped scan stays not-ready until a full cursor-based pass completes.
+   if(!previousCursor&&pageCount>=maxSignaturePages)signatureScanComplete=false;
+   if(newestSignature)signatureCursorsByAccount[a.pubkey]=newestSignature;
  }
  const receipts:any[]=[];
  let paymentVerifierCalls=0;
@@ -217,10 +258,10 @@ async function scanRoute(route:any){
    receipts.push({receipt_id:receiptId||null,tx_hash:signature,amount,evidence_status:reconciliation.payment_intent_matched?"ONCHAIN_FINALIZED_MATCHED":"ONCHAIN_FINALIZED_UNMATCHED",...reconciliation});
  }
  const stateStatus=accounts.length?"VERIFIED":"NO_TOKEN_ACCOUNT";
- const metadata={provider:"solana_rpc",mint,token_decimals:6,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady,settlement_performed:false};
+ const metadata={provider:"solana_rpc",mint,token_decimals:6,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady&&signatureScanComplete,signature_scan_complete:signatureScanComplete,signature_cursors_by_account:signatureCursorsByAccount,settlement_performed:false};
  const lastSlot=[...signatures.values()].reduce((m:number,x:any)=>Math.max(m,Number(x.slot||0)),0)||null;
  await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,last_signature,last_slot,latest_balance,latest_balance_updated_at,status,error_count,last_error,metadata,updated_at) values($1,now(),$2,$3,$4,now(),$5,0,null,$6::jsonb,now()) on conflict(route_id) do update set last_scan_at=excluded.last_scan_at,last_signature=excluded.last_signature,last_slot=excluded.last_slot,latest_balance=excluded.latest_balance,latest_balance_updated_at=excluded.latest_balance_updated_at,status=excluded.status,error_count=0,last_error=null,metadata=excluded.metadata,updated_at=now()",[route.id,[...signatures.keys()][0]||null,lastSlot,balanceRaw/1_000_000,stateStatus,metadata]);
- return {route_id:route.id,wallet_id:wallet.id,network:"solana",asset:"USDC",token_accounts:accounts.length,balance:balanceRaw/1_000_000,scanned_signatures:signatures.size,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady,receipts};
+ return {route_id:route.id,wallet_id:wallet.id,network:"solana",asset:"USDC",token_accounts:accounts.length,balance:balanceRaw/1_000_000,scanned_signatures:signatures.size,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:paymentReconciliationReady&&signatureScanComplete,signature_scan_complete:signatureScanComplete,receipts};
 }
 async function run(){
  const d=needDb();
