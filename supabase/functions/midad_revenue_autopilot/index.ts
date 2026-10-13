@@ -258,34 +258,32 @@ async function reconcileBountyBook(){
     const ext=r.data.job||{};
     const status=String(ext.status||"").toLowerCase();
     const payoutStatus=String(ext.payout_status||"").toLowerCase();
-    let newState=job.state;
-    let next=job.next_action;
     const payoutTxHash=String(ext.payout_tx_hash||job.payout?.payout_tx_hash||"");
     let chainReceipt:any=null;
-    if(payoutTxHash&&payoutStatus==="paid"){
-      const {data:receiptRows}=await db.from("midad_wallet_receipts")
-        .select("id,asset,network,amount,direction,commitment,evidence,mint")
-        .eq("tx_hash",payoutTxHash).eq("direction","inbound").limit(10);
-      chainReceipt=(receiptRows||[]).find((r:any)=>{
+    if(payoutTxHash){
+      const {data:receiptRows,error:receiptError}=await db.from("midad_wallet_receipts")
+        .select("id,asset,network,mint,direction,amount,commitment,evidence")
+        .eq("tx_hash",payoutTxHash).eq("direction","inbound").eq("asset","USDC").eq("network","base").limit(10);
+      if(!receiptError) chainReceipt=(receiptRows||[]).find((r:any)=>{
         const ev=r.evidence&&typeof r.evidence==="object"?r.evidence:{};
-        return String(r.asset||"").toUpperCase()==="USDC"
-          &&String(r.network||"").toLowerCase()==="base"
-          &&String(r.mint||"").toLowerCase()==="0x833589fc d6edb6e08f4c7c32d4f71b54bda02913".replace(/ /g,"")
+        return String(r.mint||"").toLowerCase()==="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
           &&String(r.commitment||"").toLowerCase()==="finalized"
-          &&Number(r.amount)>0&&ev.independently_verified===true
-          &&ev.token_contract_verified===true&&Number(ev.chain_id)===8453
+          &&Number(r.amount)>0&&ev.independently_verified===true&&ev.token_contract_verified===true
+          &&Number(ev.chain_id)===8453
           &&String(ev.contract_address||"").toLowerCase()==="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
       })||null;
     }
     const platformSaysPaid=payoutStatus==="paid"||status==="paid"||status==="verified";
+    let newState=job.state;
+    let next=job.next_action;
     if(platformSaysPaid&&chainReceipt){
-      newState="PAID";next="reconcile_revenue";paid++;verified++;
-    }else if(platformSaysPaid){
-      newState="PENDING_PAYOUT";next="verify_onchain_receipt";
+      newState="PAID"; next="reconcile_revenue"; paid++; verified++;
+    }else if(platformSaysPaid||job.state==="PAID"){
+      newState="PENDING_PAYOUT"; next="verify_onchain_receipt";
     }else if(["submitted","verifying","in_review"].includes(status)){
-      newState="PENDING_PAYOUT";next="verify_payout";
+      newState="PENDING_PAYOUT"; next="verify_payout";
     }else if(status==="open"&&job.state==="PENDING_PAYOUT"){
-      newState="READY";next="repair_or_reclaim";
+      newState="READY"; next="repair_or_reclaim";
     }
     const payout={
       ...(job.payout||{}),
