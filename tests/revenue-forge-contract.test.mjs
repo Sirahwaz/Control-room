@@ -41,6 +41,8 @@ assert.ok(verifier.includes("Number(ev.chain_id)===8453"), "Base reconciliation 
 assert.ok(verifier.includes("recipientOk &&\n        chainEvidenceOk"), "reconciliation must bind evidence to the invoice receiving address and canonical token");
 assert.ok(verifier.includes("const finalizedEvidence=ev.commitment===\"finalized\"||ev.finality===\"finalized\""), "finalized chain evidence may satisfy confirmation policy without fabricated counts");
 assert.ok(verifier.includes("const VERIFIER_VERSION=32"), "payment verifier handshake must advertise a versioned strict implementation");
+assert.ok(verifier.includes('if(requestedTxHash)eventQuery=eventQuery.eq("tx_hash",requestedTxHash)'), "payment verifier must reconcile only the receipt's requested transaction");
+assert.ok(verifier.includes("requested_tx_hash_mismatch"), "payment verifier must fail closed if the selected event hash differs from the requested hash");
 assert.ok(verifier.includes('if(body.action==="status")'), "payment verifier must expose a read-only capability handshake");
 for (const capability of ["exact_asset_network:true", "exact_usdc_micro_units:true", "recipient_binding:true", "canonical_chain_token:true", "finality_evidence:true"]) {
   assert.ok(verifier.includes(capability), "strict verifier capability missing: "+capability);
@@ -69,21 +71,25 @@ assert.ok(baseMonitor.includes("actualChainId!==CHAIN_ID"), "Base monitor must f
 assert.ok(baseMonitor.includes("const from=hasCursor?previous+1:Math.max(0,finalBlock-1999)"), "Base monitor must resume from the last successful cursor after outages");
 assert.ok(baseMonitor.includes("base_receipt_persist_failed"), "Base monitor must not advance past a receipt it failed to persist");
 assert.ok(baseMonitor.includes("group.raw+=raw"), "Base monitor must aggregate multiple USDC transfers within one transaction");
-assert.ok(baseMonitor.includes('finalityMode==="finalized"?"finalized":"confirmed"'), "Base monitor must not label confirmation fallback as finalized");
+assert.ok(baseMonitor.includes('finalityMode==="finalized"?"finalized":"at_least_3_confirmations"'), "Base monitor must accurately label the fallback confirmation policy");
 assert.ok(baseMonitor.includes("base_monitor_state_persist_failed"), "Base monitor must fail if the cursor/state write fails");
 assert.ok(baseMonitor.includes("strict_payment_verifier_capability_unavailable"), "Base monitor must not scan/advance until the strict verifier is available");
 assert.ok(baseMonitor.includes("reconcileExactBaseReceipt"), "Base monitor must match detected receipts to exact invoice candidates");
+assert.ok(baseMonitor.includes('callVerifier("reconcile",{tx_hash:input.txHash})'), "Base monitor must reconcile the exact observed transaction hash");
 assert.ok(baseMonitor.includes("Number(confirmed?.received_tx_hash||\"\")===input.txHash"), "Base monitor must read back the exact reconciled transaction hash");
 assert.ok(baseMonitor.includes("payment_reconciliation_ready:paymentReconciliationReady"), "Base monitor must persist verifier readiness for checkout");
 assert.ok(baseMonitor.includes("block_timestamp:blockTimestamp"), "Base receipt evidence must use the actual chain block timestamp for invoice-window matching");
 assert.ok(solanaMonitor.includes("async function reconcileExactSolanaReceipt"), "Solana monitor must have an explicit strict-reconciliation path");
 assert.ok(solanaMonitor.includes("blocked_strict_verifier_not_ready"), "Solana monitor must not mark a receipt matched against a legacy verifier");
+assert.ok(solanaMonitor.includes('callVerifier("reconcile",{tx_hash:input.txHash})'), "Solana monitor must reconcile the exact observed transaction hash");
 assert.ok(solanaMonitor.includes("verified?.reconciliation?.recipientOk===true"), "Solana monitor must require recipient-bound verifier evidence");
 assert.ok(solanaMonitor.includes("verified?.reconciliation?.chainEvidenceOk===true"), "Solana monitor must require canonical chain/token verifier evidence");
 assert.ok(solanaMonitor.includes("payment_reconciliation_ready:paymentReconciliationReady"), "Solana monitor must persist verifier readiness for checkout");
 assert.ok(!solanaMonitor.includes("JSON.stringify(evidence)"), "Postgres JSONB evidence must be sent as an object, not double-encoded as a JSON string");
 assert.ok(!solanaMonitor.includes("JSON.stringify(metadata)"), "Postgres JSONB monitor metadata must be sent as an object, not double-encoded");
 assert.ok(!solanaMonitor.includes("JSON.stringify(patch)"), "Postgres JSONB receipt updates must merge objects, not append JSON string scalars");
+assert.ok(solanaMonitor.includes("jsonb_typeof(current_receipt.evidence)='object'"), "legacy scalar evidence must be normalized before merging new Solana evidence");
+assert.ok(solanaMonitor.includes("jsonb_typeof(coalesce(evidence,'{}'::jsonb))='object'"), "Solana receipt evidence patches must replace legacy JSONB scalars safely");
 assert.ok(solanaMonitor.includes("round(quoted_crypto_amount*1000000)::bigint=$2::bigint"), "Solana receipt matching must require exact USDC micro-unit amount");
 assert.ok(solanaMonitor.includes("manual_review_multiple_exact_intents"), "multiple exact Solana matches must remain manual review");
 assert.ok(solanaMonitor.includes('"/functions/v1/midad_payment_verifier"'), "Solana monitor must use the canonical payment verifier");
