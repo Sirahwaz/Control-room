@@ -14,12 +14,12 @@ async function auth(req:Request){const a=req.headers.get("authorization")||"";if
 async function getJson(url:string,timeout=7000){
   const c=new AbortController();const t=setTimeout(()=>c.abort(),timeout);
   try{const r=await fetch(url,{headers:{"accept":"application/json","user-agent":"MIDAD-FastCash-Radar/1.0"},signal:c.signal});const raw=await r.text();let data:any;try{data=JSON.parse(raw)}catch{data={raw}}return {ok:r.ok,status:r.status,data}}
-  catch(e){return {ok:false,status:0,data:{error:String(e?.name||e||"fetch_failed")}}} finally{clearTimeout(t)}
+  catch(e){return {ok:false,status:0,data:{error:String((e as any)?.name||e||"fetch_failed")}}} finally{clearTimeout(t)}
 }
 async function getText(url:string,timeout=7000){
   const c=new AbortController();const t=setTimeout(()=>c.abort(),timeout);
   try{const r=await fetch(url,{headers:{"accept":"text/html,text/plain","user-agent":"MIDAD-FastCash-Radar/1.0"},signal:c.signal});return {ok:r.ok,status:r.status,text:await r.text()}}
-  catch(e){return {ok:false,status:0,text:String(e?.name||e||"fetch_failed")}} finally{clearTimeout(t)}
+  catch(e){return {ok:false,status:0,text:String((e as any)?.name||e||"fetch_failed")}} finally{clearTimeout(t)}
 }
 function risk(s:string){
   const x=s.toLowerCase();const flags:string[]=[];
