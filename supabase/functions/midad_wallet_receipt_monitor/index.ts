@@ -75,7 +75,7 @@ function tokenDeltas(tx:any){
 }
 async function persistMatchEvidence(receiptId:string, patch:any){
  const d=needDb();
- const rows=await d.unsafe("update public.midad_wallet_receipts set evidence=coalesce(evidence,'{}'::jsonb)||$2::jsonb where id=$1 returning id",[receiptId,patch]);
+ const rows=await d.unsafe("update public.midad_wallet_receipts set evidence=case when jsonb_typeof(coalesce(evidence,'{}'::jsonb))='object' then coalesce(evidence,'{}'::jsonb)||$2::jsonb else $2::jsonb end where id=$1 returning id",[receiptId,patch]);
  if(!rows.length)throw new Error("receipt_match_evidence_persist_failed");
 }
 
@@ -205,7 +205,7 @@ async function scanRoute(route:any){
    if(!(amount>0)||!Number.isFinite(amount))continue;
    const tokenAccounts=incoming.map((delta:any)=>{const key=keys[delta.accountIndex];return typeof key==="string"?key:(key?.pubkey||null);}).filter(Boolean);
    const evidence={independently_verified:true,verifier:"solana_rpc",verifier_ref:signature,source:"midad_wallet_receipt_monitor_v4",commitment:"finalized",mint_verified:true,expected_mint:mint,observed_mint:mint,wallet_address:wallet.address,token_account:tokenAccounts.length===1?tokenAccounts[0]:null,token_accounts:tokenAccounts,delta_raw:totalRaw,decimals,slot:tx.slot||sigInfo.slot||null,block_time:tx.blockTime||sigInfo.blockTime||null,transaction_error:null,settlement_performed:false};
-   const inserted=await d.unsafe("insert into public.midad_wallet_receipts as current_receipt(wallet_id,tx_hash,asset,mint,network,amount,direction,slot,commitment,evidence) values($1,$2,'USDC',$3,'solana',$4,'inbound',$5,'finalized',$6::jsonb) on conflict(wallet_id,tx_hash,asset,mint,direction) do update set amount=excluded.amount,slot=excluded.slot,commitment=excluded.commitment,evidence=coalesce(current_receipt.evidence,'{}'::jsonb)||excluded.evidence returning id,evidence",[wallet.id,signature,mint,amount,Number(tx.slot||sigInfo.slot||0)||null,evidence);
+   const inserted=await d.unsafe("insert into public.midad_wallet_receipts as current_receipt(wallet_id,tx_hash,asset,mint,network,amount,direction,slot,commitment,evidence) values($1,$2,'USDC',$3,'solana',$4,'inbound',$5,'finalized',$6::jsonb) on conflict(wallet_id,tx_hash,asset,mint,direction) do update set amount=excluded.amount,slot=excluded.slot,commitment=excluded.commitment,evidence=case when jsonb_typeof(current_receipt.evidence)='object' then current_receipt.evidence||excluded.evidence else excluded.evidence end returning id,evidence",[wallet.id,signature,mint,amount,Number(tx.slot||sigInfo.slot||0)||null,evidence);
    const receiptId=String(inserted[0]?.id||"");
    let reconciliation:any={payment_intent_matched:false,payment_intent_match_status:"receipt_id_unavailable",payment_verifier_calls:0};
    if(receiptId&&inserted[0]?.evidence?.payment_intent_matched!==true){
