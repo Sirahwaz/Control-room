@@ -7,7 +7,7 @@ const db=createClient(URL,SK,{auth:{persistSession:false,autoRefreshToken:false}
 const BASE_RPC=Deno.env.get("MIDAD_BASE_RPC_URL")||"https://mainnet.base.org";
 const RPC_POOL=[BASE_RPC,"https://base-rpc.publicnode.com","https://public.1rpc.io/base"].filter((v,i,a)=>a.indexOf(v)===i);
 let lastGoodRpc=BASE_RPC;
-const rpcLabel=(v:string)=>{try{return v===BASE_RPC?"configured_rpc":new URL(v).hostname}catch{return "rpc_provider"}};
+const rpcLabel=(v:string)=>{try{return v===BASE_RPC?"configured_rpc":new globalThis.URL(v).hostname}catch{return "rpc_provider"}};
 const USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const TRANSFER="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const CHAIN_ID=8453;
