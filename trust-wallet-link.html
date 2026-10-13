@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111a">
+<meta name="robots" content="noindex,nofollow">
+<title>ربط Trust Wallet — MIDAD</title>
+<style>
+:root{color-scheme:dark;--bg:#07111a;--panel:#0d1b27;--line:#294052;--text:#f1f7fb;--muted:#adc0cf;--cyan:#67e8f9;--green:#70e1b2;--amber:#f6ce74;--red:#ff8794}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(900px 500px at 10% -10%,#143347 0,transparent 62%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:22px 14px 36px}
+main{max-width:740px;margin:0 auto}.brand{font-size:12px;letter-spacing:.14em;color:#9db3c4}.card{margin-top:14px;padding:22px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,rgba(20,39,54,.94),rgba(8,18,27,.97));box-shadow:0 18px 55px #0004}
+h1{font-size:clamp(27px,6vw,38px);margin:7px 0 10px;line-height:1.25}p{line-height:1.9;color:var(--muted);margin:8px 0}.small{font-size:13px}.actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:18px}
+button,a.btn{width:100%;min-height:52px;border:1px solid #376175;border-radius:13px;padding:12px 15px;background:#103042;color:var(--text);font-size:16px;font-weight:700;text-align:center;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px}
+button.primary{background:#b9f5fd;color:#06202a;border-color:#b9f5fd}button:disabled{opacity:.48;cursor:not-allowed}
+.note{border-right:3px solid var(--cyan);background:#0a2532;padding:12px 14px;border-radius:10px;margin-top:14px;color:#d9f8fc;line-height:1.8}
+.status{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;white-space:pre-wrap;word-break:break-word;color:var(--muted);line-height:1.8}
+.status.good{border-color:#276750;color:#b9f9d9}.status.warn{border-color:#79652f;color:#ffe6aa}.status.bad{border-color:#783b49;color:#ffc8d0}
+.rule{display:grid;grid-template-columns:28px 1fr;gap:8px;margin:12px 0;align-items:start}.rule b{display:block;margin-bottom:3px}
+footer{margin-top:18px;text-align:center;font-size:12px;color:#8097a8}
+@media(min-width:620px){.actions{grid-template-columns:1fr 1fr}.actions .full{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">MIDAD AI · NON-CUSTODIAL WALLET LINK</div>
+  <section class="card">
+    <h1>ربط Trust Wallet بالمشروع</h1>
+    <p>اربط العناوين التي تتحكم بها حتى يقدر MIDAD يراقب الاستلام ويختار عنوان استقبال مناسب للشبكة. هذه الخطوة تثبت ملكية العنوان بتوقيع رسالة فقط.</p>
+    <div class="note">لن نطلب عبارة الاسترداد أو المفتاح الخاص. لن تُرسل أي عملة، ولن توقع معاملة بلوك تشين أثناء الربط.</div>
+    <div id="sessionStatus" class="status warn">جارٍ التحقق من جلسة الربط…</div>
+    <div class="actions">
+      <button id="evmBtn" class="primary" type="button">ربط عنوان EVM / Base</button>
+      <button id="solBtn" type="button">ربط عنوان Solana</button>
+      <a class="btn full" href="https://sirahwaz.github.io/Control-room/?view=wallet" rel="noopener">العودة إلى MIDAD Control Room</a>
+    </div>
+  </section>
+  <section class="card">
+    <h2 style="margin:0 0 10px;font-size:20px">الصلاحيات بعد الربط</h2>
+    <div class="rule"><span>✓</span><div><b>الاستلام والرصد</b><p class="small">إضافة العنوان كوجهة استلام، مع مراقبة إيصالات USDC على الشبكة المرتبطة.</p></div></div>
+    <div class="rule"><span>✓</span><div><b>اختيار المسار</b><p class="small">يستطيع الوكلاء ترشيح هذا العنوان أو عنوان محفوظ متوافق مع الشبكة والأصل.</p></div></div>
+    <div class="rule"><span>⛔</span><div><b>لا إنفاق من Trust Wallet</b><p class="small">Trust Wallet تبقى محفظتك الشخصية. توقيع الرسائل لا يمنح الوكلاء حق إرسال الأموال أو توقيع المعاملات.</p></div></div>
+  </section>
+  <footer>لا تغلق الصفحة قبل إتمام الشبكات التي تريد ربطها. رابط الربط صالح لمدة 10 دقائق ولمرة واحدة لكل شبكة.</footer>
+</main>
+<script>
+(function(){
+"use strict";
+const API="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_trust_wallet_bridge";
+const params=new URLSearchParams(location.hash.replace(/^#/,""));
+const TOKENS={EVM:params.get("evm")||"",SOLANA:params.get("solana")||""};
+const EXP=Number(params.get("exp")||0);
+history.replaceState(null,"",location.pathname+location.search);
+const statusEl=document.getElementById("sessionStatus");
+const evmBtn=document.getElementById("evmBtn");
+const solBtn=document.getElementById("solBtn");
+const done={EVM:false,SOLANA:false};
+function setStatus(text,kind){statusEl.textContent=text;statusEl.className="status "+(kind||"");}
+function hexMessage(text){return "0x"+Array.from(new TextEncoder().encode(text)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+function base64(bytes){let binary="";for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary);}
+function signedMessage(token,chain,address){return "MIDAD TRUST WALLET LINK\nPurpose: add-public-wallet-to-midad\nToken: "+token+"\nChain: "+chain+"\nAddress: "+address+"\nExpires: "+EXP;}
+async function submitProof(chain,address,signature){
+  const token=TOKENS[chain];
+  if(!token||EXP<=Math.floor(Date.now()/1000))throw new Error("انتهت صلاحية رابط الربط. ارجع إلى المقود وأنشئ رابطاً جديداً.");
+  const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"complete",token,chain,address,signature})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
+  done[chain]=true;
+  if(chain==="EVM"){evmBtn.disabled=true;evmBtn.textContent="✓ تم ربط EVM / Base";}
+  else{solBtn.disabled=true;solBtn.textContent="✓ تم ربط Solana";}
+  setStatus("تم ربط "+chain+" بنجاح.\nالعنوان: "+j.address+"\nشبكة الاستلام: "+j.route.network+" · الأصل: "+j.route.asset+"\nلم تُنقل أي أموال ولم تُوقّع معاملة.", "good");
+}
+async function connectEvm(){
+  evmBtn.disabled=true;
+  try{
+    if(!TOKENS.EVM||EXP<=Math.floor(Date.now()/1000))throw new Error("رابط EVM غير صالح أو انتهت صلاحيته.");
+    const provider=window.trustwallet&&window.trustwallet.ethereum?window.trustwallet.ethereum:
+      (window.ethereum&&(window.ethereum.isTrust||window.ethereum.isTrustWallet)?window.ethereum:null);
+    if(!provider)throw new Error("لم أجد مزوّد Trust Wallet. افتح هذه الصفحة داخل متصفح DApp في تطبيق Trust Wallet.");
+    const accounts=await provider.request({method:"eth_requestAccounts"});
+    const address=String(accounts&&accounts[0]||"");
+    if(!/^0x[a-fA-F0-9]{40}$/.test(address))throw new Error("لم يرجع Trust Wallet عنوان EVM صالحاً.");
+    const msg=signedMessage(TOKENS.EVM,"EVM",address);
+    const signature=await provider.request({method:"personal_sign",params:[hexMessage(msg),address]});
+    await submitProof("EVM",address,String(signature||""));
+  }catch(e){setStatus("تعذر ربط EVM: "+String(e&&e.message||e),"bad");}
+  finally{evmBtn.disabled=done.EVM;}
+}
+async function connectSolana(){
+  solBtn.disabled=true;
+  try{
+    if(!TOKENS.SOLANA||EXP<=Math.floor(Date.now()/1000))throw new Error("رابط Solana غير صالح أو انتهت صلاحيته.");
+    const provider=window.trustwallet&&window.trustwallet.solana?window.trustwallet.solana:null;
+    if(!provider)throw new Error("لم أجد مزوّد Solana الخاص بـTrust Wallet. افتح هذه الصفحة داخل متصفح DApp في تطبيق Trust Wallet.");
+    const connected=await provider.connect();
+    const key=connected&&connected.publicKey?connected.publicKey:(provider.publicKey||null);
+    const address=String(key&&typeof key.toString==="function"?key.toString():key||"");
+    if(!address||address.length<32)throw new Error("لم يرجع Trust Wallet عنوان Solana صالحاً.");
+    const msg=signedMessage(TOKENS.SOLANA,"SOLANA",address);
+    const signed=await provider.signMessage(new TextEncoder().encode(msg),"utf8");
+    const raw=signed&&signed.signature?signed.signature:signed;
+    let bytes;
+    if(raw instanceof Uint8Array)bytes=raw;
+    else if(raw instanceof ArrayBuffer)bytes=new Uint8Array(raw);
+    else if(Array.isArray(raw))bytes=Uint8Array.from(raw);
+    else throw new Error("Trust Wallet لم يُرجع توقيع Solana بصيغة قابلة للتحقق.");
+    await submitProof("SOLANA",address,base64(bytes));
+  }catch(e){setStatus("تعذر ربط Solana: "+String(e&&e.message||e),"bad");}
+  finally{solBtn.disabled=done.SOLANA;}
+}
+if(!TOKENS.EVM&&!TOKENS.SOLANA){setStatus("رابط ربط مفقود. ارجع إلى MIDAD وأنشئ رابطاً جديداً من قسم المحافظ.","bad");evmBtn.disabled=true;solBtn.disabled=true;}
+else if(EXP<=Math.floor(Date.now()/1000)){setStatus("انتهت صلاحية رابط الربط. ارجع إلى MIDAD وأنشئ رابطاً جديداً.","bad");evmBtn.disabled=true;solBtn.disabled=true;}
+else{setStatus("الرابط صالح لمدة محدودة. اختر الشبكة التي تريد ربطها؛ ستظهر نافذة Trust Wallet للموافقة على الاتصال وتوقيع رسالة إثبات الملكية.","warn");}
+evmBtn.addEventListener("click",connectEvm);
+solBtn.addEventListener("click",connectSolana);
+})();
+</script>
+</body>
+</html>
