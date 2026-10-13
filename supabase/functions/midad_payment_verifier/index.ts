@@ -59,7 +59,9 @@ Deno.serve(async(req)=>{
       if(!latest)return json({ok:true,status:"unreconciled",reason:"no_payment_event"});
       const assetOk=Boolean(intent.settlement_asset&&latest.asset&&String(intent.settlement_asset).toUpperCase()===String(latest.asset).toUpperCase());
       const networkOk=Boolean(intent.network&&latest.network&&String(intent.network).toLowerCase()===String(latest.network).toLowerCase());
-      const expectedAmount=n(intent.quoted_crypto_amount);\n      const observedAmount=n(latest.observed_amount);\n      const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&observedAmount>=expectedAmount;
+      const expectedAmount=n(intent.quoted_crypto_amount);
+      const observedAmount=n(latest.observed_amount);
+      const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&observedAmount>=expectedAmount;
       const confirmations=Number(latest.confirmations||0);
       const confirmationsOk=confirmations>=Number(intent.confirmations_required||0);
       const txOk=Boolean(latest.tx_hash);
