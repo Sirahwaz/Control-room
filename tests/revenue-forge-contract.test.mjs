@@ -31,6 +31,13 @@ assert.match(forge, /لا ترسل دفعة ثانية/, "UI must warn against d
 assert.match(verifier, /const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&Math.round\(expectedAmount\*1_000_000\)===Math.round\(observedAmount\*1_000_000\);/, "verification must require an exact positive USDC micro-unit amount");
 assert.match(verifier, /const assetOk=Boolean\(intent\.settlement_asset&&latest\.asset&&/, "verification must require explicit matching asset");
 assert.match(verifier, /const networkOk=Boolean\(intent\.network&&latest\.network&&/, "verification must require explicit matching network");
+assert.ok(verifier.includes("const chainEvidenceOk=evNetwork===\"solana\""), "Solana reconciliation must verify the canonical USDC mint");
+assert.ok(verifier.includes("Number(ev.chain_id)===8453"), "Base reconciliation must require Base mainnet chain ID");
+assert.ok(verifier.includes("recipientOk&&chainEvidenceOk"), "reconciliation must bind evidence to the invoice receiving address and canonical token");
+assert.ok(verifier.includes("const finalizedEvidence=ev.commitment===\"finalized\"||ev.finality===\"finalized\""), "finalized chain evidence may satisfy confirmation policy without fabricated counts");
+assert.ok(bountybookExecutor.includes("MIDAD_ALLOW_BOUNTYBOOK_MESSAGE_SIGNING"), "BountyBook wallet-message signing must be explicitly disabled by default");
+assert.ok(bountybookExecutor.includes("independent_onchain_escrow_proof_missing"), "BountyBook claims must block without independent escrow proof");
+assert.ok(bountybookExecutor.includes("job_not_assigned_to_midad_signer"), "BountyBook submission must be limited to jobs owned by the MIDAD signer");
 assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS midad_payment_intents_public_order_key_active_uidx/, "active order-key idempotency index must exist");
 assert.match(migration, /status IN \('created','quoted','detected','verified','paid','reconciled'\)/, "idempotency index must cover active payment states only");
 
