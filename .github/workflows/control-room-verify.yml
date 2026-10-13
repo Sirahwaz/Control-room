@@ -33,6 +33,7 @@ jobs:
           deno check --no-lock supabase/functions/midad_fast_cash_radar/index.ts
           deno check --no-lock supabase/functions/midad_base_usdc_monitor/index.ts
           deno check --no-lock supabase/functions/midad_ugig_lifecycle/index.ts
+          deno check --no-lock supabase/functions/midad_revenue_autopilot/index.ts
 
       - name: Git diff check
         run: git diff --check
