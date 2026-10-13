@@ -5,6 +5,14 @@ const H={"content-type":"application/json; charset=utf-8","access-control-allow-
 const json=(x:any,status=200)=>new Response(JSON.stringify(x),{status,headers:H});
 const clip=(v:any,n=4000)=>String(v??"").trim().slice(0,n);
 const n=(v:any)=>{const x=Number(v);return Number.isFinite(x)?x:null};
+const VERIFIER_VERSION=32;
+const VERIFIER_CAPABILITIES={
+  exact_asset_network:true,
+  exact_usdc_micro_units:true,
+  recipient_binding:true,
+  canonical_chain_token:true,
+  finality_evidence:true
+};
 
 async function audit(sb:any,userId:string,p:any){
   await sb.from("midad_audit_log").insert({
@@ -25,6 +33,9 @@ Deno.serve(async(req)=>{
   if(!profile?.id)return json({error:"system_profile_missing"},503);
   const body=await req.json().catch(()=>({}));
   try{
+    if(body.action==="status"){
+      return json({ok:true,status:"ready",service:"midad_payment_verifier",version:VERIFIER_VERSION,capabilities:VERIFIER_CAPABILITIES});
+    }
     if(body.action==="record_event"){
       const intentId=clip(body.payment_intent_id,80);
       if(!intentId)return json({error:"payment_intent_id_required"},400);
