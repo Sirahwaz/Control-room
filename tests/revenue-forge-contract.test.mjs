@@ -64,6 +64,7 @@ assert.ok(ugigLifecycle.includes("const alreadyGated=j.blocker_code"), "uGig gua
 
 assert.ok(checkout.includes('.eq("asset","USDC").in("network",["solana","base"])'), "checkout should consider only crypto receive routes that support verified Solana/Base networks");
 assert.ok(checkout.includes('chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()'), "Base route must be verified against mainnet chain ID and official USDC contract");
+assert.ok(checkout.includes("r.metadata?.checkout_reconciliation_verified===true"), "Base checkout stays closed until Base receipts are reconciled to intents end to end");
 assert.ok(checkout.includes('const BASE_USDC_CONTRACT="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"'), "Base USDC contract must be canonical");
 assert.ok(checkout.includes("network:target.route.network"), "intent/order receiving network must follow verified route");
 assert.ok(checkout.includes('checkoutNetwork==="base"?"Base mainnet":"Solana"'), "instructions must name the selected verified network");
