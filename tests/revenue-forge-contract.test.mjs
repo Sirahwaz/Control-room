@@ -34,7 +34,7 @@ assert.match(verifier, /const assetOk=Boolean\(intent\.settlement_asset&&latest\
 assert.match(verifier, /const networkOk=Boolean\(intent\.network&&latest\.network&&/, "verification must require explicit matching network");
 assert.ok(verifier.includes("const chainEvidenceOk=evNetwork===\"solana\""), "Solana reconciliation must verify the canonical USDC mint");
 assert.ok(verifier.includes("Number(ev.chain_id)===8453"), "Base reconciliation must require Base mainnet chain ID");
-assert.ok(verifier.includes("recipientOk&&chainEvidenceOk"), "reconciliation must bind evidence to the invoice receiving address and canonical token");
+assert.ok(verifier.includes("recipientOk &&\n        chainEvidenceOk"), "reconciliation must bind evidence to the invoice receiving address and canonical token");
 assert.ok(verifier.includes("const finalizedEvidence=ev.commitment===\"finalized\"||ev.finality===\"finalized\""), "finalized chain evidence may satisfy confirmation policy without fabricated counts");
 assert.ok(bountybookExecutor.includes("MIDAD_ALLOW_BOUNTYBOOK_MESSAGE_SIGNING"), "BountyBook wallet-message signing must be explicitly disabled by default");
 assert.ok(bountybookExecutor.includes("independent_onchain_escrow_proof_missing"), "BountyBook claims must block without independent escrow proof");
