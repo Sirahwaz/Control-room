@@ -25,6 +25,31 @@ const PRODUCTS:any={
 const json=(v:any,s=200)=>new Response(JSON.stringify(v),{status:s,headers:H});
 const clean=(v:any,n=200)=>String(v??"").trim().slice(0,n);
 
+function publicPayment(intent:any){
+  return {
+    id:intent.id,
+    status:intent.status,
+    reconciliation_status:intent.reconciliation_status||"pending",
+    amount_fiat:intent.amount_fiat,
+    fiat_currency:intent.fiat_currency,
+    settlement_asset:intent.settlement_asset,
+    network:intent.network,
+    quoted_crypto_amount:intent.quoted_crypto_amount,
+    wallet_address:intent.wallet_address,
+    expires_at:intent.expires_at
+  };
+}
+
+function reuseInstructions(payment:any){
+  const status=String(payment?.status||"").toLowerCase();
+  const reconciliation=String(payment?.reconciliation_status||"").toLowerCase();
+  if(status==="reconciled"||reconciliation==="matched")
+    return "تمت مطابقة الدفع في سجل MIDAD. لا ترسل دفعة أخرى؛ راجع حالة التسليم.";
+  if(["detected","verified","paid","waiting"].includes(status)||["manual_review","mismatch","unreconciled"].includes(reconciliation))
+    return "الدفع قيد التحقق أو يحتاج مراجعة. لا ترسل دفعة ثانية.";
+  return "تمت إعادة استخدام الفاتورة النشطة. ادفع المبلغ الدقيق فقط قبل انتهاء الصلاحية.";
+}
+
 async function ownerId(){
   const {data}=await db.from("profiles").select("id").limit(1).maybeSingle();
   return data?.id||null;
@@ -94,7 +119,11 @@ async function main(req:Request){
         .select("id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata")
         .eq("user_id",oid).contains("metadata",{public_order_key:key})
         .in("status",["created","quoted","detected","paid"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
-      if(existing) return json({ok:true,reused:true,payment_intent:existing,product:p});
+      if(existing){
+        const payment=publicPayment(existing);
+        const receiving={asset:payment.settlement_asset,network:payment.network,wallet_address:payment.wallet_address};
+        return json({ok:true,reused:true,payment,payment_intent:payment,product:p,receiving,instructions:reuseInstructions(payment)});
+      }
     }
 
     const {count}=await db.from("midad_payment_intents")
@@ -184,7 +213,7 @@ async function main(req:Request){
     return json({
       ok:true,
       product:{id:productId,...p},
-      payment:{...updatedIntent,watch_only:target.wallet.watch_only},
+      payment:publicPayment(updatedIntent),
       receiving:{asset:"USDC",network:"solana",route_id:target.route.id,wallet_id:target.wallet.id,wallet_address:target.wallet.address,mint},
       fees:{
         midad_receive_fee_usd:Number(target.route.metadata?.fee_profile?.midad_receive_fee_usd??0),
