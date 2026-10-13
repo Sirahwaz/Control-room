@@ -68,17 +68,22 @@ async function run(){
   const latestHex=await rpc("eth_blockNumber",[]);
   const latest=hexToNum(latestHex);
   let finalBlock=latest-3;
+  let finalityMode="confirmations";
   try{
     const b=await rpc("eth_getBlockByNumber",["finalized",false]);
-    if(b?.number) finalBlock=Math.min(latest-3,hexToNum(b.number));
+    if(b?.number){finalBlock=Math.min(latest-3,hexToNum(b.number));finalityMode="finalized";}
   }catch{}
   if(finalBlock<0)finalBlock=0;
 
-  const {data:state}=await db.from("midad_wallet_monitor_state")
+  const {data:state,error:stateReadError}=await db.from("midad_wallet_monitor_state")
     .select("last_slot,last_signature,latest_balance,metadata")
     .eq("route_id",route.id).maybeSingle();
+  if(stateReadError)throw new Error("base_monitor_cursor_read_failed:"+stateReadError.message);
   const previous=Number(state?.last_slot||0);
-  const from=Math.max(previous+1,Math.max(0,finalBlock-2000));
+  // On the first run, inspect a recent window. Once a cursor exists, continue from it
+  // in bounded chunks so RPC outages do not permanently skip receipts older than 2,000 blocks.
+  const hasCursor=state?.last_slot!==null&&state?.last_slot!==undefined&&previous>0;
+  const from=hasCursor?previous+1:Math.max(0,finalBlock-1999);
   const to=Math.min(finalBlock,from+1999);
 
   let logs:any[]=[];
@@ -95,7 +100,9 @@ async function run(){
     }
   }
 
-  const receipts:any[]=[];
+  // Store a single receipt per transaction: the database idempotency key is transaction-based,
+  // so multiple USDC Transfer logs in one transaction must be aggregated, not overwrite each other.
+  const txGroups=new Map<string,{block:number;log_indices:number[];senders:string[];raw:bigint}>();
   for(const log of Array.isArray(logs)?logs:[]){
     const block=hexToNum(log.blockNumber);
     if(block>finalBlock)continue;
@@ -107,24 +114,36 @@ async function run(){
     const recipient="0x"+toTopic.slice(-40);
     if(!txHash||!same(recipient,wallet.address)||!same(log.address,USDC))continue;
     const raw=hexToBig(log.data||"0x0");
+    if(raw<=0n)continue;
+    let group=txGroups.get(txHash);
+    if(!group){group={block,log_indices:[],senders:[],raw:0n};txGroups.set(txHash,group);}
+    group.raw+=raw;
+    group.log_indices.push(logIndex);
+    if(!group.senders.some(x=>same(x,sender)))group.senders.push(sender);
+  }
+  const receipts:any[]=[];
+  for(const [txHash,group] of txGroups){
+    const {block,log_indices,senders,raw}=group;
     const amount=Number(raw)/10**DECIMALS;
-    if(!(amount>0))continue;
+    if(!(amount>0)||!Number.isFinite(amount))continue;
     const confirmations=Math.max(0,latest-block);
+    const commitment=finalityMode==="finalized"?"finalized":"confirmed";
     const evidence={
       independently_verified:true,
       verifier:"base_rpc",
       rpc_provider:rpcLabel(lastGoodRpc),
-      verifier_ref:txHash+":"+logIndex,
+      verifier_ref:txHash+":"+log_indices.join(","),
       source:"midad_base_usdc_monitor",
       chain_id:CHAIN_ID,
       contract_address:USDC,
       token_contract_verified:true,
       recipient:wallet.address,
-      sender,
+      sender:senders.length===1?senders[0]:null,
+      senders,
       block_number:block,
-      log_index:logIndex,
+      log_indices,
       confirmations,
-      finality:"finalized_or_3_confirmations",
+      finality:finalityMode==="finalized"?"finalized":"at_least_3_confirmations",
       observed_raw_amount:raw.toString(),
       decimals:DECIMALS,
       transfer_event_signature:TRANSFER
@@ -138,11 +157,11 @@ async function run(){
       amount,
       direction:"inbound",
       slot:block,
-      commitment:"finalized",
+      commitment,
       evidence
     },{onConflict:"wallet_id,tx_hash,asset,mint,direction"}).select("id").maybeSingle();
-    if(ins.error)continue;
-    receipts.push({receipt_id:ins.data?.id||null,tx_hash:txHash,amount,block,confirmations,sender});
+    if(ins.error)throw new Error("base_receipt_persist_failed:"+ins.error.message);
+    receipts.push({receipt_id:ins.data?.id||null,tx_hash:txHash,amount,block,confirmations,senders,log_indices,commitment});
   }
 
   let balance=0;
@@ -152,11 +171,11 @@ async function run(){
   },"latest"]);
   balance=Number(hexToBig(balanceHex))/10**DECIMALS;
 
-  await db.from("midad_wallet_monitor_state").upsert({
+  const stateWrite=await db.from("midad_wallet_monitor_state").upsert({
     route_id:route.id,
     last_scan_at:new Date().toISOString(),
     last_signature:receipts[receipts.length-1]?.tx_hash||state?.last_signature||null,
-    last_slot:to,
+    last_slot:Math.max(previous,to),
     latest_balance:balance,
     latest_balance_updated_at:new Date().toISOString(),
     status:"VERIFIED",
