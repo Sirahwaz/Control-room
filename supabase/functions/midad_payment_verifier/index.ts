@@ -61,7 +61,7 @@ Deno.serve(async(req)=>{
       const networkOk=Boolean(intent.network&&latest.network&&String(intent.network).toLowerCase()===String(latest.network).toLowerCase());
       const expectedAmount=n(intent.quoted_crypto_amount);
       const observedAmount=n(latest.observed_amount);
-      const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&observedAmount>=expectedAmount;
+      const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&Math.round(expectedAmount*1_000_000)===Math.round(observedAmount*1_000_000);
       const confirmations=Number(latest.confirmations||0);
       const confirmationsOk=confirmations>=Number(intent.confirmations_required||0);
       const txOk=Boolean(latest.tx_hash);
