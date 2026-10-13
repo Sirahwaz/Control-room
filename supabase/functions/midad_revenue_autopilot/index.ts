@@ -643,11 +643,11 @@ async function watchSolanaWallets(){
         }
 
         // Exact USDC quote only. Zero or multiple matches remain unmatched.
-        if(c.asset==="USDC"&&c.mint==="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"){
+        if(c.asset==="USDC"&&c.mint==="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"&&!priorReceipt?.matched_payment_intent_id){
           const {data:candidates,error:candidateError}=await db.from("midad_payment_intents")
             .select("id,user_id,status,reconciliation_status,quoted_crypto_amount,wallet_address,settlement_asset,network,expires_at,confirmations_required")
             .eq("wallet_address",w.address).eq("settlement_asset","USDC").eq("network","solana")
-            .in("status",["quoted","detected"]).gt("expires_at",new Date().toISOString())
+            .in("status",["quoted","detected"]).neq("reconciliation_status","manual_review").gt("expires_at",new Date().toISOString())
             .order("created_at",{ascending:true}).limit(50);
           if(candidateError){
             await recordRun(null,null,"wallet_receipt_match_query",false,{wallet_id:w.id,tx_hash:txHash,amount:c.amount},"payment_intent_lookup_failed");
@@ -722,9 +722,9 @@ async function main(req:Request){
       const process=await processStoredBountyBook();
       const launch=await launchOffers(p);
       const watch=await watchSolanaWallets();
-      return json({ok:true,service:"midad_revenue_autopilot",version:11,policy:{enabled:p.enabled,automation:p.default_automation,auto_submission:p.allow_auto_submission,auto_delivery:p.allow_auto_delivery,live_trade:Boolean(p.allow_auto_trade),auto_withdraw:Boolean(p.allow_auto_withdraw)},poll,reconcile,store,process,launch,watch});
+      return json({ok:true,service:"midad_revenue_autopilot",version:15,policy:{enabled:p.enabled,automation:p.default_automation,auto_submission:p.allow_auto_submission,auto_delivery:p.allow_auto_delivery,live_trade:Boolean(p.allow_auto_trade),auto_withdraw:Boolean(p.allow_auto_withdraw)},poll,reconcile,store,process,launch,watch});
     }
-    if(action==="health") return json({ok:true,service:"midad_revenue_autopilot",version:11,live_trade:false,live_withdrawal:false});
+    if(action==="health") return json({ok:true,service:"midad_revenue_autopilot",version:15,live_trade:false,live_withdrawal:false});
     return json({ok:false,error:"unsupported_action"},400);
   }catch(e){return json({ok:false,error:"revenue_autopilot_error",detail:String(e).slice(0,1000)},500)}
 }
