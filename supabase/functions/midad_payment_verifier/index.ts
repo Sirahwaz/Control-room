@@ -62,16 +62,33 @@ Deno.serve(async(req)=>{
       const expectedAmount=n(intent.quoted_crypto_amount);
       const observedAmount=n(latest.observed_amount);
       const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&Math.round(expectedAmount*1_000_000)===Math.round(observedAmount*1_000_000);
+      const ev=latest.evidence&&typeof latest.evidence==="object"?latest.evidence:{};
+      const evNetwork=String(latest.network||"").toLowerCase();
       const confirmations=Number(latest.confirmations||0);
-      const confirmationsOk=confirmations>=Number(intent.confirmations_required||0);
+      const finalizedEvidence=ev.commitment==="finalized"||ev.finality==="finalized";
+      const confirmationsOk=finalizedEvidence||confirmations>=Number(intent.confirmations_required||0);
       const txOk=Boolean(latest.tx_hash);
+      const recipientOk=evNetwork==="solana"
+        ? String(ev.wallet_address||"")===String(intent.wallet_address||"")
+        : evNetwork==="base"
+          ? String(ev.recipient||"").toLowerCase()===String(intent.wallet_address||"").toLowerCase()
+          : false;
+      const chainEvidenceOk=evNetwork==="solana"
+        ? ev.mint_verified===true
+          &&String(ev.expected_mint||"")==="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+          &&String(ev.observed_mint||"")===String(ev.expected_mint||"")
+        : evNetwork==="base"
+          ? Number(ev.chain_id)===8453
+            &&ev.token_contract_verified===true
+            &&String(ev.contract_address||"").toLowerCase()==="0x833589fc6edb6e08f4c7c32d4f71b54bda02913"
+          : false;
       const independentEvidence=Boolean(
         latest.provider &&
-        latest.evidence &&
-        latest.evidence.independently_verified===true &&
-        latest.evidence.verifier &&
-        latest.evidence.verifier_ref &&
-        (String(latest.network||"").toLowerCase()!=="solana" || latest.evidence.mint_verified===true)
+        ev.independently_verified===true &&
+        ev.verifier &&
+        ev.verifier_ref &&
+        recipientOk &&
+        chainEvidenceOk
       );
       const matched=assetOk&&networkOk&&amountOk&&confirmationsOk&&txOk&&independentEvidence;
       const status=matched?"reconciled":"manual_review";
@@ -83,7 +100,7 @@ Deno.serve(async(req)=>{
         paid_at:matched?new Date().toISOString():null,
         updated_at:new Date().toISOString()
       }).eq("id",intentId).eq("user_id",profile.id);
-      await audit(sb,profile.id,{subject_id:intentId,action:"reconcile_payment",status,risk_class:matched?"medium":"high",summary:matched?"تمت مطابقة دليل الدفع وفق الحقول المتاحة.":"فشل شرط واحد أو أكثر؛ يلزم تحقق يدوي مستقل.",details:{assetOk,networkOk,amountOk,confirmationsOk,txOk,independentEvidence}});
+      await audit(sb,profile.id,{subject_id:intentId,action:"reconcile_payment",status,risk_class:matched?"medium":"high",summary:matched?"تمت مطابقة دليل الدفع وفق الحقول المتاحة.":"فشل شرط واحد أو أكثر؛ يلزم تحقق يدوي مستقل.",details:{assetOk,networkOk,amountOk,confirmationsOk,txOk,recipientOk,chainEvidenceOk,independentEvidence}});
       return json({ok:true,status,reconciliation:{assetOk,networkOk,amountOk,confirmationsOk,txOk,independentEvidence}});
     }
 
