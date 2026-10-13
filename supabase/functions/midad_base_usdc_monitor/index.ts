@@ -129,7 +129,7 @@ async function reconcileExactBaseReceipt(input:{receiptId:string;walletAddress:s
       evidence:input.evidence,occurred_at:observedAt
     });
   }
-  const verified=await callVerifier("reconcile");
+  const verified=await callVerifier("reconcile",{tx_hash:input.txHash});
   const {data:confirmed,error:confirmError}=await db.from("midad_payment_intents")
     .select("status,reconciliation_status,received_tx_hash,paid_at").eq("id",intentId).maybeSingle();
   if(confirmError)throw new Error("base_reconciled_intent_read_failed:"+confirmError.message);
