@@ -6,6 +6,7 @@ const verifier = fs.readFileSync("supabase/functions/midad_payment_verifier/inde
 const migration = fs.readFileSync("supabase/migrations/20261013000100_public_checkout_idempotency.sql", "utf8");
 const forge = fs.readFileSync("revenue-forge.html", "utf8");
 const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts", "utf8");
+const baseMonitor = fs.readFileSync("supabase/functions/midad_base_usdc_monitor/index.ts", "utf8");
 
 assert.match(checkout, /function publicPayment\(intent:any\)/, "public payment projection must exist");
 for (const field of ["id:intent.id", "status:intent.status", "reconciliation_status:intent.reconciliation_status", "quoted_crypto_amount:intent.quoted_crypto_amount", "wallet_address:intent.wallet_address"]) {
@@ -36,8 +37,14 @@ assert.match(radar, /workerPayoutUsdc/, "BaseBounty must use explicit after-fee 
 assert.match(radar, /reward_units_verified:false/, "Superteam raw token reward units must not be converted to USD without evidence");
 assert.match(radar, /individual_gig_crypto_terms_verified:false/, "LaborX listing discovery must not presume each gig accepts crypto");
 assert.match(radar, /research_only:true/, "airdrop observations must be research-only");
-assert.match(radar, /payout_evidence_verified\\)\\&\\&Boolean\\(c\\.crypto_payout_verified\\)/, "automation must require payout and crypto evidence");
-assert.match(radar, /c\\.claim_mode!==["']wallet_signature["']/, "wallet-signature claims must remain outside autonomous execution");
-assert.match(radar, /const status=automationAllowed\\?"money_candidate":"human_review"/, "unverified payout opportunities must be held for review");
+assert.ok(radar.includes("Boolean(c.payout_evidence_verified)&&Boolean(c.crypto_payout_verified)"), "automation must require payout and crypto evidence");
+assert.ok(radar.includes('c.claim_mode!=="wallet_signature"'), "wallet-signature claims must remain outside autonomous execution");
+assert.ok(radar.includes('const status=automationAllowed?"money_candidate":"human_review"'), "unverified payout opportunities must be held for review");
 
+assert.ok(baseMonitor.includes('const RPC_POOL=[BASE_RPC,"https://base-rpc.publicnode.com","https://public.1rpc.io/base"]'), "Base monitor must have public RPC fallbacks");
+assert.ok(baseMonitor.includes('rpc("eth_chainId",[])'), "Base monitor must verify network identity before scanning");
+assert.ok(baseMonitor.includes("actualChainId!==CHAIN_ID"), "Base monitor must fail closed on wrong chain");
+assert.ok(baseMonitor.includes('status:"DEGRADED"'), "Base monitor must persist degraded state after scan failures");
+assert.ok(baseMonitor.includes("base_rpc_all_providers_failed"), "Base monitor must expose aggregate provider failure without secrets");
+assert.ok(baseMonitor.includes("failure_stage:\"base_usdc_monitor\""), "Base monitor must store durable error context");
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
