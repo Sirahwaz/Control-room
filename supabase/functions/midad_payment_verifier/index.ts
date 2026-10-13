@@ -65,9 +65,14 @@ Deno.serve(async(req)=>{
       const intentId=clip(body.payment_intent_id,80);
       const {data:intent}=await sb.from("midad_payment_intents").select("*").eq("id",intentId).eq("user_id",profile.id).maybeSingle();
       if(!intent)return json({error:"payment_intent_not_found"},404);
-      const {data:events}=await sb.from("midad_payment_events").select("*").eq("payment_intent_id",intentId).order("occurred_at",{ascending:false}).limit(20);
+      const requestedTxHash=clip(body.tx_hash,200);
+      let eventQuery:any=sb.from("midad_payment_events").select("*").eq("payment_intent_id",intentId);
+      if(requestedTxHash)eventQuery=eventQuery.eq("tx_hash",requestedTxHash);
+      const {data:events,error:eventReadError}=await eventQuery.order("occurred_at",{ascending:false}).limit(20);
+      if(eventReadError)throw eventReadError;
       const latest=(events||[])[0];
-      if(!latest)return json({ok:true,status:"unreconciled",reason:"no_payment_event"});
+      if(!latest)return json({ok:true,status:"unreconciled",reason:requestedTxHash?"no_payment_event_for_requested_tx":"no_payment_event"});
+      if(requestedTxHash&&String(latest.tx_hash||"")!==requestedTxHash)return json({ok:true,status:"manual_review",reason:"requested_tx_hash_mismatch"});
       const assetOk=Boolean(intent.settlement_asset&&latest.asset&&String(intent.settlement_asset).toUpperCase()===String(latest.asset).toUpperCase());
       const networkOk=Boolean(intent.network&&latest.network&&String(intent.network).toLowerCase()===String(latest.network).toLowerCase());
       const expectedAmount=n(intent.quoted_crypto_amount);
