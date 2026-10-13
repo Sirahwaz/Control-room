@@ -66,13 +66,31 @@ async function chooseWallet(){
     const pa=Number(a?.metadata?.priority??100), pb=Number(b?.metadata?.priority??100);
     return pa-pb;
   });
-  const r=sorted[0];
-  if(!r) return null;
-  const {data:w}=await db.from("midad_wallets")
-    .select("id,label,chain,address,purpose,watch_only,active")
-    .eq("id",r.wallet_id).eq("active",true).maybeSingle();
-  if(!w?.address) return null;
-  return {route:r,wallet:w};
+  // Fail closed: do not issue a quote unless the receiving route has a recent,
+  // successful chain scan and at least one token account for the configured mint.
+  for(const r of sorted){
+    const {data:w,error:walletError}=await db.from("midad_wallets")
+      .select("id,label,chain,address,purpose,watch_only,active")
+      .eq("id",r.wallet_id).eq("active",true).maybeSingle();
+    if(walletError) throw walletError;
+    if(!w?.address) continue;
+    const {data:monitor,error:monitorError}=await db.from("midad_wallet_monitor_state")
+      .select("status,error_count,last_scan_at,metadata")
+      .eq("route_id",r.id).maybeSingle();
+    if(monitorError) throw monitorError;
+    const scannedAt=Date.parse(String(monitor?.last_scan_at||""));
+    const scanAgeMs=Date.now()-scannedAt;
+    const tokenAccounts=Number(monitor?.metadata?.token_accounts||0);
+    const ready=monitor?.status==="VERIFIED"
+      && Number(monitor?.error_count||0)===0
+      && tokenAccounts>0
+      && Number.isFinite(scannedAt)
+      && scanAgeMs>=-60_000
+      && scanAgeMs<=10*60_000;
+    if(!ready) continue;
+    return {route:r,wallet:w,monitor:{status:monitor.status,last_scan_at:monitor.last_scan_at,token_accounts:tokenAccounts}};
+  }
+  return null;
 }
 
 
@@ -133,7 +151,7 @@ async function main(req:Request){
     if((count||0)>=30) return json({ok:false,error:"checkout_rate_limited"},429);
 
     const target=await chooseWallet();
-    if(!target) return json({ok:false,error:"revenue_receive_wallet_unavailable"},503);
+    if(!target) return json({ok:false,error:"revenue_receive_wallet_unavailable",reason:"RECEIVING_ROUTE_NOT_READY",message:"مسار استقبال USDC غير جاهز أو لم ينجح فحصه مؤخرًا. لم تُنشأ فاتورة؛ حاول لاحقًا بعد استعادة جاهزية الاستقبال."},503);
 
     const expires=Math.max(15,Math.min(180,Number(body.expires_in_minutes||60)));
     const metadata={
