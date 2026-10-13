@@ -186,6 +186,8 @@ async function scanRoute(route:any){
  for(const a of accounts)balanceRaw+=Number(a?.account?.data?.parsed?.info?.tokenAmount?.amount||0);
  // Resume independently for every token account. A single route cursor is insufficient if the wallet
  // has more than one USDC account. Paginate backward until each account's last-seen signature is found.
+ const paymentReconciliationReady=await verifierReadiness();
+ if(accounts.length>0&&!paymentReconciliationReady)throw new Error("strict_payment_verifier_capability_unavailable");
  const stateRows=await d.unsafe("select metadata from public.midad_wallet_monitor_state where route_id=$1 limit 1",[route.id]);
  const rawMeta=stateRows[0]?.metadata;
  let previousMetadata:any={};
@@ -232,7 +234,6 @@ async function scanRoute(route:any){
  }
  const receipts:any[]=[];
  let paymentVerifierCalls=0;
- const paymentReconciliationReady=await verifierReadiness();
  for(const [signature,sigInfo] of signatures){
    const tx=await solana("getTransaction",[signature,{commitment:"finalized",maxSupportedTransactionVersion:0,encoding:"jsonParsed"}]);
    if(!tx?.meta||tx.meta.err)continue;
