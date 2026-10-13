@@ -75,8 +75,10 @@ async function main(req:Request){
       const payoutNetwork=String(payoutMeta.network||payoutMeta.payout_network||j.payout?.network||"").trim().toLowerCase();
       const cryptoAssets=["USDC","USDT","DAI","USDP","USDG","FDUSD","USDE","USDS","BTC","ETH","SOL","BNB","MATIC","POL","AVAX","SUI","APT","ARB","OP","TIA"];
       const cryptoPayoutReady=payoutMeta.crypto_payout_verified===true&&payoutMeta.payout_evidence_verified===true&&cryptoAssets.includes(payoutAsset)&&Boolean(payoutNetwork)&&!["unknown","unverified","n/a"].includes(payoutNetwork);
-      if(payoutPolicy?.allow_auto_ugig!==true||payoutPolicy?.allow_auto_receive!==true||!cryptoPayoutReady){
-        const gateMeta={...meta,crypto_payout_gate:{allowed:false,reason:payoutPolicy?.allow_auto_ugig!==true?"ugig_channel_paused_by_policy":!cryptoPayoutReady?"crypto_payout_not_independently_verified":"auto_receive_policy_disabled",asset:payoutAsset||null,network:payoutNetwork||null,checked_at:new Date().toISOString(),invoice_creation_blocked:true}};
+      const cryptoOnlyReceiveBridgeAvailable=false; // This lifecycle still hardcodes USD/CoinPay invoice_create and has no matched on-chain receipt path.
+      if(!cryptoOnlyReceiveBridgeAvailable||payoutPolicy?.allow_auto_ugig!==true||payoutPolicy?.allow_auto_receive!==true||!cryptoPayoutReady){
+        const gateReason=!cryptoOnlyReceiveBridgeAvailable?"crypto_only_onchain_invoice_bridge_not_implemented":payoutPolicy?.allow_auto_ugig!==true?"ugig_channel_paused_by_policy":!cryptoPayoutReady?"crypto_payout_not_independently_verified":"auto_receive_policy_disabled";
+        const gateMeta={...meta,crypto_payout_gate:{allowed:false,reason:gateReason,asset:payoutAsset||null,network:payoutNetwork||null,checked_at:new Date().toISOString(),invoice_creation_blocked:true}};
         await db.from("midad_revenue_jobs").update({state:"BLOCKED",blocker_code:"CRYPTO_PAYOUT_NOT_VERIFIED",blocker_detail:"uGig lifecycle is paused until the exact cryptocurrency asset, receiving network, and independent payout evidence are verified. USD/CoinPay invoice status is not accepted as on-chain income.",next_action:"verify_crypto_payout_and_wallet_receipt",metadata:gateMeta,updated_at:new Date().toISOString()}).eq("id",j.id);
         await db.from("opportunities").update({status:"human_review",updated_at:new Date().toISOString()}).eq("id",j.opportunity_id);
         summary.blocked++;summary.crypto_payout_blocked++;summary.changed++;
