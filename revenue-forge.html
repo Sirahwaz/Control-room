@@ -223,7 +223,11 @@ async function makeCheckout(product){
     }
     addCheckoutText(box,"p",d.instructions||"تحقق من المبلغ والشبكة قبل الإرسال.");
     addCheckoutText(box,"p","رقم الطلب: "+String(d.payment.id||"غير متاح"));
-    addCheckoutText(box,"p","الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
+    const status=String(d.payment.status||"quoted").toLowerCase();
+    const reconciliation=String(d.payment.reconciliation_status||"").toLowerCase();
+    const reconciled=status==="reconciled"||reconciliation==="matched";
+    const needsReview=["detected","verified","paid","waiting"].includes(status)||["manual_review","mismatch","unreconciled"].includes(reconciliation);
+    addCheckoutText(box,"p",reconciled?"تمت مطابقة الدفع في سجل MIDAD. لا ترسل دفعة أخرى؛ راجع حالة التسليم.":needsReview?"الدفع قيد التحقق أو يحتاج مراجعة. لا ترسل دفعة ثانية.":"الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
   }catch(e){
     box.replaceChildren();
     addCheckoutText(box,"strong","تعذر إنشاء الفاتورة");
