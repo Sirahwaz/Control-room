@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111a">
+<meta name="robots" content="noindex,nofollow">
+<title>Reown Wallet Connect — MIDAD</title>
+<style>
+:root{color-scheme:dark;--bg:#07111a;--panel:#0d1b27;--line:#294052;--text:#f1f7fb;--muted:#adc0cf;--cyan:#67e8f9;--green:#70e1b2;--amber:#f6ce74;--red:#ff8794}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(900px 500px at 10% -10%,#143347 0,transparent 62%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:22px 14px 36px}
+main{max-width:740px;margin:0 auto}.brand{font-size:12px;letter-spacing:.14em;color:#9db3c4}.card{margin-top:14px;padding:22px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,rgba(20,39,54,.94),rgba(8,18,27,.97))}
+h1{font-size:clamp(27px,6vw,38px);margin:7px 0 10px;line-height:1.25}p{line-height:1.9;color:var(--muted);margin:8px 0}.small{font-size:13px}
+button,a.btn{width:100%;min-height:52px;border:1px solid #376175;border-radius:13px;padding:12px 15px;background:#103042;color:var(--text);font-size:16px;font-weight:700;text-align:center;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
+button.primary{background:#b9f5fd;color:#06202a;border-color:#b9f5fd}button:disabled{opacity:.48;cursor:not-allowed}
+.note{border-right:3px solid var(--cyan);background:#0a2532;padding:12px 14px;border-radius:10px;margin-top:14px;color:#d9f8fc;line-height:1.8}
+.status{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;white-space:pre-wrap;word-break:break-word;color:var(--muted);line-height:1.8}.good{border-color:#276750;color:#b9f9d9}.warn{border-color:#79652f;color:#ffe6aa}.bad{border-color:#783b49;color:#ffc8d0}
+footer{margin-top:18px;text-align:center;font-size:12px;color:#8097a8}
+</style>
+</head>
+<body><main>
+<div class="brand">MIDAD AI · REOWN APPKIT · NON-CUSTODIAL</div>
+<section class="card">
+<h1>ربط Trust Wallet عبر Reown</h1>
+<p>افتح نافذة Reown الرسمية لاختيار Trust Wallet وربط عنوان EVM. بعد الاتصال سيطلب MIDAD توقيع رسالة إثبات ملكية فقط، وليس معاملة بلوك تشين.</p>
+<div class="note">لا تشارك عبارة الاسترداد أو المفتاح الخاص. لا توقّع أي طلب يظهر أنه تحويل أو Swap. هذه الصفحة لا تنفّذ تداولاً ولا تمنح MIDAD صلاحية الإنفاق.</div>
+<div id="status" class="status warn">جارٍ تهيئة Reown والتحقق من صلاحية رابط الربط…</div>
+<button id="connect" class="primary" disabled>تهيئة الاتصال…</button>
+<button id="prove" disabled>إثبات ملكية العنوان برسالة</button>
+<a class="btn" href="https://sirahwaz.github.io/Control-room/?view=wallet" rel="noopener">العودة إلى MIDAD Control Room</a>
+</section>
+<section class="card"><b>ما الذي ستفعله هذه الصفحة؟</b>
+<p class="small">1) تفتح اتصال Reown. 2) تعرض عنوان EVM الذي وافقت عليه. 3) تطلب توقيع نص واضح لإثبات الملكية. 4) ترسل التوقيع إلى MIDAD للتحقق. لا يتم إرسال أي عملة.</p>
+</section><footer>المعرّف العام يُستخدم لتهيئة Reown فقط. الاتصال الفعلي وإثبات الملكية يظلان غير مكتملين حتى تظهر رسالة نجاح صريحة.</footer>
+</main>
+<script type="module">
+const PROJECT_ID = "0ccd67944f78ea36d7e70bd054e1c90a";
+const API = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_trust_wallet_bridge";
+const params = new URLSearchParams(location.hash.replace(/^#/,""));
+const token = params.get("evm") || "";
+const exp = Number(params.get("exp") || 0);
+history.replaceState(null,"",location.pathname+location.search);
+const $ = id => document.getElementById(id);
+const status = $("status"), connectBtn = $("connect"), proveBtn = $("prove");
+let modal = null, provider = null, address = "";
+const msg = (text,kind="warn") => { status.textContent=text; status.className="status "+kind; };
+const proofMessage = (addr) => "MIDAD TRUST WALLET LINK\nPurpose: add-public-wallet-to-midad\nToken: "+token+"\nChain: EVM\nAddress: "+addr+"\nExpires: "+exp;
+const hex = s => "0x"+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,"0")).join("");
+async function loadAppKit(){
+  if(!token || exp <= Math.floor(Date.now()/1000)) throw new Error("رابط الربط مفقود أو منتهي. أنشئ رابطاً جديداً من المقود.");
+  const [{createAppKit},{EthersAdapter},{mainnet,base,avalanche}] = await Promise.all([
+    import("https://esm.sh/@reown/appkit@1.8.15?bundle"),
+    import("https://esm.sh/@reown/appkit-adapter-ethers@1.8.15?bundle"),
+    import("https://esm.sh/@reown/appkit@1.8.15/networks?bundle")
+  ]);
+  modal = createAppKit({
+    adapters:[new EthersAdapter()],
+    networks:[mainnet,base,avalanche],
+    projectId:PROJECT_ID,
+    metadata:{
+      name:"MIDAD AI",
+      description:"MIDAD non-custodial wallet ownership verification",
+      url:"https://sirahwaz.github.io",
+      icons:["https://sirahwaz.github.io/Control-room/midad-pwa-icon.svg"]
+    },
+    features:{analytics:false}
+  });
+  modal.subscribeProvider(({provider:p,address:a,isConnected})=>{
+    if(isConnected && p && a){provider=p;address=String(a);proveBtn.disabled=false;msg("اتصلت المحفظة عبر Reown.\nالعنوان: "+address+"\nالخطوة التالية: توقيع رسالة إثبات الملكية فقط.","good");}
+  });
+  connectBtn.disabled=false;connectBtn.textContent="اتصال Trust Wallet عبر Reown";
+  msg("Reown AppKit جاهز. اضغط الاتصال واختر Trust Wallet من النافذة.","good");
+}
+connectBtn.addEventListener("click",async()=>{
+  try{if(!modal)throw new Error("لم تكتمل تهيئة Reown.");modal.open({view:"Connect",namespace:"eip155"});}
+  catch(e){msg("تعذر فتح الاتصال: "+String(e?.message||e),"bad");}
+});
+proveBtn.addEventListener("click",async()=>{
+  proveBtn.disabled=true;
+  try{
+    if(!provider||!address)throw new Error("لا توجد محفظة متصلة.");
+    if(!token||exp<=Math.floor(Date.now()/1000))throw new Error("انتهت صلاحية رابط الربط؛ أنشئ رابطاً جديداً.");
+    const signature=await provider.request({method:"personal_sign",params:[hex(proofMessage(address)),address]});
+    const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"complete",token,chain:"EVM",address,signature:String(signature||"")})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
+    msg("تم التحقق من ملكية العنوان وربطه بنجاح.\nالعنوان: "+j.address+"\nالمسار: "+(j.route?.network||"تم إنشاء المسار")+".\nلم تُنقل أموال ولم تُوقّع معاملة.","good");
+    proveBtn.textContent="تم إثبات الملكية";
+  }catch(e){msg("لم يكتمل إثبات الملكية: "+String(e?.message||e),"bad");proveBtn.disabled=false;}
+});
+try{await loadAppKit();}catch(e){msg("تعذرت تهيئة Reown: "+String(e?.message||e)+". لم يتم إجراء أي اتصال أو معاملة.","bad");connectBtn.textContent="إعادة المحاولة";connectBtn.disabled=false;connectBtn.addEventListener("click",()=>location.reload(),{once:true});}
+</script>
+</body></html>
