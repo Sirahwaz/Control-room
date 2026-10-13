@@ -51,7 +51,7 @@ function tokenDeltas(tx:any){
 }
 async function persistMatchEvidence(receiptId:string, patch:any){
  const d=needDb();
- const rows=await d.unsafe("update public.midad_wallet_receipts set evidence=coalesce(evidence,'{}'::jsonb)||$2::jsonb where id=$1 returning id",[receiptId,JSON.stringify(patch)]);
+ const rows=await d.unsafe("update public.midad_wallet_receipts set evidence=coalesce(evidence,'{}'::jsonb)||$2::jsonb where id=$1 returning id",[receiptId,patch]);
  if(!rows.length)throw new Error("receipt_match_evidence_persist_failed");
 }
 
@@ -174,7 +174,7 @@ async function scanRoute(route:any){
    if(!(amount>0)||!Number.isFinite(amount))continue;
    const tokenAccounts=incoming.map((delta:any)=>{const key=keys[delta.accountIndex];return typeof key==="string"?key:(key?.pubkey||null);}).filter(Boolean);
    const evidence={independently_verified:true,verifier:"solana_rpc",verifier_ref:signature,source:"midad_wallet_receipt_monitor_v4",commitment:"finalized",mint_verified:true,expected_mint:mint,observed_mint:mint,wallet_address:wallet.address,token_account:tokenAccounts.length===1?tokenAccounts[0]:null,token_accounts:tokenAccounts,delta_raw:totalRaw,decimals,slot:tx.slot||sigInfo.slot||null,block_time:tx.blockTime||sigInfo.blockTime||null,transaction_error:null,settlement_performed:false};
-   const inserted=await d.unsafe("insert into public.midad_wallet_receipts as current_receipt(wallet_id,tx_hash,asset,mint,network,amount,direction,slot,commitment,evidence) values($1,$2,'USDC',$3,'solana',$4,'inbound',$5,'finalized',$6::jsonb) on conflict(wallet_id,tx_hash,asset,mint,direction) do update set amount=excluded.amount,slot=excluded.slot,commitment=excluded.commitment,evidence=coalesce(current_receipt.evidence,'{}'::jsonb)||excluded.evidence returning id,evidence",[wallet.id,signature,mint,amount,Number(tx.slot||sigInfo.slot||0)||null,JSON.stringify(evidence)]);
+   const inserted=await d.unsafe("insert into public.midad_wallet_receipts as current_receipt(wallet_id,tx_hash,asset,mint,network,amount,direction,slot,commitment,evidence) values($1,$2,'USDC',$3,'solana',$4,'inbound',$5,'finalized',$6::jsonb) on conflict(wallet_id,tx_hash,asset,mint,direction) do update set amount=excluded.amount,slot=excluded.slot,commitment=excluded.commitment,evidence=coalesce(current_receipt.evidence,'{}'::jsonb)||excluded.evidence returning id,evidence",[wallet.id,signature,mint,amount,Number(tx.slot||sigInfo.slot||0)||null,evidence);
    const receiptId=String(inserted[0]?.id||"");
    let reconciliation:any={payment_intent_matched:false,payment_intent_match_status:"receipt_id_unavailable",payment_verifier_calls:0};
    if(receiptId&&inserted[0]?.evidence?.payment_intent_matched!==true){
@@ -188,7 +188,7 @@ async function scanRoute(route:any){
  const stateStatus=accounts.length?"VERIFIED":"NO_TOKEN_ACCOUNT";
  const metadata={provider:"solana_rpc",mint,token_decimals:6,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,settlement_performed:false};
  const lastSlot=[...signatures.values()].reduce((m:number,x:any)=>Math.max(m,Number(x.slot||0)),0)||null;
- await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,last_signature,last_slot,latest_balance,latest_balance_updated_at,status,error_count,last_error,metadata,updated_at) values($1,now(),$2,$3,$4,now(),$5,0,null,$6::jsonb,now()) on conflict(route_id) do update set last_scan_at=excluded.last_scan_at,last_signature=excluded.last_signature,last_slot=excluded.last_slot,latest_balance=excluded.latest_balance,latest_balance_updated_at=excluded.latest_balance_updated_at,status=excluded.status,error_count=0,last_error=null,metadata=excluded.metadata,updated_at=now()",[route.id,[...signatures.keys()][0]||null,lastSlot,balanceRaw/1_000_000,stateStatus,JSON.stringify(metadata)]);
+ await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,last_signature,last_slot,latest_balance,latest_balance_updated_at,status,error_count,last_error,metadata,updated_at) values($1,now(),$2,$3,$4,now(),$5,0,null,$6::jsonb,now()) on conflict(route_id) do update set last_scan_at=excluded.last_scan_at,last_signature=excluded.last_signature,last_slot=excluded.last_slot,latest_balance=excluded.latest_balance,latest_balance_updated_at=excluded.latest_balance_updated_at,status=excluded.status,error_count=0,last_error=null,metadata=excluded.metadata,updated_at=now()",[route.id,[...signatures.keys()][0]||null,lastSlot,balanceRaw/1_000_000,stateStatus,metadata);
  return {route_id:route.id,wallet_id:wallet.id,network:"solana",asset:"USDC",token_accounts:accounts.length,balance:balanceRaw/1_000_000,scanned_signatures:signatures.size,payment_verifier_calls:paymentVerifierCalls,receipts};
 }
 async function run(){
@@ -199,7 +199,7 @@ async function run(){
    try{results.push(await scanRoute(route));}
    catch(error){
      const message=clip(error instanceof Error?error.message:error,400);
-     await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,status,error_count,last_error,metadata,updated_at) values($1,now(),'DEGRADED',1,$2,$3::jsonb,now()) on conflict(route_id) do update set last_scan_at=now(),status='DEGRADED',error_count=public.midad_wallet_monitor_state.error_count+1,last_error=excluded.last_error,metadata=excluded.metadata,updated_at=now()",[route.id,message,JSON.stringify({provider:"solana_rpc",settlement_performed:false})]);
+     await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,status,error_count,last_error,metadata,updated_at) values($1,now(),'DEGRADED',1,$2,$3::jsonb,now()) on conflict(route_id) do update set last_scan_at=now(),status='DEGRADED',error_count=public.midad_wallet_monitor_state.error_count+1,last_error=excluded.last_error,metadata=excluded.metadata,updated_at=now()",[route.id,message,{provider:"solana_rpc",settlement_performed:false}]);
      results.push({route_id:route.id,status:"DEGRADED",error:message});
    }
  }
