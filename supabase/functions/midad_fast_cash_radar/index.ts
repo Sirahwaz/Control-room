@@ -54,7 +54,7 @@ async function main(req:Request){
   if(!profile?.id)return json({ok:false,error:"no_system_profile"},503);
   const result:any={service:"midad_fast_cash_radar",version:9,observed_at:new Date().toISOString(),sources:{},discovered:0,created:0,updated:0,skipped:0,top:[]};
   try{
-    const [bb,dc,ax,mt,ba,sup,ab,baseBounty,superteam,laborx,airdropalert]=await Promise.all([
+    const [bb,dc,ax,mt,ba,sup,ab,baseBounty,superteam,laborx,airdropalert]:any[]=await Promise.all([
        (!sourceOnly||sourceOnly==="bountybook")?getJson("https://api.bountybook.ai/jobs?status=open&limit=100"):{ok:false,status:0,data:null,skipped:true},
        (!sourceOnly||sourceOnly==="deskcrew")?getJson("https://deskcrew.io/api/arena/contests"):{ok:false,status:0,data:null,skipped:true},
        (!sourceOnly||sourceOnly==="agentxchange")?getJson("https://agentxchange.io/api/v1/tasks/available"):{ok:false,status:0,data:null,skipped:true},
@@ -131,7 +131,7 @@ async function main(req:Request){
     if(laborx.ok&&laborx.text){
       for(const m of laborx.text.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
         try{
-          const u=new URL(String(m[1]),"https://laborx.com/");
+          const u=new globalThis.URL(String(m[1]),"https://laborx.com/");
           if(u.hostname!=="laborx.com"||!/^\/gigs\/[^/?#]+/.test(u.pathname))continue;
           const title=htmlText(m[2]).slice(0,220);
           if(title.length<8||/^(browse gigs|show all gigs|more info)$/i.test(title))continue;
