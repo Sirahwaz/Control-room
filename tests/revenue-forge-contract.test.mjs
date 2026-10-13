@@ -7,6 +7,7 @@ const migration = fs.readFileSync("supabase/migrations/20261013000100_public_che
 const forge = fs.readFileSync("revenue-forge.html", "utf8");
 const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts", "utf8");
 const baseMonitor = fs.readFileSync("supabase/functions/midad_base_usdc_monitor/index.ts", "utf8");
+const securityMigration = fs.readFileSync("supabase/migrations/20261013000200_security_perf_hardening.sql", "utf8");
 
 assert.match(checkout, /function publicPayment\(intent:any\)/, "public payment projection must exist");
 for (const field of ["id:intent.id", "status:intent.status", "reconciliation_status:intent.reconciliation_status", "quoted_crypto_amount:intent.quoted_crypto_amount", "wallet_address:intent.wallet_address"]) {
@@ -47,4 +48,8 @@ assert.ok(baseMonitor.includes("actualChainId!==CHAIN_ID"), "Base monitor must f
 assert.ok(baseMonitor.includes('status:"DEGRADED"'), "Base monitor must persist degraded state after scan failures");
 assert.ok(baseMonitor.includes("base_rpc_all_providers_failed"), "Base monitor must expose aggregate provider failure without secrets");
 assert.ok(baseMonitor.includes("failure_stage:\"base_usdc_monitor\""), "Base monitor must store durable error context");
+assert.ok(securityMigration.includes("SET search_path = pg_catalog, public"), "wallet monitor trigger must have a pinned search_path");
+for (const indexName of ["midad_factory_artifacts_project_id_idx", "midad_factory_artifacts_run_id_idx", "midad_factory_projects_owner_user_id_idx", "midad_factory_runs_project_id_idx", "midad_platform_account_events_run_id_idx"]) {
+  assert.ok(securityMigration.includes(indexName), "missing staged foreign-key performance index: "+indexName);
+}
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
