@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 const checkout = fs.readFileSync("supabase/functions/midad_public_checkout/index.ts", "utf8");
 const verifier = fs.readFileSync("supabase/functions/midad_payment_verifier/index.ts", "utf8");
 const autopilot = fs.readFileSync("supabase/functions/midad_revenue_autopilot/index.ts", "utf8");
+const bountybookExecutor = fs.readFileSync("supabase/functions/midad_bountybook_executor/index.ts", "utf8");
+const speedbotFulfillment = fs.readFileSync("supabase/functions/midad_speedbot_fulfillment/index.ts", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20261013000100_public_checkout_idempotency.sql", "utf8");
 const forge = fs.readFileSync("revenue-forge.html", "utf8");
 const radar = fs.readFileSync("supabase/functions/midad_fast_cash_radar/index.ts", "utf8");
@@ -77,4 +79,12 @@ assert.ok(autopilot.includes('"/functions/v1/midad_payment_verifier"'), "autopil
 assert.ok(autopilot.includes("mint_verified:c.asset==="), "Solana USDC evidence must verify canonical mint");
 assert.ok(!autopilot.includes('.lte("quoted_crypto_amount",c.amount)'), "autopilot must not match a receipt to a lower quote");
 assert.ok(!autopilot.includes('status:"paid",reconciliation_status:"matched"'), "autopilot must never bypass verifier with direct paid/matched state writes");
+
+assert.ok(autopilot.includes("if(platformSaysPaid&&chainReceipt)"), "BountyBook jobs must require on-chain receipt evidence before paid state");
+assert.ok(autopilot.includes("chain_receipt_confirmed:Boolean(chainReceipt)"), "BountyBook reconciliation must persist chain receipt proof");
+assert.ok(autopilot.includes('newState="PENDING_PAYOUT"; next="verify_onchain_receipt"'), "legacy external-paid labels without a receipt must remain pending");
+assert.ok(bountybookExecutor.includes('const state=externalSaysPaid&&chainReceipt?"PAID":"PENDING_PAYOUT"'), "BountyBook executor must not equate external verification with payment received");
+assert.ok(speedbotFulfillment.includes("if(!postId||!txHash)continue;"), "Speedbot paid orders without a transaction hash must not mark revenue paid");
+assert.ok(speedbotFulfillment.includes("if(chainReceipt)"), "Speedbot requires independently verified inbound USDC receipt evidence");
+assert.ok(speedbotFulfillment.includes("chain_receipt_id"), "Speedbot paid ledger must retain receipt evidence");
 console.log("REVENUE_FORGE_CHECKOUT_CONTRACT_OK");
