@@ -44,13 +44,13 @@ jobs:
           const controlJs=fs.readFileSync('midad-control-v2.js','utf8');
           if(!controlJs.includes('url:"https://froegigfmpmvtecztfbf.supabase.co"')) fail('Control Room Supabase project URL mismatch');
           if(controlJs.includes('https://froegigfmpmvtecztfb.supabase.co')) fail('Known truncated Supabase project URL reintroduced');
-          if(!html.includes('midad-control-v2.js?v=20261011-fix2')) fail('Control Room JS cache-buster not refreshed');
+          const scriptRef=(html.match(/midad-control-v2\.js\?v=([^"' ]+)/)||[])[1];\n          if(!scriptRef || !controlJs.includes('build:"control-room-v2-20261012-authfix1"')) fail('Control Room JS cache-buster/build marker contract mismatch');
           if(!html.includes('lang="ar" dir="rtl"')) fail('Arabic RTL contract missing');
           if(!css.includes('.navbtn span{font-size:11px')) fail('Readable bottom navigation contract missing');
           if(!css.includes('#midadLiveOps.mlo-hidden{display:none!important}')) fail('LIVE OPS containment contract missing');
           if(!js.includes('aria-current')) fail('Accessible active navigation contract missing');
           if(!js.includes('midad_fix_live_ops_mobile_open')) fail('LIVE OPS restore preference missing');
-          if(!sw.includes('midad-control-v7-20261011-meme-scout')) fail('Service worker cache version not bumped');
+          if(!sw.includes('midad-control-v8-20261012-telegram-auth')) fail('Service worker cache version does not match current UI build');
           if(!sw.includes('./meme-scout.html')) fail('Meme Scout page missing from service-worker precache');
           const meme=fs.readFileSync('meme-scout.html','utf8');
           if(!meme.includes('midad_meme_scout')) fail('Meme Scout backend binding missing');
