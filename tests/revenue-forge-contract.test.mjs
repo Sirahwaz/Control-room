@@ -95,7 +95,7 @@ assert.ok(solanaMonitor.includes("manual_review_multiple_exact_intents"), "multi
 assert.ok(solanaMonitor.includes('"/functions/v1/midad_payment_verifier"'), "Solana monitor must use the canonical payment verifier");
 assert.ok(!solanaMonitor.includes("update public.midad_payment_intents"), "Solana monitor must not directly mark payment intents paid");
 assert.ok(solanaMonitor.includes("String(confirmed.received_tx_hash||\"\")===input.txHash"), "Solana monitor must verify the final matched hash after reconciliation");
-assert.ok(solanaMonitor.includes("current_receipt.evidence,'{}'::jsonb)||excluded.evidence"), "Solana receipt upserts must preserve earlier reconciliation evidence");
+assert.ok(solanaMonitor.includes("jsonb_typeof(current_receipt.evidence)='object' then current_receipt.evidence||excluded.evidence else excluded.evidence end"), "Solana receipt upserts must preserve earlier object evidence and normalize legacy scalar evidence");
 assert.ok(solanaMonitor.includes("incoming.reduce((sum:number,delta:any)=>sum+Number(delta.deltaRaw||0),0)"), "Solana receipt amount must aggregate transaction-level token deltas");
 assert.ok(solanaMonitor.includes('mint!==DEFAULT_USDC_MINT'), "Solana monitor must reject non-canonical USDC mint configuration");
 assert.ok(baseMonitor.includes('status:"DEGRADED"'), "Base monitor must persist degraded state after scan failures");
