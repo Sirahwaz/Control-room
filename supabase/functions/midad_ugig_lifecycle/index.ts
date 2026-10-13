@@ -20,7 +20,7 @@ async function main(req:Request){
     const apps=await call("midad_ugig_gateway",{action:"applications"});
     if(!apps.ok||!apps.data?.ok) return json({ok:false,error:"applications_fetch_failed",detail:apps.data?.error||apps.status},apps.status||502);
     const rows=Array.isArray(apps.data.applications)?apps.data.applications:[];
-    const {data:jobs}=await db.from("midad_revenue_jobs").select("id,opportunity_id,external_ref,state,payout,metadata,deadline_at,created_at").eq("platform","ugig").in("state",["IN_PROGRESS","PENDING_PAYOUT","DELIVERED"]);
+    const {data:jobs}=await db.from("midad_revenue_jobs").select("id,opportunity_id,external_ref,state,payout,metadata,deadline_at,created_at,blocker_code,next_action").eq("platform","ugig").in("state",["IN_PROGRESS","PENDING_PAYOUT","DELIVERED"]);
     const summary:any={service:"midad_ugig_lifecycle",version:7,checked:0,changed:0,invoices_created:0,paid:0,rejected:0,blocked:0,waiting:0,crypto_payout_blocked:0,errors:[]};
     for(const j of jobs||[]){
       const app=rows.find((a:any)=>String(a.gig_id)===String(j.external_ref) || String(a.id)===String(j.metadata?.submission?.data?.application?.id));
@@ -79,9 +79,13 @@ async function main(req:Request){
       if(!cryptoOnlyReceiveBridgeAvailable||payoutPolicy?.allow_auto_ugig!==true||payoutPolicy?.allow_auto_receive!==true||!cryptoPayoutReady){
         const gateReason=!cryptoOnlyReceiveBridgeAvailable?"crypto_only_onchain_invoice_bridge_not_implemented":payoutPolicy?.allow_auto_ugig!==true?"ugig_channel_paused_by_policy":!cryptoPayoutReady?"crypto_payout_not_independently_verified":"auto_receive_policy_disabled";
         const gateMeta={...meta,crypto_payout_gate:{allowed:false,reason:gateReason,asset:payoutAsset||null,network:payoutNetwork||null,checked_at:new Date().toISOString(),invoice_creation_blocked:true}};
-        await db.from("midad_revenue_jobs").update({state:"BLOCKED",blocker_code:"CRYPTO_PAYOUT_NOT_VERIFIED",blocker_detail:"uGig lifecycle is paused until the exact cryptocurrency asset, receiving network, and independent payout evidence are verified. USD/CoinPay invoice status is not accepted as on-chain income.",next_action:"verify_crypto_payout_and_wallet_receipt",metadata:gateMeta,updated_at:new Date().toISOString()}).eq("id",j.id);
-        await db.from("opportunities").update({status:"human_review",updated_at:new Date().toISOString()}).eq("id",j.opportunity_id);
-        summary.blocked++;summary.crypto_payout_blocked++;summary.changed++;
+        const alreadyGated=j.blocker_code==="CRYPTO_PAYOUT_NOT_VERIFIED"&&j.next_action==="verify_crypto_payout_and_wallet_receipt";
+        if(!alreadyGated){
+          await db.from("midad_revenue_jobs").update({state:j.state,blocker_code:"CRYPTO_PAYOUT_NOT_VERIFIED",blocker_detail:"uGig lifecycle is paused until the exact cryptocurrency asset, receiving network, and independent payout evidence are verified. USD/CoinPay invoice status is not accepted as on-chain income.",next_action:"verify_crypto_payout_and_wallet_receipt",metadata:gateMeta,updated_at:new Date().toISOString()}).eq("id",j.id);
+          await db.from("opportunities").update({status:"human_review",updated_at:new Date().toISOString()}).eq("id",j.opportunity_id);
+          summary.changed++;
+        }
+        summary.blocked++;summary.crypto_payout_blocked++;
         continue;
       }
 const inv=await call("midad_ugig_gateway",{action:"gig_invoice",gig_id:j.external_ref});
