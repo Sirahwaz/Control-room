@@ -146,7 +146,7 @@ async function reconcileExactSolanaReceipt(input:{receiptId:string;walletAddress
      });
      calls++;
    }
-   const verified=await callVerifier("reconcile");
+   const verified=await callVerifier("reconcile",{tx_hash:input.txHash});
    calls++;
    const refreshed=await d.unsafe("select status,reconciliation_status,received_tx_hash,paid_at from public.midad_payment_intents where id=$1 limit 1",[intentId]);
    const confirmed=refreshed[0]||{};
