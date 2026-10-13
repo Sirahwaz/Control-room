@@ -26,7 +26,7 @@ const intentInsert = checkout.indexOf('db.from("midad_payment_intents").insert')
 assert.ok(gate >= 0 && intentInsert > gate, "receive readiness gate must precede Payment Intent creation");
 assert.match(forge, /if\(!r\.ok\|\|!d\.ok\) throw new Error\(d\.message\|\|d\.error\|\|"checkout_failed"\);/, "UI must prefer actionable server message");
 assert.match(forge, /لا ترسل دفعة ثانية/, "UI must warn against duplicate payment during reconciliation");
-assert.match(verifier, /const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&observedAmount>=expectedAmount;/, "verification must reject missing/underpaid amounts and remove 0.1% tolerance");
+assert.match(verifier, /const amountOk=expectedAmount!==null&&expectedAmount>0&&observedAmount!==null&&Math.round\(expectedAmount\*1_000_000\)===Math.round\(observedAmount\*1_000_000\);/, "verification must require an exact positive USDC micro-unit amount");
 assert.match(verifier, /const assetOk=Boolean\(intent\.settlement_asset&&latest\.asset&&/, "verification must require explicit matching asset");
 assert.match(verifier, /const networkOk=Boolean\(intent\.network&&latest\.network&&/, "verification must require explicit matching network");
 assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS midad_payment_intents_public_order_key_active_uidx/, "active order-key idempotency index must exist");
