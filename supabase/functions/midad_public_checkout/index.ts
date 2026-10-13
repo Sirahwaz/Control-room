@@ -90,7 +90,7 @@ async function chooseWallet(){
     const chainEvidenceReady=network==="solana"
       ? tokenAccounts>0&&configuredMint===SOLANA_USDC_MINT
       : network==="base"
-        ? chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()
+        ? chainId===8453&&tokenContract===BASE_USDC_CONTRACT.toLowerCase()&&r.metadata?.checkout_reconciliation_verified===true
         : false;
     const ready=monitor?.status==="VERIFIED"
       && Number(monitor?.error_count||0)===0
