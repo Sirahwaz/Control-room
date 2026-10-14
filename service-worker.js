@@ -1,6 +1,6 @@
 /* Version bump is deliberate: retire old cached Control Room assets after the mobile UI repair. */
-const CACHE="midad-control-v11-20261013-fee-wallet";
-const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js","./trust-wallet-link.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg"];
+const CACHE="midad-control-v12-20261014-auth-gate";
+const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js","./trust-wallet-link.html","./reown-wallet-connect.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",event=>{
