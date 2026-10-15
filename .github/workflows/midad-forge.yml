@@ -209,11 +209,19 @@ jobs:
             pr_url="$existing_pr"
             echo "Forge PR already exists: $pr_url"
           else
-            pr_url="$(gh pr create \
+            # Repository policy may prohibit Actions from creating PRs. Do not discard
+            # an already-published, build-verified branch because of that separate gate.
+            if pr_url="$(gh pr create \
               --base main \
               --head "$branch" \
               --title "Forge: $app" \
-              --body "$pr_body")"
+              --body "$pr_body")"; then
+              echo "Forge draft PR created: $pr_url"
+            else
+              rc=$?
+              pr_url=""
+              echo "::warning::Branch published and build verified, but automatic PR creation was denied (exit $rc). Keep PR creation under the connected GitHub review path; do not change repository permissions."
+            fi
           fi
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
           echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
