@@ -1,12 +1,10 @@
-const CACHE_NAME = 'forge-smoke-test-v1';
+const CACHE_NAME = 'forge-smoke-test-v2';
 const urlsToCache = [
-  '/',
-  'index.html',
-  'style.css',
-  'main.js',
-  'manifest.json',
-  'icon-192.png',
-  'icon-512.png'
+  './',
+  './index.html',
+  './style.css',
+  './main.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -16,6 +14,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
     caches.match(event.request).then(response => response || fetch(event.request))
   );
