@@ -24,17 +24,6 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 
 <section class="grid">
 <article class="card">
-<span class="tag">MICROSCOPE SERVICE</span>
-<h2>Miner Microscope Audit</h2>
-<div class="price">$39</div>
-<p>تشخيص بصري/بياني للعمال والـhashrate ومؤشرات الأعطال مع تقرير قابل للإرسال.</p>
-<ul><li>Worker-by-worker snapshot</li><li>هبوطات ومناطق شذوذ</li><li>فرضيات سبب + فحوص استرداد</li><li>Evidence pack مختصر</li></ul>
-<a class="btn" href="#checkout">اختر الخدمة وأنشئ الفاتورة</a>
-<button class="btn secondary" onclick="copyOffer('MIDAD Miner Microscope Audit — $39 — worker health + hashrate anomalies + recovery checklist + evidence pack', this)">نسخ عرض مختصر</button>
-<div class="copyok" id="ok1"></div>
-</article>
-
-<article class="card">
 <span class="tag">OPPORTUNITY SERVICE</span>
 <h2>Opportunity Radar Pack</h2>
 <div class="price">$25</div>
@@ -59,7 +48,7 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
 
 <section id="checkout" class="card section">
 <span class="tag">CRYPTO CHECKOUT</span>
-<h2>الدفع المباشر — USDC / Solana</h2>
+<h2>الدفع المباشر — USDC / Base</h2>
 <p class="small">اكتب المطلوب أولاً، ثم اختر الخدمة لإنشاء فاتورة مرتبطة بوصفك. لا تعتبر الطلب مدفوعًا حتى يتحقق MIDAD من معاملة الاستقبال فعليًا.</p>
 <div class="card" style="margin:14px 0;background:#0a1017">
   <h2 style="margin-top:0">تفاصيل الطلب / Request Brief</h2>
@@ -73,7 +62,6 @@ main{max-width:1100px;margin:auto;padding:24px 16px 60px}.hero,.card{background:
   <div id="checkout-form-status" class="copyok" role="status" aria-live="polite"></div>
 </div>
 <div class="grid">
-<article class="card"><h2>Miner Microscope Audit</h2><div class="price">$39 USDC</div><button class="btn" onclick="makeCheckout('miner-microscope-v1')">إنشاء فاتورة</button></article>
 <article class="card"><h2>Opportunity Radar Pack</h2><div class="price">$25 USDC</div><button class="btn" onclick="makeCheckout('opportunity-radar-v1')">إنشاء فاتورة</button></article>
 <article class="card"><h2>Research-to-Revenue Sprint</h2><div class="price">$79 USDC</div><button class="btn" onclick="makeCheckout('research-revenue-sprint-v1')">إنشاء فاتورة</button></article>
 <article class="card"><h2>Bug Fix Sprint</h2><div class="price">$54 USDC</div><button class="btn" onclick="makeCheckout('bug-fix-sprint-v1')">إنشاء فاتورة</button></article>
@@ -194,7 +182,9 @@ async function makeCheckout(product){
     box.replaceChildren();
     addCheckoutText(box,"strong",d.product.name);
     addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
-    addCheckoutText(box,"p","الشبكة: Solana");
+    const network=String(d.receiving?.network||d.payment.network||"unknown").toLowerCase();
+    const networkNames={base:"Base",solana:"Solana",ethereum:"Ethereum",avalanche:"Avalanche"};
+    addCheckoutText(box,"p","الشبكة: "+(networkNames[network]||network));
     addCheckoutText(box,"p","أرسل المبلغ الدقيق فقط إلى عنوان الاستقبال التالي:");
     const address=document.createElement("code");
     address.style.cssText="display:block;word-break:break-all;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11";
@@ -213,11 +203,11 @@ async function makeCheckout(product){
     });
     box.appendChild(copy);
     if(d.payment.expires_at) addCheckoutText(box,"p","تنتهي صلاحية الفاتورة: "+new Date(d.payment.expires_at).toLocaleString());
-    if(d.payment_uri && String(d.payment_uri).startsWith("solana:")){
+    if(d.payment_uri && (String(d.payment_uri).startsWith("solana:")||String(d.payment_uri).startsWith("ethereum:"))){
       const link=document.createElement("a");
       link.className="btn";
       link.href=String(d.payment_uri);
-      link.textContent="فتح في محفظة Solana";
+      link.textContent=network==="base"?"فتح في محفظة متوافقة مع Base":network==="solana"?"فتح في محفظة Solana":"فتح في المحفظة";
       link.rel="noopener noreferrer";
       box.appendChild(link);
     }
