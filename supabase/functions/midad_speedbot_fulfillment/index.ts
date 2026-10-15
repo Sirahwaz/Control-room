@@ -5,7 +5,7 @@ const URL = Deno.env.get("SUPABASE_URL") || "";
 const DATABASE_URL = Deno.env.get("SUPABASE_DB_URL") || "";
 const sql = DATABASE_URL ? postgres(DATABASE_URL,{max:1,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}) : null;
 const SERVICE_ID = "service_b55a499aa43848cd96f4d213e1d8bdfa";
-const SERVICE_VERSION = 1;
+const SERVICE_VERSION = 2;
 const H = {"content-type":"application/json; charset=utf-8","cache-control":"no-store","access-control-allow-origin":"*","access-control-allow-methods":"POST,OPTIONS","access-control-allow-headers":"content-type,authorization,x-midad-autonomy-key"};
 const json=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:H});
 const clip=(s:unknown,n=700)=>String(s??"").slice(0,n);
