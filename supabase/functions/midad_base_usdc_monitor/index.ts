@@ -62,17 +62,28 @@ async function scanRoute(route:any){
   if(chainId!==CHAIN_ID)throw new Error("wrong_chain_id:"+chainId);
   let finalBlock=latest-3;
   let finalizedTagAvailable=false;
+  // Some Base RPCs can return a stale finalized tag while latest advances normally.
+  // Only trust that tag when it is within 64 blocks of latest; otherwise use the
+  // configured 3-confirmation fallback and let the cursor progress.
   try{
     const b=await rpc("eth_getBlockByNumber",["finalized",false]);
-    if(b?.number){finalBlock=Math.min(latest-3,hexToNum(b.number));finalizedTagAvailable=true;}
+    if(b?.number){
+      const candidate=hexToNum(b.number);
+      if(candidate>=latest-64){
+        finalBlock=Math.min(latest-3,candidate);
+        finalizedTagAvailable=true;
+      }
+    }
   }catch{}
+  if(!finalizedTagAvailable)finalBlock=Math.max(0,latest-3);
   if(finalBlock<0)finalBlock=0;
 
   const {data:state}=await db.from("midad_wallet_monitor_state")
     .select("last_slot,last_signature,latest_balance,metadata")
     .eq("route_id",route.id).maybeSingle();
   const previous=Number(state?.last_slot||0);
-  const from=Math.max(previous+1,Math.max(0,finalBlock-2000));
+  // Resume from the last processed block; do not jump over a backlog older than 2,000 blocks.
+  const from=previous>0?previous+1:Math.max(0,finalBlock-1999);
   const to=Math.min(finalBlock,from+1999);
 
   let logs:any[]=[];
@@ -107,7 +118,7 @@ async function scanRoute(route:any){
     const confirmations=Math.max(0,latest-block);
     const evidence={
       independently_verified:true,verifier:"base_rpc",verifier_ref:txHash+":"+logIndex,
-      source:"midad_base_usdc_monitor_v5",chain_id:CHAIN_ID,contract_address:USDC,
+      source:"midad_base_usdc_monitor_v9",chain_id:CHAIN_ID,contract_address:USDC,
       token_contract_verified:true,recipient:wallet.address,sender,block_number:block,log_index:logIndex,
       confirmations,finality:finalizedTagAvailable?"finalized":"3_confirmations",
       observed_raw_amount:raw.toString(),decimals:DECIMALS,transfer_event_signature:TRANSFER
@@ -221,7 +232,7 @@ async function run(){
     }
   }
   return {
-    ok:results.some(x=>x.ok),service:"midad_base_usdc_monitor",version:6,network:"base",
+    ok:results.some(x=>x.ok),service:"midad_base_usdc_monitor",version:9,network:"base",
     scanned_routes:results.length,verified_routes:results.filter(x=>x.ok).length,
     receipts_detected:results.reduce((n,x)=>n+Number(x.receipts_detected||0),0),payment_intents_marked_paid:results.reduce((n,x)=>n+Number(x.payment_intents_marked_paid||0),0),payment_matches:results.flatMap((x:any)=>Array.isArray(x.payment_matches)?x.payment_matches:[]),routes:results,
     financial_actions:{transfers:0,payment_verifier_calls:0,settlement_router_calls:0,payment_intents_modified:0}
