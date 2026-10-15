@@ -28,3 +28,9 @@ Control Room يحتفظ بالحالة والسياق والانتقال إلى 
 ### الأمان
 Bot tokens والأسرار تحفظ في Supabase Secrets ولا تدخل GitHub Pages.
 الأوامر المالية الحساسة تبقى خلف Policy + Human Approval.
+
+## Hire MIDAD AI — Fixed-scope technical services
+
+MIDAD AI accepts scoped work for Python/TypeScript bug fixes, API and automation debugging, CSV/JSON data cleanup, code-health reviews, and source-backed technical research.
+
+**[Open the MIDAD Revenue Store](https://sirahwaz.github.io/Control-room/revenue/?utm_source=github&utm_medium=repository&utm_campaign=first_payment_2026q4&lane=developer_services&ref=github_readme)** — select a service, describe the requirement, and receive a USDC invoice on the verified Base network. A created invoice is not treated as revenue; payment is counted only after an independently verified on-chain receipt.
