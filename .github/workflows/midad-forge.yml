@@ -173,11 +173,21 @@ jobs:
           app="$(jq -r '.manifest.app_name' forge-output/forge.json)"
           summary="$(jq -r '.manifest.summary // ""' forge-output/forge.json)"
           rm -f forge-output/forge.json forge-output/forge-build-report.json
-          mkdir -p "$(dirname "$target_dir")"
+          if [[ ! "$target_dir" =~ ^forge-workspaces/[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || [[ "$target_dir" == *".."* ]]; then echo "::error::Unsafe Forge target_dir: $target_dir"; exit 24; fi
           echo "Forge publish target: $target_dir"
-          if [ ! -d "forge-output/$target_dir" ]; then echo "::error::Generated target directory missing from build artifact: $target_dir"; find forge-output -maxdepth 6 -type d -print || true; exit 21; fi
-          cp -R "forge-output/$target_dir" "$(dirname "$target_dir")/"
+          artifact_target="forge-output/$target_dir"
+          if [ ! -d "$artifact_target" ]; then
+            artifact_leaf="$(basename "$target_dir")"
+            artifact_target="forge-output/$artifact_leaf"
+            echo "Forge artifact path prefix was stripped; using: $artifact_target"
+          fi
+          if [ ! -d "$artifact_target" ]; then echo "::error::Generated target directory missing from build artifact: $target_dir (checked $artifact_target)"; find forge-output -maxdepth 6 -type d -print || true; exit 21; fi
+          # Build dependencies must never be committed into generated source.
+          rm -rf "$artifact_target/node_modules"
+          mkdir -p "$(dirname "$target_dir")"
+          cp -R "$artifact_target" "$(dirname "$target_dir")/"
           test -d "$target_dir"
+          test -f "$target_dir/index.html"
           git config user.name "MIDAD Forge"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
