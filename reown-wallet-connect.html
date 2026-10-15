@@ -36,18 +36,13 @@ footer{margin-top:18px;text-align:center;font-size:12px;color:#8097a8}
 <script type="module">
 const PROJECT_ID = "0ccd67944f78ea36d7e70bd054e1c90a";
 const API = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_trust_wallet_bridge";
-const params = new URLSearchParams(location.hash.replace(/^#/,""));
-const token = params.get("evm") || "";
-const exp = Number(params.get("exp") || 0);
-history.replaceState(null,"",location.pathname+location.search);
 const $ = id => document.getElementById(id);
 const status = $("status"), connectBtn = $("connect"), proveBtn = $("prove");
 let modal = null, provider = null, address = "";
 const msg = (text,kind="warn") => { status.textContent=text; status.className="status "+kind; };
-const proofMessage = (addr) => "MIDAD TRUST WALLET LINK\nPurpose: add-public-wallet-to-midad\nToken: "+token+"\nChain: EVM\nAddress: "+addr+"\nExpires: "+exp;
+const proofMessage = (token,addr,exp) => "MIDAD TRUST WALLET RECONNECT\nPurpose: reaffirm-existing-wallet-connection-readonly\nToken: "+token+"\nChain: EVM\nAddress: "+addr+"\nExpires: "+exp;
 const hex = s => "0x"+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,"0")).join("");
 async function loadAppKit(){
-  if(!token || exp <= Math.floor(Date.now()/1000)) throw new Error("رابط الربط مفقود أو منتهي. أنشئ رابطاً جديداً من المقود.");
   const [{createAppKit},{EthersAdapter},{mainnet,base,avalanche}] = await Promise.all([
     import("https://esm.sh/@reown/appkit@1.8.15?bundle"),
     import("https://esm.sh/@reown/appkit-adapter-ethers@1.8.15?bundle"),
@@ -79,13 +74,15 @@ proveBtn.addEventListener("click",async()=>{
   proveBtn.disabled=true;
   try{
     if(!provider||!address)throw new Error("لا توجد محفظة متصلة.");
-    if(!token||exp<=Math.floor(Date.now()/1000))throw new Error("انتهت صلاحية رابط الربط؛ أنشئ رابطاً جديداً.");
-    const signature=await provider.request({method:"personal_sign",params:[hex(proofMessage(address)),address]});
-    const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"complete",token,chain:"EVM",address,signature:String(signature||"")})});
+    const challengeResponse=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reconnect_challenge",chain:"EVM",address,client:"reown_appkit"})});
+    const challenge=await challengeResponse.json().catch(()=>({}));
+    if(!challengeResponse.ok||!challenge.ok)throw new Error(challenge.error||("challenge_http_"+challengeResponse.status));
+    const signature=await provider.request({method:"personal_sign",params:[hex(proofMessage(challenge.token,address,challenge.expires_at_unix)),address]});
+    const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reconnect_complete",token:challenge.token,chain:"EVM",address,signature:String(signature||""),client:"reown_appkit"})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
-    msg("تم التحقق من ملكية العنوان وربطه بنجاح.\nالعنوان: "+j.address+"\nالمسار: "+(j.route?.network||"تم إنشاء المسار")+".\nلم تُنقل أموال ولم تُوقّع معاملة.","good");
-    proveBtn.textContent="تم إثبات الملكية";
+    msg("تمت إعادة التحقق من Trust Wallet بنجاح.\nالشبكة: EVM / Base\nالعنوان: "+j.address+"\nالصلاحيات: الاستلام وقراءة الرصيد فقط داخل MIDAD.\nلم تُنقل أموال ولم تُوقّع معاملة؛ أي إنفاق يتطلب موافقة صريحة داخل المحفظة.","good");
+    proveBtn.textContent="تم التحقق من الاتصال";
   }catch(e){msg("لم يكتمل إثبات الملكية: "+String(e?.message||e),"bad");proveBtn.disabled=false;}
 });
 try{await loadAppKit();}catch(e){msg("تعذرت تهيئة Reown: "+String(e?.message||e)+". لم يتم إجراء أي اتصال أو معاملة.","bad");connectBtn.textContent="إعادة المحاولة";connectBtn.disabled=false;connectBtn.addEventListener("click",()=>location.reload(),{once:true});}
