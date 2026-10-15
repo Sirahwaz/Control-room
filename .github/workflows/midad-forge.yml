@@ -141,18 +141,19 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - name: Download Forge artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: midad-forge-build
-          path: forge-output
-        continue-on-error: true
-
       - name: Checkout repository for publish
         if: needs.build.result == 'success'
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+
+      - name: Download Forge artifact
+        if: needs.build.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: midad-forge-build
+          path: forge-output
+        continue-on-error: true
 
       - name: Publish branch and pull request
         if: needs.build.result == 'success'
