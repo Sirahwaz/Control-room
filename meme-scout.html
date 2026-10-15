@@ -30,7 +30,7 @@
     <button class="btn" id="refreshBtn">↻ تحديث البيانات</button>
     <a class="btn" href="./index.html?view=more">← المقود الرئيسي</a>
   </div>
-  <div id="statusNote" class="notice">MIDAD يحلل السوق ويحاكي الصفقات. زر «فتح Swap في Trust Wallet» يفتح مبادلة خارج MIDAD على Ethereum وBNB Smart Chain وSolana؛ لن تحدث صفقة إلا بعد مراجعتك وتوقيعك داخل Trust Wallet. تنبيه: سقف MIDAD الداخلي 5 USDC لا يُفرض تقنياً على مبادلة تنفذها يدوياً داخل تطبيق خارجي، لذا راجع المبلغ والرسوم بنفسك.</div>
+  <div id="statusNote" class="notice">MIDAD يحلل السوق ويحاكي الصفقات. زر «فتح Swap في Trust Wallet» يفتح مبادلة خارج MIDAD على Base وEthereum وBNB Smart Chain وSolana؛ لن تحدث صفقة إلا بعد مراجعتك وتوقيعك داخل Trust Wallet. تنبيه: سقف MIDAD الداخلي 5 USDC لا يُفرض تقنياً على مبادلة تنفذها يدوياً داخل تطبيق خارجي؛ راجع المبلغ والرسوم والعقد بنفسك.</div>
 </section>
 <section class="stats">
   <div class="stat"><span>الأصول المرصودة · Assets</span><b id="statAssets">—</b><small>عناوين فريدة في MIDAD DB</small></div>
@@ -105,6 +105,11 @@ function listReasons(x){
 }
 function trustSwapUrl(x){
  const net=String(x.chain_id||"").toLowerCase(),token=String(x.token_address||"").trim();
+ if(net==="base"&&/^0x[a-fA-F0-9]{40}$/.test(token)){
+  const from="c8453_t0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  const to="c8453_t"+token;
+  return "https://link.trustwallet.com/swap?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to);
+ }
  if(net==="ethereum"&&/^0x[a-fA-F0-9]{40}$/.test(token)){
   const from="c60_t0xdAC17F958D2ee523a2206206994597C13D831ec7";
   const to="c60_t"+token;
