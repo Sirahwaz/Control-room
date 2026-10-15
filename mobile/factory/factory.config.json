@@ -78,7 +78,12 @@
       "reuse_plan",
       "agent_plan",
       "automation_plan",
-      "fallback_coverage"
+      "fallback_coverage",
+      "source_certification",
+      "contract_smoke",
+      "artifact_integrity",
+      "artifact_identity",
+      "customer_delivery_certificate"
     ],
     "optional_gates": [
       "ui_smoke",
@@ -97,6 +102,26 @@
       "RELEASED",
       "FAILED",
       "BLOCKED"
+    ],
+    "required_release_checks": [
+      "source_certification",
+      "contract_smoke",
+      "artifact_integrity",
+      "artifact_identity",
+      "managed_signing_for_production",
+      "customer_delivery_certificate",
+      "runtime_smoke",
+      "delivery_certificate_evidence"
+    ],
+    "customer_delivery_required": [
+      "production_channel",
+      "managed_signing",
+      "source_certification",
+      "contract_smoke",
+      "artifact_certification",
+      "runtime_smoke",
+      "sha256",
+      "customer_delivery_certificate"
     ]
   },
   "learning": {
@@ -211,7 +236,11 @@
       "test_report",
       "learning_report",
       "factory_x_plan",
-      "factory_x_preflight"
+      "factory_x_preflight",
+      "source_certification",
+      "artifact_certification",
+      "runtime_smoke",
+      "customer_delivery_certificate"
     ],
     "naming": "<artifact_name>-v<version>",
     "release_channels": [

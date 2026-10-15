@@ -91,6 +91,23 @@
         "test_report",
         "learning_report"
       ]
+    },
+    "bundle": {
+      "site_files": [
+        "index.html",
+        "manifest.webmanifest",
+        "midad-pwa-icon.svg",
+        "midad-control-v2.css",
+        "midad-control-v2.js",
+        "midad-human-bridge-control.js",
+        "iaitrader.html",
+        "iaitrader.css",
+        "iaitrader.js",
+        "viabtc.html",
+        "viabtc-neuralpp-v1.css",
+        "viabtc-neuralpp-v1.js",
+        "revenue-forge.html"
+      ]
     }
   },
   "web_assets": [

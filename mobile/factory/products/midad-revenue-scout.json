@@ -43,5 +43,70 @@
     "b2b_license",
     "lead_generation"
   ],
-  "revenue_mode": "productized"
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "request-driven-revenue-scout",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": [
+        "global",
+        "product"
+      ],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "provider-router",
+      "offline_first": true,
+      "sync_strategy": "cache_then_reconcile"
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "learning_report"
+      ]
+    },
+    "bundle": {
+      "site_files": [
+        "index.html",
+        "manifest.webmanifest",
+        "midad-pwa-icon.svg",
+        "midad-control-v2.css",
+        "midad-control-v2.js",
+        "midad-human-bridge-control.js",
+        "iaitrader.html",
+        "iaitrader.css",
+        "iaitrader.js",
+        "viabtc.html",
+        "viabtc-neuralpp-v1.css",
+        "viabtc-neuralpp-v1.js",
+        "revenue-forge.html"
+      ]
+    }
+  },
+  "web_assets": [
+    "mobile/web/mobile-hub.css",
+    "mobile/web/mobile-hub.js",
+    "mobile/web/morph-engine.js"
+  ]
 }
