@@ -47,9 +47,6 @@ footer{margin-top:18px;text-align:center;font-size:12px;color:#8097a8}
 (function(){
 "use strict";
 const API="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_trust_wallet_bridge";
-const params=new URLSearchParams(location.hash.replace(/^#/,""));
-const TOKENS={EVM:params.get("evm")||"",SOLANA:params.get("solana")||""};
-const EXP=Number(params.get("exp")||0);
 history.replaceState(null,"",location.pathname+location.search);
 const statusEl=document.getElementById("sessionStatus");
 const evmBtn=document.getElementById("evmBtn");
@@ -58,45 +55,48 @@ const done={EVM:false,SOLANA:false};
 function setStatus(text,kind){statusEl.textContent=text;statusEl.className="status "+(kind||"");}
 function hexMessage(text){return "0x"+Array.from(new TextEncoder().encode(text)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 function base64(bytes){let binary="";for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary);}
-function signedMessage(token,chain,address){return "MIDAD TRUST WALLET LINK\nPurpose: add-public-wallet-to-midad\nToken: "+token+"\nChain: "+chain+"\nAddress: "+address+"\nExpires: "+EXP;}
-async function submitProof(chain,address,signature){
-  const token=TOKENS[chain];
-  if(!token||EXP<=Math.floor(Date.now()/1000))throw new Error("انتهت صلاحية رابط الربط. ارجع إلى المقود وأنشئ رابطاً جديداً.");
-  const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"complete",token,chain,address,signature})});
+function signedMessage(token,chain,address,exp){return "MIDAD TRUST WALLET RECONNECT\nPurpose: reaffirm-existing-wallet-connection-readonly\nToken: "+token+"\nChain: "+chain+"\nAddress: "+address+"\nExpires: "+exp;}
+async function getChallenge(chain,address){
+  const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reconnect_challenge",chain,address,client:"trust_wallet_dapp_browser"})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.ok)throw new Error(j.error||("challenge_http_"+r.status));
+  return j;
+}
+async function submitProof(chain,address,token,signature){
+  const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reconnect_complete",token,chain,address,signature,client:"trust_wallet_dapp_browser"})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||!j.ok)throw new Error(j.error||("HTTP "+r.status));
   done[chain]=true;
-  if(chain==="EVM"){evmBtn.disabled=true;evmBtn.textContent="✓ تم ربط EVM / Base";}
-  else{solBtn.disabled=true;solBtn.textContent="✓ تم ربط Solana";}
-  setStatus("تم ربط "+chain+" بنجاح.\nالعنوان: "+j.address+"\nشبكة الاستلام: "+j.route.network+" · الأصل: "+j.route.asset+"\nلم تُنقل أي أموال ولم تُوقّع معاملة.", "good");
+  if(chain==="EVM"){evmBtn.disabled=true;evmBtn.textContent="✓ تم التحقق من EVM / Base";}
+  else{solBtn.disabled=true;solBtn.textContent="✓ تم التحقق من Solana";}
+  setStatus("تمت إعادة التحقق من عنوان Trust Wallet الحالي بنجاح.\nالعنوان: "+j.address+"\nالصلاحيات داخل MIDAD: استقبال وقراءة فقط.\nلم تُنقل أموال ولم تُوقّع معاملة؛ الإنفاق يحتاج موافقة صريحة داخل المحفظة.", "good");
 }
 async function connectEvm(){
   evmBtn.disabled=true;
   try{
-    if(!TOKENS.EVM||EXP<=Math.floor(Date.now()/1000))throw new Error("رابط EVM غير صالح أو انتهت صلاحيته.");
     const provider=window.trustwallet&&window.trustwallet.ethereum?window.trustwallet.ethereum:
       (window.ethereum&&(window.ethereum.isTrust||window.ethereum.isTrustWallet)?window.ethereum:null);
     if(!provider)throw new Error("لم أجد مزوّد Trust Wallet. افتح هذه الصفحة داخل متصفح DApp في تطبيق Trust Wallet.");
     const accounts=await provider.request({method:"eth_requestAccounts"});
     const address=String(accounts&&accounts[0]||"");
     if(!/^0x[a-fA-F0-9]{40}$/.test(address))throw new Error("لم يرجع Trust Wallet عنوان EVM صالحاً.");
-    const msg=signedMessage(TOKENS.EVM,"EVM",address);
-    const signature=await provider.request({method:"personal_sign",params:[hexMessage(msg),address]});
-    await submitProof("EVM",address,String(signature||""));
+    const challenge=await getChallenge("EVM",address);
+    const signature=await provider.request({method:"personal_sign",params:[hexMessage(signedMessage(challenge.token,"EVM",address,challenge.expires_at_unix)),address]});
+    await submitProof("EVM",address,challenge.token,String(signature||""));
   }catch(e){setStatus("تعذر ربط EVM: "+String(e&&e.message||e),"bad");}
   finally{evmBtn.disabled=done.EVM;}
 }
 async function connectSolana(){
   solBtn.disabled=true;
   try{
-    if(!TOKENS.SOLANA||EXP<=Math.floor(Date.now()/1000))throw new Error("رابط Solana غير صالح أو انتهت صلاحيته.");
     const provider=window.trustwallet&&window.trustwallet.solana?window.trustwallet.solana:null;
     if(!provider)throw new Error("لم أجد مزوّد Solana الخاص بـTrust Wallet. افتح هذه الصفحة داخل متصفح DApp في تطبيق Trust Wallet.");
     const connected=await provider.connect();
     const key=connected&&connected.publicKey?connected.publicKey:(provider.publicKey||null);
     const address=String(key&&typeof key.toString==="function"?key.toString():key||"");
     if(!address||address.length<32)throw new Error("لم يرجع Trust Wallet عنوان Solana صالحاً.");
-    const msg=signedMessage(TOKENS.SOLANA,"SOLANA",address);
+    const challenge=await getChallenge("SOLANA",address);
+    const msg=signedMessage(challenge.token,"SOLANA",address,challenge.expires_at_unix);
     const signed=await provider.signMessage(new TextEncoder().encode(msg),"utf8");
     const raw=signed&&signed.signature?signed.signature:signed;
     let bytes;
@@ -104,13 +104,11 @@ async function connectSolana(){
     else if(raw instanceof ArrayBuffer)bytes=new Uint8Array(raw);
     else if(Array.isArray(raw))bytes=Uint8Array.from(raw);
     else throw new Error("Trust Wallet لم يُرجع توقيع Solana بصيغة قابلة للتحقق.");
-    await submitProof("SOLANA",address,base64(bytes));
+    await submitProof("SOLANA",address,challenge.token,base64(bytes));
   }catch(e){setStatus("تعذر ربط Solana: "+String(e&&e.message||e),"bad");}
   finally{solBtn.disabled=done.SOLANA;}
 }
-if(!TOKENS.EVM&&!TOKENS.SOLANA){setStatus("رابط ربط مفقود. ارجع إلى MIDAD وأنشئ رابطاً جديداً من قسم المحافظ.","bad");evmBtn.disabled=true;solBtn.disabled=true;}
-else if(EXP<=Math.floor(Date.now()/1000)){setStatus("انتهت صلاحية رابط الربط. ارجع إلى MIDAD وأنشئ رابطاً جديداً.","bad");evmBtn.disabled=true;solBtn.disabled=true;}
-else{setStatus("الرابط صالح لمدة محدودة. اختر الشبكة التي تريد ربطها؛ ستظهر نافذة Trust Wallet للموافقة على الاتصال وتوقيع رسالة إثبات الملكية.","warn");}
+setStatus("إعادة التحقق جاهزة. اختر الشبكة واتصل بعنوان Trust Wallet المحفوظ نفسه؛ ستوقّع رسالة إثبات ملكية فقط، دون تعديل العناوين أو صلاحيات الإنفاق.","warn");
 evmBtn.addEventListener("click",connectEvm);
 solBtn.addEventListener("click",connectSolana);
 })();
