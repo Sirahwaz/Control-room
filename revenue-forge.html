@@ -231,6 +231,26 @@ async function makeCheckout(product){
       link.rel="noopener noreferrer";
       box.appendChild(link);
     }
+    const expectedBaseUsdc="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const checkoutAddress=String(d.payment.wallet_address||"");
+    const checkoutAmount=Number(d.payment.quoted_crypto_amount);
+    const contract=String(d.receiving?.token_contract||"");
+    if(network==="base" && contract.toLowerCase()===expectedBaseUsdc.toLowerCase()
+      && /^0x[a-fA-F0-9]{40}$/.test(checkoutAddress)
+      && Number.isFinite(checkoutAmount) && checkoutAmount>0){
+      const trustSend=new URL("https://link.trustwallet.com/send");
+      trustSend.searchParams.set("asset","c8453_t"+expectedBaseUsdc);
+      trustSend.searchParams.set("address",checkoutAddress);
+      trustSend.searchParams.set("amount",String(d.payment.quoted_crypto_amount));
+      trustSend.searchParams.set("memo","MIDAD-"+String(d.payment.id||"").slice(0,8));
+      const trustLink=document.createElement("a");
+      trustLink.className="btn";
+      trustLink.href=trustSend.toString();
+      trustLink.rel="noopener noreferrer";
+      trustLink.textContent="فتح Trust Wallet لإتمام الدفع";
+      box.appendChild(trustLink);
+      addCheckoutText(box,"p","سيُفتح Trust Wallet على شاشة إرسال USDC على Base مع العنوان والمبلغ. راجع الشبكة والعنوان والمبلغ داخل المحفظة قبل الموافقة؛ لا يتم إرسال أي معاملة تلقائيًا.");
+    }
     addCheckoutText(box,"p",d.instructions||"تحقق من المبلغ والشبكة قبل الإرسال.");
     addCheckoutText(box,"p","رقم الطلب: "+String(d.payment.id||"غير متاح"));
     addCheckoutText(box,"p","الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
