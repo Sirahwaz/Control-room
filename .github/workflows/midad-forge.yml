@@ -116,8 +116,13 @@ jobs:
           mkdir -p forge-output
           cp forge.json forge-output/
           cp forge-build-report.json forge-output/
-          if [ -f "$target_dir/package.json" ]; then
-            cp -R "$target_dir" forge-output/
+          # The app workspace must be included even when it has no package.json.
+          # Remove transient installed dependencies so they never enter the publish artifact.
+          rm -rf "$target_dir/node_modules"
+          cp -R "$target_dir" forge-output/
+          if [ ! -d "forge-output/$target_dir" ] && [ ! -d "forge-output/$(basename "$target_dir")" ]; then
+            echo "::error::Generated app directory was not included in the build artifact"
+            exit 25
           fi
           if [ "$install" -ne 0 ] || [ "$lint" -ne 0 ] || [ "$test" -ne 0 ] || [ "$build" -ne 0 ]; then
             exit 1
