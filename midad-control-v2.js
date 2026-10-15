@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"control-room-v2-20261014-access-feedback1"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"control-room-v2-20261015-fastboot1"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,error:"",data:null,busy:false,aiBusy:false,aiMessages:[],forceAccessKey:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
