@@ -21,7 +21,6 @@
     "direct_default_source": "direct"
   },
   "offer_catalog": [
-    "miner-microscope-v1",
     "opportunity-radar-v1",
     "research-revenue-sprint-v1",
     "bug-fix-sprint-v1",
