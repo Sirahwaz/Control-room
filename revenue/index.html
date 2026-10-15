@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MIDAD+ — Revenue Store</title>
-<meta name="description" content="MIDAD AI fixed-scope technical services with USDC checkout on Solana.">
+<meta name="description" content="MIDAD AI fixed-scope technical services with verified USDC checkout on Base.">
 <style>
 :root{--bg:#071018;--panel:#0d1722;--panel2:#101d2a;--text:#eef6ff;--muted:#9db0c3;--line:#203142;--accent:#66e3c4;--danger:#ff8e8e;--warn:#ffd6a1}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#071018,#09131d);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
@@ -26,7 +26,7 @@ button{border:0;border-radius:12px;padding:13px 15px;font-weight:800;background:
 <header>
 <div class="badge">MIDAD+ · REVENUE STORE · USDC</div>
 <h1>نتيجة تقنية واضحة.<br>سعر ثابت. Checkout سريع.</h1>
-<div class="sub">اختر خدمة محددة، أرسل متطلباتك، ثم يحصل الطلب على عرض دفع USDC دقيق على Solana. لا نعتبر الطلب أو الموافقة أو التسليم إيرادًا محققًا؛ الإيصال on-chain المتحقق هو معيار الإيراد.</div>
+<div class="sub">اختر خدمة محددة، أرسل متطلباتك، ثم يحصل الطلب على فاتورة USDC دقيقة على شبكة Base بعد التحقق من مسار الاستقبال. لا نعتبر الطلب أو الموافقة أو التسليم إيرادًا محققًا؛ الإيصال on-chain المتحقق هو معيار الإيراد.</div>
 </header>
 <div id="grid" class="grid"></div>
 <div class="foot">الدفع والتحقق مرتبطان بـ MIDAD Revenue Mesh. لا ترسل أموالًا إضافية خارج المبلغ المقتبس.</div>
@@ -84,8 +84,8 @@ async function startPayment(productId){
  try{
   const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},body:JSON.stringify(body)});
   const data=await res.json();if(!data.ok)throw new Error(data.error||'Checkout failed');
-  const pay=data.payment||data.payment_intent;const wallet=data.receiving?.wallet_address||pay?.wallet_address;const uri=data.payment_uri||null;
-  document.getElementById('mBody').innerHTML='<div class="price">$'+esc(String(pay.quoted_crypto_amount))+' USDC</div><div class="status"><b>Payment Intent:</b> '+esc(pay.id)+'<br><b>الحالة:</b> '+esc(pay.status)+'<br><b>ينتهي:</b> '+esc(new Date(pay.expires_at).toLocaleString())+'</div><div class="row"><div class="addr" id="addr">'+esc(wallet)+'</div><button onclick="copyAddr()">نسخ</button></div>'+(uri?'<p><a href="'+esc(uri)+'">فتح في محفظة Solana</a></p>':'')+'<p class="warn">أرسل بالضبط '+esc(String(pay.quoted_crypto_amount))+' USDC على Solana.</p><div class="status success">بعد الدفع، يراقب MIDAD الإيصال on-chain ويربطه بالطلب عند التحقق.</div>';
+  const pay=data.payment||data.payment_intent;const wallet=data.receiving?.wallet_address||pay?.wallet_address;const uri=data.payment_uri||null;const network=String(data.receiving?.network||pay?.network||'unknown').toUpperCase();
+  document.getElementById('mBody').innerHTML='<div class="price">$'+esc(String(pay.quoted_crypto_amount))+' USDC</div><div class="status"><b>Payment Intent:</b> '+esc(pay.id)+'<br><b>الحالة:</b> '+esc(pay.status)+'<br><b>ينتهي:</b> '+esc(new Date(pay.expires_at).toLocaleString())+'</div><div class="row"><div class="addr" id="addr">'+esc(wallet)+'</div><button onclick="copyAddr()">نسخ</button></div>'+(uri?'<p><a href="'+esc(uri)+'">فتح تعليمات الدفع في محفظة متوافقة</a></p>':'')+'<p class="warn">الشبكة المعتمدة: '+esc(network)+'. أرسل بالضبط '+esc(String(pay.quoted_crypto_amount))+' USDC إلى العنوان أعلاه وعلى الشبكة نفسها فقط.</p><div class="status success">يراقب MIDAD إيصالات Base USDC تلقائيًا ويربط الطلب بعد التحقق المستقل من التحويل. لا تعتبر الفاتورة مدفوعة قبل تغيّر حالة الطلب.</div>';
  }catch(e){document.getElementById('mBody').innerHTML='<div class="status" style="color:var(--danger)">حدث خطأ في Checkout: '+esc(e.message||e)+'</div>'}
  finally{if(document.getElementById('continuePay'))document.getElementById('continuePay').disabled=false}
 }
