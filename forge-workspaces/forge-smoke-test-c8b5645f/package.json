@@ -1,0 +1,11 @@
+{
+  "name": "forge-smoke-test",
+  "version": "1.0.0",
+  "description": "Minimal PWA for Forge smoke testing.",
+  "scripts": {
+    "start": "npx http-server -p 8080"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
