@@ -61,8 +61,10 @@ async function loadAppKit(){
     },
     features:{analytics:false}
   });
-  modal.subscribeProvider(({provider:p,address:a,isConnected})=>{
-    if(isConnected && p && a){provider=p;address=String(a);proveBtn.disabled=false;msg("اتصلت المحفظة عبر Reown.\nالعنوان: "+address+"\nالخطوة التالية: توقيع رسالة إثبات الملكية فقط.","good");}
+  // Reown AppKit 1.x exposes account/provider subscriptions separately.
+  modal.subscribeAccount(({address:a,isConnected})=>{
+    const p = modal.getWalletProvider();
+    if(isConnected && p && a){provider=p;address=String(a);proveBtn.disabled=false;msg("اتصلت المحفظة عبر Reown.\\nالعنوان: "+address+"\\nالخطوة التالية: توقيع رسالة إثبات الملكية فقط.","good");}
   });
   connectBtn.disabled=false;connectBtn.textContent="اتصال Trust Wallet عبر Reown";
   msg("Reown AppKit جاهز. اضغط الاتصال واختر Trust Wallet من النافذة.","good");
