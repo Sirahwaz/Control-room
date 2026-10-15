@@ -147,6 +147,7 @@ jobs:
         with:
           persist-credentials: true
 
+      # Download only after checkout: checkout's clean step otherwise deletes forge-output.
       - name: Download Forge artifact
         if: needs.build.result == 'success'
         uses: actions/download-artifact@v4
