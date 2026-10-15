@@ -30,24 +30,48 @@ async function ownerId(){
   return data?.id||null;
 }
 
+const BASE_USDC_CONTRACT="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
 async function chooseWallet(){
+  // Checkout only uses a receiver that the independent Base monitor has verified recently.
+  // Existing Solana receivers have no USDC token account, so they are not safe for new invoices.
   const {data:routes,error}=await db.from("midad_revenue_routes")
     .select("id,asset,network,wallet_id,address_ref,active,auto_route,requires_approval,metadata")
     .eq("active",true).eq("auto_route",true).eq("route_kind","receive")
-    .eq("asset","USDC").eq("network","solana")
-    .order("updated_at",{ascending:false});
+    .eq("asset","USDC").eq("network","base");
   if(error) throw error;
   const sorted=(routes||[]).sort((a:any,b:any)=>{
     const pa=Number(a?.metadata?.priority??100), pb=Number(b?.metadata?.priority??100);
     return pa-pb;
   });
-  const r=sorted[0];
-  if(!r) return null;
-  const {data:w}=await db.from("midad_wallets")
-    .select("id,label,chain,address,purpose,watch_only,active")
-    .eq("id",r.wallet_id).eq("active",true).maybeSingle();
-  if(!w?.address) return null;
-  return {route:r,wallet:w};
+  if(!sorted.length) return null;
+  const cutoff=new Date(Date.now()-10*60*1000).toISOString();
+  const {data:states,error:stateError}=await db.from("midad_wallet_monitor_state")
+    .select("route_id,status,last_scan_at,metadata")
+    .in("route_id",sorted.map((r:any)=>r.id))
+    .eq("status","VERIFIED")
+    .gte("last_scan_at",cutoff);
+  if(stateError) throw stateError;
+  const verified=new Map((states||[]).map((s:any)=>[s.route_id,s]));
+  for(const r of sorted){
+    const v=r.metadata?.verification||{};
+    if(r.requires_approval===true) continue;
+    const monitor=verified.get(r.id);
+    if(!monitor) continue;
+    const monitorMeta=monitor.metadata||{};
+    if(Number(v.chain_id??monitorMeta.chain_id)!==8453||Number(v.decimals)!==6||
+      String(v.token_contract||"").toLowerCase()!==BASE_USDC_CONTRACT.toLowerCase()||
+      String(monitorMeta.token_contract||"").toLowerCase()!==BASE_USDC_CONTRACT.toLowerCase()) continue;
+    const {data:w,error:walletError}=await db.from("midad_wallets")
+      .select("id,label,chain,address,purpose,watch_only,active")
+      .eq("id",r.wallet_id).eq("active",true).maybeSingle();
+    if(walletError) throw walletError;
+    if(!w?.address||!/^0x[a-f0-9]{40}$/i.test(w.address)) continue;
+    if(r.address_ref&&/^0x[a-f0-9]{40}$/i.test(String(r.address_ref))&&
+      String(r.address_ref).toLowerCase()!==String(w.address).toLowerCase()) continue;
+    return {route:r,wallet:w,monitor};
+  }
+  return null;
 }
 
 
@@ -129,14 +153,14 @@ async function main(req:Request){
       amount_fiat:p.usd,
       fiat_currency:"USD",
       settlement_asset:"USDC",
-      network:"solana",
+      network:target.route.network,
       quoted_crypto_amount:p.usd,
       fx_rate:1,
       quote_source:"fixed_usdc_price",
       wallet_address:target.wallet.address,
       expires_at:new Date(Date.now()+expires*60000).toISOString(),
       status:"quoted",
-      confirmations_required:1,
+      confirmations_required:Number(target.route.metadata?.verification?.confirmations_required??3),
       reconciliation_status:"pending",
       metadata
     }).select("id,status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata").single();
@@ -167,36 +191,45 @@ async function main(req:Request){
       metadata:{
         price_usd:p.usd,
         settlement_asset:"USDC",
-        network:"solana",
+        network:target.route.network,
         route_id:target.route.id,
         wallet_id:target.wallet.id,
-        source:"midad_public_checkout_v6",
+        source:"midad_public_checkout_v9",
         attribution
       }
     });
     if(orderError) throw orderError;
 
-    const mint=target.route.metadata?.verification?.token_mint||null;
-    const paymentUri=mint
-      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8))
-      : null;
+    const network=String(target.route.network||"").toLowerCase();
+    const mint=network==="base"
+      ? (target.route.metadata?.verification?.token_contract||null)
+      : (target.route.metadata?.verification?.token_mint||null);
+    let paymentUri:string|null=null;
+    if(network==="base"&&mint&&String(mint).toLowerCase()===BASE_USDC_CONTRACT.toLowerCase()){
+      const atomic=BigInt(Math.round(Number(updatedIntent.quoted_crypto_amount)*1_000_000)).toString();
+      paymentUri="ethereum:"+mint+"@8453/transfer?address="+encodeURIComponent(target.wallet.address)+"&uint256="+atomic;
+    }else if(network==="solana"&&mint){
+      paymentUri="solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8));
+    }
 
     return json({
       ok:true,
       product:{id:productId,...p},
       payment:{...updatedIntent,watch_only:target.wallet.watch_only},
-      receiving:{asset:"USDC",network:"solana",route_id:target.route.id,wallet_id:target.wallet.id,wallet_address:target.wallet.address,mint},
+      receiving:{asset:"USDC",network,route_id:target.route.id,wallet_id:target.wallet.id,wallet_address:target.wallet.address,mint:network==="solana"?mint:null,token_contract:network==="base"?mint:null,chain_id:network==="base"?8453:null},
       fees:{
         midad_receive_fee_usd:Number(target.route.metadata?.fee_profile?.midad_receive_fee_usd??0),
         midad_outbound_fee_usd:Number(target.route.metadata?.fee_profile?.midad_outbound_fee_usd??0),
         payer_network_fee:Boolean(target.route.metadata?.fee_profile?.payer_network_fee??true),
-        payer_ata_creation_cost_possible:Boolean(target.route.metadata?.fee_profile?.payer_ata_creation_cost_possible??true)
+        payer_ata_creation_cost_possible:network==="solana"&&Boolean(target.route.metadata?.fee_profile?.payer_ata_creation_cost_possible??true)
       },
       payment_uri:paymentUri,
       attribution,
       order:{status:"AWAITING_PAYMENT",customer_contact_collected:Boolean(customerEmail||customerName||customerRequirements)},
-      instructions:"Pay the exact quoted USDC amount on Solana to the displayed receiving address. The tiny micro-USDC component uniquely identifies this order; it is not a separate MIDAD fee. MIDAD charges no inbound receive fee; the sender/network may incur normal transaction or token-account creation costs. The system verifies the on-chain receipt automatically; no outbound transfer is performed."
-    });
+      instructions:network==="base"
+        ? "Pay the exact quoted USDC amount on Base to the displayed receiving address. The tiny micro-USDC component uniquely identifies this order and is not an extra MIDAD fee. MIDAD charges no inbound receive fee; the sender pays the Base network fee. Payment is verified from finalized Base USDC transfer logs; no outgoing transfer is performed."
+        : "Pay the exact quoted USDC amount on Solana to the displayed receiving address. The tiny micro-USDC component uniquely identifies this order and is not a separate MIDAD fee. The sender/network may incur normal transaction or token-account creation costs. No outgoing transfer is performed."
+    });;
   }catch(e){
     return json({ok:false,error:"public_checkout_error",detail:String(e).slice(0,400)},500);
   }
