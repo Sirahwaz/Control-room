@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"control-room-v2-20261016-pulse-shell-v1"};
+const CFG={url:"https://froegigfmpmvtecztfbf.supabase.co",fn:"/functions/v1/midad_control_room",build:"control-room-v2-20261016-pulse-mpl-v1"};
 const TG=()=>window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 const S={view:"cockpit",token:"",connected:false,error:"",data:null,busy:false,aiBusy:false,aiMessages:[],forceAccessKey:false,refreshPromise:null,lastRefreshAt:0,refreshing:false,loadingPhase:"",lastErrorAt:0};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -170,7 +170,7 @@ function pulseParse(raw){
   if(/^(?:sync|refresh|تحديث|زامن)$/i.test(input))return {type:"sync"};
   const ask=input.match(/^(?:ask|سأل|اسأل|سؤال)\s*[:>]\s*(.+)$/i);
   if(ask)return {type:"ask",text:ask[1].trim()};
-  const run=input.match(/^(?:run|نفّذ|نفذ|شغّل|شغل)\s*[:>]\s*([a-z_\-]+)$/i);
+  const run=input.match(/^(?:run|نفّذ|نفذ|شغّل|شغل)\s*[:>]\s*([a-zA-Z_\-\u0600-\u06FF]+)$/i);
   if(run){
     const key=run[1].toLowerCase();
     const actions={money_scan:"run_money_scan",radar_scan:"run_osint_scan",opportunity_scan:"run_opportunity_scan",cycle:"run_autonomy_now",
@@ -192,7 +192,7 @@ function pulseParse(raw){
   // Legacy natural-language fallback; no action is executed unless it maps to a known safe command.
   if(/مال|دخل|فرص|money|income/i.test(input))return {type:"view",view:"money"};
   if(/مهم|يحتاجني|مواف|task|approval/i.test(input))return {type:"view",view:"tasks"};
-  if(/ذكاء|اسأل|ماذا يحدث|\\bai\\b/i.test(input))return {type:"view",view:"ai"};
+  if(/ذكاء|اسأل|ماذا يحدث|\bai\b/i.test(input))return {type:"view",view:"ai"};
   if(/رصد|osint|signal|radar/i.test(input))return {type:"view",view:"intel"};
   if(/محطة|station|viabtc|تعدين|trading|تداول/i.test(input))return {type:"view",view:"stations"};
   if(/دورة|autonomy/i.test(input))return {type:"run",action:"run_autonomy_now"};
