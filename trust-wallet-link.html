@@ -81,8 +81,9 @@ async function connectEvm(){
     const address=String(accounts&&accounts[0]||"");
     if(!/^0x[a-fA-F0-9]{40}$/.test(address))throw new Error("لم يرجع Trust Wallet عنوان EVM صالحاً.");
     const challenge=await getChallenge("EVM",address);
-    const signature=await provider.request({method:"personal_sign",params:[hexMessage(signedMessage(challenge.token,"EVM",address,challenge.expires_at_unix)),address]});
-    await submitProof("EVM",address,challenge.token,String(signature||""));
+    const signingAddress=String(challenge.address||address);
+    const signature=await provider.request({method:"personal_sign",params:[hexMessage(signedMessage(challenge.token,"EVM",signingAddress,challenge.expires_at_unix)),signingAddress]});
+    await submitProof("EVM",signingAddress,challenge.token,String(signature||""));
   }catch(e){setStatus("تعذر ربط EVM: "+String(e&&e.message||e),"bad");}
   finally{evmBtn.disabled=done.EVM;}
 }
