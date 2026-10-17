@@ -124,13 +124,16 @@ jobs:
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
           rm -rf signing
       - name: Android emulator runtime smoke
+        timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_7
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-boot-timeout: 600
+          pre-emulator-launch-script: echo "SIGNALSCAN_EMULATOR_PRELAUNCH_READY"
           disable-animations: true
           script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
       - name: Upload runtime smoke failure report
