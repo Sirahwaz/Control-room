@@ -1,5 +1,11 @@
 name: SignalScan AI Android
 on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "mobile/factory/products/signalscan-ai.json"
+      - "mobile/web/signalscan/**"
+      - ".github/workflows/signalscan-ai-android.yml"
   push:
     branches: ["main"]
     paths:
@@ -28,12 +34,16 @@ jobs:
         with:
           node-version: "24"
       - name: Resolve SignalScan factory product
+        id: product
         shell: bash
         run: |
           set -euo pipefail
           node mobile/factory/render.mjs signalscan-ai
           jq -e '.product_key=="signalscan-ai"' mobile/factory/runtime-product.json >/dev/null
           jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
+          echo "version=$(jq -r '.version' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$(jq -r '.artifact_name' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
+          echo "app_id=$(jq -r '.app_id' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
       - name: Setup Java 21
         uses: actions/setup-java@v6
         with:
@@ -103,7 +113,7 @@ jobs:
           keytool -genkeypair -v -keystore signing/signalscan-factory.jks -storepass "signalscan-temp" -keypass "signalscan-temp" -alias signalscan -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SignalScan AI, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          OUT="dist/SignalScan-AI-v$(jq -r '.version' mobile/factory/runtime-product.json)-release.apk"
+          OUT="dist/${{ steps.product.outputs.artifact_name }}-release.apk"
           "$APKSIGNER" sign --ks signing/signalscan-factory.jks --ks-pass pass:signalscan-temp --key-pass pass:signalscan-temp --ks-key-alias signalscan --out "$OUT" "$APK_SRC"
           "$APKSIGNER" verify --verbose "$OUT"
           sha256sum "$OUT" | tee "$OUT.sha256"
