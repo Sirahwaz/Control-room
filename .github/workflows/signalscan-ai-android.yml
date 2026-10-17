@@ -10,7 +10,14 @@ on:
 permissions:
   contents: read
 jobs:
+  agentation-ui-feedback:
+    name: Verify SignalScan AI UI before APK build
+    uses: ./.github/workflows/agentation-e2e.yml
+    with:
+      product_key: signalscan-ai
+
   build:
+    needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
