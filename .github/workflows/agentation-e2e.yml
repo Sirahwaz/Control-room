@@ -1,0 +1,95 @@
+name: Agentation E2E verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".codex/**"
+      - "tools/agentation/**"
+      - ".github/workflows/agentation-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentation-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-to-mcp:
+    name: Browser → Agentation HTTP → MCP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tools/agentation/e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/agentation/e2e/package.json
+
+      - name: Install isolated test dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build isolated React preview
+        run: npm run build
+
+      - name: Start loopback-only Agentation HTTP server
+        shell: bash
+        run: |
+          AGENTATION_STORE=memory node scripts/start-http-server.mjs > "$RUNNER_TEMP/agentation-http.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/agentation-http.pid"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4747/health >/dev/null; then
+              echo "Agentation HTTP health check passed."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/agentation-http.log"
+          echo "Agentation HTTP server did not become healthy." >&2
+          exit 1
+
+      - name: Start isolated preview
+        shell: bash
+        run: |
+          npm run dev -- --port 4173 > "$RUNNER_TEMP/agentation-vite.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/agentation-vite.pid"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              echo "Preview is responding."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/agentation-vite.log"
+          echo "Preview did not become healthy." >&2
+          exit 1
+
+      - name: Test browser annotation → MCP tool receipt
+        run: npm run test:e2e
+
+      - name: Capture server logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          cat "$RUNNER_TEMP/agentation-http.log" || true
+          cat "$RUNNER_TEMP/agentation-vite.log" || true
+
+      - name: Upload browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentation-e2e-diagnostics
+          path: tools/agentation/e2e/test-results/
+          if-no-files-found: ignore

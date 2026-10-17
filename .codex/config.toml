@@ -1,0 +1,5 @@
+# MIDAD Control Room — Agentation MCP
+# Local development only. The MCP server runs on the developer machine.
+[mcp_servers.agentation]
+command = "npx"
+args = ["-y", "agentation-mcp", "server"]
