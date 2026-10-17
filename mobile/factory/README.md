@@ -48,7 +48,7 @@ Production external publication and irreversible financial/external actions rema
 
 ## Agentation visual-feedback loop (enabled)
 
-Factory X registers Agentation as the visual-feedback provider for DOM-based screens. The build workflow selects the product manifest, loads its actual `web_entry` into a same-origin iframe inside an isolated React harness, creates a note on a real UI element, and confirms the exact note through the `agentation_get_all_pending` MCP tool. The `.github/workflows/midad-mobile-factory.yml` Android build waits for this round-trip to pass before building the APK.
+Factory X registers Agentation as the visual-feedback provider for DOM-based screens. Android build workflows select the product manifest, load its actual `web_entry` into a same-origin iframe inside an isolated React harness, create a note on a real UI element, and confirm the exact note through the `agentation_get_all_pending` MCP tool. The generic Factory workflow and the existing MIDAD Mobile, Omni Agent, Human Bridge, and SignalScan APK workflows all wait for this round-trip to pass before building their APKs.
 
 This covers **Capacitor/WebView HTML/CSS/JavaScript interfaces** and React DOM previews. Agentation does not inspect native Android Views, Jetpack Compose or XML layouts; those require separate Android emulator/screenshot/accessibility checks. The toolbar, React wrapper, MCP process and server are development/CI tooling and are never copied into the APK.
 
