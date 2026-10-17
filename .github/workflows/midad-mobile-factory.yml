@@ -18,6 +18,14 @@ on:
           - internal
           - beta
           - production
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "mobile/factory/**"
+      - "mobile/web/**"
+      - "mobile/package.json"
+      - ".github/workflows/midad-mobile-factory.yml"
+      - ".github/workflows/agentation-e2e.yml"
 
 permissions:
   contents: read
@@ -27,10 +35,11 @@ jobs:
     name: Verify selected product UI feedback before APK build
     uses: ./.github/workflows/agentation-e2e.yml
     with:
-      product_key: ${{ inputs.product_key }}
+      product_key: ${{ inputs.product_key || 'midad-mobile' }}
 
   build-product:
     needs: agentation-ui-feedback
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
