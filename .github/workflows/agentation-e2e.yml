@@ -6,21 +6,60 @@ on:
     paths:
       - ".codex/**"
       - "tools/agentation/**"
+      - "mobile/factory/**"
+      - "mobile/web/**"
+      - "mobile/package.json"
+      - "index.html"
+      - "*.html"
+      - "*.css"
+      - "*.js"
+      - "*.svg"
+      - "*.webmanifest"
       - ".github/workflows/agentation-e2e.yml"
+      - ".github/workflows/midad-mobile-factory.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".codex/**"
+      - "tools/agentation/**"
+      - "mobile/factory/**"
+      - "mobile/web/**"
+      - "mobile/package.json"
+      - "index.html"
+      - "*.html"
+      - "*.css"
+      - "*.js"
+      - "*.svg"
+      - "*.webmanifest"
+      - ".github/workflows/agentation-e2e.yml"
+      - ".github/workflows/midad-mobile-factory.yml"
   workflow_dispatch:
+    inputs:
+      product_key:
+        description: "Mobile Factory product key to preview"
+        required: true
+        default: "midad-mobile"
+        type: string
+  workflow_call:
+    inputs:
+      product_key:
+        description: "Mobile Factory product key to preview"
+        required: false
+        default: "midad-mobile"
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: agentation-e2e-${{ github.event.pull_request.number || github.ref }}
+  group: agentation-e2e-${{ github.event.pull_request.number || inputs.product_key || github.ref }}
   cancel-in-progress: true
 
 jobs:
   browser-to-mcp:
-    name: Browser → Agentation HTTP → MCP
+    name: Product UI → Agentation HTTP → MCP
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: tools/agentation/e2e
@@ -35,13 +74,23 @@ jobs:
           cache: npm
           cache-dependency-path: tools/agentation/e2e/package.json
 
+      - name: Prepare selected product WebView preview
+        id: preview
+        working-directory: .
+        env:
+          PRODUCT_KEY: ${{ inputs.product_key || 'midad-mobile' }}
+        run: |
+          set -euo pipefail
+          node mobile/factory/agentation/prepare-preview.mjs "$PRODUCT_KEY"
+          echo "product_key=$PRODUCT_KEY" >> "$GITHUB_OUTPUT"
+
       - name: Install isolated test dependencies
         run: npm install --no-audit --no-fund
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Build isolated React preview
+      - name: Build isolated React preview shell
         run: npm run build
 
       - name: Start loopback-only Agentation HTTP server
@@ -60,7 +109,7 @@ jobs:
           echo "Agentation HTTP server did not become healthy." >&2
           exit 1
 
-      - name: Start isolated preview
+      - name: Start isolated preview server
         shell: bash
         run: |
           npm run dev -- --port 4173 > "$RUNNER_TEMP/agentation-vite.log" 2>&1 &
@@ -76,7 +125,7 @@ jobs:
           echo "Preview did not become healthy." >&2
           exit 1
 
-      - name: Test browser annotation → MCP tool receipt
+      - name: Test product annotation → MCP tool receipt
         run: npm run test:e2e
 
       - name: Capture server logs on failure
