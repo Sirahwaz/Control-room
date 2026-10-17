@@ -8,7 +8,7 @@ This module connects visual feedback to the existing Mobile Factory without chan
 - Used in development/CI only through an isolated React harness.
 - The harness loads the selected Factory product's real `web_entry` into a same-origin iframe at a phone-sized viewport.
 - The test annotates a real product DOM element and requires the exact annotation to be returned by `agentation_get_all_pending`.
-- The Android build workflow waits for that round-trip before producing the APK.
+- Every Factory-backed Android APK workflow waits for that round-trip before producing the APK: the generic Mobile Factory, MIDAD Mobile, Omni Agent, Human Bridge, and SignalScan builds.
 - No vendor API key is required for this local/CI setup.
 - The Agentation UI, MCP process, and temporary annotation server are never bundled into the APK.
 
