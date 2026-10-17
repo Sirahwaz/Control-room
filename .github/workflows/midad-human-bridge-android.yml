@@ -16,7 +16,14 @@ permissions:
   contents: read
 
 jobs:
+  agentation-ui-feedback:
+    name: Verify midad-human-bridge UI before APK build
+    uses: ./.github/workflows/agentation-e2e.yml
+    with:
+      product_key: midad-human-bridge
+
   build-human-bridge:
+    needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
