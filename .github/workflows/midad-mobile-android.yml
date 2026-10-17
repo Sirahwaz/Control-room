@@ -183,6 +183,31 @@ jobs:
           rm -rf signing
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install and launch signed APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+
+      - name: Upload runtime smoke failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.product.outputs.artifact_name }}-runtime-smoke-diagnostics
+          path: dist/runtime-smoke-report.json
+          if-no-files-found: ignore
+
       - name: Write build/test/learning reports
         shell: bash
         run: |
@@ -190,8 +215,7 @@ jobs:
           cat > dist/build-report.json <<EOF
           {"product_key":"${{ steps.product.outputs.product }}","version":"${{ steps.product.outputs.version }}","build_status":"PASSED","factory_quality_gate":"PASSED"}
           EOF
-          RUNTIME_SMOKE="NOT_APPLICABLE"
-          if [ "${{ steps.product.outputs.product }}" = "midad-meme-trader" ]; then RUNTIME_SMOKE="PASSED"; fi
+          RUNTIME_SMOKE="PASSED"
           cat > dist/test-report.json <<EOF
           {"product_key":"${{ steps.product.outputs.product }}","static_js_syntax":"PASSED","secret_scan":"PASSED","artifact_verification":"PASSED","package_id_and_version":"PASSED","runtime_smoke":"$RUNTIME_SMOKE"}
           EOF
@@ -209,4 +233,5 @@ jobs:
             dist/factory-runtime.json
             dist/build-report.json
             dist/test-report.json
+            dist/runtime-smoke-report.json
             dist/learning-report.json

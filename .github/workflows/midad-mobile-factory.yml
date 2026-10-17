@@ -39,13 +39,15 @@ jobs:
 
   build-product:
     needs: agentation-ui-feedback
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Node 24
         uses: actions/setup-node@v7
@@ -57,7 +59,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          PRODUCT_KEY="${{ inputs.product_key }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+            PRODUCT_MANIFEST="$(printf '%s\n' "$CHANGED_FILES" | grep -E '^mobile/factory/products/[^/]+\.json$' | head -n 1 || true)"
+            if [ -n "$PRODUCT_MANIFEST" ]; then
+              PRODUCT_KEY="$(basename "$PRODUCT_MANIFEST" .json)"
+            else
+              PRODUCT_KEY="midad-mobile"
+            fi
+          else
+            PRODUCT_KEY="${{ inputs.product_key }}"
+          fi
           node mobile/factory/render.mjs "$PRODUCT_KEY"
           jq -e --arg k "$PRODUCT_KEY" '.product_key==$k' mobile/factory/runtime-product.json >/dev/null
           jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
@@ -66,6 +80,7 @@ jobs:
           APP_ID="$(jq -r '.app_id' mobile/factory/runtime-product.json)"
           WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
           CHANNEL="${{ inputs.release_channel }}"
+          CHANNEL="${CHANNEL:-debug}"
           {
             echo "product_key=$PRODUCT_KEY"
             echo "version=$VERSION"
@@ -138,6 +153,9 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Validate Android runtime smoke script
+        run: bash -n mobile/factory/android-runtime-smoke.sh
+
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product_key }}"
 
@@ -165,6 +183,31 @@ jobs:
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
 
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install and launch APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+
+      - name: Upload runtime smoke failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.product.outputs.artifact_name }}-runtime-smoke-diagnostics
+          path: dist/runtime-smoke-report.json
+          if-no-files-found: ignore
+
       - name: Write build and learning reports
         shell: bash
         run: |
@@ -185,7 +228,7 @@ jobs:
             "static_js_syntax": "PASSED",
             "secret_scan": "PASSED",
             "artifact_verification": "PASSED",
-            "runtime_smoke": "NOT_RUN_IN_CI"
+            "runtime_smoke": "PASSED"
           }
           EOF
           cat > dist/learning-report.json <<EOF
@@ -209,4 +252,5 @@ jobs:
             dist/factory-runtime.json
             dist/build-report.json
             dist/test-report.json
+            dist/runtime-smoke-report.json
             dist/learning-report.json
