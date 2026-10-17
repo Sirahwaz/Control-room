@@ -17,17 +17,9 @@ test("selected Mobile Factory product UI annotation reaches the Agentation MCP t
   const health = await request.get("http://127.0.0.1:4747/health");
   expect(health.ok()).toBeTruthy();
 
-  // Target a real element inside the selected product. Buttons are preferred;
-  // informational pages fall back to a visible link, heading or main region.
-  const buttons = frame.locator("button:visible");
-  const links = frame.locator("a:visible");
-  const headings = frame.locator("h1:visible");
-  const mains = frame.locator("main:visible");
-  let target;
-  if (await buttons.count()) target = buttons.first();
-  else if (await links.count()) target = links.first();
-  else if (await headings.count()) target = headings.first();
-  else target = mains.first();
+  // Select a passive text/layout element to avoid activating product actions in CI.
+  const passiveTargets = frame.locator("h1:visible, h2:visible, p:visible, label:visible, main:visible");
+  const target = (await passiveTargets.count()) ? passiveTargets.first() : frame.locator("body");
   await expect(target).toBeVisible();
 
   await page.getByRole("button", { name: "Start feedback mode" }).click();
