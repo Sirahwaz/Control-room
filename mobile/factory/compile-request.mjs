@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.cwd();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(scriptDir, "../..");
+const cwd = process.cwd();
 const requestPath = process.argv[2];
 if (!requestPath) throw new Error("Usage: node mobile/factory/compile-request.mjs <request.json>");
 
-const abs = path.isAbsolute(requestPath) ? requestPath : path.join(root, requestPath);
+const abs = path.isAbsolute(requestPath) ? requestPath : path.resolve(cwd, requestPath);
 if (!fs.existsSync(abs)) throw new Error(`Request not found: ${abs}`);
 
 const req = JSON.parse(fs.readFileSync(abs, "utf8"));
@@ -18,10 +21,10 @@ if (!/^\d+\.\d+\.\d+$/.test(req.version)) throw new Error("Invalid version");
 if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(req.app_id)) throw new Error("Invalid app_id");
 if (typeof req.objective !== "string" || req.objective.length > 5000) throw new Error("Invalid objective");
 
-const factoryConfigPath = path.join(root, "mobile","factory","factory.config.json");
+const factoryConfigPath = path.join(scriptDir, "factory.config.json");
 const factoryConfig = JSON.parse(fs.readFileSync(factoryConfigPath, "utf8"));
 
-const existing = path.join(root,"mobile","factory","products",`${req.product_key}.json`);
+const existing = path.join(scriptDir,"products",`${req.product_key}.json`);
 if (fs.existsSync(existing)) throw new Error(`Product already exists: ${existing}`);
 
 const baseFeatures = {
@@ -69,6 +72,7 @@ const manifest = {
   revenue_mode:req.revenue_mode || "productized",
   factory:{
     profile:"request-driven-product",
+    ui_feedback:JSON.parse(JSON.stringify(factoryConfig.ui_feedback)),
     request_driven_ui:true,
     dynamic_content:true,
     localization:{
@@ -103,7 +107,7 @@ const manifest = {
 fs.mkdirSync(path.dirname(existing),{recursive:true});
 fs.writeFileSync(existing,JSON.stringify(manifest,null,2)+"\n");
 
-const requestOut=path.join(root,"mobile","factory","runtime-request.json");
+const requestOut=path.join(scriptDir,"runtime-request.json");
 fs.writeFileSync(requestOut,JSON.stringify({
   received_at:new Date().toISOString(),
   request:req,

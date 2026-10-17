@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "provider": "agentation",
+  "enabled": true,
+  "scope": "development_and_ci_only",
+  "api_key_required": false,
+  "runtime": {
+    "node_minimum": 20,
+    "node_recommended": 24,
+    "react_minimum": 18
+  },
+  "endpoint": "http://127.0.0.1:4747",
+  "preview": {
+    "type": "isolated_react_harness",
+    "loads_selected_product_web_entry": true,
+    "same_origin_iframe": true,
+    "viewport": { "width": 390, "height": 760 }
+  },
+  "verification": {
+    "workflow": ".github/workflows/agentation-e2e.yml",
+    "mcp_tool": "agentation_get_all_pending",
+    "requires_exact_annotation_text": true
+  },
+  "coverage": {
+    "capacitor_webview_dom": true,
+    "react_dom": true,
+    "native_android_views": false,
+    "jetpack_compose": false,
+    "android_xml_views": false
+  },
+  "artifact_policy": {
+    "bundle_toolbar": false,
+    "bundle_mcp_server": false,
+    "include_in_release_apk": false
+  },
+  "remote_mode": {
+    "configured": false,
+    "needs": [
+      "public HTTPS endpoint",
+      "authentication and access control",
+      "persistent storage",
+      "hosting/cost approval"
+    ]
+  },
+  "fallback": [
+    "Playwright UI smoke tests",
+    "Android emulator screenshots and accessibility checks"
+  ]
+}

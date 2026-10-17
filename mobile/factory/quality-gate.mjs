@@ -2,8 +2,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const root=process.cwd();
+const scriptDir=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(scriptDir, "../..");
 const key=process.argv[2] || process.env.MIDAD_PRODUCT || "midad-omni-agent";
 const manifestPath=path.join(root,"mobile","factory","products",`${key}.json`);
 const configPath=path.join(root,"mobile","factory","factory.config.json");
@@ -50,6 +52,9 @@ for(const file of jsFiles){
 
 if(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
 
+const feedbackPreflight=spawnSync(process.execPath,[path.join(scriptDir,"agentation","preflight.mjs")],{cwd:root,encoding:"utf8"});
+if(feedbackPreflight.status!==0) fail(`Agentation integration preflight failed: ${feedbackPreflight.stderr||feedbackPreflight.stdout}`);
+
 console.log(JSON.stringify({
   ok:true,
   product_key:key,
@@ -60,7 +65,8 @@ console.log(JSON.stringify({
     request_driven_ui:true,
     adaptive_learning:true,
     js_syntax:true,
-    secret_scan:true
+    secret_scan:true,
+    ui_feedback_config_valid:true
   },
   js_files_checked:jsFiles.length
 }));

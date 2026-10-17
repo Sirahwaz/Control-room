@@ -52,6 +52,10 @@
     },
     "delivery": {
       "type": "object"
+    },
+    "ui_feedback": {
+      "type": "object",
+      "description": "Development-only Agentation UI feedback integration; never bundled into release APK."
     }
   },
   "additionalProperties": true

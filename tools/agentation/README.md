@@ -48,3 +48,10 @@ codex mcp list
 ```
 
 For a complete local check, mount `Agentation` in a compatible React development app with `endpoint="http://localhost:4747"`, add a test note, and verify the exact annotation is returned by the MCP tools. The CI smoke test automates that round-trip in a temporary environment so the user does not need to run terminal commands on a phone.
+
+
+## Mobile Factory integration
+
+The Mobile Factory CI reuses this harness for the selected product manifest, serving its actual `web_entry` inside a same-origin iframe at a mobile-sized preview viewport. The annotation is created against a real product DOM element, then checked via `agentation_get_all_pending`. The Android APK build waits for this round-trip to pass.
+
+This is development/CI instrumentation only. Agentation's toolbar is desktop-only, React-based, and DOM-scoped; it is not bundled into the Android application and does not annotate native Android Views/Compose/XML.

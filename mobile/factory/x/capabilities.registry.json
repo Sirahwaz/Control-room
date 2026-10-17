@@ -1,6 +1,6 @@
 {
   "registry_version": 1,
-  "updated": "2026-10-08",
+  "updated": "2026-10-17",
   "capabilities": [
     {
       "id": "mobile-shell",
@@ -433,6 +433,22 @@
         "cohorts"
       ],
       "default_reuse": false
+    },
+    {
+      "id": "agentation-dom-feedback",
+      "category": "ui_quality",
+      "criticality": "medium",
+      "tags": [
+        "agentation",
+        "visual-feedback",
+        "dom-annotation",
+        "mcp",
+        "android",
+        "capacitor",
+        "webview",
+        "react-preview"
+      ],
+      "default_reuse": true
     }
   ]
 }

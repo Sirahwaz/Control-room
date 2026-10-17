@@ -456,6 +456,39 @@
       ],
       "evidence_rule": "verify_current_publishing_requirements",
       "account_action": "human_gate_for_release_credentials"
+    },
+    {
+      "id": "agentation",
+      "name": "Agentation + agentation-mcp",
+      "kind": "development_ui_feedback",
+      "status": "known_available",
+      "capabilities": [
+        "agentation-dom-feedback"
+      ],
+      "strengths": [
+        "DOM_element_annotations",
+        "same_origin_webview_preview",
+        "browser_to_MCP_roundtrip",
+        "pending_feedback_resolution"
+      ],
+      "limitations": [
+        "official_toolbar_desktop_only",
+        "requires_React_18_plus_preview_wrapper",
+        "does_not_inspect_native_Android_views",
+        "development_and_CI_only"
+      ],
+      "requirements": {
+        "node_minimum": "20",
+        "node_recommended": "24",
+        "react_minimum": "18",
+        "api_key_required": false,
+        "default_endpoint": "http://127.0.0.1:4747"
+      },
+      "fallbacks": [
+        "playwright_ui_smoke",
+        "android_emulator_screenshot_and_accessibility_checks"
+      ],
+      "account_action": "none_by_default"
     }
   ],
   "updated": "2026-10-08"
