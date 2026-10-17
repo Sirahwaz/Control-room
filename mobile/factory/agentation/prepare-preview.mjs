@@ -13,12 +13,12 @@ function changedFilesForCurrentCommit() {
   try {
     return execFileSync("git", ["diff", "--name-only", `${sha}^`, sha], {
       cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]
-    }).split(/\\r?\\n/).filter(Boolean);
+    }).split(/\r?\n/).filter(Boolean);
   } catch {
     try {
       return execFileSync("git", ["show", "--pretty=", "--name-only", sha], {
         cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]
-      }).split(/\\r?\\n/).filter(Boolean);
+      }).split(/\r?\n/).filter(Boolean);
     } catch {
       return [];
     }
