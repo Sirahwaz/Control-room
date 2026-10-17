@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url));
-const root=path.resolve(scriptDir, "../..);
+const root=path.resolve(scriptDir, "../..");
 const key=process.argv[2] || process.env.MIDAD_PRODUCT || "midad-omni-agent";
 const manifestPath=path.join(root,"mobile","factory","products",`${key}.json`);
 const configPath=path.join(root,"mobile","factory","factory.config.json");
