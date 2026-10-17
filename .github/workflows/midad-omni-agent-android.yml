@@ -15,7 +15,14 @@ permissions:
   contents: read
 
 jobs:
+  agentation-ui-feedback:
+    name: Verify midad-omni-agent UI before APK build
+    uses: ./.github/workflows/agentation-e2e.yml
+    with:
+      product_key: midad-omni-agent
+
   build-omni-agent:
+    needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
