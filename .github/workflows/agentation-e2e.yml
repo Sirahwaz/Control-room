@@ -52,7 +52,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: agentation-e2e-${{ github.event.pull_request.number || inputs.product_key || github.ref }}
+  group: agentation-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || inputs.product_key || github.ref }}
   cancel-in-progress: true
 
 jobs:
