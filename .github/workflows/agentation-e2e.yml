@@ -17,6 +17,10 @@ on:
       - "*.webmanifest"
       - ".github/workflows/agentation-e2e.yml"
       - ".github/workflows/midad-mobile-factory.yml"
+      - ".github/workflows/midad-mobile-android.yml"
+      - ".github/workflows/midad-omni-agent-android.yml"
+      - ".github/workflows/midad-human-bridge-android.yml"
+      - ".github/workflows/signalscan-ai-android.yml"
   push:
     branches: [main]
     paths:
@@ -33,6 +37,10 @@ on:
       - "*.webmanifest"
       - ".github/workflows/agentation-e2e.yml"
       - ".github/workflows/midad-mobile-factory.yml"
+      - ".github/workflows/midad-mobile-android.yml"
+      - ".github/workflows/midad-omni-agent-android.yml"
+      - ".github/workflows/midad-human-bridge-android.yml"
+      - ".github/workflows/signalscan-ai-android.yml"
   workflow_dispatch:
     inputs:
       product_key:
@@ -66,6 +74,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -85,8 +95,10 @@ jobs:
           PRODUCT_KEY: ${{ inputs.product_key || 'midad-mobile' }}
         run: |
           set -euo pipefail
-          node mobile/factory/agentation/prepare-preview.mjs "$PRODUCT_KEY"
-          echo "product_key=$PRODUCT_KEY" >> "$GITHUB_OUTPUT"
+          PREVIEW_OUTPUT="$(node mobile/factory/agentation/prepare-preview.mjs "$PRODUCT_KEY")"
+          echo "$PREVIEW_OUTPUT"
+          RESOLVED_PRODUCT_KEY="$(printf '%s' "$PREVIEW_OUTPUT" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>console.log(JSON.parse(s).product_key));')"
+          echo "product_key=$RESOLVED_PRODUCT_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Install isolated test dependencies
         run: npm install --no-audit --no-fund
