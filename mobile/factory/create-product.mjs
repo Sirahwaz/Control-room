@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const [productKey, displayName, appId, version = "0.1.0"] = process.argv.slice(2);
 if (!productKey || !displayName || !appId) {
@@ -10,6 +11,10 @@ if (!productKey || !displayName || !appId) {
 if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey)) throw new Error("Invalid product-key");
 if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid version");
 if (!/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+$/.test(appId)) throw new Error("Invalid app-id");
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(scriptDir, "../..");
+const factoryConfig = JSON.parse(fs.readFileSync(path.join(scriptDir, "factory.config.json"), "utf8"));
 
 const safeName = displayName.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
 const manifest = {
@@ -40,6 +45,7 @@ const manifest = {
   revenue_mode: "productized",
   factory: {
     profile: "request-driven-product",
+    ui_feedback: JSON.parse(JSON.stringify(factoryConfig.ui_feedback)),
     request_driven_ui: true,
     dynamic_content: true,
     localization: {
@@ -69,9 +75,9 @@ const manifest = {
   }
 };
 
-const outDir = path.join(process.cwd(), "mobile", "factory", "products");
+const outDir = path.join(scriptDir, "products");
 fs.mkdirSync(outDir, {recursive:true});
 const out = path.join(outDir, `${productKey}.json`);
 if (fs.existsSync(out)) throw new Error(`Product already exists: ${out}`);
 fs.writeFileSync(out, JSON.stringify(manifest, null, 2) + "\n");
-console.log(out);
+console.log(path.relative(repoRoot, out));
