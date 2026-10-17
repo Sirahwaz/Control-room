@@ -38,6 +38,10 @@ if (mobilePackage.dependencies?.agentation || mobilePackage.dependencies?.["agen
 for (const file of [
   ".github/workflows/agentation-e2e.yml",
   ".github/workflows/midad-mobile-factory.yml",
+  ".github/workflows/midad-mobile-android.yml",
+  ".github/workflows/midad-omni-agent-android.yml",
+  ".github/workflows/midad-human-bridge-android.yml",
+  ".github/workflows/signalscan-ai-android.yml",
   "tools/agentation/e2e/src/main.jsx",
   "tools/agentation/e2e/tests/annotation.spec.js",
   "mobile/factory/agentation/prepare-preview.mjs",
@@ -51,6 +55,24 @@ if (!/workflow_call:/m.test(workflow)) fail("Agentation workflow must be reusabl
 if (!/agentation-e2e\.yml/m.test(factoryWorkflow)) fail("Mobile Factory build must call Agentation E2E");
 if (!e2eTest.includes("agentation_get_all_pending")) fail("E2E test must verify delivery through MCP");
 if (!workflow.includes("127.0.0.1:4747")) fail("CI Agentation endpoint must remain loopback-only");
+
+const androidBuildWorkflows = [
+  ".github/workflows/midad-mobile-factory.yml",
+  ".github/workflows/midad-mobile-android.yml",
+  ".github/workflows/midad-omni-agent-android.yml",
+  ".github/workflows/midad-human-bridge-android.yml",
+  ".github/workflows/signalscan-ai-android.yml"
+];
+for (const file of androidBuildWorkflows) {
+  const source = fs.readFileSync(path.join(root, file), "utf8");
+  if (!source.includes("agentation-ui-feedback:") ||
+      !source.includes("uses: ./.github/workflows/agentation-e2e.yml")) {
+    fail("Android build route does not call Agentation E2E: " + file);
+  }
+  if (!source.includes("needs: agentation-ui-feedback")) {
+    fail("Android build route can bypass Agentation UI verification: " + file);
+  }
+}
 
 console.log(JSON.stringify({
   ok: true,
