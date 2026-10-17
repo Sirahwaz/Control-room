@@ -74,6 +74,10 @@ jobs:
           cache: npm
           cache-dependency-path: tools/agentation/e2e/package.json
 
+      - name: Validate Agentation integration contract
+        working-directory: .
+        run: node mobile/factory/agentation/preflight.mjs
+
       - name: Prepare selected product WebView preview
         id: preview
         working-directory: .
