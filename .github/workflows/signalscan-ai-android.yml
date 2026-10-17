@@ -123,6 +123,16 @@ jobs:
           printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/test-report.json
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
           rm -rf signing
+      - name: Android emulator runtime smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
         with:
