@@ -29,7 +29,14 @@ on:
 permissions:
   contents: read
 jobs:
+  agentation-ui-feedback:
+    name: Verify selected Android product UI before APK build
+    uses: ./.github/workflows/agentation-e2e.yml
+    with:
+      product_key: ${{ github.event_name == 'workflow_dispatch' && inputs.product || 'auto' }}
+
   build-release-apk:
+    needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

@@ -2,10 +2,44 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, "../../..");
-const productKey = process.argv[2] || "midad-mobile";
+const requestedProductKey = process.argv[2] || "midad-mobile";
+function changedFilesForCurrentCommit() {
+  const sha = process.env.GITHUB_SHA?.trim();
+  if (!sha) return [];
+  try {
+    return execFileSync("git", ["diff", "--name-only", `${sha}^`, sha], {
+      cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]
+    }).split(/\r?\n/).filter(Boolean);
+  } catch {
+    try {
+      return execFileSync("git", ["show", "--pretty=", "--name-only", sha], {
+        cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"]
+      }).split(/\r?\n/).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+}
+function resolveProductKey(requested) {
+  if (requested !== "auto") return requested;
+  const changed = changedFilesForCurrentCommit();
+  // Keep this order aligned with .github/workflows/midad-mobile-android.yml.
+  if (changed.includes("mobile/factory/products/midad-meme-trader.json") ||
+      changed.includes("mobile/factory/meme-trader-smoke.mjs") ||
+      changed.some(file => file.startsWith("mobile/web/meme-trader/"))) {
+    return "midad-meme-trader";
+  }
+  if (changed.includes("mobile/factory/products/signalscan-ai.json") ||
+      changed.some(file => file.startsWith("mobile/web/signalscan/"))) {
+    return "signalscan-ai";
+  }
+  return "midad-mobile";
+}
+const productKey = resolveProductKey(requestedProductKey);
 if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(productKey)) throw new Error("Invalid product key");
 
 const manifestPath = path.join(root, "mobile", "factory", "products", `${productKey}.json`);
@@ -89,6 +123,7 @@ const previewManifest = {
 fs.writeFileSync(path.join(previewRoot, "preview-manifest.json"), JSON.stringify(previewManifest, null, 2) + "\n");
 console.log(JSON.stringify({
   ok: true,
+  requested_product_key: requestedProductKey,
   product_key: productKey,
   source_web_entry: manifest.web_entry,
   preview_url: previewManifest.preview_url,
