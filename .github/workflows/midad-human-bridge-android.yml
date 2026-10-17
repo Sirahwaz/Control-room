@@ -1,6 +1,15 @@
 name: MIDAD Human Bridge Android
 
 on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "mobile/web/human-bridge.*"
+      - "mobile/factory/products/midad-human-bridge.json"
+      - "mobile/factory/product.schema.json"
+      - "mobile/package.json"
+      - "mobile/factory/render.mjs"
+      - ".github/workflows/midad-human-bridge-android.yml"
   push:
     branches: ["main"]
     paths:
@@ -36,12 +45,17 @@ jobs:
           node-version: "24"
 
       - name: Resolve Human Bridge manifest
+        id: product
+        shell: bash
         run: |
           set -euo pipefail
           node mobile/factory/render.mjs midad-human-bridge
           jq -e '.product_key=="midad-human-bridge"' mobile/factory/runtime-product.json >/dev/null
           jq -e '.features.server_side_secrets_only==true' mobile/factory/runtime-product.json >/dev/null
           jq -e '.features.human_bridge==true' mobile/factory/runtime-product.json >/dev/null
+          echo "version=$(jq -r '.version' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$(jq -r '.artifact_name' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
+          echo "app_id=$(jq -r '.app_id' mobile/factory/runtime-product.json)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Java 21
         uses: actions/setup-java@v6
@@ -111,17 +125,45 @@ jobs:
           mkdir -p dist signing
           keytool -genkeypair -v -keystore signing/midad-human-bridge.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Human Bridge, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          "$APKSIGNER" sign --ks signing/midad-human-bridge.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out dist/MIDAD-Human-Bridge-v0.1.0-release.apk "$APK_SRC"
-          "$APKSIGNER" verify --verbose dist/MIDAD-Human-Bridge-v0.1.0-release.apk
-          sha256sum dist/MIDAD-Human-Bridge-v0.1.0-release.apk | tee dist/MIDAD-Human-Bridge-v0.1.0-release.apk.sha256
+          "$APKSIGNER" sign --ks signing/midad-human-bridge.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${{ steps.product.outputs.artifact_name }}-release.apk" "$APK_SRC"
+          "$APKSIGNER" verify --verbose "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+          sha256sum "dist/${{ steps.product.outputs.artifact_name }}-release.apk" | tee "dist/${{ steps.product.outputs.artifact_name }}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           rm -rf signing
+
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node/kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and launch APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+      - name: Upload runtime smoke failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.product.outputs.artifact_name }}-runtime-smoke-diagnostics
+          path: dist/runtime-smoke-report.json
+          if-no-files-found: ignore
+      - name: Write runtime test report
+        shell: bash
+        run: printf '{"product_key":"midad-human-bridge","runtime_smoke":"PASSED"}\n' > dist/test-report.json
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MIDAD-Human-Bridge-v0.1.0-release-debug
+          name: ${{ steps.product.outputs.artifact_name }}-release
           path: |
             dist/MIDAD-Human-Bridge-v0.1.0-release.apk
             dist/MIDAD-Human-Bridge-v0.1.0-release.apk.sha256
             dist/product-manifest.json
+            dist/test-report.json
+            dist/runtime-smoke-report.json
