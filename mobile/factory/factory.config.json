@@ -52,6 +52,7 @@
     "agent_graph_planning",
     "parallel_task_plan",
     "ui_content_generation",
+    "agentation_ui_feedback_roundtrip",
     "static_audit",
     "dependency_audit",
     "android_build",
@@ -78,7 +79,8 @@
       "reuse_plan",
       "agent_plan",
       "automation_plan",
-      "fallback_coverage"
+      "fallback_coverage",
+      "ui_feedback_config_valid"
     ],
     "optional_gates": [
       "ui_smoke",
@@ -86,7 +88,9 @@
       "accessibility",
       "localization",
       "offline_degradation",
-      "performance_budget"
+      "performance_budget",
+      "agentation_mcp_roundtrip_when_supported",
+      "mobile_webview_preview_review"
     ],
     "release_states": [
       "PLANNED",
@@ -220,5 +224,50 @@
       "beta",
       "production"
     ]
+  },
+  "ui_feedback": {
+    "enabled": true,
+    "provider": "agentation",
+    "scope": "development_and_ci_only",
+    "mode": "same_origin_webview_preview_to_mcp",
+    "api_key_required": false,
+    "not_in_release_apk": true,
+    "endpoint": "http://127.0.0.1:4747",
+    "runtime_requirements": {
+      "node_minimum": 20,
+      "node_recommended": 24,
+      "react_minimum": 18
+    },
+    "supported_surfaces": [
+      "react_dom",
+      "capacitor_webview_dom_preview",
+      "same_origin_iframe"
+    ],
+    "unsupported_surfaces": [
+      "native_android_views",
+      "jetpack_compose",
+      "android_xml_views"
+    ],
+    "ci": {
+      "workflow": ".github/workflows/agentation-e2e.yml",
+      "prepare_preview": "mobile/factory/agentation/prepare-preview.mjs",
+      "required_mcp_tool": "agentation_get_all_pending",
+      "gate_factory_build": true,
+      "target_product": "selected_factory_manifest_web_entry"
+    },
+    "remote_hosting": {
+      "configured": false,
+      "requirements": [
+        "public_https_endpoint",
+        "authentication_and_access_control",
+        "persistent_storage",
+        "owner_approved_hosting_and_cost"
+      ]
+    },
+    "safety": {
+      "production_bundle": false,
+      "expose_port_4747": false,
+      "commit_secrets": false
+    }
   }
 }
