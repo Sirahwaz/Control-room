@@ -5,12 +5,13 @@
 - The deployed Control Room is a static HTML/CSS/vanilla-JavaScript application, not a React app.
 - The entry point is `index.html`; the primary runtime is `midad-control-v2.js`; styling is in `midad-control-v2.css`.
 - GitHub Pages deploys the repository root via `.github/workflows/pages.yml`.
-- Agentation's official toolbar is a React component and requires React 18+. Therefore, do **not** import it into the current vanilla-JS runtime or add a root package.json just to force the integration. That would risk the existing static deployment.
-- The MCP server is a local developer tool; registering it in a repository does not make the GitHub Pages site able to reach a developer's localhost, nor does it connect this server to the current ChatGPT conversation.
+- Agentation's official toolbar is a React component and requires React 18+. Therefore, it is not imported into the current vanilla-JS runtime, and no root package.json is added.
+- The official documentation says Agentation is desktop-only / not optimized for mobile. The user's phone-only workflow is therefore not represented as a supported visual-annotation client.
+- The MCP server is a local developer tool by default; repository configuration does not make GitHub Pages reach a developer's localhost or connect this server to the current ChatGPT conversation.
 
 ## Included in this change
 
-`.codex/config.toml` registers the Agentation MCP server for Codex in a trusted local checkout. Codex may ask you to trust the project before using project-level configuration. It runs:
+`.codex/config.toml` registers the Agentation MCP server for Codex in a trusted local checkout. It runs:
 
 ```bash
 npx -y agentation-mcp server
@@ -18,23 +19,32 @@ npx -y agentation-mcp server
 
 Node.js 20+ is required by current Agentation MCP documentation; Node.js 24 LTS is recommended.
 
-## Verify the local MCP server
+## Cloud end-to-end verification
 
-From the repository root on a developer computer with Node.js installed:
+`tools/agentation/e2e` is an isolated React preview and smoke-test harness. It does not alter the production Control Room. The GitHub Actions workflow:
+
+1. Builds the isolated React preview with the official Agentation component.
+2. Starts the Agentation HTTP server on the CI runner's loopback interface only.
+3. Uses a headless browser to select a test control and add a real toolbar annotation.
+4. Reads the exact test text back through the Agentation MCP tool `agentation_get_all_pending`.
+
+A passing CI run verifies the browser → HTTP store → MCP tool path in that temporary environment. It does **not** imply that a permanent server is deployed, that the current ChatGPT session is connected to MCP, or that mobile support is provided.
+
+## Security and preservation
+
+- Production Control Room files and the existing GitHub Pages workflow are unchanged.
+- The test server binds only to `127.0.0.1` and uses ephemeral in-memory storage.
+- No secrets are added to GitHub.
+- Annotation text is untrusted input; CI tests use a fixed synthetic comment.
+- Do not expose port 4747 publicly. A persistent cloud MCP endpoint would require a separate architecture, access-control review, and an explicit hosting/cost decision.
+
+## Local developer verification
+
+From a trusted checkout with Node.js installed, run:
 
 ```bash
 npx -y agentation-mcp doctor
+codex mcp list
 ```
 
-Then restart/reload Codex MCP servers and inspect the available Agentation tools. To verify the end-to-end path, a compatible React development preview must mount the `Agentation` component with `endpoint="http://localhost:4747"`; add one test annotation and ask Codex to list pending annotations. Do not mark end-to-end integration verified until the annotation text is returned by the MCP tool.
-
-## Next safe integration step
-
-Keep the production Control Room untouched. If a React-based MIDAD UI already exists in another repository, integrate the official Agentation component there. Otherwise, create an isolated React development preview that loads the existing Control Room UI for visual review, and test it separately before considering any production architecture change. Do not migrate the deployed Control Room from vanilla JS to React as part of this integration without a separate audit and approval.
-
-## Security
-
-- Keep the MCP server bound to localhost for local development.
-- Do not expose port 4747 publicly or add secrets to this repository.
-- Annotation text may contain user-entered content; treat it as untrusted input.
-- MCP setup is a developer-local capability, not a production endpoint.
+For a complete local check, mount `Agentation` in a compatible React development app with `endpoint="http://localhost:4747"`, add a test note, and verify the exact annotation is returned by the MCP tools. The CI smoke test automates that round-trip in a temporary environment so the user does not need to run terminal commands on a phone.
