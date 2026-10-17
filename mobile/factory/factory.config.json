@@ -80,11 +80,11 @@
       "agent_plan",
       "automation_plan",
       "fallback_coverage",
-      "ui_feedback_config_valid"
+      "ui_feedback_config_valid",
+      "runtime_smoke"
     ],
     "optional_gates": [
       "ui_smoke",
-      "runtime_smoke",
       "accessibility",
       "localization",
       "offline_degradation",
