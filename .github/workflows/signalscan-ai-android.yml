@@ -119,8 +119,8 @@ jobs:
           sha256sum "$OUT" | tee "$OUT.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
-          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/build-report.json
-          printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"NOT_RUN_IN_CI"}\n' > dist/test-report.json
+          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"PENDING"}\n' > dist/build-report.json
+          printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"PENDING"}\n' > dist/test-report.json
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
           rm -rf signing
       - name: Android emulator runtime smoke
@@ -133,6 +133,19 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           script: bash mobile/factory/android-runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
+      - name: Upload runtime smoke failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalScan-AI-runtime-smoke-diagnostics
+          path: dist/runtime-smoke-report.json
+          if-no-files-found: ignore
+      - name: Finalize runtime test report
+        if: success()
+        shell: bash
+        run: |
+          printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"PASSED"}\n' > dist/test-report.json
+          printf '{"product_key":"signalscan-ai","build_status":"PASSED","factory_quality_gate":"PASSED","runtime_smoke":"PASSED"}\n' > dist/build-report.json
       - name: Upload SignalScan artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -144,4 +157,5 @@ jobs:
             dist/factory-runtime.json
             dist/build-report.json
             dist/test-report.json
+            dist/runtime-smoke-report.json
             dist/learning-report.json
