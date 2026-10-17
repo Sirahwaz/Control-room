@@ -253,7 +253,14 @@
       "prepare_preview": "mobile/factory/agentation/prepare-preview.mjs",
       "required_mcp_tool": "agentation_get_all_pending",
       "gate_factory_build": true,
-      "target_product": "selected_factory_manifest_web_entry"
+      "target_product": "selected_factory_manifest_web_entry",
+      "gated_android_workflows": [
+        ".github/workflows/midad-mobile-factory.yml",
+        ".github/workflows/midad-mobile-android.yml",
+        ".github/workflows/midad-omni-agent-android.yml",
+        ".github/workflows/midad-human-bridge-android.yml",
+        ".github/workflows/signalscan-ai-android.yml"
+      ]
     },
     "remote_hosting": {
       "configured": false,
