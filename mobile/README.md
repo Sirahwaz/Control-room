@@ -96,3 +96,10 @@ Its intended role is the MIDAD mobile agent operating surface:
 - Event bus, recovery loop, evidence trail, and visible trust boundary.
 
 This product is intentionally independent from midad-human-bridge; both can coexist and use shared MIDAD backend contracts.
+
+
+## Agentation in Mobile Factory
+
+The Mobile Factory build workflow runs a visual-feedback smoke test against the selected product's actual WebView entry before producing an APK. It verifies that a browser annotation reaches the Agentation MCP tool. No Agentation vendor API key is required for this local/CI workflow; the test server binds to loopback and uses ephemeral in-memory storage.
+
+The official toolbar is desktop-only and React-based, so Factory runs it in an isolated React preview around the product's same-origin WebView UI. It is not added to the release APK. Native Android Views/Compose/XML still need Android-native emulator and accessibility testing.
