@@ -104,7 +104,7 @@ Implemented in this branch:
 - deterministic context compiler;
 - source-line metadata and UNVERIFIED status for user inputs;
 - narrow positive/negative contradiction candidate detection;
-- OpenAI-compatible reasoning adapter with structured-plan validation, bounded request timeout, local loopback support, explicit remote-transmission opt-in, and basic secret-pattern blocking;
+- OpenAI-compatible reasoning adapter with structured-plan validation, bounded request timeout, caller cancellation propagation, local loopback support, explicit remote-transmission opt-in, and best-effort blocking for common API tokens, private-key blocks, bearer credentials, JWT-like values, and named secret assignments;
 - sanitized capability manifests passed to the planner; returned plans must use the provided tool allow-list;
 - bounded planner retries (maximum three);
 - explicit tool registry and dry-run default;
@@ -117,11 +117,11 @@ Implemented in this branch:
 - deterministic plan-policy checks with evidence hashing and a plan-only verification scope;
 - cycle summaries that omit tool input payloads and store learning recommendations as INFERRED metadata;
 - a learning report that aggregates cycle metadata without claiming task completion or changing model weights;
-- a same-origin local interface for cycle execution, note saving, memory search, and learning-report inspection; the runtime bearer token is not saved to persistent browser storage;
-- 53 deterministic unit and HTTP tests in the observed CI run, all passing.
+- a same-origin local interface for cycle execution, note saving, memory search, and learning-report inspection; the runtime bearer token is not saved to persistent browser storage; provider credentials remain in the trusted server environment and are not embedded in the mobile UI or APK;
+- deterministic unit and HTTP tests for provider configuration, structured responses, timeout/cancellation, sanitized failures, and sensitive-context blocking; the CI run after this change is the release gate for the updated count.
 
 Not yet implemented:
-- configured/live language-model connection (adapter contract is tested with mocked provider responses but has not been invoked against a real provider);
+- configured/live language-model connection (adapter contract and failure paths are tested with mocked provider responses; no real provider endpoint has been configured or invoked in this branch);
 - real external tool adapters;
 - authenticated multi-user backend or hosted memory service; local append-only memory exists but has no retention/deletion controls yet;
 - mobile package, production signing, public deployment, billing, or revenue collection;
