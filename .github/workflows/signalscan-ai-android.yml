@@ -123,6 +123,11 @@ jobs:
           printf '{"product_key":"signalscan-ai","static_js_syntax":"PASSED","artifact_verification":"PASSED","runtime_smoke":"PENDING"}\n' > dist/test-report.json
           printf '{"product_key":"signalscan-ai","factory_learning":"ENABLED","post_release_outcome":"PENDING"}\n' > dist/learning-report.json
           rm -rf signing
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node/kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Android emulator runtime smoke
         timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
