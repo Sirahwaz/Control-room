@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createContextForgeServer } from "../runtime-server.mjs";
 
+const TEST_TOKEN = "test-runtime-token-" + "x".repeat(40);
+
 async function withServer(options, run) {
   const server = createContextForgeServer({
-    env: { CONTEXT_FORGE_RUNTIME_TOKEN: "test-runtime-token", ...options.env },
+    env: { CONTEXT_FORGE_RUNTIME_TOKEN: TEST_TOKEN, ...options.env },
     auditWriter: options.auditWriter ?? (async () => {}),
     fetchImpl: options.fetchImpl ?? (async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [] }) } }] }) }))
   });
@@ -47,7 +49,7 @@ test("context API compiles locally and keeps user claims unverified", async () =
   await withServer({}, async (base) => {
     const response = await fetch(base + "/api/context/compile", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer test-runtime-token" },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
       body: JSON.stringify({ text: "Goal: test local compile\nDecision: keep source lineage" })
     });
     const body = await response.json();
@@ -62,7 +64,7 @@ test("plan endpoint reports provider configuration as pending", async () => {
   await withServer({}, async (base) => {
     const response = await fetch(base + "/api/agent/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer test-runtime-token" },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
       body: JSON.stringify({ goal: "Plan a test", contextText: "Goal: test" })
     });
     const body = await response.json();
@@ -102,7 +104,7 @@ test("configured local provider returns a plan in dry-run without executing tool
   }, async (base) => {
     const response = await fetch(base + "/api/agent/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer test-runtime-token" },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
       body: JSON.stringify({ goal: "Inspect context quality", contextText: "Goal: test quality" })
     });
     const body = await response.json();
@@ -126,7 +128,7 @@ test("remote model use remains blocked unless remote context transmission is exp
     assert.equal(health.reasonerReady, false);
     const response = await fetch(base + "/api/agent/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer test-runtime-token" },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
       body: JSON.stringify({ goal: "Plan safely", contextText: "Goal: test" })
     });
     assert.equal(response.status, 503);
@@ -139,7 +141,7 @@ test("oversized request body is rejected", async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer test-runtime-token",
+        Authorization: "Bearer " + TEST_TOKEN,
         "Content-Length": String(140 * 1024)
       },
       body: JSON.stringify({ text: "x".repeat(140 * 1024) })
