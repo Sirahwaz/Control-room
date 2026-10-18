@@ -149,6 +149,63 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
         return;
       }
 
+      if (url.pathname === "/api/memory/save") {
+        if (typeof body?.text !== "string" || !body.text.trim() || body.text.length > 8000) {
+          json(response, 400, { error: "text must be non-empty and at most 8000 characters." });
+          return;
+        }
+        try {
+          const memory = await memoryStore.saveUserNote(body.text, {
+            label: typeof body.sourceLabel === "string" ? body.sourceLabel : "user note"
+          });
+          json(response, 201, {
+            memory,
+            message: "Saved as PENDING; this user input has not been independently verified."
+          });
+        } catch (error) {
+          const isSensitive = String(error?.message || "").toLowerCase().includes("sensitive");
+          json(response, 400, {
+            code: isSensitive ? "SENSITIVE_MATERIAL_BLOCKED" : "MEMORY_SAVE_REJECTED",
+            error: isSensitive ? "Potential sensitive material detected; the note was not saved." : "The note was not saved. Check the input length and format."
+          });
+        }
+        return;
+      }
+
+      if (url.pathname === "/api/memory/search") {
+        if (typeof body?.query !== "string" || !body.query.trim() || body.query.length > 500) {
+          json(response, 400, { error: "query must be non-empty and at most 500 characters." });
+          return;
+        }
+        try {
+          const records = await memoryStore.search(body.query, { limit: body.limit });
+          json(response, 200, { records, count: records.length, memoryMode: "local_single_user" });
+        } catch {
+          json(response, 500, { error: "Memory search failed closed." });
+        }
+        return;
+      }
+
+      if (url.pathname === "/api/memory/list") {
+        try {
+          const records = await memoryStore.list({ limit: body?.limit });
+          json(response, 200, { records, count: records.length, memoryMode: "local_single_user" });
+        } catch {
+          json(response, 500, { error: "Memory could not be read." });
+        }
+        return;
+      }
+
+      if (url.pathname === "/api/agent/learn") {
+        try {
+          const report = await memoryStore.getLearningReport({ limit: body?.limit });
+          json(response, 200, { ...report, executionMode: "dry_run" });
+        } catch {
+          json(response, 500, { status: "FAILED", error: "Learning report could not be read." });
+        }
+        return;
+      }
+
       if (url.pathname === "/api/agent/plan") {
         if (typeof body?.goal !== "string" || !body.goal.trim() || body.goal.length > 2000) {
           json(response, 400, { error: "goal must be a non-empty string under 2000 characters." });
