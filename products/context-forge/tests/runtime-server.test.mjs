@@ -148,3 +148,24 @@ test("oversized request body is rejected", async () => {
     assert.equal(response.status, 413);
   });
 });
+
+test("serves the standalone planner UI with restrictive headers and no server code exposure", async () => {
+  await withServer({}, async (base) => {
+    const response = await fetch(base + "/");
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /Context Forge/);
+    assert.match(html, /agent-plan-button/);
+    assert.match(response.headers.get("content-security-policy") || "", /connect-src 'self'/);
+
+    const hidden = await fetch(base + "/agent-kernel.mjs");
+    assert.equal(hidden.status, 404);
+  });
+});
+
+test("requires a strong local runtime token at startup", () => {
+  assert.throws(() => createContextForgeServer({
+    env: { CONTEXT_FORGE_RUNTIME_TOKEN: "too-short" },
+    auditWriter: async () => {}
+  }), /at least 32 characters/i);
+});
