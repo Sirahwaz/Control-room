@@ -15,13 +15,13 @@ Context Forge is an independent Context Engineering workbench for developers bui
 - A standalone HTML/CSS/ES-module frontend with no third-party runtime dependencies.
 - A bounded agent-kernel contract with planner injection, explicit tool registry, dry-run default, scoped approval for non-read effects, and audit fail-closed behavior.
 - An OpenAI-compatible reasoning adapter that validates structured plans against the caller-provided tool allow-list, uses server-supplied credentials, supports local loopback providers, and requires explicit opt-in before remote context transmission.
-- A pre-transmission guard for several common credential formats; this is defense-in-depth, not a guarantee that every sensitive value can be detected.
+- A pre-transmission guard for common API tokens, private-key blocks, bearer credentials, JWT-like values, and named secret assignments; this is defense-in-depth, not a guarantee that every sensitive value can be detected.\n- Provider failures return sanitized messages, request timeouts are bounded, and caller cancellation is forwarded to the provider request.
 - Planning retries limited to three; tool failures do not trigger blind action replay.
 - Authenticated local loopback runtime with fixed static-asset allow-list, bounded request bodies, context API, and append-only audit JSONL.
 - Local append-only memory store for source-tagged user notes, retrieval, cycle summaries, and inferred learning reports; likely secret material is rejected on write.
 - End-to-end Context → Plan → Verify → Memory → Learn API route. Verification applies only to plan structure/policy; task completion remains PENDING because the cycle runs in dry-run mode.
 - Browser controls for the full dry-run cycle, explicit note saving, memory search, and learning-report inspection; no external tool execution endpoint is exposed.
-- Unit tests for context compilation and critical tool-policy boundaries.
+- Deterministic unit and HTTP tests for context compilation, provider configuration, timeout/cancellation, malformed responses, sensitive-context blocking, sanitized failures, and critical tool-policy boundaries.
 
 ## Honest capability boundary
 
@@ -42,7 +42,7 @@ npm start --prefix products/context-forge
 
 Open http://127.0.0.1:8787 and paste that runtime token into the local planner field. The browser UI does not save it to persistent storage. The runtime is dry-run only.
 
-To configure a model, set CONTEXT_FORGE_MODEL_BASE_URL, CONTEXT_FORGE_MODEL_API_KEY, and CONTEXT_FORGE_MODEL in the server environment. Local loopback providers are allowed without remote consent. Remote providers must use HTTPS and require CONTEXT_FORGE_ALLOW_REMOTE_CONTEXT=true. Review the context before opting in. Never put a provider key in the browser, source control, or exported context. The secret-pattern scanner is best-effort, not a complete guarantee.
+To configure a model, set `CONTEXT_FORGE_MODEL_BASE_URL`, `CONTEXT_FORGE_MODEL_API_KEY`, and `CONTEXT_FORGE_MODEL` in the **trusted runtime environment**. These values are read only by `runtime-server.mjs`; the Android/WebView UI does not receive or persist the provider key. Local loopback providers are allowed without remote consent. For example, with a local Ollama server that exposes the OpenAI-compatible API:\n\n~~~bash\nexport CONTEXT_FORGE_MODEL_BASE_URL="http://127.0.0.1:11434/v1"\nexport CONTEXT_FORGE_MODEL_API_KEY="local-placeholder"\nexport CONTEXT_FORGE_MODEL="your-installed-model-id"\nnpm start --prefix products/context-forge\n~~~\n\nUse the model ID actually installed in your local server. Remote providers must use HTTPS and require `CONTEXT_FORGE_ALLOW_REMOTE_CONTEXT=true`; set that flag only after reviewing what context will be transmitted. Never put a provider key in the browser, APK, source control, or exported context. The secret-pattern scanner is best-effort, not a complete guarantee. Provider responses and raw exception details are not returned to the browser.
 
 ## Package contract (v0.1)
 
