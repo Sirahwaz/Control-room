@@ -104,6 +104,8 @@ Implemented in this branch:
 - deterministic context compiler;
 - source-line metadata and UNVERIFIED status for user inputs;
 - narrow positive/negative contradiction candidate detection;
+- OpenAI-compatible reasoning adapter with structured-plan validation, bounded request timeout, local loopback support, explicit remote-transmission opt-in, and basic secret-pattern blocking;
+- sanitized capability manifests passed to the planner; returned plans must use the provided tool allow-list;
 - bounded planner retries (maximum three);
 - explicit tool registry and dry-run default;
 - scoped approval for non-read effects;
@@ -111,7 +113,7 @@ Implemented in this branch:
 - unit tests for context compilation and critical policy boundaries.
 
 Not yet implemented:
-- actual language-model adapter;
+- configured/live language-model connection (adapter is source-complete but has not been invoked against a real provider);
 - real external tool adapters;
 - authenticated multi-user backend or durable memory;
 - mobile package, production signing, public deployment, billing, or revenue collection;
