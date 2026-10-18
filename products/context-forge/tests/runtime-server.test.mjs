@@ -39,6 +39,8 @@ test("health exposes only non-secret readiness metadata", async () => {
     assert.equal(response.status, 200);
     assert.equal(body.status, "ok");
     assert.equal(body.reasonerReady, false);
+    assert.equal(body.reasonerConfigured, false);
+    assert.equal(body.providerConnectionVerified, false);
     assert.equal(body.executionMode, "dry_run");
     assert.equal(JSON.stringify(body).includes("test-runtime-token"), false);
   });
@@ -166,6 +168,7 @@ test("serves the standalone planner UI with restrictive headers and no server co
     assert.equal(response.status, 200);
     assert.match(html, /Context Forge/);
     assert.match(html, /agent-plan-button/);
+    assert.match(html, /model-probe-button/);
     assert.match(response.headers.get("content-security-policy") || "", /connect-src 'self'/);
 
     const hidden = await fetch(base + "/agent-kernel.mjs");
@@ -435,5 +438,29 @@ test("model probe fails closed when no provider is configured", async () => {
     const body = await response.json();
     assert.equal(response.status, 503);
     assert.equal(body.code, "REASONER_NOT_CONFIGURED");
+  });
+});
+
+
+test("model probe suppresses remote exception details", async () => {
+  const privateMessage = "internal-model-host-secret-123456789";
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: "local-placeholder",
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: async () => { throw new Error(privateMessage); }
+  }, async (base) => {
+    const response = await fetch(base + "/api/model/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
+      body: JSON.stringify({})
+    });
+    const body = await response.json();
+    assert.equal(response.status, 502);
+    assert.equal(body.code, "MODEL_PROBE_FAILED");
+    assert.equal(body.status, "FAILED");
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(privateMessage));
   });
 });
