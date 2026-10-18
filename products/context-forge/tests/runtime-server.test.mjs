@@ -392,3 +392,48 @@ test("sensitive context is blocked before model transmission and cycle memory sa
     assert.equal(memory.count, 0);
   });
 });
+
+
+test("model probe verifies only a synthetic request and never sends user context", async () => {
+  const modelKey = "local-model-key-not-for-browser";
+  let providerRequest;
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: modelKey,
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: async (url, options) => {
+      providerRequest = { url, headers: options.headers, body: JSON.parse(options.body) };
+      return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [] }) } }] }) };
+    }
+  }, async (base) => {
+    const response = await fetch(base + "/api/model/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
+      body: JSON.stringify({})
+    });
+    const result = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(result.status, "VERIFIED");
+    assert.equal(result.scope, "synthetic_connectivity_only");
+    assert.equal(result.executionMode, "dry_run");
+    assert.equal(providerRequest.headers.Authorization, "Bearer " + modelKey);
+    assert.doesNotMatch(JSON.stringify(providerRequest.body), new RegExp(modelKey));
+    assert.match(providerRequest.body.messages[1].content, /connectivity probe/i);
+    assert.doesNotMatch(providerRequest.body.messages[1].content, /user context|memory|secret/i);
+  });
+});
+
+test("model probe fails closed when no provider is configured", async () => {
+  await withServer({}, async (base) => {
+    const response = await fetch(base + "/api/model/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
+      body: JSON.stringify({})
+    });
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.code, "REASONER_NOT_CONFIGURED");
+  });
+});
