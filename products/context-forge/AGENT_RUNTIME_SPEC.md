@@ -89,14 +89,14 @@ Suggested release thresholds are product decisions, not assumptions: establish a
 
 ## 8. Stage gates
 
-- **P0 — Local deterministic core:** context compiler, provenance status, basic conflict candidates, bounded planner/tool kernel, local authenticated API, audit events, and tests. The API binds to loopback and only exposes dry-run planning.
+- **P0 — Local deterministic core:** context compiler, provenance status, basic conflict candidates, bounded planner/tool kernel, local authenticated API, local memory APIs, dry-run cycle, inferred learning report, audit events, and tests. The runtime binds to loopback and exposes no external-action endpoint.
 - **P1 — Reasoning adapter:** the OpenAI-compatible adapter and local planner UI are implemented. Live reasoning remains pending provider configuration and an end-to-end test. Secrets remain outside the app bundle; remote context transmission requires explicit opt-in. Dry-run by default.
 - **P2 — Read-only tool adapters:** explicit allow-list, typed schemas, timeout, audit, replay-safe tests.
-- **P3 — Durable context memory:** local database plus optional hosted adapter, tenant isolation, retention and deletion controls.
+- **P3 — Durable context memory:** local append-only JSONL store and memory APIs are implemented for a single local owner. Next add per-user isolation, retention, revocation/deletion controls, and optional database adapters.
 - **P4 — Controlled write tools:** scoped approval UI, preflight and post-action verification. Never enable by default.
 - **P5 — Learning and evaluation:** golden tasks, error taxonomy, regression tests and bounded repair. No hidden self-modification or unreviewed production code changes.
 
-The deterministic compiler, policy kernel, local API, and mock-provider flows can be tested without external API credentials. Live reasoning remains PENDING until a provider endpoint, credential mechanism, runtime environment, permitted context scope, and budget are explicitly configured and verified.
+The deterministic compiler, policy kernel, local API, memory store, dry-run cycle, and mock-provider flows can be tested without external API credentials. Live reasoning remains PENDING until a provider endpoint, credential mechanism, runtime environment, permitted context scope, and budget are explicitly configured and verified. Plan-policy verification is not proof of task completion.
 
 ## 9. Current implementation boundary
 
@@ -111,14 +111,19 @@ Implemented in this branch:
 - independent result-verifier requirement before an execution can be reported as complete;
 - scoped, expiring high-impact approval requiring a trusted one-use approval consumer;
 - fail-closed execution when the audit sink is missing or unavailable;
-- authenticated loopback runtime with bounded request bodies and append-only JSONL event logging;
-- a same-origin local planner interface that never saves the runtime bearer token to persistent browser storage;
-- unit and HTTP contract tests, passing in the observed CI run.
+- authenticated loopback runtime with bounded request bodies and append-only JSONL audit logging;
+- explicit memory APIs for save, search, and list, with user notes remaining PENDING until independently verified;
+- a full dry-run Context → Plan → Verify → Memory → Learn API cycle;
+- deterministic plan-policy checks with evidence hashing and a plan-only verification scope;
+- cycle summaries that omit tool input payloads and store learning recommendations as INFERRED metadata;
+- a learning report that aggregates cycle metadata without claiming task completion or changing model weights;
+- a same-origin local interface for cycle execution, note saving, memory search, and learning-report inspection; the runtime bearer token is not saved to persistent browser storage;
+- 53 deterministic unit and HTTP tests in the observed CI run, all passing.
 
 Not yet implemented:
 - configured/live language-model connection (adapter contract is tested with mocked provider responses but has not been invoked against a real provider);
 - real external tool adapters;
-- authenticated multi-user backend or durable memory;
+- authenticated multi-user backend or hosted memory service; local append-only memory exists but has no retention/deletion controls yet;
 - mobile package, production signing, public deployment, billing, or revenue collection;
 - broad semantic reasoning or human-level AGI.
 
