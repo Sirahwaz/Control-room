@@ -26,7 +26,8 @@ test("read-only tool can execute only in explicit execute mode", async () => {
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
     toolRegistry: { read_project: readTool },
-    verifyStep: async ({ output }) => ({ verified: true, evidence: "read-result-test", summary: output.content })
+    verifyStep: async ({ output }) => ({ verified: true, evidence: "read-result-test", summary: output.content }),
+    audit: async () => {}
   });
 
   assert.equal(result.status, "COMPLETED");
@@ -41,7 +42,8 @@ test("unknown or unregistered tools are denied", async () => {
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "unlisted_tool", input: {} }] }) },
     toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; } } },
-    verifyStep: async () => ({ verified: true, evidence: "test-evidence" })
+    verifyStep: async () => ({ verified: true, evidence: "test-evidence" }),
+    audit: async () => {}
   });
   assert.equal(result.status, "BLOCKED");
   assert.equal(result.steps[0].status, "DENIED");
@@ -191,7 +193,8 @@ test("marks executed tool output VERIFIED only when verifier returns evidence", 
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
     toolRegistry: { read_project: readTool },
-    verifyStep: async ({ output }) => ({ verified: true, evidence: "test-observation-001", summary: output.content })
+    verifyStep: async ({ output }) => ({ verified: true, evidence: "test-observation-001", summary: output.content }),
+    audit: async () => {}
   });
   assert.equal(result.status, "COMPLETED");
   assert.equal(result.steps[0].verification.status, "VERIFIED");
@@ -204,7 +207,8 @@ test("returns PENDING when a verifier cannot establish the expected outcome", as
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
     toolRegistry: { read_project: readTool },
-    verifyStep: async () => ({ verified: false, reason: "Expected content marker not found" })
+    verifyStep: async () => ({ verified: false, reason: "Expected content marker not found" }),
+    audit: async () => {}
   });
   assert.equal(result.status, "PENDING");
   assert.equal(result.steps[0].status, "EXECUTED_UNVERIFIED");
@@ -241,7 +245,8 @@ test("never executes a high-impact tool without a trusted one-use approval consu
         execute: async () => { executed = true; return { ok: true }; }
       }
     },
-    verifyStep: async () => ({ verified: true, evidence: "release-url-123" })
+    verifyStep: async () => ({ verified: true, evidence: "release-url-123" }),
+    audit: async () => {}
   });
   assert.equal(result.status, "BLOCKED");
   assert.equal(executed, false);
@@ -267,6 +272,7 @@ test("one-use approval must be consumed by the trusted store before an impactful
       }
     },
     verifyStep: async () => ({ verified: true, evidence: "release-url-123" }),
+    audit: async () => {},
     consumeApproval: async () => false
   });
   assert.equal(result.status, "BLOCKED");
