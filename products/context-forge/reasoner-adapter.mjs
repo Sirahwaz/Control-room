@@ -3,7 +3,7 @@ const SENSITIVE_PATTERNS = [
   { label: "private-key block", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i },
   { label: "common API-token pattern", pattern: /(?:\bsk-[A-Za-z0-9_-]{20,}\b|\bAIza[0-9A-Za-z_-]{20,}\b|\bgh[pousr]_[A-Za-z0-9_]{20,}\b|\bAKIA[0-9A-Z]{16}\b)/ },
   { label: "bearer credential", pattern: /\bBearer\s+[A-Za-z0-9._~+\/=:-]{20,}/i },
-  { label: "JWT-like credential", pattern: /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/ }
+  { label: "JWT-like credential", pattern: /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/ },
   { label: "blockchain private-key pattern", pattern: /\b0x[a-fA-F0-9]{64}\b/ },
   { label: "named secret assignment", pattern: /(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|private[_ -]?key|secret|mnemonic|recovery phrase|seed phrase)\s*["']?\s*[:=]\s*["']?[^,\s"'<>]{8,}/i }
 ];
