@@ -1,12 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createContextForgeServer } from "../runtime-server.mjs";
 
 const TEST_TOKEN = "test-runtime-token-" + "x".repeat(40);
 
 async function withServer(options, run) {
+  const directory = await mkdtemp(join(tmpdir(), "context-forge-runtime-test-"));
   const server = createContextForgeServer({
-    env: { CONTEXT_FORGE_RUNTIME_TOKEN: TEST_TOKEN, ...options.env },
+    env: {
+      CONTEXT_FORGE_RUNTIME_TOKEN: TEST_TOKEN,
+      CONTEXT_FORGE_MEMORY_PATH: join(directory, "memory.jsonl"),
+      CONTEXT_FORGE_AUDIT_PATH: join(directory, "audit.jsonl"),
+      ...options.env
+    },
     auditWriter: options.auditWriter ?? (async () => {}),
     fetchImpl: options.fetchImpl ?? (async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [] }) } }] }) }))
   });
@@ -19,6 +28,7 @@ async function withServer(options, run) {
     await run(`http://127.0.0.1:${address.port}`);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
   }
 }
 
