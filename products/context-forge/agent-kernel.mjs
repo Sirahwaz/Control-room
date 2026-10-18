@@ -209,7 +209,7 @@ export async function runBoundedAgent({
     }
 
     if (!decision.allowed) {
-      results.push({ index, tool: step.tool, status: decision.status, reason: decision.reason });
+      results.push({ index, tool: step.tool, status: decision.status, reason: decision.reason, plannedInput: step.input, expectedOutcome: step.expectedOutcome ?? "", effect: tool?.manifest?.effect ?? "unknown" });
       if (decision.status === "DRY_RUN") continue;
       return makeResult("BLOCKED", normalizedGoal, attempts, results, decision.reason);
     }
