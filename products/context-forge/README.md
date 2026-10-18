@@ -19,7 +19,7 @@ Context Forge is an independent Context Engineering workbench for developers bui
 - Planning retries limited to three; tool failures do not trigger blind action replay.
 - Authenticated local loopback runtime with fixed static-asset allow-list, bounded request bodies, context API, and append-only audit JSONL.
 - Local append-only memory store for source-tagged user notes, retrieval, cycle summaries, and inferred learning reports; likely secret material is rejected on write.
-- End-to-end Context → Plan → Verify → Memory → Learn API route. Verification applies only to plan structure/policy; task completion remains PENDING because the cycle runs in dry-run mode.
+- A synthetic model-connectivity probe in the local runtime UI/API; it sends no user context and verifies only provider reachability plus the structured-response contract.\n- End-to-end Context → Plan → Verify → Memory → Learn API route. Verification applies only to plan structure/policy; task completion remains PENDING because the cycle runs in dry-run mode.
 - Browser controls for the full dry-run cycle, explicit note saving, memory search, and learning-report inspection; no external tool execution endpoint is exposed.
 - Deterministic unit and HTTP tests for context compilation, provider configuration, timeout/cancellation, malformed responses, sensitive-context blocking, sanitized failures, and critical tool-policy boundaries.
 
