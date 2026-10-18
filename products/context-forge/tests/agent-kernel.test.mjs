@@ -89,3 +89,36 @@ test("audit failure blocks execution before a tool can run", async () => {
   assert.equal(result.steps.length, 0);
   assert.equal(executed, false);
 });
+
+test("passes only sanitized tool manifests to the reasoner", async () => {
+  let receivedTools;
+  const result = await runBoundedAgent({
+    goal: "Inspect safely",
+    reasoner: {
+      plan: async ({ tools }) => {
+        receivedTools = tools;
+        return { steps: [{ tool: "read_project", input: {} }] };
+      }
+    },
+    toolRegistry: {
+      read_project: {
+        manifest: {
+          name: "read_project",
+          enabled: true,
+          effect: "read",
+          description: "Read approved project files",
+          privateCredential: "must-not-reach-reasoner"
+        },
+        execute: async () => ({ ok: true })
+      }
+    }
+  });
+  assert.equal(result.status, "PLANNED");
+  assert.deepEqual(receivedTools, [{
+    name: "read_project",
+    description: "Read approved project files",
+    effect: "read",
+    enabled: true
+  }]);
+  assert.equal(JSON.stringify(receivedTools).includes("must-not-reach-reasoner"), false);
+});
