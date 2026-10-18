@@ -14,12 +14,14 @@ Context Forge is an independent Context Engineering workbench for developers bui
 - JSON export and versionable schema.
 - A standalone HTML/CSS/ES-module frontend with no third-party runtime dependencies.
 - A bounded agent-kernel contract with planner injection, explicit tool registry, dry-run default, scoped approval for non-read effects, and audit fail-closed behavior.
+- An OpenAI-compatible reasoning adapter that validates structured plans against the caller-provided tool allow-list, uses server-supplied credentials, supports local loopback providers, and requires explicit opt-in before remote context transmission.
+- A pre-transmission guard for several common credential formats; this is defense-in-depth, not a guarantee that every sensitive value can be detected.
 - Planning retries limited to three; tool failures do not trigger blind action replay.
 - Unit tests for context compilation and critical tool-policy boundaries.
 
 ## Honest capability boundary
 
-This is **not AGI** and the current preview does not make model calls or provide active external tool adapters. The context engine uses deterministic rules; the agent kernel is a tested orchestration boundary awaiting a reasoner/model adapter and explicitly registered tool implementations. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
+This is **not AGI** and the current preview does not make live model calls or provide active external tool adapters. The context engine uses deterministic rules; the reasoner adapter is implemented but not configured or connected to the browser UI. The agent kernel is a tested orchestration boundary awaiting provider configuration and explicitly registered tool implementations. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
 
 The long-term direction is a more general agent system with goal decomposition, model-agnostic reasoning, capability-limited tool use, evidence-linked memory, evaluation, and bounded recovery. See AGENT_RUNTIME_SPEC.md for the architecture contract and release gates. Capabilities are not represented as active until their adapters and runtime tests exist.
 
@@ -52,7 +54,7 @@ Then open http://localhost:8080/products/context-forge/ from the repository root
 Add source adapters, stable content hashes, expiry/validity metadata, duplicate detection, and explicit evidence links. Separate sourced facts, user claims, model inferences, and unresolved items.
 
 ### 2. Model-agnostic reasoning
-Define and implement adapters for model providers, structured output validation, token/cost budgets, timeouts, and provider fallback. Do not store API keys in context packages; inject credentials only on a trusted server or local runtime through an approved secret store.
+Wire the existing OpenAI-compatible reasoning adapter into a trusted local/server runtime, then add provider-specific contract tests, token/cost budgets, and safe fallback. Do not store API keys in context packages; inject credentials only on a trusted server or local runtime through an approved secret store.
 
 ### 3. Bounded planning and tool use
 Extend the existing contract into a loop of **Observe → Plan → Policy Check → Execute → Verify → Learn**. Every tool must have a capability manifest, typed input/output, idempotency policy, timeout, budget, and audit event. Start in dry-run/read-only mode. Gate payments, publishing, deletion, external messages, and other consequential actions behind scoped human approval.
