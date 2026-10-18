@@ -117,6 +117,8 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
         status: "ok",
         version: "0.1.0",
         reasonerReady: Boolean(makeReasoner(env, fetchImpl)),
+        reasonerConfigured: Boolean(makeReasoner(env, fetchImpl)),
+        providerConnectionVerified: false,
         executionMode: "dry_run",
         externalActionsEnabled: false
       });
@@ -137,6 +139,49 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
         body = await parseBody(request, maxBytes);
       } catch (error) {
         json(response, error.statusCode || 400, { error: error.statusCode === 413 ? "Request body too large." : "Invalid JSON request." });
+        return;
+      }
+
+      if (url.pathname === "/api/model/probe") {
+        const reasoner = makeReasoner(env, fetchImpl);
+        if (!reasoner) {
+          json(response, 503, {
+            code: "REASONER_NOT_CONFIGURED",
+            status: "PENDING",
+            error: "No usable model provider is configured. No provider request was sent."
+          });
+          return;
+        }
+        try {
+          const plan = await reasoner.plan({
+            goal: "Connectivity probe: return an empty JSON plan to verify the configured model endpoint.",
+            context: { purpose: "connectivity_probe", userContextIncluded: false },
+            tools: []
+          });
+          if (!Array.isArray(plan.steps) || plan.steps.length !== 0) {
+            json(response, 502, {
+              code: "MODEL_PROBE_INVALID_RESPONSE",
+              status: "FAILED",
+              error: "The model endpoint responded, but did not return the required empty probe plan."
+            });
+            return;
+          }
+          json(response, 200, {
+            status: "VERIFIED",
+            scope: "synthetic_connectivity_only",
+            executionMode: "dry_run",
+            externalActionsEnabled: false,
+            userContextSent: false,
+            note: "This verifies a synthetic provider request only; it does not verify task quality or completion."
+          });
+        } catch (error) {
+          const timedOut = error?.name === "TimeoutError";
+          json(response, 502, {
+            code: timedOut ? "MODEL_PROBE_TIMEOUT" : "MODEL_PROBE_FAILED",
+            status: "FAILED",
+            error: timedOut ? "The model connectivity probe timed out." : "The model connectivity probe failed; provider details were withheld."
+          });
+        }
         return;
       }
 
