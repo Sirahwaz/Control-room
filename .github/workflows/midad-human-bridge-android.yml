@@ -162,8 +162,8 @@ jobs:
         with:
           name: ${{ steps.product.outputs.artifact_name }}-release
           path: |
-            dist/MIDAD-Human-Bridge-v0.1.0-release.apk
-            dist/MIDAD-Human-Bridge-v0.1.0-release.apk.sha256
+            dist/${{ steps.product.outputs.artifact_name }}-release.apk
+            dist/${{ steps.product.outputs.artifact_name }}-release.apk.sha256
             dist/product-manifest.json
             dist/test-report.json
             dist/runtime-smoke-report.json
