@@ -113,12 +113,12 @@ Implemented in this branch:
 - fail-closed execution when the audit sink is missing or unavailable;
 - authenticated loopback runtime with bounded request bodies and append-only JSONL audit logging;
 - explicit memory APIs for save, search, and list, with user notes remaining PENDING until independently verified;
-- a full dry-run Context → Plan → Verify → Memory → Learn API cycle;
+- a synthetic authenticated model probe that sends no user context and verifies only provider connectivity plus an empty structured-plan response; health metadata distinguishes configuration from live-probe verification;\n- a full dry-run Context → Plan → Verify → Memory → Learn API cycle;
 - deterministic plan-policy checks with evidence hashing and a plan-only verification scope;
 - cycle summaries that omit tool input payloads and store learning recommendations as INFERRED metadata;
 - a learning report that aggregates cycle metadata without claiming task completion or changing model weights;
 - a same-origin local interface for cycle execution, note saving, memory search, and learning-report inspection; the runtime bearer token is not saved to persistent browser storage; provider credentials remain in the trusted server environment and are not embedded in the mobile UI or APK;
-- deterministic unit and HTTP tests for provider configuration, structured responses, timeout/cancellation, sanitized failures, and sensitive-context blocking; the CI run after this change is the release gate for the updated count.
+- 63 deterministic unit and HTTP tests for provider configuration, structured responses, timeout/cancellation, sanitized failures, synthetic connectivity probing, and sensitive-context blocking; all 63 passed in the observed Context Forge CI run.
 
 Not yet implemented:
 - configured/live language-model connection (adapter contract and failure paths are tested with mocked provider responses; no real provider endpoint has been configured or invoked in this branch);
