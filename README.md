@@ -34,3 +34,18 @@ Bot tokens والأسرار تحفظ في Supabase Secrets ولا تدخل GitHu
 MIDAD AI accepts scoped work for Python/TypeScript bug fixes, API and automation debugging, CSV/JSON data cleanup, code-health reviews, and source-backed technical research.
 
 **[Open the MIDAD Revenue Store](https://sirahwaz.github.io/Control-room/revenue/?utm_source=github&utm_medium=repository&utm_campaign=first_payment_2026q4&lane=developer_services&ref=github_readme)** — select a service, describe the requirement, and receive a USDC invoice on the verified Base network. A created invoice is not treated as revenue; payment is counted only after an independently verified on-chain receipt.
+
+## MIDAD Revenue Intelligence Feed (x402)
+
+MIDAD also exposes a read-only machine-to-machine opportunity feed for agents and automation services. The feed distinguishes evidence-backed task funding from unverified payout claims, and labels upfront bonds, fees, deadlines and other blockers; a listing is not a promise of earnings.
+
+- **Price:** 0.01 USDC per data request
+- **Network:** Base mainnet (`eip155:8453`)
+- **Protocol:** x402 v2; clients pay per request, without creating a MIDAD user account
+- **Paid feed:** https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_paid_revenue_feed/api/opportunities
+- **Health:** https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_paid_revenue_feed/health
+- **Machine-readable payment manifest:** https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_paid_revenue_feed/.well-known/x402
+
+The health and payment manifest are public. The opportunity data route requires a valid x402 payment. The feed contains cached public opportunity metadata only; it does not expose private messages, customer records, credentials or wallet-signing requests. It is an early product: **no paid requests or sales are confirmed yet**, and no income is counted until a payment receipt is independently verified.
+
+
