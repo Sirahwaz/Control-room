@@ -17,6 +17,8 @@ Context Forge is an independent Context Engineering workbench for developers bui
 - An OpenAI-compatible reasoning adapter that validates structured plans against the caller-provided tool allow-list, uses server-supplied credentials, supports local loopback providers, and requires explicit opt-in before remote context transmission.
 - A pre-transmission guard for several common credential formats; this is defense-in-depth, not a guarantee that every sensitive value can be detected.
 - Planning retries limited to three; tool failures do not trigger blind action replay.
+- Authenticated local loopback runtime with fixed static-asset allow-list, bounded request bodies, audit JSONL, context API, and dry-run planning endpoint.
+- Browser planner controls connected to the local runtime; no external tool execution endpoint is exposed.
 - Unit tests for context compilation and critical tool-policy boundaries.
 
 ## Honest capability boundary
@@ -48,8 +50,8 @@ To configure a model, set CONTEXT_FORGE_MODEL_BASE_URL, CONTEXT_FORGE_MODEL_API_
 - Conflicts are candidates marked PENDING_REVIEW, never silently resolved.
 - Execution policy defaults to analysis_only; the agent kernel defaults to dry_run.
 - High-impact actions require scoped human approval in the kernel.
-- If audit logging fails before execution, the action is blocked.
-- This preview does not persist context to a server or browser storage.
+- Execute mode requires an audit sink and an independent verifier; high-impact actions additionally require scoped, expiring approval and a trusted one-use approval consumer.
+- Local runtime audit events are written to a JSONL file by default; context packages are not stored server-side by default.
 
 ## Roadmap toward a more general agent runtime
 
