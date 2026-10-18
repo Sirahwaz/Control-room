@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Provenance-first context engineering workbench and bounded agent-runtime foundation.",
   "scripts": {
+    "start": "node ./runtime-server.mjs",
     "test": "node --test ./tests/*.test.mjs",
     "check": "node --check ./app.js && node --check ./context-engine.mjs && node --check ./agent-kernel.mjs && node --check ./reasoner-adapter.mjs && node --check ./runtime-server.mjs"
   },
