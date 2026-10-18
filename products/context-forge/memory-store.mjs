@@ -99,6 +99,7 @@ export function createMemoryStore({ filePath, ownerId, now = () => new Date() } 
       const timestamp = now().toISOString();
       const record = {
         schemaVersion: "context-forge-memory/0.1",
+        recordType: "user_note",
         id: "mem_" + randomUUID().replaceAll("-", ""),
         ownerId: namespace,
         text: text.trim(),
@@ -117,6 +118,160 @@ export function createMemoryStore({ filePath, ownerId, now = () => new Date() } 
       };
       await appendRecord(record);
       return record;
+    },
+
+    async saveAgentCycle({
+      goal,
+      contextHash,
+      planId,
+      planVerification,
+      plannedSteps = [],
+      relatedMemoryIds = [],
+      learning
+    } = {}) {
+      if (typeof goal !== "string" || !goal.trim() || goal.length > 2000) {
+        throw new TypeError("Agent cycle goal must be non-empty and at most 2000 characters.");
+      }
+      if (detectSecret(goal)) {
+        throw new Error("Potential sensitive material detected in the goal; the cycle record was not written.");
+      }
+      if (typeof contextHash !== "string" || !/^[a-f0-9]{64}$/i.test(contextHash)) {
+        throw new TypeError("contextHash must be a SHA-256 hex digest.");
+      }
+      if (typeof planId !== "string" || !/^[A-Za-z0-9_-]{4,128}$/.test(planId)) {
+        throw new TypeError("planId must be a bounded identifier.");
+      }
+      if (!planVerification || planVerification.status !== "VERIFIED"
+          || planVerification.scope !== "plan_policy_only"
+          || planVerification.method !== "deterministic_plan_policy"
+          || typeof planVerification.evidenceHash !== "string"
+          || !/^[a-f0-9]{64}$/i.test(planVerification.evidenceHash)
+          || !Array.isArray(planVerification.checks)
+          || planVerification.checks.length === 0
+          || planVerification.checks.some((check) => !check || check.passed !== true
+            || typeof check.code !== "string" || !/^[A-Z0-9_]{2,80}$/.test(check.code))) {
+        throw new Error("Plan verification evidence must pass the deterministic plan policy checks before cycle memory is written.");
+      }
+      if (!Array.isArray(plannedSteps) || plannedSteps.length > 16) {
+        throw new TypeError("plannedSteps must be an array with at most 16 entries.");
+      }
+      const safeSteps = plannedSteps.map((step) => {
+        if (!step || typeof step.tool !== "string" || !/^[A-Za-z0-9_.:-]{1,100}$/.test(step.tool)) {
+          throw new TypeError("Each planned step must identify a valid tool name.");
+        }
+        const expectedOutcome = typeof step.expectedOutcome === "string" ? step.expectedOutcome.trim().slice(0, 240) : "";
+        if (detectSecret(expectedOutcome)) {
+          throw new Error("Potential sensitive material detected in a planned outcome.");
+        }
+        return {
+          tool: step.tool,
+          effect: typeof step.effect === "string" ? step.effect.slice(0, 40) : "unknown",
+          expectedOutcome
+        };
+      });
+      if (!Array.isArray(relatedMemoryIds) || relatedMemoryIds.length > 20
+          || relatedMemoryIds.some((id) => typeof id !== "string" || id.length > 128)) {
+        throw new TypeError("relatedMemoryIds must contain at most 20 bounded IDs.");
+      }
+      if (!learning || learning.status !== "INFERRED"
+          || !learning.signals || typeof learning.signals !== "object"
+          || !Array.isArray(learning.recommendations) || learning.recommendations.length > 8) {
+        throw new Error("Learning output must be explicitly labeled INFERRED and contain structured signals.");
+      }
+      const recommendations = learning.recommendations.map((value) => {
+        if (typeof value !== "string" || value.length > 240 || detectSecret(value)) {
+          throw new TypeError("Learning recommendations must be short, non-sensitive strings.");
+        }
+        return value;
+      });
+      const signals = {
+        stepCount: Math.min(16, Math.max(0, Number(learning.signals.stepCount) || 0)),
+        stepsWithExpectedOutcome: Math.min(16, Math.max(0, Number(learning.signals.stepsWithExpectedOutcome) || 0)),
+        contextConflictCount: Math.min(1000, Math.max(0, Number(learning.signals.contextConflictCount) || 0)),
+        retrievedMemoryCount: Math.min(20, Math.max(0, Number(learning.signals.retrievedMemoryCount) || 0))
+      };
+      if (signals.stepsWithExpectedOutcome > signals.stepCount) {
+        throw new TypeError("Learning signals are inconsistent.");
+      }
+      const timestamp = now().toISOString();
+      const text = [
+        "Agent cycle goal: " + goal.trim(),
+        "Plan ID: " + planId,
+        "Planned tools: " + safeSteps.map((step) => step.tool).join(", "),
+        "Inferred recommendations: " + recommendations.join(" ")
+      ].join("\n").slice(0, MAX_NOTE_CHARS);
+      const cycle = {
+        planId,
+        contextHash: contextHash.toLowerCase(),
+        planVerification: {
+          status: "VERIFIED",
+          scope: "plan_policy_only",
+          method: "deterministic_plan_policy",
+          evidenceHash: planVerification.evidenceHash.toLowerCase(),
+          checks: planVerification.checks.map((check) => ({ code: check.code, passed: true }))
+        },
+        plannedSteps: safeSteps,
+        relatedMemoryIds: [...new Set(relatedMemoryIds)],
+        learning: { status: "INFERRED", signals, recommendations }
+      };
+      const record = {
+        schemaVersion: "context-forge-memory/0.1",
+        recordType: "agent_cycle",
+        id: "mem_" + randomUUID().replaceAll("-", ""),
+        ownerId: namespace,
+        text,
+        status: "PENDING",
+        contentHash: sha256(JSON.stringify(cycle)),
+        source: {
+          type: "agent_runtime",
+          label: "Context Forge bounded agent cycle",
+          capturedAt: timestamp
+        },
+        createdAt: timestamp,
+        validUntil: null,
+        verification: cycle.planVerification,
+        revision: 1,
+        supersedes: [],
+        cycle
+      };
+      await appendRecord(record);
+      return record;
+    },
+
+    async getLearningReport({ limit = 100 } = {}) {
+      const count = Number.isInteger(limit) ? Math.max(1, Math.min(500, limit)) : 100;
+      const records = (await readRecords())
+        .filter((record) => record.ownerId === namespace
+          && record.recordType === "agent_cycle"
+          && record.status !== "REVOKED"
+          && (!record.validUntil || Date.parse(record.validUntil) > now().getTime()))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, count);
+      const metrics = { steps: 0, stepsWithExpectedOutcome: 0, conflictsObserved: 0, cyclesUsingMemory: 0 };
+      const recommendationCounts = new Map();
+      for (const record of records) {
+        const learning = record.cycle?.learning;
+        const signals = learning?.signals ?? {};
+        metrics.steps += Math.max(0, Number(signals.stepCount) || 0);
+        metrics.stepsWithExpectedOutcome += Math.max(0, Number(signals.stepsWithExpectedOutcome) || 0);
+        metrics.conflictsObserved += Math.max(0, Number(signals.contextConflictCount) || 0);
+        if (Math.max(0, Number(signals.retrievedMemoryCount) || 0) > 0) metrics.cyclesUsingMemory += 1;
+        for (const recommendation of Array.isArray(learning?.recommendations) ? learning.recommendations : []) {
+          if (typeof recommendation !== "string") continue;
+          recommendationCounts.set(recommendation, (recommendationCounts.get(recommendation) ?? 0) + 1);
+        }
+      }
+      return {
+        status: records.length > 0 ? "INFERRED" : "PENDING",
+        cyclesAnalyzed: records.length,
+        taskCompletionProven: false,
+        source: "stored_cycle_metadata",
+        metrics,
+        recommendations: [...recommendationCounts.entries()]
+          .map(([recommendation, occurrences]) => ({ recommendation, occurrences, status: "INFERRED" }))
+          .sort((a, b) => b.occurrences - a.occurrences || a.recommendation.localeCompare(b.recommendation))
+          .slice(0, 20)
+      };
     },
 
     async list({ limit = 50 } = {}) {
