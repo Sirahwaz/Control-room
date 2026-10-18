@@ -133,3 +133,18 @@ footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wr
   .runtime-step { min-height: 110px; }
   footer { flex-direction: column; }
 }
+
+.runtime-console { margin-top: 20px; border-top: 1px solid #2b3542; padding-top: 5px; }
+.runtime-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: #c8d5e2; font-size: 11px; font-weight: 650; margin: 14px 0 7px; }
+.runtime-label span { color: var(--muted); font-weight: 400; font-size: 10px; }
+.runtime-input, .goal-editor { width: 100%; border: 1px solid #2c394b; border-radius: 10px; background: #0e141d; color: var(--text); padding: 12px; outline: none; font: inherit; font-size: 12px; }
+.runtime-input { direction: ltr; text-align: left; min-height: 42px; }
+.runtime-input:focus, .goal-editor:focus { border-color: #568c79; box-shadow: 0 0 0 3px #66dcb211; }
+.goal-editor { min-height: 92px; resize: vertical; direction: auto; line-height: 1.8; }
+.runtime-console .button-row { margin-top: 12px; }
+.button:disabled { cursor: not-allowed; opacity: .6; transform: none; }
+.runtime-api-status { margin-top: 12px; padding: 10px 12px; border: 1px solid #344354; border-radius: 10px; font-size: 11px; line-height: 1.8; color: #afbdcd; background: #111923; overflow-wrap: anywhere; }
+.runtime-api-status.ready { border-color: #396b58; background: #143128; color: #b6f5d9; }
+.runtime-api-status.pending { border-color: #6a5737; background: #312718; color: #f0d39e; }
+.agent-plan-result { margin-top: 16px; }
+.agent-plan-result pre { max-height: 420px; }
