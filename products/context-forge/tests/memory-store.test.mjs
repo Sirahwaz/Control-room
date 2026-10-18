@@ -49,7 +49,7 @@ test("rejects likely secret material before writing it to disk", async () => {
       store.saveUserNote("api_key=sk-abcdefghijklmnopqrstuvwxyz123456", { label: "unsafe note" }),
       /sensitive material/i
     );
-    await assert.rejects(store.list(), async (error) => error.code === "ENOENT");
+    assert.deepEqual(await store.list(), []);
   });
 });
 
