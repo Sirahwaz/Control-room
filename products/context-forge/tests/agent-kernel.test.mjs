@@ -24,8 +24,9 @@ test("read-only tool can execute only in explicit execute mode", async () => {
   const result = await runBoundedAgent({
     goal: "Inspect a source file",
     mode: "execute",
-    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" } }] }) },
-    toolRegistry: { read_project: readTool }
+    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
+    toolRegistry: { read_project: readTool },
+    verifyStep: async ({ output }) => ({ verified: true, evidence: "read-result-test", summary: output.content })
   });
 
   assert.equal(result.status, "COMPLETED");
@@ -53,13 +54,23 @@ test("high-impact tool requires explicit scoped approval", () => {
     toolName: "publish_release",
     tool,
     mode: "execute",
-    approval: { approved: true, toolName: "publish_release", effect: "publish" }
+    approval: {
+      id: "approval-1", approved: true, toolName: "publish_release", effect: "publish",
+      actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+    },
+    actorId: "user-1",
+    now: new Date("2026-10-18T12:00:00.000Z")
   }).status, "AUTHORIZED");
   assert.equal(authorizeToolCall({
     toolName: "publish_release",
     tool,
     mode: "execute",
-    approval: { approved: true, toolName: "publish_release", effect: "financial" }
+    approval: {
+      id: "approval-2", approved: true, toolName: "publish_release", effect: "financial",
+      actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+    },
+    actorId: "user-1",
+    now: new Date("2026-10-18T12:00:00.000Z")
   }).status, "APPROVAL_REQUIRED");
 });
 
@@ -132,6 +143,7 @@ test("requires identity, scope, and expiry for high-impact approval", () => {
     actorId: "user-1",
     now: new Date("2026-10-18T12:00:00.000Z"),
     approval: {
+      id: "approval-3",
       approved: true,
       toolName: "publish_release",
       effect: "publish",
@@ -202,7 +214,7 @@ test("blocks high-impact approval when the actor identity does not match", () =>
     toolName: "publish_release", tool, mode: "execute", actorId: "user-2",
     now: new Date("2026-10-18T12:00:00.000Z"),
     approval: {
-      approved: true, toolName: "publish_release", effect: "publish", actorId: "user-1",
+      id: "approval-4", approved: true, toolName: "publish_release", effect: "publish", actorId: "user-1",
       scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
     }
   });
