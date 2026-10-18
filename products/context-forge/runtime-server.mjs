@@ -160,7 +160,7 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
           });
           json(response, 201, {
             memory,
-            message: "Saved as PENDING; this user input has not been independently verified."
+            message: "Saved as PENDING; not independently verified."
           });
         } catch (error) {
           const isSensitive = String(error?.message || "").toLowerCase().includes("sensitive");
