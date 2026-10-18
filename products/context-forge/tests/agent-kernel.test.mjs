@@ -17,6 +17,7 @@ test("dry-run is the default and does not execute tools", async () => {
 
   assert.equal(result.status, "PLANNED");
   assert.equal(result.steps[0].status, "DRY_RUN");
+  assert.deepEqual(result.steps[0].plannedInput, { path: "README.md" });
   assert.equal(executed, false);
 });
 
