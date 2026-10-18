@@ -148,3 +148,13 @@ footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wr
 .runtime-api-status.pending { border-color: #6a5737; background: #312718; color: #f0d39e; }
 .agent-plan-result { margin-top: 16px; }
 .agent-plan-result pre { max-height: 420px; }
+
+.memory-console { margin-top: 18px; border-top: 1px solid #2b3542; padding-top: 6px; }
+.memory-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; }
+.memory-search-row .runtime-input { min-width: 0; }
+#agent-plan-button { line-height: 1.7; }
+#memory-output { max-height: 360px; }
+@media (max-width: 560px) {
+  .memory-search-row { grid-template-columns: minmax(0, 1fr); }
+  #agent-plan-button { flex-basis: 100%; }
+}
