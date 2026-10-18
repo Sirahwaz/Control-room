@@ -215,6 +215,7 @@ const runtimeTokenInput = $("#runtime-token");
 const runtimeStatusChip = $("#runtime-status-chip");
 const runtimeApiStatus = $("#runtime-api-status");
 const runtimeCheckButton = $("#runtime-check-button");
+const modelProbeButton = $("#model-probe-button");
 const agentPlanButton = $("#agent-plan-button");
 const agentGoalInput = $("#agent-goal");
 const agentPlanResult = $("#agent-plan-result");
@@ -244,15 +245,40 @@ async function checkRuntime() {
     }
     setRuntimeStatus("النواة المحلية متصلة", "ready");
     runtimeApiStatus.textContent = health.reasonerReady
-      ? "النواة متصلة ومزوّد التخطيط مضبوط. الخطة ستبقى Dry-run."
-      : "النواة متصلة، لكن مزوّد النموذج غير مضبوط أو غير مسموح بإرسال السياق إليه.";
-    runtimeApiStatus.className = "runtime-api-status " + (health.reasonerReady ? "ready" : "pending");
+      ? "إعداد المزوّد موجود، لكن الاتصال الحي لم يُتحقق منه بعد. اضغط «اختبار اتصال النموذج». الخطط تبقى Dry-run."
+      : "النواة متصلة، لكن إعداد النموذج غير مكتمل أو إرسال السياق إلى المزوّد البعيد غير مسموح.";
+    runtimeApiStatus.className = "runtime-api-status pending";
   } catch {
     setRuntimeStatus("النواة غير متصلة");
     runtimeApiStatus.textContent = "لا توجد واجهة Runtime على هذا العنوان. شغّل الخادم المحلي بعد إعداد رمز الوصول.";
     runtimeApiStatus.className = "runtime-api-status pending";
   } finally {
     runtimeCheckButton.disabled = false;
+  }
+}
+
+async function probeModel() {
+  const token = runtimeTokenInput.value.trim();
+  if (!token) {
+    runtimeApiStatus.textContent = "أدخل رمز الوصول المحلي. لا تضع مفتاح النموذج في هذا الحقل.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+    return;
+  }
+  modelProbeButton.disabled = true;
+  modelProbeButton.textContent = "جارٍ اختبار اتصال النموذج...";
+  try {
+    const result = await authorizedPost("/api/model/probe", {});
+    if (result.status !== "VERIFIED" || result.scope !== "synthetic_connectivity_only") {
+      throw new Error("لم يتم إثبات اتصال النموذج.");
+    }
+    runtimeApiStatus.textContent = "اتصال النموذج VERIFIED للاختبار الاصطناعي فقط. لم يُرسل سياق المستخدم ولم تُنفّذ أدوات.";
+    runtimeApiStatus.className = "runtime-api-status ready";
+  } catch (error) {
+    runtimeApiStatus.textContent = error.message || "فشل اختبار اتصال النموذج؛ راجع إعدادات الخادم.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+  } finally {
+    modelProbeButton.disabled = false;
+    modelProbeButton.textContent = "اختبار اتصال النموذج";
   }
 }
 
@@ -316,6 +342,7 @@ async function planWithRuntime() {
 }
 
 runtimeCheckButton.addEventListener("click", checkRuntime);
+modelProbeButton.addEventListener("click", probeModel);
 agentPlanButton.addEventListener("click", planWithRuntime);
 window.addEventListener("pagehide", () => {
   runtimeTokenInput.value = "";
