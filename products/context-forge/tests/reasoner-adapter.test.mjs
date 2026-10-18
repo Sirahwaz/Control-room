@@ -155,3 +155,53 @@ test("rejects query strings and embedded credentials in provider URLs", () => {
     allowContextTransmission: true
   }), /query parameters/i);
 });
+
+
+test("blocks bearer credentials and JWT-like values before provider transmission", async () => {
+  let called = false;
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "https://provider.example/v1",
+    apiKey: "test-key",
+    model: "test-model",
+    allowContextTransmission: true,
+    fetchImpl: async () => { called = true; return { ok: true, json: async () => validResponse }; }
+  });
+  for (const text of [
+    "Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123456789",
+    "session=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature-value"
+  ]) {
+    await assert.rejects(reasoner.plan({ goal: "Review context", context: { note: text } }), /sensitive material blocked/i);
+  }
+  assert.equal(called, false);
+});
+
+test("suppresses provider network exception details that may contain credentials", async () => {
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "http://127.0.0.1:11434/v1",
+    apiKey: "local-placeholder",
+    model: "local-model",
+    fetchImpl: async () => { throw new Error("socket failed Authorization: Bearer super-secret-value-123456789"); }
+  });
+  await assert.rejects(reasoner.plan({ goal: "Test" }), (error) => {
+    assert.match(error.message, /details were suppressed/i);
+    assert.doesNotMatch(error.message, /super-secret-value/);
+    return true;
+  });
+});
+
+test("aborts a stalled provider request and reports a bounded timeout", async () => {
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "http://127.0.0.1:11434/v1",
+    apiKey: "local-placeholder",
+    model: "local-model",
+    timeoutMs: 1000,
+    fetchImpl: async (_url, options) => await new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true });
+    })
+  });
+  await assert.rejects(reasoner.plan({ goal: "Test timeout" }), (error) => error.name === "TimeoutError");
+});
