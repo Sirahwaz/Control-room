@@ -357,3 +357,38 @@ test("health response never exposes configured model API credentials", async () 
     assert.doesNotMatch(body, new RegExp(modelSecret));
   });
 });
+
+
+test("sensitive context is blocked before model transmission and cycle memory save", async () => {
+  let providerCalled = false;
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: "local-placeholder",
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: async () => {
+      providerCalled = true;
+      return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [{ tool: "inspect_context", input: {}, expectedOutcome: "safe" }] }) } }] }) };
+    }
+  }, async (base) => {
+    const headers = { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN };
+    const response = await fetch(base + "/api/agent/cycle", {
+      method: "POST", headers,
+      body: JSON.stringify({
+        goal: "Review this note safely",
+        contextText: "Context includes Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123456789"
+      })
+    });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(providerCalled, false);
+    assert.equal(body.taskStatus, "PENDING");
+    assert.equal(body.stages.memory.status, "NOT_SAVED");
+    assert.doesNotMatch(JSON.stringify(body), /abcdefghijklmnopqrstuvwxyz0123456789/);
+    const memory = await (await fetch(base + "/api/memory/list", {
+      method: "POST", headers, body: JSON.stringify({})
+    })).json();
+    assert.equal(memory.count, 0);
+  });
+});
