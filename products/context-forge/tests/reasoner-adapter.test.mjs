@@ -3,9 +3,17 @@ import assert from "node:assert/strict";
 import { createOpenAICompatibleReasoner } from "../reasoner-adapter.mjs";
 
 const validResponse = {
-  choices: [{ message: { content: JSON.stringify({
-    steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "Source is read" }]
-  }) } }]
+  choices: [{
+    message: {
+      content: JSON.stringify({
+        steps: [{
+          tool: "read_project",
+          input: { path: "README.md" },
+          expectedOutcome: "Source is read"
+        }]
+      })
+    }
+  }]
 };
 
 test("requires endpoint, key and model configuration", () => {
@@ -59,17 +67,51 @@ test("rejects malformed planner JSON and non-object tool input", async () => {
     baseUrl: "http://127.0.0.1:11434/v1",
     apiKey: "local-placeholder",
     model: "local-model",
-    fetchImpl: async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: "not-json" } }] }) })
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "not-json" } }] })
+    })
   });
   await assert.rejects(malformed.plan({ goal: "Test" }), /valid JSON/i);
 
+  const invalidInputResponse = {
+    choices: [{
+      message: {
+        content: JSON.stringify({
+          steps: [{ tool: "read_project", input: "shell command" }]
+        })
+      }
+    }]
+  };
   const invalidShape = createOpenAICompatibleReasoner({
     baseUrl: "http://localhost:11434/v1",
     apiKey: "local-placeholder",
     model: "local-model",
-    fetchImpl: async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [{ tool: "read_project", input: "shell command" }] }) } }] }) })
+    fetchImpl: async () => ({ ok: true, json: async () => invalidInputResponse })
   });
-  await assert.rejects(invalidShape.plan({ goal: "Test" }), /input must be a JSON object/i);
+  await assert.rejects(invalidShape.plan({
+    goal: "Test",
+    tools: [{ name: "read_project", effect: "read", enabled: true }]
+  }), /input must be a JSON object/i);
+});
+
+test("rejects tools that are not in the caller-provided allow-list", async () => {
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "http://127.0.0.1:11434/v1",
+    apiKey: "local-placeholder",
+    model: "local-model",
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({ steps: [{ tool: "run_shell", input: {} }] })
+          }
+        }]
+      })
+    })
+  });
+  await assert.rejects(reasoner.plan({ goal: "Test", tools: [] }), /unregistered tool/i);
 });
 
 test("does not expose response bodies on provider errors", async () => {
