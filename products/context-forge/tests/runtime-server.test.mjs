@@ -317,3 +317,43 @@ test("agent cycle cannot claim task completion from dry-run planning alone", asy
     assert.equal(body.executionMode, "dry_run");
   });
 });
+
+
+test("provider failures return a sanitized error and never persist context or provider secrets", async () => {
+  const providerSecret = "provider-private-error-token-987654321";
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: "local-placeholder",
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: async () => { throw new Error("provider internals " + providerSecret); }
+  }, async (base) => {
+    const response = await fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
+      body: JSON.stringify({ goal: "Test provider failure", contextText: "Private user context must not be echoed." })
+    });
+    const body = await response.json();
+    assert.equal(response.status, 502);
+    assert.equal(body.code, "PLANNER_FAILED");
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(providerSecret));
+    assert.doesNotMatch(JSON.stringify(body), /Private user context/);
+  });
+});
+
+test("health response never exposes configured model API credentials", async () => {
+  const modelSecret = "test-model-secret-never-return-this";
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: modelSecret,
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    }
+  }, async (base) => {
+    const response = await fetch(base + "/api/health");
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(body, new RegExp(modelSecret));
+  });
+});
