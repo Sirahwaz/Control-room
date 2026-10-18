@@ -171,7 +171,7 @@ export function createOpenAICompatibleReasoner({
         }
         return validatePlan(content, tools, boundedMaxSteps);
       } catch (error) {
-        if (error?.name === "TimeoutError") throw error;
+        if (error?.name === "TimeoutError") throw error;\n        if (parentSignal?.aborted) {\n          const abortError = new Error("Reasoner request aborted.");\n          abortError.name = "AbortError";\n          throw abortError;\n        }
         if (error?.message?.startsWith("Reasoner provider returned HTTP ")) throw error;
         if (error?.message?.startsWith("Provider did not return")
             || error?.message?.startsWith("Planner JSON")
