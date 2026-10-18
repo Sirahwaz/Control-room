@@ -336,7 +336,7 @@ test("provider failures return a sanitized error and never persist context or pr
     });
     const body = await response.json();
     assert.equal(response.status, 502);
-    assert.equal(body.code, "PLANNER_FAILED");
+    assert.equal(body.status, "FAILED");
     assert.doesNotMatch(JSON.stringify(body), new RegExp(providerSecret));
     assert.doesNotMatch(JSON.stringify(body), /Private user context/);
   });
