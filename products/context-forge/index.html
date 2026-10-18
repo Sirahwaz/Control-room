@@ -85,9 +85,9 @@
     <section class="panel runtime-panel">
       <div class="panel-heading">
         <div><span class="step">03</span><h2>النواة المعرفية والوكيل</h2></div>
-        <span class="status-chip pending">Runtime غير مفعّل</span>
+        <span id="runtime-status-chip" class="status-chip pending">فحص الاتصال...</span>
       </div>
-      <p class="muted">التصميم يستهدف وكيلًا عامّ الغرض ضمن صلاحيات واضحة، لكن هذه النسخة لا تدّعي أنها AGI ولا تنفذ استدعاءات لنماذج أو أدوات خارجية.</p>
+      <p class="muted">واجهة اختيارية للنواة المحلية. مفتاح مزوّد النموذج يبقى في بيئة الخادم، بينما رمز الوصول المحلي يُستخدم في هذه التبويبة فقط ولا يُحفظ في التخزين الدائم.</p>
       <div class="runtime-steps">
         <div class="runtime-step active"><span>1</span><strong>Context</strong><small>منفذ محليًا</small></div>
         <div class="runtime-connector"></div>
@@ -98,11 +98,27 @@
         <div class="runtime-step"><span>4</span><strong>Observe & evaluate</strong><small>اختبارات قبل التوسع</small></div>
       </div>
       <div class="runtime-note"><span aria-hidden="true">ⓘ</span><div><strong>ما المقصود بـ AGI واقعي هنا؟</strong><p>نبني تدريجيًا قدرات التخطيط، واستدعاء الأدوات، والذاكرة ذات المنشأ، والتقييم الذاتي، والتعافي المحدود من الأخطاء. هذه هندسة لوكيل أكثر عمومية وقابل للتحقق، وليست إثباتًا لتحقيق ذكاء عام بمستوى الإنسان.</p></div></div>
+      <div class="runtime-console">
+        <div class="section-title"><h3>تشغيل مخطّط محلي (Dry-run)</h3><span class="mini-tag">لا ينفّذ أدوات خارجية</span></div>
+        <label class="runtime-label" for="runtime-token">رمز الوصول المحلي <span>لا تضع هنا مفتاح النموذج</span></label>
+        <input id="runtime-token" class="runtime-input" type="password" autocomplete="off" spellcheck="false" placeholder="ألصق CONTEXT_FORGE_RUNTIME_TOKEN لهذه الجلسة فقط">
+        <label class="runtime-label" for="agent-goal">هدف الوكيل</label>
+        <textarea id="agent-goal" class="goal-editor" spellcheck="false" placeholder="مثال: حلّل السياق، حدّد المعلومات الناقصة، وأنشئ خطة تحقق."></textarea>
+        <div class="button-row">
+          <button id="runtime-check-button" class="button secondary">فحص النواة</button>
+          <button id="agent-plan-button" class="button primary">خطّط باستخدام النموذج</button>
+        </div>
+        <div id="runtime-api-status" class="runtime-api-status" role="status">لم يتم الاتصال بعد.</div>
+        <div id="agent-plan-result" class="agent-plan-result" hidden>
+          <div class="section-title"><h3>خطة مقترحة</h3><span id="agent-plan-badge" class="mini-tag">DRY_RUN</span></div>
+          <pre id="agent-plan-output" dir="ltr"></pre>
+        </div>
+      </div>
     </section>
 
     <footer>
       <span>Context Forge · Independent product path</span>
-      <span>v0.1 · No model calls · No external actions · No server persistence</span>
+      <span>v0.1 · Optional local model adapter · Dry-run planning only · No external actions</span>
     </footer>
   </main>
 </body>
