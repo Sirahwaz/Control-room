@@ -169,3 +169,141 @@ test("requires a strong local runtime token at startup", () => {
     auditWriter: async () => {}
   }), /at least 32 characters/i);
 });
+
+test("memory API saves, searches, and lists provenance-tagged notes", async () => {
+  await withServer({}, async (base) => {
+    const headers = { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN };
+    const savedResponse = await fetch(base + "/api/memory/save", {
+      method: "POST", headers,
+      body: JSON.stringify({ text: "Remember that context provenance is important.", sourceLabel: "test source" })
+    });
+    assert.equal(savedResponse.status, 201);
+    const saved = await savedResponse.json();
+    assert.equal(saved.memory.status, "PENDING");
+    assert.equal(saved.memory.source.type, "user_input");
+    assert.equal(saved.message.includes("not independently verified"), true);
+
+    const searchResponse = await fetch(base + "/api/memory/search", {
+      method: "POST", headers,
+      body: JSON.stringify({ query: "context provenance" })
+    });
+    const searched = await searchResponse.json();
+    assert.equal(searchResponse.status, 200);
+    assert.ok(searched.records.some((record) => record.id === saved.memory.id));
+
+    const listResponse = await fetch(base + "/api/memory/list", {
+      method: "POST", headers,
+      body: JSON.stringify({ limit: 20 })
+    });
+    const listed = await listResponse.json();
+    assert.equal(listResponse.status, 200);
+    assert.ok(listed.records.some((record) => record.id === saved.memory.id));
+  });
+});
+
+test("memory API rejects likely secret material without persisting the note", async () => {
+  await withServer({}, async (base) => {
+    const headers = { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN };
+    const response = await fetch(base + "/api/memory/save", {
+      method: "POST", headers,
+      body: JSON.stringify({ text: "api_key=sk-abcdefghijklmnopqrstuvwxyz123456" })
+    });
+    const body = await response.json();
+    assert.equal(response.status, 400);
+    assert.equal(body.code, "SENSITIVE_MATERIAL_BLOCKED");
+
+    const list = await (await fetch(base + "/api/memory/list", {
+      method: "POST", headers, body: JSON.stringify({})
+    })).json();
+    assert.equal(list.count, 0);
+  });
+});
+
+test("agent cycle performs Context and Plan, verifies plan policy, saves Memory, and emits Learn signals", async () => {
+  const mockFetch = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    const allowedTools = JSON.parse(request.messages[1].content).tools;
+    assert.ok(allowedTools.some((tool) => tool.name === "inspect_context"));
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              steps: [{
+                tool: "inspect_context",
+                input: {},
+                expectedOutcome: "Context diagnostics are returned"
+              }]
+            })
+          }
+        }]
+      })
+    };
+  };
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: "local-placeholder",
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: mockFetch
+  }, async (base) => {
+    const headers = { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN };
+    const response = await fetch(base + "/api/agent/cycle", {
+      method: "POST", headers,
+      body: JSON.stringify({
+        goal: "Check whether context has clear success criteria",
+        contextText: "Goal: Validate the context package\nConstraint: Do not expose secrets\nEvidence: local test fixture"
+      })
+    });
+    const cycle = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(cycle.stages.context.status, "VERIFIED");
+    assert.equal(cycle.stages.plan.status, "PLANNED");
+    assert.equal(cycle.stages.verify.status, "VERIFIED");
+    assert.equal(cycle.stages.verify.scope, "plan_policy_only");
+    assert.equal(cycle.stages.memory.status, "SAVED");
+    assert.equal(cycle.stages.learn.status, "INFERRED");
+    assert.equal(cycle.taskStatus, "PENDING");
+    assert.equal(cycle.executionMode, "dry_run");
+    assert.ok(cycle.memoryId);
+
+    const memoryResponse = await fetch(base + "/api/memory/list", {
+      method: "POST", headers, body: JSON.stringify({ limit: 50 })
+    });
+    const memory = await memoryResponse.json();
+    assert.ok(memory.records.some((record) => record.id === cycle.memoryId && record.recordType === "agent_cycle"));
+
+    const learnedResponse = await fetch(base + "/api/agent/learn", {
+      method: "POST", headers, body: JSON.stringify({ limit: 20 })
+    });
+    const learned = await learnedResponse.json();
+    assert.equal(learned.status, "INFERRED");
+    assert.ok(learned.cyclesAnalyzed >= 1);
+    assert.equal(learned.executionMode, "dry_run");
+  });
+});
+
+test("agent cycle cannot claim task completion from dry-run planning alone", async () => {
+  await withServer({
+    env: {
+      CONTEXT_FORGE_MODEL_BASE_URL: "http://127.0.0.1:11434/v1",
+      CONTEXT_FORGE_MODEL_API_KEY: "local-placeholder",
+      CONTEXT_FORGE_MODEL: "local-test-model"
+    },
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: JSON.stringify({ steps: [] }) } }] })
+    })
+  }, async (base) => {
+    const response = await fetch(base + "/api/agent/cycle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + TEST_TOKEN },
+      body: JSON.stringify({ goal: "Test no false completion", contextText: "Goal: test" })
+    });
+    const body = await response.json();
+    assert.notEqual(body.taskStatus, "COMPLETED");
+    assert.equal(body.executionMode, "dry_run");
+  });
+});
