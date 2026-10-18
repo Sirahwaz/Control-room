@@ -123,3 +123,35 @@ test("does not expose response bodies on provider errors", async () => {
   });
   await assert.rejects(reasoner.plan({ goal: "Test" }), /HTTP 429/);
 });
+
+test("blocks obvious credential material before invoking a provider", async () => {
+  let called = false;
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "https://provider.example/v1",
+    apiKey: "test-key",
+    model: "test-model",
+    allowContextTransmission: true,
+    fetchImpl: async () => { called = true; return { ok: true, json: async () => validResponse }; }
+  });
+  await assert.rejects(reasoner.plan({
+    goal: "Inspect safely",
+    context: { apiKey: "sk-abcdefghijklmnopqrstuvwxyz123456" },
+    tools: [{ name: "read_project", effect: "read", enabled: true }]
+  }), /sensitive material blocked/i);
+  assert.equal(called, false);
+});
+
+test("rejects query strings and embedded credentials in provider URLs", () => {
+  assert.throws(() => createOpenAICompatibleReasoner({
+    baseUrl: "https://user:pass@provider.example/v1",
+    apiKey: "test-key",
+    model: "test-model",
+    allowContextTransmission: true
+  }), /Credentials must not be embedded/i);
+  assert.throws(() => createOpenAICompatibleReasoner({
+    baseUrl: "https://provider.example/v1?api_key=do-not-use",
+    apiKey: "test-key",
+    model: "test-model",
+    allowContextTransmission: true
+  }), /query parameters/i);
+});
