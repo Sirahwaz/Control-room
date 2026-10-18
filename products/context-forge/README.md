@@ -21,7 +21,7 @@ Context Forge is an independent Context Engineering workbench for developers bui
 
 ## Honest capability boundary
 
-This is **not AGI** and the current preview does not make live model calls or provide active external tool adapters. The context engine uses deterministic rules; the reasoner adapter is implemented but not configured or connected to the browser UI. The agent kernel is a tested orchestration boundary awaiting provider configuration and explicitly registered tool implementations. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
+This is **not AGI** and the current preview does not make live model calls or provide active external tool adapters. The context engine uses deterministic rules; the reasoner adapter is wired to the authenticated local planner UI, but no model endpoint or provider key is configured in this repository. The agent kernel is a tested orchestration boundary awaiting provider configuration and explicitly registered tool implementations. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
 
 The long-term direction is a more general agent system with goal decomposition, model-agnostic reasoning, capability-limited tool use, evidence-linked memory, evaluation, and bounded recovery. See AGENT_RUNTIME_SPEC.md for the architecture contract and release gates. Capabilities are not represented as active until their adapters and runtime tests exist.
 
