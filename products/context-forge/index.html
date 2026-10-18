@@ -106,9 +106,25 @@
         <textarea id="agent-goal" class="goal-editor" spellcheck="false" placeholder="مثال: حلّل السياق، حدّد المعلومات الناقصة، وأنشئ خطة تحقق."></textarea>
         <div class="button-row">
           <button id="runtime-check-button" class="button secondary">فحص النواة</button>
-          <button id="agent-plan-button" class="button primary">خطّط باستخدام النموذج</button>
+          <button id="agent-plan-button" class="button primary">شغّل دورة Context → Plan → Verify → Memory → Learn</button>
         </div>
         <div id="runtime-api-status" class="runtime-api-status" role="status">لم يتم الاتصال بعد.</div>
+        <div class="memory-console">
+          <div class="section-title"><h3>الذاكرة والتعلّم</h3><span class="mini-tag">مصدر + حالة + دليل</span></div>
+          <div class="button-row">
+            <button id="memory-save-button" class="button secondary">حفظ السياق كملاحظة</button>
+            <button id="learn-report-button" class="button secondary">تقرير التعلّم</button>
+          </div>
+          <label class="runtime-label" for="memory-query">البحث في الذاكرة</label>
+          <div class="memory-search-row">
+            <input id="memory-query" class="runtime-input" type="text" autocomplete="off" placeholder="ابحث عن قرار أو ملاحظة سابقة">
+            <button id="memory-search-button" class="button secondary">بحث</button>
+          </div>
+          <div id="memory-api-status" class="runtime-api-status" role="status">لا تحفظ الملاحظات إلا عند الضغط صراحةً على زر الحفظ.</div>
+          <div id="memory-results" hidden>
+            <pre id="memory-output" dir="ltr"></pre>
+          </div>
+        </div>
         <div id="agent-plan-result" class="agent-plan-result" hidden>
           <div class="section-title"><h3>خطة مقترحة</h3><span id="agent-plan-badge" class="mini-tag">DRY_RUN</span></div>
           <pre id="agent-plan-output" dir="ltr"></pre>
