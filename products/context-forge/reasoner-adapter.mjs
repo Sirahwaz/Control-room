@@ -1,4 +1,14 @@
-const HIGH_RISK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const HIGH_RISK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+const SENSITIVE_PATTERNS = [
+  { label: "private-key block", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i },
+  { label: "common API-token pattern", pattern: /(?:\bsk-[A-Za-z0-9_-]{20,}\b|\bAIza[0-9A-Za-z_-]{20,}\b|\bgh[pousr]_[A-Za-z0-9_]{20,}\b|\bAKIA[0-9A-Z]{16}\b)/ },
+  { label: "blockchain private-key pattern", pattern: /\b0x[a-fA-F0-9]{64}\b/ },
+  { label: "named secret assignment", pattern: /(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|private[_ -]?key|secret|mnemonic|recovery phrase|seed phrase)\s*["']?\s*[:=]\s*["']?[^,\s"'<>]{8,}/i }
+];
+
+function detectSensitiveMaterial(serializedContext) {
+  return SENSITIVE_PATTERNS.find(({ pattern }) => pattern.test(serializedContext))?.label ?? null;
+}
 
 function normalizeBaseUrl(value) {
   if (typeof value !== "string" || !value.trim()) {
@@ -15,6 +25,9 @@ function normalizeBaseUrl(value) {
   }
   if (parsed.username || parsed.password) {
     throw new TypeError("Credentials must not be embedded in baseUrl.");
+  }
+  if (parsed.search || parsed.hash) {
+    throw new TypeError("baseUrl must not include query parameters or a fragment.");
   }
   const clean = value.trim().replace(/\/+$/, "");
   return clean.endsWith("/chat/completions") ? clean : `${clean}/chat/completions`;
@@ -93,6 +106,16 @@ export function createOpenAICompatibleReasoner({
       if (typeof goal !== "string" || !goal.trim()) {
         throw new TypeError("A non-empty goal is required.");
       }
+      let userMessage;
+      try {
+        userMessage = JSON.stringify({ goal, context, tools });
+      } catch {
+        throw new TypeError("Goal, context, and tool manifests must be JSON-serializable.");
+      }
+      const sensitiveLabel = detectSensitiveMaterial(userMessage);
+      if (sensitiveLabel) {
+        throw new Error("Potential sensitive material blocked from model transmission (" + sensitiveLabel + "). Remove it or use a reviewed local workflow.");
+      }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), boundedTimeout);
       const systemMessage = [
@@ -104,7 +127,6 @@ export function createOpenAICompatibleReasoner({
         `Use at most ${boundedMaxSteps} steps. Tool input must be a JSON object.`,
         "Do not include credentials, secrets, hidden reasoning, or unsupported claims."
       ].join("\n");
-      const userMessage = JSON.stringify({ goal, context, tools });
       const body = {
         model,
         temperature,
