@@ -273,3 +273,17 @@ test("one-use approval must be consumed by the trusted store before an impactful
   assert.equal(executed, false);
   assert.match(result.reason, /approval verification failed/i);
 });
+
+test("execute mode blocks when no audit sink is configured", async () => {
+  let executed = false;
+  const result = await runBoundedAgent({
+    goal: "Read a source",
+    mode: "execute",
+    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "read completed" }] }) },
+    toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; return { content: "ok" }; } } },
+    verifyStep: async () => ({ verified: true, evidence: "test-evidence" })
+  });
+  assert.equal(result.status, "BLOCKED");
+  assert.equal(executed, false);
+  assert.match(result.reason, /audit sink/i);
+});
