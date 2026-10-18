@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { compileContext } from "./context-engine.mjs";
 import { runBoundedAgent } from "./agent-kernel.mjs";
 import { createOpenAICompatibleReasoner } from "./reasoner-adapter.mjs";
+import { createMemoryStore } from "./memory-store.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const MAX_BODY_BYTES = 128 * 1024;
@@ -101,6 +102,11 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
   const audit = auditWriter || (async (event) => {
     await mkdir(dirname(auditFile), { recursive: true, mode: 0o700 });
     await appendFile(auditFile, JSON.stringify(event) + "\n", { encoding: "utf8", mode: 0o600 });
+  });
+  const memoryFile = resolve(env.CONTEXT_FORGE_MEMORY_PATH || resolve(process.cwd(), ".context-forge", "memory.jsonl"));
+  const memoryStore = createMemoryStore({
+    filePath: memoryFile,
+    ownerId: env.CONTEXT_FORGE_OWNER_ID || "local-user"
   });
 
   return createServer(async (request, response) => {
