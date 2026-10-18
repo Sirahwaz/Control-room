@@ -206,6 +206,253 @@ export function createContextForgeServer({ env = process.env, fetchImpl = global
         return;
       }
 
+      if (url.pathname === "/api/agent/cycle") {
+        if (typeof body?.goal !== "string" || !body.goal.trim() || body.goal.length > 2000) {
+          json(response, 400, { error: "goal must be a non-empty string under 2000 characters." });
+          return;
+        }
+        if (typeof body?.contextText !== "string" || body.contextText.length > 100000) {
+          json(response, 400, { error: "contextText must be a string under 100000 characters." });
+          return;
+        }
+        const reasoner = makeReasoner(env, fetchImpl);
+        if (!reasoner) {
+          json(response, 503, {
+            code: "REASONER_NOT_CONFIGURED",
+            error: "No usable model provider is configured. The cycle remains pending."
+          });
+          return;
+        }
+
+        const contextPackage = compileContext(body.contextText);
+        let relatedMemory;
+        try {
+          relatedMemory = await memoryStore.search(body.goal.slice(0, 500), { limit: 5 });
+        } catch {
+          json(response, 500, { code: "MEMORY_RETRIEVAL_FAILED", error: "Memory retrieval failed closed; planning was not started." });
+          return;
+        }
+        const memoryForReasoner = relatedMemory.map((record) => ({
+          id: record.id,
+          text: record.text,
+          status: record.status,
+          recordType: record.recordType || "user_note",
+          source: { type: record.source?.type || "unknown", label: record.source?.label || "unlabeled" }
+        }));
+        const toolRegistry = {
+          inspect_context: {
+            manifest: {
+              name: "inspect_context",
+              enabled: true,
+              effect: "read",
+              description: "Inspect the current context package and summary counts only. No external filesystem, network, or account access."
+            },
+            execute: async () => ({
+              claimCount: contextPackage.claims.length,
+              decisionCount: contextPackage.decisions.length,
+              constraintCount: contextPackage.constraints.length,
+              openQuestionCount: contextPackage.openQuestions.length,
+              possibleConflictCount: contextPackage.conflicts.length
+            })
+          }
+        };
+
+        let result;
+        try {
+          result = await runBoundedAgent({
+            goal: body.goal,
+            context: { contextPackage, relevantMemory: memoryForReasoner },
+            reasoner,
+            toolRegistry,
+            mode: "dry_run",
+            audit
+          });
+        } catch {
+          json(response, 502, { code: "PLANNER_FAILED", error: "Planning failed; details were withheld and no memory cycle was saved." });
+          return;
+        }
+
+        const policyChecks = [
+          { code: "NON_EMPTY_PLAN", passed: result.steps.length > 0 },
+          { code: "TOOLS_ALLOWLISTED", passed: result.steps.every((step) => Boolean(toolRegistry[step.tool]?.manifest?.enabled)) },
+          { code: "DRY_RUN_ONLY", passed: result.steps.every((step) => step.status === "DRY_RUN") },
+          { code: "INPUTS_SCHEMA_VALID", passed: result.steps.every((step) => step.plannedInput && typeof step.plannedInput === "object" && !Array.isArray(step.plannedInput)) },
+          { code: "EXPECTED_OUTCOME_SCHEMA_VALID", passed: result.steps.every((step) => typeof step.expectedOutcome === "string") }
+        ];
+        const planVerified = result.status === "PLANNED"
+          && policyChecks.every((check) => check.passed);
+        const planId = createHash("sha256")
+          .update(JSON.stringify({
+            goal: body.goal,
+            contextHash: createHash("sha256").update(body.contextText).digest("hex"),
+            steps: result.steps.map((step) => ({
+              tool: step.tool,
+              status: step.status,
+              expectedOutcome: step.expectedOutcome,
+              effect: step.effect
+            }))
+          }))
+          .digest("hex")
+          .slice(0, 24);
+
+        if (!planVerified) {
+          json(response, 200, {
+            planId,
+            taskStatus: "PENDING",
+            executionMode: "dry_run",
+            externalActionsEnabled: false,
+            stages: {
+              context: { status: "VERIFIED", claims: contextPackage.claims.length, warnings: contextPackage.warnings.length },
+              plan: { status: result.status, attempts: result.attempts },
+              verify: { status: "PENDING", scope: "plan_policy_only", checks: policyChecks },
+              memory: { status: "NOT_SAVED" },
+              learn: { status: "PENDING", reason: "A plan must pass deterministic policy checks before learning metadata is stored." }
+            },
+            steps: result.steps,
+            reason: result.reason
+          });
+          return;
+        }
+
+        const contextHash = createHash("sha256").update(body.contextText).digest("hex");
+        const stepsWithExpectedOutcome = result.steps.filter((step) => step.expectedOutcome.trim().length > 0).length;
+        const recommendations = [];
+        if (stepsWithExpectedOutcome < result.steps.length) {
+          recommendations.push("Add expected outcomes for every planned step.");
+        }
+        if (contextPackage.conflicts.length > 0) {
+          recommendations.push("Resolve pending context conflicts before authorizing any action.");
+        }
+        if (contextPackage.openQuestions.length > 0) {
+          recommendations.push("Resolve open questions that materially affect the requested goal.");
+        }
+        if (relatedMemory.length === 0) {
+          recommendations.push("Add source-linked memory notes when durable project context is needed.");
+        }
+        if (recommendations.length === 0) {
+          recommendations.push("Keep the workflow in dry-run until the intended outcome can be independently verified.");
+        }
+        const learning = {
+          status: "INFERRED",
+          signals: {
+            stepCount: result.steps.length,
+            stepsWithExpectedOutcome,
+            contextConflictCount: contextPackage.conflicts.length,
+            retrievedMemoryCount: relatedMemory.length
+          },
+          recommendations
+        };
+        const evidenceHash = createHash("sha256")
+          .update(JSON.stringify({
+            planId,
+            checks: policyChecks,
+            steps: result.steps.map((step) => ({
+              tool: step.tool,
+              expectedOutcome: step.expectedOutcome,
+              effect: step.effect
+            }))
+          }))
+          .digest("hex");
+
+        let memoryRecord;
+        try {
+          memoryRecord = await memoryStore.saveAgentCycle({
+            goal: body.goal,
+            contextHash,
+            planId,
+            planVerification: {
+              status: "VERIFIED",
+              scope: "plan_policy_only",
+              method: "deterministic_plan_policy",
+              evidenceHash,
+              checks: policyChecks
+            },
+            plannedSteps: result.steps.map((step) => ({
+              tool: step.tool,
+              effect: step.effect,
+              expectedOutcome: step.expectedOutcome
+            })),
+            relatedMemoryIds: relatedMemory.map((record) => record.id),
+            learning
+          });
+        } catch {
+          json(response, 500, {
+            code: "CYCLE_MEMORY_SAVE_FAILED",
+            planId,
+            taskStatus: "PENDING",
+            executionMode: "dry_run",
+            stages: {
+              context: { status: "VERIFIED" },
+              plan: { status: "PLANNED" },
+              verify: { status: "VERIFIED", scope: "plan_policy_only", checks: policyChecks },
+              memory: { status: "FAILED" },
+              learn: { status: "NOT_PERSISTED" }
+            },
+            error: "The plan passed policy checks, but the cycle record was not saved."
+          });
+          return;
+        }
+
+        try {
+          await audit({
+            event: "agent_cycle_saved",
+            planId,
+            memoryId: memoryRecord.id,
+            planVerification: "VERIFIED",
+            taskStatus: "PENDING",
+            learningStatus: "INFERRED"
+          });
+        } catch {
+          json(response, 500, {
+            code: "CYCLE_AUDIT_CONFIRMATION_FAILED",
+            planId,
+            memoryId: memoryRecord.id,
+            taskStatus: "PENDING",
+            executionMode: "dry_run",
+            error: "The cycle memory was saved but the final audit confirmation failed; reconcile before retry."
+          });
+          return;
+        }
+
+        json(response, 200, {
+          planId,
+          memoryId: memoryRecord.id,
+          taskStatus: "PENDING",
+          executionMode: "dry_run",
+          externalActionsEnabled: false,
+          relatedMemory: memoryForReasoner.map((record) => ({
+            id: record.id, status: record.status, recordType: record.recordType
+          })),
+          stages: {
+            context: {
+              status: "VERIFIED",
+              schemaVersion: contextPackage.schemaVersion,
+              claims: contextPackage.claims.length,
+              warnings: contextPackage.warnings.length
+            },
+            plan: { status: "PLANNED", attempts: result.attempts, stepCount: result.steps.length },
+            verify: { status: "VERIFIED", scope: "plan_policy_only", checks: policyChecks, evidenceHash },
+            memory: { status: "SAVED", recordId: memoryRecord.id, recordStatus: memoryRecord.status },
+            learn: { status: "INFERRED", recommendations, signals: learning.signals }
+          },
+          steps: result.steps.map((step) => ({
+            tool: step.tool,
+            status: step.status,
+            plannedInput: step.plannedInput,
+            effect: step.effect,
+            expectedOutcome: step.expectedOutcome
+          })),
+          contextDiagnostics: {
+            decisions: contextPackage.decisions.length,
+            constraints: contextPackage.constraints.length,
+            openQuestions: contextPackage.openQuestions.length,
+            possibleConflicts: contextPackage.conflicts.length
+          },
+          note: "Plan-policy verification is not task completion. No tools were executed."
+        });
+        return;
+      }
+
       if (url.pathname === "/api/agent/plan") {
         if (typeof body?.goal !== "string" || !body.goal.trim() || body.goal.length > 2000) {
           json(response, 400, { error: "goal must be a non-empty string under 2000 characters." });
