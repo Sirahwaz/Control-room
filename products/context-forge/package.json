@@ -6,7 +6,7 @@
   "description": "Provenance-first context engineering workbench and bounded agent-runtime foundation.",
   "scripts": {
     "test": "node --test ./tests/*.test.mjs",
-    "check": "node --check ./app.js && node --check ./context-engine.mjs && node --check ./agent-kernel.mjs"
+    "check": "node --check ./app.js && node --check ./context-engine.mjs && node --check ./agent-kernel.mjs && node --check ./reasoner-adapter.mjs"
   },
   "engines": {
     "node": ">=22"
