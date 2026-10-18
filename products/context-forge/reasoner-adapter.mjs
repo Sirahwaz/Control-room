@@ -115,9 +115,8 @@ export function createOpenAICompatibleReasoner({
       };
       if (jsonMode) body.response_format = { type: "json_object" };
 
-      let response;
       try {
-        response = await fetchImpl(endpoint, {
+        const response = await fetchImpl(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -126,7 +125,37 @@ export function createOpenAICompatibleReasoner({
           body: JSON.stringify(body),
           signal: controller.signal
         });
+        if (!response?.ok) {
+          throw new Error(`Reasoner provider returned HTTP ${Number(response?.status) || 0}.`);
+        }
+
+        let payload;
+        try {
+          payload = await response.json();
+        } catch {
+          if (controller.signal.aborted) {
+            const timeoutError = new Error("Reasoner request timed out.");
+            timeoutError.name = "TimeoutError";
+            throw timeoutError;
+          }
+          throw new Error("Reasoner provider returned an invalid response envelope.");
+        }
+        const content = payload?.choices?.[0]?.message?.content;
+        if (typeof content !== "string") {
+          throw new Error("Reasoner response did not contain a text plan.");
+        }
+        return validatePlan(content, tools, boundedMaxSteps);
       } catch (error) {
+        if (error?.name === "TimeoutError") throw error;
+        if (error?.message?.startsWith("Reasoner provider returned HTTP ")) throw error;
+        if (error?.message?.startsWith("Provider did not return")
+            || error?.message?.startsWith("Planner JSON")
+            || error?.message?.startsWith("Planner returned")
+            || error?.message?.startsWith("Each plan step")
+            || error?.message?.startsWith("Planner returned an")
+            || error?.message?.startsWith("Tool input")
+            || error?.message?.startsWith("Reasoner response")
+            || error?.message?.startsWith("Reasoner provider returned an")) throw error;
         if (controller.signal.aborted) {
           const timeoutError = new Error("Reasoner request timed out.");
           timeoutError.name = "TimeoutError";
@@ -136,20 +165,6 @@ export function createOpenAICompatibleReasoner({
       } finally {
         clearTimeout(timeoutId);
       }
-      if (!response?.ok) {
-        throw new Error(`Reasoner provider returned HTTP ${Number(response?.status) || 0}.`);
-      }
-      let payload;
-      try {
-        payload = await response.json();
-      } catch {
-        throw new Error("Reasoner provider returned an invalid response envelope.");
-      }
-      const content = payload?.choices?.[0]?.message?.content;
-      if (typeof content !== "string") {
-        throw new Error("Reasoner response did not contain a text plan.");
-      }
-      return validatePlan(content, tools, boundedMaxSteps);
     }
   };
 }
