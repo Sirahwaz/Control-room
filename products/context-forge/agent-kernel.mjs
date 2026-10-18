@@ -114,7 +114,7 @@ export async function runBoundedAgent({
   maxAttempts = 3,
   maxSteps = 8,
   timeoutMs = 10000,
-  audit = async () => {}
+  audit = null
 } = {}) {
   const normalizedGoal = typeof goal === "string" ? goal.trim() : "";
   if (!normalizedGoal) return makeResult("BLOCKED", normalizedGoal, 0, [], "A non-empty goal is required.");
@@ -122,6 +122,9 @@ export async function runBoundedAgent({
   if (mode !== "dry_run" && mode !== "execute") return makeResult("BLOCKED", normalizedGoal, 0, [], "Unsupported execution mode.");
   if (mode === "execute" && typeof verifyStep !== "function") {
     return makeResult("BLOCKED", normalizedGoal, 0, [], "Execution mode requires an independent result verifier; no tool was executed.");
+  }
+  if (mode === "execute" && typeof audit !== "function") {
+    return makeResult("BLOCKED", normalizedGoal, 0, [], "Execution mode requires a configured audit sink; no tool was executed.");
   }
 
   const planningLimit = clampInt(maxAttempts, 3, 1, 3);
