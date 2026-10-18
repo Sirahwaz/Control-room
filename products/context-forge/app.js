@@ -210,3 +210,107 @@ fileInput.addEventListener("change", async (event) => {
 $("#download-button").addEventListener("click", downloadJson);
 $("#copy-button").addEventListener("click", copyJson);
 updateCharCount();
+
+const runtimeTokenInput = $("#runtime-token");
+const runtimeStatusChip = $("#runtime-status-chip");
+const runtimeApiStatus = $("#runtime-api-status");
+const runtimeCheckButton = $("#runtime-check-button");
+const agentPlanButton = $("#agent-plan-button");
+const agentGoalInput = $("#agent-goal");
+const agentPlanResult = $("#agent-plan-result");
+const agentPlanBadge = $("#agent-plan-badge");
+const agentPlanOutput = $("#agent-plan-output");
+
+function setRuntimeStatus(message, state = "pending") {
+  runtimeStatusChip.textContent = message;
+  runtimeStatusChip.className = "status-chip " + state;
+}
+
+async function checkRuntime() {
+  runtimeCheckButton.disabled = true;
+  try {
+    const response = await fetch("/api/health", { method: "GET", cache: "no-store" });
+    if (!response.ok) throw new Error("runtime_unavailable");
+    const health = await response.json();
+    if (health.service !== "context-forge" || health.status !== "ok") {
+      throw new Error("unexpected_runtime");
+    }
+    setRuntimeStatus("النواة المحلية متصلة", "ready");
+    runtimeApiStatus.textContent = health.reasonerReady
+      ? "النواة متصلة ومزوّد التخطيط مضبوط. الخطة ستبقى Dry-run."
+      : "النواة متصلة، لكن مزوّد النموذج غير مضبوط أو غير مسموح بإرسال السياق إليه.";
+    runtimeApiStatus.className = "runtime-api-status " + (health.reasonerReady ? "ready" : "pending");
+  } catch {
+    setRuntimeStatus("النواة غير متصلة");
+    runtimeApiStatus.textContent = "لا توجد واجهة Runtime على هذا العنوان. شغّل الخادم المحلي بعد إعداد رمز الوصول.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+  } finally {
+    runtimeCheckButton.disabled = false;
+  }
+}
+
+async function planWithRuntime() {
+  const token = runtimeTokenInput.value.trim();
+  const goal = agentGoalInput.value.trim();
+  if (!token) {
+    runtimeApiStatus.textContent = "أدخل رمز الوصول المحلي. لا تضع مفتاح مزوّد النموذج في هذا الحقل.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+    return;
+  }
+  if (!goal) {
+    runtimeApiStatus.textContent = "اكتب هدفًا واضحًا للوكيل قبل التخطيط.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+    return;
+  }
+
+  agentPlanButton.disabled = true;
+  agentPlanButton.textContent = "جارٍ إعداد الخطة...";
+  agentPlanResult.hidden = true;
+  runtimeApiStatus.textContent = "إرسال الهدف والسياق إلى النواة المحلية. لم يبدأ تنفيذ أي أداة.";
+  runtimeApiStatus.className = "runtime-api-status";
+  try {
+    const response = await fetch("/api/agent/plan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ goal, contextText: source.value })
+    });
+    let body;
+    try {
+      body = await response.json();
+    } catch {
+      throw new Error("استجابة Runtime غير صالحة.");
+    }
+    if (!response.ok) {
+      runtimeApiStatus.textContent = body.error || "تعذر إعداد الخطة.";
+      runtimeApiStatus.className = "runtime-api-status pending";
+      if (body.code === "REASONER_NOT_CONFIGURED") {
+        setRuntimeStatus("النموذج غير مضبوط");
+      }
+      return;
+    }
+    agentPlanOutput.textContent = JSON.stringify(body, null, 2);
+    agentPlanBadge.textContent = body.status || "PENDING";
+    agentPlanBadge.className = "mini-tag";
+    agentPlanResult.hidden = false;
+    runtimeApiStatus.textContent = body.status === "PLANNED"
+      ? "تم إعداد خطة فقط. لم تُنفّذ أدوات خارجية ولم تُرسل معاملة."
+      : "حالة الخطة: " + String(body.status || "غير معروفة") + ". راجع التفاصيل قبل أي خطوة أخرى.";
+    runtimeApiStatus.className = "runtime-api-status " + (body.status === "PLANNED" ? "ready" : "pending");
+  } catch {
+    runtimeApiStatus.textContent = "فشل الاتصال بالنواة المحلية. تحقق من تشغيل الخادم والمسار ثم أعد الفحص.";
+    runtimeApiStatus.className = "runtime-api-status pending";
+  } finally {
+    agentPlanButton.disabled = false;
+    agentPlanButton.textContent = "خطّط باستخدام النموذج";
+  }
+}
+
+runtimeCheckButton.addEventListener("click", checkRuntime);
+agentPlanButton.addEventListener("click", planWithRuntime);
+window.addEventListener("pagehide", () => {
+  runtimeTokenInput.value = "";
+});
+checkRuntime();
