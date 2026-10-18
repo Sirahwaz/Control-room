@@ -227,7 +227,7 @@ test("never executes a high-impact tool without a trusted one-use approval consu
   let executed = false;
   const approval = {
     id: "approval-run-1", approved: true, toolName: "publish_release", effect: "publish",
-    actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+    actorId: "user-1", scope: "release:staging", expiresAt: "2099-10-18T12:05:00.000Z"
   };
   const result = await runBoundedAgent({
     goal: "Publish staging release",
@@ -252,7 +252,7 @@ test("one-use approval must be consumed by the trusted store before an impactful
   let executed = false;
   const approval = {
     id: "approval-run-2", approved: true, toolName: "publish_release", effect: "publish",
-    actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+    actorId: "user-1", scope: "release:staging", expiresAt: "2099-10-18T12:05:00.000Z"
   };
   const result = await runBoundedAgent({
     goal: "Publish staging release",
