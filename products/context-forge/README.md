@@ -13,13 +13,15 @@ Context Forge is an independent Context Engineering workbench for developers bui
 - Heuristic detection of a narrow class of explicit positive/negative conflicts.
 - JSON export and versionable schema.
 - A standalone HTML/CSS/ES-module frontend with no third-party runtime dependencies.
-- Testable engine behavior using Node's built-in test runner.
+- A bounded agent-kernel contract with planner injection, explicit tool registry, dry-run default, scoped approval for non-read effects, and audit fail-closed behavior.
+- Planning retries limited to three; tool failures do not trigger blind action replay.
+- Unit tests for context compilation and critical tool-policy boundaries.
 
 ## Honest capability boundary
 
-This is **not AGI** and it does not make model calls or autonomous external actions. The current engine uses deterministic rules. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
+This is **not AGI** and the current preview does not make model calls or provide active external tool adapters. The context engine uses deterministic rules; the agent kernel is a tested orchestration boundary awaiting a reasoner/model adapter and explicitly registered tool implementations. A lack of detected conflicts is not proof that the context is consistent, and source attribution is not the same as source verification.
 
-The product is designed as a foundation for increasingly general, bounded agents: goal decomposition, model-agnostic reasoning adapters, capability-limited tool use, evidence-linked memory, evaluation, and bounded recovery. Those capabilities are not represented as active until their adapters and runtime tests exist.
+The long-term direction is a more general agent system with goal decomposition, model-agnostic reasoning, capability-limited tool use, evidence-linked memory, evaluation, and bounded recovery. See AGENT_RUNTIME_SPEC.md for the architecture contract and release gates. Capabilities are not represented as active until their adapters and runtime tests exist.
 
 ## Local run
 
@@ -39,7 +41,9 @@ Then open http://localhost:8080/products/context-forge/ from the repository root
 - Claims from user input remain UNVERIFIED.
 - Each claim includes input type, line number, and captured timestamp.
 - Conflicts are candidates marked PENDING_REVIEW, never silently resolved.
-- Execution policy defaults to analysis_only; high-impact actions require explicit human approval.
+- Execution policy defaults to analysis_only; the agent kernel defaults to dry_run.
+- High-impact actions require scoped human approval in the kernel.
+- If audit logging fails before execution, the action is blocked.
 - This preview does not persist context to a server or browser storage.
 
 ## Roadmap toward a more general agent runtime
@@ -48,10 +52,10 @@ Then open http://localhost:8080/products/context-forge/ from the repository root
 Add source adapters, stable content hashes, expiry/validity metadata, duplicate detection, and explicit evidence links. Separate sourced facts, user claims, model inferences, and unresolved items.
 
 ### 2. Model-agnostic reasoning
-Define an adapter contract for model providers, structured output validation, token/cost budgets, timeouts, and provider fallbacks. Do not store API keys in context packages; inject credentials only on a trusted server or local runtime through an approved secret store.
+Define and implement adapters for model providers, structured output validation, token/cost budgets, timeouts, and provider fallback. Do not store API keys in context packages; inject credentials only on a trusted server or local runtime through an approved secret store.
 
 ### 3. Bounded planning and tool use
-Use a loop of **Observe → Plan → Policy Check → Execute → Verify → Learn**. Every tool has a capability manifest, typed input/output, idempotency policy, timeout, budget, and audit event. Start in dry-run/read-only mode. Gate payments, publishing, deletion, external messages, and other consequential actions behind human approval.
+Extend the existing contract into a loop of **Observe → Plan → Policy Check → Execute → Verify → Learn**. Every tool must have a capability manifest, typed input/output, idempotency policy, timeout, budget, and audit event. Start in dry-run/read-only mode. Gate payments, publishing, deletion, external messages, and other consequential actions behind scoped human approval.
 
 ### 4. Memory with provenance
 Use a versioned store with tenant isolation, source lineage, timestamps, confidence/status labels, deletion controls, and retrieval evaluation. Memory updates should be append/version based and reversible; no silent overwrites of prior decisions.
@@ -75,4 +79,5 @@ Keep the core independent from MIDAD, n8n, any specific model vendor, and any pa
 
 - Heuristics support only a narrow subset of natural-language patterns.
 - Semantic contradictions, temporal reasoning, cross-file provenance, retrieval, and model-based evaluation are not implemented yet.
-- No live model connection, login, multi-user service, persistent backend, APK, or hosted deployment is part of this initial commit.
+- The browser UI has no connected login, backend, or model adapter.
+- No authenticated multi-user service, persistent backend, APK, production deployment, billing, or revenue collection is part of this initial preview.
