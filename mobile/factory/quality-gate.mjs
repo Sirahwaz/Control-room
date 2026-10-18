@@ -51,6 +51,8 @@ for(const file of jsFiles){
 }
 
 if(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
+if(!cfg.quality?.required_gates?.includes("runtime_smoke")) fail("runtime_smoke must be a required Factory quality gate");
+if(cfg.quality?.optional_gates?.includes("runtime_smoke")) fail("runtime_smoke cannot be optional when APKs are released");
 
 const feedbackPreflight=spawnSync(process.execPath,[path.join(scriptDir,"agentation","preflight.mjs")],{cwd:root,encoding:"utf8"});
 if(feedbackPreflight.status!==0) fail(`Agentation integration preflight failed: ${feedbackPreflight.stderr||feedbackPreflight.stdout}`);
