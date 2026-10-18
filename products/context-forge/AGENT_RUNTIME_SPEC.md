@@ -89,14 +89,14 @@ Suggested release thresholds are product decisions, not assumptions: establish a
 
 ## 8. Stage gates
 
-- **P0 — Local deterministic core:** context compiler, provenance status, basic conflict candidates, bounded planner/tool kernel, tests. No network or model calls.
-- **P1 — Reasoning adapter:** one provider first, optional local adapter later; secrets remain outside the app bundle. Dry-run by default.
+- **P0 — Local deterministic core:** context compiler, provenance status, basic conflict candidates, bounded planner/tool kernel, local authenticated API, audit events, and tests. The API binds to loopback and only exposes dry-run planning.
+- **P1 — Reasoning adapter:** the OpenAI-compatible adapter and local planner UI are implemented. Live reasoning remains pending provider configuration and an end-to-end test. Secrets remain outside the app bundle; remote context transmission requires explicit opt-in. Dry-run by default.
 - **P2 — Read-only tool adapters:** explicit allow-list, typed schemas, timeout, audit, replay-safe tests.
 - **P3 — Durable context memory:** local database plus optional hosted adapter, tenant isolation, retention and deletion controls.
 - **P4 — Controlled write tools:** scoped approval UI, preflight and post-action verification. Never enable by default.
 - **P5 — Learning and evaluation:** golden tasks, error taxonomy, regression tests and bounded repair. No hidden self-modification or unreviewed production code changes.
 
-P0 source code can be tested without external API credentials. P1 and later remain BLOCKED until the provider, credentials mechanism, runtime environment, and budget are explicitly configured and verified.
+The deterministic compiler, policy kernel, local API, and mock-provider flows can be tested without external API credentials. Live reasoning remains PENDING until a provider endpoint, credential mechanism, runtime environment, permitted context scope, and budget are explicitly configured and verified.
 
 ## 9. Current implementation boundary
 
@@ -108,12 +108,15 @@ Implemented in this branch:
 - sanitized capability manifests passed to the planner; returned plans must use the provided tool allow-list;
 - bounded planner retries (maximum three);
 - explicit tool registry and dry-run default;
-- scoped approval for non-read effects;
-- audit-before-execution and fail-closed behavior when audit is unavailable;
-- unit tests for context compilation and critical policy boundaries.
+- independent result-verifier requirement before an execution can be reported as complete;
+- scoped, expiring high-impact approval requiring a trusted one-use approval consumer;
+- fail-closed execution when the audit sink is missing or unavailable;
+- authenticated loopback runtime with bounded request bodies and append-only JSONL event logging;
+- a same-origin local planner interface that never saves the runtime bearer token to persistent browser storage;
+- unit and HTTP contract tests, passing in the observed CI run.
 
 Not yet implemented:
-- configured/live language-model connection (adapter is source-complete but has not been invoked against a real provider);
+- configured/live language-model connection (adapter contract is tested with mocked provider responses but has not been invoked against a real provider);
 - real external tool adapters;
 - authenticated multi-user backend or durable memory;
 - mobile package, production signing, public deployment, billing, or revenue collection;
