@@ -27,15 +27,18 @@ The long-term direction is a more general agent system with goal decomposition, 
 
 ## Local run
 
-Requirements: Node.js 22+ and a static HTTP server (ES modules are generally blocked when opened directly via file://).
+Requirements: Node.js 22+. The integrated preview server binds to loopback only and requires a random runtime token with at least 32 characters.
 
 ~~~bash
+export CONTEXT_FORGE_RUNTIME_TOKEN="replace-with-a-random-64-character-token"
 npm test --prefix products/context-forge
 npm run check --prefix products/context-forge
-python3 -m http.server 8080
+npm start --prefix products/context-forge
 ~~~
 
-Then open http://localhost:8080/products/context-forge/ from the repository root.
+Open http://127.0.0.1:8787 and paste that runtime token into the local planner field. The browser UI does not save it to persistent storage. The runtime is dry-run only.
+
+To configure a model, set CONTEXT_FORGE_MODEL_BASE_URL, CONTEXT_FORGE_MODEL_API_KEY, and CONTEXT_FORGE_MODEL in the server environment. Local loopback providers are allowed without remote consent. Remote providers must use HTTPS and require CONTEXT_FORGE_ALLOW_REMOTE_CONTEXT=true. Review the context before opting in. Never put a provider key in the browser, source control, or exported context. The secret-pattern scanner is best-effort, not a complete guarantee.
 
 ## Package contract (v0.1)
 
