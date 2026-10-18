@@ -122,3 +122,89 @@ test("passes only sanitized tool manifests to the reasoner", async () => {
   }]);
   assert.equal(JSON.stringify(receivedTools).includes("must-not-reach-reasoner"), false);
 });
+
+test("requires identity, scope, and expiry for high-impact approval", () => {
+  const tool = { manifest: { name: "publish_release", enabled: true, effect: "publish" }, execute: async () => ({ ok: true }) };
+  const decision = authorizeToolCall({
+    toolName: "publish_release",
+    tool,
+    mode: "execute",
+    actorId: "user-1",
+    now: new Date("2026-10-18T12:00:00.000Z"),
+    approval: {
+      approved: true,
+      toolName: "publish_release",
+      effect: "publish",
+      actorId: "user-1",
+      scope: "release:staging",
+      expiresAt: "2026-10-18T12:05:00.000Z"
+    }
+  });
+  assert.equal(decision.status, "AUTHORIZED");
+  assert.equal(authorizeToolCall({
+    toolName: "publish_release",
+    tool,
+    mode: "execute",
+    actorId: "user-1",
+    now: new Date("2026-10-18T12:10:00.000Z"),
+    approval: {
+      approved: true,
+      toolName: "publish_release",
+      effect: "publish",
+      actorId: "user-1",
+      scope: "release:staging",
+      expiresAt: "2026-10-18T12:05:00.000Z"
+    }
+  }).status, "APPROVAL_REQUIRED");
+});
+
+test("does not execute a tool without a result verifier", async () => {
+  let executed = false;
+  const result = await runBoundedAgent({
+    goal: "Read a source",
+    mode: "execute",
+    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
+    toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; return { content: "ok" }; } } }
+  });
+  assert.equal(result.status, "BLOCKED");
+  assert.equal(executed, false);
+  assert.match(result.reason, /verifier/i);
+});
+
+test("marks executed tool output VERIFIED only when verifier returns evidence", async () => {
+  const result = await runBoundedAgent({
+    goal: "Read a source",
+    mode: "execute",
+    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
+    toolRegistry: { read_project: readTool },
+    verifyStep: async ({ output }) => ({ verified: true, evidence: "test-observation-001", summary: output.content })
+  });
+  assert.equal(result.status, "COMPLETED");
+  assert.equal(result.steps[0].verification.status, "VERIFIED");
+  assert.equal(result.steps[0].verification.evidence, "test-observation-001");
+});
+
+test("returns PENDING when a verifier cannot establish the expected outcome", async () => {
+  const result = await runBoundedAgent({
+    goal: "Read a source",
+    mode: "execute",
+    reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" }, expectedOutcome: "file content returned" }] }) },
+    toolRegistry: { read_project: readTool },
+    verifyStep: async () => ({ verified: false, reason: "Expected content marker not found" })
+  });
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.steps[0].status, "EXECUTED_UNVERIFIED");
+});
+
+test("blocks high-impact approval when the actor identity does not match", () => {
+  const tool = { manifest: { name: "publish_release", enabled: true, effect: "publish" }, execute: async () => ({ ok: true }) };
+  const decision = authorizeToolCall({
+    toolName: "publish_release", tool, mode: "execute", actorId: "user-2",
+    now: new Date("2026-10-18T12:00:00.000Z"),
+    approval: {
+      approved: true, toolName: "publish_release", effect: "publish", actorId: "user-1",
+      scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+    }
+  });
+  assert.equal(decision.status, "APPROVAL_REQUIRED");
+});
