@@ -142,7 +142,6 @@ test("oversized request body is rejected", async () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + TEST_TOKEN,
-        "Content-Length": String(140 * 1024)
       },
       body: JSON.stringify({ text: "x".repeat(140 * 1024) })
     });
