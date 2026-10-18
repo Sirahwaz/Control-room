@@ -40,7 +40,8 @@ test("unknown or unregistered tools are denied", async () => {
     goal: "Do a task",
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "unlisted_tool", input: {} }] }) },
-    toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; } } }
+    toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; } } },
+    verifyStep: async () => ({ verified: true, evidence: "test-evidence" })
   });
   assert.equal(result.status, "BLOCKED");
   assert.equal(result.steps[0].status, "DENIED");
@@ -94,6 +95,7 @@ test("audit failure blocks execution before a tool can run", async () => {
     mode: "execute",
     reasoner: { plan: async () => ({ steps: [{ tool: "read_project", input: { path: "README.md" } }] }) },
     toolRegistry: { read_project: { ...readTool, execute: async () => { executed = true; return {}; } } },
+    verifyStep: async () => ({ verified: true, evidence: "test-evidence" }),
     audit: async () => { throw new Error("audit store unavailable"); }
   });
   assert.equal(result.status, "FAILED");
@@ -219,4 +221,55 @@ test("blocks high-impact approval when the actor identity does not match", () =>
     }
   });
   assert.equal(decision.status, "APPROVAL_REQUIRED");
+});
+
+test("never executes a high-impact tool without a trusted one-use approval consumer", async () => {
+  let executed = false;
+  const approval = {
+    id: "approval-run-1", approved: true, toolName: "publish_release", effect: "publish",
+    actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+  };
+  const result = await runBoundedAgent({
+    goal: "Publish staging release",
+    mode: "execute",
+    actorId: "user-1",
+    approvals: [approval],
+    reasoner: { plan: async () => ({ steps: [{ tool: "publish_release", input: { target: "staging" }, expectedOutcome: "staging release is available" }] }) },
+    toolRegistry: {
+      publish_release: {
+        manifest: { name: "publish_release", enabled: true, effect: "publish", approvalScope: "release:staging" },
+        execute: async () => { executed = true; return { ok: true }; }
+      }
+    },
+    verifyStep: async () => ({ verified: true, evidence: "release-url-123" })
+  });
+  assert.equal(result.status, "BLOCKED");
+  assert.equal(executed, false);
+  assert.match(result.reason, /one-use approval consumer/i);
+});
+
+test("one-use approval must be consumed by the trusted store before an impactful tool runs", async () => {
+  let executed = false;
+  const approval = {
+    id: "approval-run-2", approved: true, toolName: "publish_release", effect: "publish",
+    actorId: "user-1", scope: "release:staging", expiresAt: "2026-10-18T12:05:00.000Z"
+  };
+  const result = await runBoundedAgent({
+    goal: "Publish staging release",
+    mode: "execute",
+    actorId: "user-1",
+    approvals: [approval],
+    reasoner: { plan: async () => ({ steps: [{ tool: "publish_release", input: { target: "staging" }, expectedOutcome: "staging release is available" }] }) },
+    toolRegistry: {
+      publish_release: {
+        manifest: { name: "publish_release", enabled: true, effect: "publish", approvalScope: "release:staging" },
+        execute: async () => { executed = true; return { ok: true }; }
+      }
+    },
+    verifyStep: async () => ({ verified: true, evidence: "release-url-123" }),
+    consumeApproval: async () => false
+  });
+  assert.equal(result.status, "BLOCKED");
+  assert.equal(executed, false);
+  assert.match(result.reason, /approval verification failed/i);
 });
