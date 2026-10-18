@@ -93,9 +93,16 @@ export async function runBoundedAgent({
   for (let attempt = 1; attempt <= planningLimit; attempt += 1) {
     attempts = attempt;
     try {
+      const availableTools = Object.entries(toolRegistry).map(([name, registeredTool]) => ({
+        name,
+        description: typeof registeredTool?.manifest?.description === "string" ? registeredTool.manifest.description : "",
+        effect: registeredTool?.manifest?.effect ?? "unknown",
+        enabled: registeredTool?.manifest?.enabled !== false
+      }));
       const candidate = await reasoner.plan({
         goal: normalizedGoal,
         context,
+        tools: availableTools,
         attempt,
         maxAttempts: planningLimit
       });
