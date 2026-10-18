@@ -220,6 +220,13 @@ const agentGoalInput = $("#agent-goal");
 const agentPlanResult = $("#agent-plan-result");
 const agentPlanBadge = $("#agent-plan-badge");
 const agentPlanOutput = $("#agent-plan-output");
+const memorySaveButton = $("#memory-save-button");
+const memorySearchButton = $("#memory-search-button");
+const learnReportButton = $("#learn-report-button");
+const memoryQueryInput = $("#memory-query");
+const memoryApiStatus = $("#memory-api-status");
+const memoryResults = $("#memory-results");
+const memoryOutput = $("#memory-output");
 
 function setRuntimeStatus(message, state = "pending") {
   runtimeStatusChip.textContent = message;
@@ -264,12 +271,12 @@ async function planWithRuntime() {
   }
 
   agentPlanButton.disabled = true;
-  agentPlanButton.textContent = "جارٍ إعداد الخطة...";
+  agentPlanButton.textContent = "جارٍ تنفيذ مراحل الدورة...";
   agentPlanResult.hidden = true;
-  runtimeApiStatus.textContent = "إرسال الهدف والسياق إلى النواة المحلية. لم يبدأ تنفيذ أي أداة.";
+  runtimeApiStatus.textContent = "تنفيذ Context → Plan → Verify → Memory → Learn. التخطيط تجريبي، ولن تُنفّذ الأدوات الخارجية.";
   runtimeApiStatus.className = "runtime-api-status";
   try {
-    const response = await fetch("/api/agent/plan", {
+    const response = await fetch("/api/agent/cycle", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -292,19 +299,19 @@ async function planWithRuntime() {
       return;
     }
     agentPlanOutput.textContent = JSON.stringify(body, null, 2);
-    agentPlanBadge.textContent = body.status || "PENDING";
+    agentPlanBadge.textContent = body.stages ? (body.stages.verify.status + " / " + body.taskStatus) : (body.status || "PENDING");
     agentPlanBadge.className = "mini-tag";
     agentPlanResult.hidden = false;
-    runtimeApiStatus.textContent = body.status === "PLANNED"
-      ? "تم إعداد خطة فقط. لم تُنفّذ أدوات خارجية ولم تُرسل معاملة."
+    runtimeApiStatus.textContent = body.stages
+      ? "اكتملت مراجعة مراحل الدورة. VERIFIED هنا يعني فحص سياسة الخطة فقط؛ لم تُنفّذ أدوات أو تُثبت نتيجة المهمة. الذاكرة: " + String(body.stages.memory.status) + "، والتعلّم: " + String(body.stages.learn.status) + "."
       : "حالة الخطة: " + String(body.status || "غير معروفة") + ". راجع التفاصيل قبل أي خطوة أخرى.";
-    runtimeApiStatus.className = "runtime-api-status " + (body.status === "PLANNED" ? "ready" : "pending");
+    runtimeApiStatus.className = "runtime-api-status " + (body.stages?.verify?.status === "VERIFIED" ? "ready" : "pending");
   } catch {
     runtimeApiStatus.textContent = "فشل الاتصال بالنواة المحلية. تحقق من تشغيل الخادم والمسار ثم أعد الفحص.";
     runtimeApiStatus.className = "runtime-api-status pending";
   } finally {
     agentPlanButton.disabled = false;
-    agentPlanButton.textContent = "خطّط باستخدام النموذج";
+    agentPlanButton.textContent = "شغّل دورة Context → Plan → Verify → Memory → Learn";
   }
 }
 
@@ -314,3 +321,96 @@ window.addEventListener("pagehide", () => {
   runtimeTokenInput.value = "";
 });
 checkRuntime();
+
+
+async function authorizedPost(path, payload) {
+  const token = runtimeTokenInput.value.trim();
+  if (!token) throw new Error("أدخل رمز الوصول المحلي أولًا.");
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify(payload)
+  });
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error("استجابة Runtime غير صالحة.");
+  }
+  if (!response.ok) throw new Error(body.error || "تعذر إكمال طلب الذاكرة.");
+  return body;
+}
+
+function renderMemoryResult(status, payload, mode = "ready") {
+  memoryApiStatus.textContent = status;
+  memoryApiStatus.className = "runtime-api-status " + mode;
+  memoryOutput.textContent = JSON.stringify(payload, null, 2);
+  memoryResults.hidden = false;
+}
+
+async function saveContextNote() {
+  const note = source.value.trim();
+  if (!note) {
+    memoryApiStatus.textContent = "أضف سياقًا أولًا. لن يتم حفظ نص فارغ.";
+    memoryApiStatus.className = "runtime-api-status pending";
+    return;
+  }
+  memorySaveButton.disabled = true;
+  try {
+    const result = await authorizedPost("/api/memory/save", {
+      text: note,
+      sourceLabel: "context-forge-workbench"
+    });
+    renderMemoryResult("حُفظت الملاحظة بحالة PENDING؛ لم تُتحقق مستقلًا.", result, "ready");
+  } catch (error) {
+    memoryApiStatus.textContent = error.message || "تعذر حفظ الملاحظة.";
+    memoryApiStatus.className = "runtime-api-status pending";
+  } finally {
+    memorySaveButton.disabled = false;
+  }
+}
+
+async function searchMemory() {
+  const query = memoryQueryInput.value.trim();
+  if (!query) {
+    memoryApiStatus.textContent = "اكتب عبارة قصيرة للبحث.";
+    memoryApiStatus.className = "runtime-api-status pending";
+    return;
+  }
+  memorySearchButton.disabled = true;
+  try {
+    const result = await authorizedPost("/api/memory/search", { query });
+    renderMemoryResult("عدد النتائج: " + String(result.count), result, "ready");
+  } catch (error) {
+    memoryApiStatus.textContent = error.message || "تعذر البحث في الذاكرة.";
+    memoryApiStatus.className = "runtime-api-status pending";
+  } finally {
+    memorySearchButton.disabled = false;
+  }
+}
+
+async function loadLearningReport() {
+  learnReportButton.disabled = true;
+  try {
+    const result = await authorizedPost("/api/agent/learn", { limit: 100 });
+    const note = result.cyclesAnalyzed > 0
+      ? "تقرير استدلالي من سجل دورات محلية؛ لا يثبت إكمال المهام."
+      : "لا توجد دورات سابقة كافية للتعلّم بعد.";
+    renderMemoryResult(note, result, result.cyclesAnalyzed > 0 ? "ready" : "pending");
+  } catch (error) {
+    memoryApiStatus.textContent = error.message || "تعذر تحميل تقرير التعلّم.";
+    memoryApiStatus.className = "runtime-api-status pending";
+  } finally {
+    learnReportButton.disabled = false;
+  }
+}
+
+memorySaveButton.addEventListener("click", saveContextNote);
+memorySearchButton.addEventListener("click", searchMemory);
+learnReportButton.addEventListener("click", loadLearningReport);
+memoryQueryInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") searchMemory();
+});
