@@ -205,3 +205,23 @@ test("aborts a stalled provider request and reports a bounded timeout", async ()
   });
   await assert.rejects(reasoner.plan({ goal: "Test timeout" }), (error) => error.name === "TimeoutError");
 });
+
+
+test("propagates caller cancellation to the provider request", async () => {
+  const caller = new AbortController();
+  const reasoner = createOpenAICompatibleReasoner({
+    baseUrl: "http://127.0.0.1:11434/v1",
+    apiKey: "local-placeholder",
+    model: "local-model",
+    fetchImpl: async (_url, options) => await new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        reject(error);
+      }, { once: true });
+    })
+  });
+  const pending = reasoner.plan({ goal: "Cancel safely", signal: caller.signal });
+  caller.abort();
+  await assert.rejects(pending, (error) => error.name === "AbortError");
+});
