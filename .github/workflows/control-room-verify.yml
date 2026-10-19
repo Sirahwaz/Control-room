@@ -71,7 +71,10 @@ jobs:
           if(manifest.product_key !== 'midad-mobile') fail('Unexpected mobile product key');
           if(manifest.app_id !== cap.appId) fail('Capacitor appId drift');
           if(manifest.app_id !== 'ai.midad.mobile') fail('Canonical mobile appId changed');
-          if(manifest.version !== pkg.version) fail('mobile/package.json version drift');
+          // Product versions come from the per-product manifest; package.json may track the shared factory/default product.
+if(!/^\d+\.\d+\.\d+$/.test(manifest.version)) fail('Mobile Factory product version must be semantic version');
+if(!String(manifest.artifact_name||'').endsWith('-v'+manifest.version)) fail('Mobile Factory artifact/version contract drift');
+if(pkg.name !== 'midad-mobile') fail('Unexpected mobile package name');
           if(manifest.features?.server_side_secrets_only !== true) fail('Mobile secret boundary weakened');
           if(manifest.features?.live_financial_execution !== false) fail('Mobile live financial execution gate weakened');
           for(const x of ['mobile-hub.css','mobile-hub.js','morph-engine.js']) if(!html.includes(x)) fail('Missing mobile asset '+x);
