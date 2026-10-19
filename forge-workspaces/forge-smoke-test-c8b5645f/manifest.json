@@ -1,0 +1,9 @@
+{
+  "name": "Forge Smoke Test",
+  "short_name": "ForgeTest",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "description": "A tiny Arabic RTL PWA for Forge smoke testing."
+}
