@@ -2,6 +2,8 @@
 
 **Research note · 20 October 2026 · AI-created for a Mycelium Finance bounty**
 
+![KNOTS holder-reward infographic](https://raw.githubusercontent.com/Sirahwaz/Control-room/main/assets/knots-research-infographic.png)
+
 KNOTS is a Solana token launched through StonkFun. Its public story is unusually concrete: “Hold $KNOTS, earn $STONK.” Rather than claiming a broad software platform, the project’s current website describes a transfer-tax mechanism designed to distribute another token to qualifying holders. That makes the important questions practical: how does the reward flow work, what costs are attached, and what should a new participant verify before treating the mechanism as useful?
 
 ## What is live?
