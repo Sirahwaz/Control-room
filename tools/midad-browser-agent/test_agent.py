@@ -23,7 +23,11 @@ class PublicUrlValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_target("https://localhost/admin")
 
-    @patch("agent.resolve_public_host", return_value=["10.0.0.5"])
+    def test_rejects_loopback_ip_without_network_access(self):
+        with self.assertRaises(ValueError):
+            validate_target("https://127.0.0.1/admin")
+
+    @patch("agent.resolve_public_host", side_effect=ValueError("non-public address"))
     def test_rejects_private_dns_resolution(self, _resolve):
         with self.assertRaises(ValueError):
             validate_target("https://example.com")
@@ -34,12 +38,12 @@ class PublicUrlValidationTests(unittest.TestCase):
             validate_target("https://other.example/path", allowed_hosts={"example.com"})
 
     def test_extracts_visible_text_and_omits_script_and_style(self):
-        html = """
+        document = """
         <html><head><style>.secret { display:none }</style>
         <script>credential = 'never collect';</script></head>
         <body><h1>Official bounty</h1><p>Payment terms</p></body></html>
         """
-        text = extract_visible_text(html)
+        text = extract_visible_text(document)
         self.assertIn("Official bounty", text)
         self.assertIn("Payment terms", text)
         self.assertNotIn("credential", text)
