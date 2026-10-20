@@ -1,0 +1,32 @@
+name: MIDAD Speedbot Matcher Tests
+
+on:
+  push:
+    branches:
+      - main
+      - "midad/fix-speedbot-target-regex-*"
+    paths:
+      - "supabase/functions/midad_speedbot_target_executor/matching.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching_test.ts"
+      - ".github/workflows/midad-speedbot-regex-test.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/midad_speedbot_target_executor/matching.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching_test.ts"
+      - ".github/workflows/midad-speedbot-regex-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run matcher regression tests
+        run: deno test --no-check supabase/functions/midad_speedbot_target_executor/matching_test.ts
+      - name: Type-check pure matcher
+        run: deno check supabase/functions/midad_speedbot_target_executor/matching.ts
