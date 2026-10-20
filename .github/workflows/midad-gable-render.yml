@@ -1,0 +1,56 @@
+name: MIDAD Render Gable Guardians Image
+
+on:
+  push:
+    branches:
+      - midad/gable-guardians-publication
+    paths:
+      - assets/gable-guardians-research.svg
+      - .github/workflows/midad-gable-render.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout publication branch
+        uses: actions/checkout@v4
+        with:
+          ref: midad/gable-guardians-publication
+          persist-credentials: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Render SVG to a web-compatible JPEG
+        run: |
+          python -m pip install --disable-pip-version-check cairosvg pillow
+          python - <<'PY'
+          import cairosvg
+          from PIL import Image
+          cairosvg.svg2png(
+              url="assets/gable-guardians-research.svg",
+              write_to="/tmp/gable-guardians.png",
+              output_width=1200,
+              output_height=675,
+          )
+          image = Image.open("/tmp/gable-guardians.png").convert("RGB")
+          image.save(
+              "assets/gable-guardians-research.jpg",
+              format="JPEG",
+              quality=88,
+              optimize=True,
+              progressive=True,
+          )
+          print(f"Rendered JPEG: {image.size[0]}x{image.size[1]}")
+          PY
+      - name: Commit raster asset to this branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/gable-guardians-research.jpg
+          git commit -m "Render Gable Guardians infographic as JPEG" || exit 0
+          git push origin HEAD:midad/gable-guardians-publication
