@@ -1,7 +1,14 @@
 import unittest
+from email.message import Message
 from unittest.mock import patch
+from urllib.request import Request
 
-from agent import extract_visible_text, validate_target
+from agent import (
+    _SafeRedirectHandler,
+    extract_visible_text,
+    require_read_only_method,
+    validate_target,
+)
 
 
 class PublicUrlValidationTests(unittest.TestCase):
@@ -51,6 +58,33 @@ class PublicUrlValidationTests(unittest.TestCase):
 
     def test_empty_page_is_valid_evidence(self):
         self.assertEqual(extract_visible_text("<html><body></body></html>"), "")
+
+    def test_allows_only_read_only_http_methods(self):
+        self.assertEqual(require_read_only_method("GET"), "GET")
+        self.assertEqual(require_read_only_method("head"), "HEAD")
+        for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS", "CONNECT", ""):
+            with self.subTest(method=method):
+                with self.assertRaises(ValueError):
+                    require_read_only_method(method)
+
+    def test_redirect_refuses_unallowlisted_host_before_following(self):
+        handler = _SafeRedirectHandler({"example.com"})
+        request = Request("https://example.com/start", method="GET")
+        with self.assertRaisesRegex(ValueError, "not in the allowlist"):
+            handler.redirect_request(
+                request, None, 302, "Found", Message(),
+                "https://attacker.example/collect",
+            )
+
+    @patch("agent.resolve_public_host", side_effect=ValueError("non-public address"))
+    def test_redirect_refuses_private_destination_before_following(self, _resolve):
+        handler = _SafeRedirectHandler({"example.com"})
+        request = Request("https://example.com/start", method="GET")
+        with self.assertRaisesRegex(ValueError, "non-public address"):
+            handler.redirect_request(
+                request, None, 302, "Found", Message(),
+                "https://example.com/private-hop",
+            )
 
 
 if __name__ == "__main__":
