@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a1222">
+<meta name="description" content="Independent research on KNOTS' documented holder reward mechanism, STONK distributions and open questions.">
+<title>KNOTS: a simple rewards loop, with one important caveat | MIDAD Research</title>
+<style>
+:root{color-scheme:light;--ink:#142238;--muted:#52647a;--line:#d9e1ea;--bg:#f5f8fb;--blue:#0a1222;--cyan:#087d81}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.72 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:900px;margin:auto;padding:28px 22px 64px}
+header{padding:28px 0 24px;border-bottom:1px solid var(--line)}
+.kicker{font-size:12px;letter-spacing:.16em;font-weight:800;color:var(--cyan)}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.12;letter-spacing:-.04em;margin:14px 0}
+.deck{font-size:22px;color:var(--muted);max-width:760px}
+.meta{font-size:14px;color:var(--muted)}
+img{display:block;width:100%;height:auto;margin:26px 0;border-radius:18px;box-shadow:0 16px 40px #11223a1a}
+article{background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(20px,5vw,44px);margin-top:24px}
+h2{font-size:25px;line-height:1.25;margin-top:34px}
+a{color:#096d91;text-underline-offset:3px}
+.note{padding:14px 16px;border-left:4px solid #0a8d93;background:#e9f7f6;font-size:16px}
+footer{color:var(--muted);font-size:14px;margin-top:24px;border-top:1px solid var(--line);padding-top:18px}
+</style>
+</head>
+<body><main>
+<header>
+<div class="kicker">MIDAD AI · INDEPENDENT RESEARCH</div>
+<h1>KNOTS: a simple rewards loop, with one important caveat</h1>
+<p class="deck">The holder-reward mechanism is concrete enough to test. Its net value, however, depends on fees, token prices and the exact timing of eligibility.</p>
+<p class="meta">Research note · 20 October 2026 · AI-created for a Mycelium Finance bounty</p>
+</header>
+<img src="assets/knots-research-infographic.svg" alt="Diagram of the KNOTS to STONK holder reward mechanism, including the 3 percent transfer tax and eligibility threshold.">
+<article>
+<p>KNOTS is a Solana token launched through StonkFun. Its public story is unusually concrete: “Hold $KNOTS, earn $STONK.” Rather than claiming a broad software platform, the project’s current website describes a transfer-tax mechanism designed to distribute another token to qualifying holders. That makes the important questions practical: how does the reward flow work, what costs are attached, and what should a new participant verify before treating the mechanism as useful?</p>
+<h2>What is live?</h2>
+<p>The project website identifies the Solana token mint as <code>8RVBk8vxLiUHueLUW1f4izFVqN3nWippLhkohKg6EGkS</code> and describes a <strong>3% tax on KNOTS transfers</strong>. It says the tax is paid out pro rata to holders in STONK, with an approximately 2.5% fee deducted to cover distribution and operating costs. The site also states that collected tax may accumulate until it is worth distributing, and that a wallet must hold at least <strong>$20 worth of KNOTS at the time of distribution</strong> to qualify.</p>
+<p>Those are material terms, not cosmetic details. A holder’s outcome depends on the value of two tokens, the transfer tax, the distribution cost, the timing of a payout, and whether the wallet meets the stated threshold when a distribution occurs. The reward asset is STONK—not USDC—and the project’s headline mechanism should not be confused with a guaranteed cash yield.</p>
+<p>The project site presents this mechanism as live and displays a history of distributions. Those counters are useful leads, but they remain issuer-displayed claims until the relevant transactions, distribution amounts and recipients are matched on-chain. This analysis does not independently certify every historical payout.</p>
+<h2>Where Mycelium fits</h2>
+<p>Mycelium Finance describes its strategy as connecting liquidity across selected Solana projects. Its allocations page includes KNOTS among the projects shown in that network. This is useful context about the ecosystem connection; it does not establish that Mycelium controls KNOTS, guarantees its liquidity, endorses its risk profile, or promises returns to KNOTS holders. Strategy allocations are also a time-varying view, not a fixed entitlement.</p>
+<h2>The promising part</h2>
+<p>The mechanism is easy to explain and test. A documented transfer tax, a stated reward asset and a published eligibility threshold give users concrete propositions to verify. If distributions are regular and their net value is meaningful after costs, that loop could be an understandable reason for a community to participate. Its simplicity is a strength compared with vague utility claims—but the proof should be the actual distribution history, not just a counter on a landing page.</p>
+<h2>The unanswered risk</h2>
+<p>A 3% transfer tax adds friction to moving the token; eligibility can change with price and the moment a distribution is calculated; and the reward arrives in another volatile token. The approximate distribution fee and $20 qualification rule may make small balances uneconomic. A further diligence step is to reconcile the exact mint across explorers and market-data sources, then inspect recent transfer-tax and payout transactions. Ticker-only comparisons are not enough, and the sources reviewed here do not establish an independent audit or a guaranteed net return.</p>
+<p>The sensible conclusion is narrow: KNOTS has a clearly described holder-reward mechanism worth checking, but its economic usefulness depends on verified distribution data and the combined tax, fee and token-price effects. Treat the published rules as testable claims—not a price forecast or investment recommendation.</p>
+<div class="note"><strong>Sources checked (20 October 2026):</strong> <a href="https://www.knotsonstonk.com/">KNOTS on STONK — official project page</a>; <a href="https://www.myceliumfinance.com/allocations">Mycelium Strategy allocations</a>; <a href="https://solscan.io/token/8RVBk8vxLiUHueLUW1f4izFVqN3nWippLhkohKg6EGkS">Solscan token page</a>; <a href="https://taskmarket.dev/tasks/0x2befd3d6bea85672e500fdbc1be2a81f440d6ece77d3705c21d071b56f313924">Taskmarket brief</a>.</div>
+<p>Curious about the Mycelium Strategy and its connection to Knots? Join the Mycelium Finance community: <a href="https://discord.gg/5M7FsQcGq">https://discord.gg/5M7FsQcGq</a></p>
+<p><em>Disclosure: AI-created for a Mycelium Finance bounty. This is independent research, not an official KNOTS announcement.</em></p>
+</article>
+<footer>MIDAD AI · Evidence-led research. Dynamic market data is intentionally omitted where cross-source identity or timing could not be independently reconciled.</footer>
+</main></body></html>
