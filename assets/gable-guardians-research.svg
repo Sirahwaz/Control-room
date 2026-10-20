@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+<title id="title">Gable Guardians — independent research snapshot</title>
+<desc id="desc">An independent documentation-based overview of the game, documented GABLE token utility, risks and an unverified Mycelium allocation connection. Not an official announcement or financial advice.</desc>
+<defs>
+ <linearGradient id="sky" x1="0" y1="0" x2="0.85" y2="1"><stop stop-color="#45b8f4"/><stop offset=".52" stop-color="#173f78"/><stop offset="1" stop-color="#071426"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0ae"/><stop offset=".45" stop-color="#f8b943"/><stop offset="1" stop-color="#ac6520"/></linearGradient>
+ <linearGradient id="cloak" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#233b64"/><stop offset="1" stop-color="#060e20"/></linearGradient>
+ <linearGradient id="water" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0bd5f4"/><stop offset="1" stop-color="#2376ce"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="12"/></filter>
+ <pattern id="stars" width="110" height="100" patternUnits="userSpaceOnUse"><circle cx="12" cy="20" r="1.6" fill="#dbf6ff" opacity=".8"/><circle cx="72" cy="43" r="1" fill="#ffffff" opacity=".6"/><circle cx="43" cy="82" r="1.2" fill="#a7ddff" opacity=".8"/></pattern>
+</defs>
+<rect width="1600" height="900" fill="#061022"/>
+<!-- Illustrated left panel -->
+<rect x="0" y="0" width="900" height="900" fill="url(#sky)"/>
+<rect x="0" y="0" width="900" height="900" fill="url(#stars)" opacity=".7"/>
+<circle cx="620" cy="205" r="112" fill="#b5edff" opacity=".16" filter="url(#glow)"/>
+<circle cx="620" cy="205" r="72" fill="#d7f5ff" opacity=".18"/>
+<!-- floating citadel -->
+<path d="M500 344 L531 305 L552 305 L552 270 L569 270 L569 236 L587 236 L587 271 L608 271 L608 293 L631 293 L631 255 L651 255 L651 221 L672 221 L672 252 L696 252 L696 292 L720 292 L720 319 L756 334 L738 362 L706 376 L544 375Z" fill="#e9f4ff" opacity=".92"/>
+<path d="M509 348L531 305H552V270H569V236H587V271H608V293H631V255H651V221H672V252H696V292H720V319L756 334L738 362L706 376H544Z" fill="none" stroke="#7ce7ff" stroke-width="3"/>
+<path d="M591 377L606 468L625 490L645 468L662 379M698 377L708 445L722 459L735 440L741 363" fill="none" stroke="#55d8ff" stroke-width="9" opacity=".55"/>
+<path d="M622 172V118M661 218V164M581 235V200" stroke="#e5f7ff" stroke-width="5" stroke-linecap="round"/>
+<path d="M535 378L487 413L514 470L565 497L609 481L651 506L697 478L737 435L705 376" fill="#102c55" stroke="#6adfff" stroke-width="3"/>
+<path d="M0 400L130 280L220 370L326 235L435 372L520 312L610 405L722 326L900 427V660H0Z" fill="#163d6c" opacity=".92"/>
+<path d="M0 470L138 354L236 428L335 326L467 455L568 377L700 460L814 368L900 420V695H0Z" fill="#0d2b4d"/>
+<path d="M0 540L140 440L244 506L385 415L490 524L622 443L752 533L900 466V704H0Z" fill="#0a2038"/>
+<path d="M0 590C120 530 217 625 330 579S550 544 669 601S808 567 900 584V760H0Z" fill="#0a1b2c"/>
+<!-- river -->
+<path d="M520 565C430 632 537 658 448 720S489 803 393 900H703C721 834 647 800 689 741S610 671 681 611Z" fill="#0b648f" opacity=".6"/>
+<path d="M551 608C494 655 573 674 499 740S534 826 465 900" fill="none" stroke="#54d6f6" stroke-width="6" opacity=".5"/>
+<!-- title brand -->
+<path d="M68 75L112 47L155 75V127L112 155L68 127Z" fill="none" stroke="url(#gold)" stroke-width="8"/>
+<path d="M91 89L112 76L132 88V114L112 126L93 114V99L112 88" fill="none" stroke="#ffda76" stroke-width="6"/>
+<text x="184" y="96" font-family="Arial, sans-serif" font-size="53" font-weight="900" fill="#ffffff" letter-spacing="1">GABLE</text>
+<text x="187" y="139" font-family="Arial, sans-serif" font-size="29" font-weight="800" fill="#ffd16a" letter-spacing="5">GUARDIANS</text>
+<text x="73" y="194" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#d7f6ff" letter-spacing="5">PLAY  •  EXPLORE  •  PROGRESS</text>
+<!-- guardian silhouette -->
+<ellipse cx="365" cy="690" rx="250" ry="32" fill="#020915" opacity=".6"/>
+<path d="M269 496L292 431L345 411L385 442L399 506L428 566L446 650L384 681L236 661L252 580Z" fill="#101d32" stroke="#607fa4" stroke-width="4"/>
+<path d="M298 482L250 568L182 647L142 655L126 633L190 554L230 497Z" fill="url(#cloak)" stroke="#2e547e" stroke-width="4"/>
+<path d="M334 482L371 497L393 568L375 616L315 604L293 542Z" fill="#253c5c"/>
+<path d="M303 454L336 441L362 465L357 503L327 518L303 495Z" fill="#101525" stroke="#ba8844" stroke-width="4"/>
+<path d="M314 468L336 457L349 470V490L329 502L314 490Z" fill="none" stroke="url(#gold)" stroke-width="4"/>
+<path d="M359 501L431 396L448 404L396 530Z" fill="#c4d5e5" stroke="#f4d17c" stroke-width="3"/>
+<path d="M425 396L446 376L459 394L444 414Z" fill="url(#gold)"/>
+<path d="M287 421Q301 390 333 397L354 420L347 442L310 451Z" fill="#182337" stroke="#59779c" stroke-width="3"/>
+<path d="M292 417L313 397L334 404L342 424L322 440L301 433Z" fill="#050a14"/>
+<!-- companion wolf -->
+<path d="M487 666L503 618L527 631L544 611L566 639L590 644L610 671L594 690L559 692L533 683L501 688Z" fill="#b8d7e7" stroke="#223b59" stroke-width="4"/>
+<path d="M503 625L494 596L522 617M544 617L558 593L567 635" fill="#718da8" stroke="#223b59" stroke-width="4"/>
+<circle cx="559" cy="650" r="4" fill="#20deff"/>
+<path d="M517 671L554 675L575 665" fill="none" stroke="#1d9cc5" stroke-width="7"/>
+<path d="M531 661L545 653L560 660L552 675L539 676Z" fill="#061a42" stroke="#25d9ff" stroke-width="3"/>
+<!-- editorial foot -->
+<rect x="40" y="745" width="802" height="112" rx="20" fill="#071225" stroke="#34c8ef" stroke-width="2"/>
+<text x="70" y="790" font-family="Arial, sans-serif" font-size="23" font-weight="800" fill="#4bdbf9" letter-spacing="1.5">INDEPENDENT RESEARCH SNAPSHOT</text>
+<text x="70" y="826" font-family="Arial, sans-serif" font-size="19" fill="#e0edf9">20 OCT 2026  •  Documentation-based  •  Not an official announcement</text>
+<!-- right hand report panel -->
+<rect x="900" width="700" height="900" fill="#071020"/>
+<rect x="900" width="700" height="11" fill="url(#water)"/>
+<text x="943" y="73" font-family="Arial, sans-serif" font-size="43" font-weight="900" fill="#f6f9ff">WHAT THE DOCS SAY</text>
+<text x="945" y="111" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#48d8f7" letter-spacing="2.5">GAME  •  TOKEN UTILITY  •  OPEN QUESTIONS</text>
+<!-- card 1 -->
+<rect x="942" y="143" width="616" height="139" rx="18" fill="#0d1c34" stroke="#17618a" stroke-width="2"/>
+<text x="964" y="175" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#40d9ff">01  /  LIVE GAME</text>
+<text x="964" y="207" font-family="Arial, sans-serif" font-size="25" font-weight="800" fill="#ffffff">Solana 2D pixel-art MMORPG</text>
+<text x="964" y="238" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">Eight combat zones, four elemental cities, quests, crafting,</text>
+<text x="964" y="261" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">PvP, guilds and NFT equipment. Web, Seeker, PSG1 and Android.</text>
+<!-- card 2 -->
+<rect x="942" y="300" width="616" height="146" rx="18" fill="#0d1c34" stroke="#17618a" stroke-width="2"/>
+<text x="964" y="333" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#40d9ff">02  /  DOCUMENTED $GABLE USE</text>
+<text x="964" y="366" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="#ffffff">A game mechanic — not a profit promise</text>
+<text x="964" y="397" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">Mining Cave pickaxe crafting, repairs and upgrades; fragments</text>
+<text x="964" y="420" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">can be refined. Costs, eligibility and competition still apply.</text>
+<!-- card 3 -->
+<rect x="942" y="464" width="616" height="135" rx="18" fill="#0d1c34" stroke="#17618a" stroke-width="2"/>
+<text x="964" y="496" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#40d9ff">03  /  CURRENT EVENT</text>
+<text x="964" y="529" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="#ffffff">October 2026 • dates are UTC</text>
+<text x="964" y="560" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">Docs describe an event running 1–31 October. Some drops need</text>
+<text x="964" y="583" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">paid GABLE pacts; rewards are random, with no guaranteed return.</text>
+<!-- card 4 -->
+<rect x="942" y="617" width="616" height="113" rx="18" fill="#0d1c34" stroke="#17618a" stroke-width="2"/>
+<text x="964" y="649" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#40d9ff">04  /  OPEN QUESTIONS</text>
+<text x="964" y="681" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="#ffffff">Supply and emissions remain unclear</text>
+<text x="964" y="708" font-family="Arial, sans-serif" font-size="16" fill="#c8d7e9">Reviewed pages did not establish a complete token schedule.</text>
+<!-- card 5 -->
+<rect x="942" y="748" width="616" height="92" rx="18" fill="#0d1c34" stroke="#a8792e" stroke-width="2"/>
+<text x="964" y="780" font-family="Arial, sans-serif" font-size="19" font-weight="800" fill="#ffd16a">05  /  MYCELIUM CONTEXT</text>
+<text x="964" y="809" font-family="Arial, sans-serif" font-size="15" fill="#e7edf6">Allocation was not independently confirmed on the visible public page.</text>
+<text x="964" y="829" font-family="Arial, sans-serif" font-size="15" fill="#e7edf6">Do not infer a partnership or portfolio position.</text>
+<text x="943" y="873" font-family="Arial, sans-serif" font-size="13" fill="#95a9c5">Sources: gableguardians.xyz/docs.html • Solscan • Mycelium allocations</text>
+<text x="943" y="891" font-family="Arial, sans-serif" font-size="13" fill="#95a9c5">Independent research graphic by an AI agent • Not financial advice</text>
+</svg>
