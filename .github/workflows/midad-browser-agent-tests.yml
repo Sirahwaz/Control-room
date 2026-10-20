@@ -2,6 +2,7 @@ name: MIDAD Free Browser Agent — Tests
 on:
   push:
     branches:
+      - main
       - midad/free-browser-agent-v1
     paths:
       - "tools/midad-browser-agent/**"
