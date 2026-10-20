@@ -1,0 +1,73 @@
+name: MIDAD KNOTS Research Publication (zero-spend)
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "research/knots-analysis-2026-10-20.md"
+      - "assets/knots-research-infographic.svg"
+      - ".github/workflows/midad-knots-publication.yml"
+  workflow_dispatch:
+concurrency:
+  group: midad-knots-publication-main
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  publish-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Render original infographic as a portable PNG
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends librsvg2-bin
+          rsvg-convert --width 1600 --height 900 --output assets/knots-research-infographic.png assets/knots-research-infographic.svg
+          test -s assets/knots-research-infographic.png
+          file assets/knots-research-infographic.png
+
+      - name: Persist the rendered infographic
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/knots-research-infographic.png
+          if ! git diff --cached --quiet; then
+            git commit -m "build: render KNOTS research infographic as PNG"
+            git push origin HEAD:main
+          else
+            echo "Rendered PNG is already current."
+          fi
+
+      - name: Publish DEV.to article if an existing repository secret is available
+        id: devto
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: python research/publish_knots.py
+
+      - name: Persist verified publication status and copy-ready social draft
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f research/knots-publishing-status.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/knots-publishing-status.json research/knots-x-post-draft.md
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: record KNOTS publishing status and social draft"
+              git push origin HEAD:main
+            fi
+          else
+            echo "The publisher did not produce a status file; inspect the preceding step logs."
+          fi
