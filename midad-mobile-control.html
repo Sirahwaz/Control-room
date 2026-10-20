@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101723">
+<meta name="description" content="MIDAD phone-first operations panel for free research, evidence, revenue and health checks.">
+<title>MIDAD — Mobile Operations Panel</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1018;--panel:#121b27;--line:#29374a;--text:#eef4fc;--muted:#a8b6c8;--accent:#c1e5ff;--accentText:#102235;--good:#b6edcf;--warn:#ffd8a8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{width:min(760px,100%);margin:auto;padding:clamp(16px,4vw,28px) 16px 44px}
+header{padding:22px 0 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.eyebrow{font-size:.78rem;color:var(--accent);letter-spacing:.08em;font-weight:700}
+h1{font-size:1.65rem;line-height:1.25;margin:.35rem 0 .5rem}h2{font-size:1.15rem;margin:0 0 .6rem}p{margin:.3rem 0 .8rem}
+.sub{color:var(--muted);font-size:.95rem}
+.pill{display:inline-block;border:1px solid #3b526b;border-radius:999px;padding:2px 10px;color:var(--good);font-size:.78rem;margin:2px}
+section{margin:18px 0} .card{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--panel);margin:10px 0}
+.links{display:grid;grid-template-columns:1fr;gap:10px}
+a.action{display:block;text-decoration:none;border:1px solid #3b526b;border-radius:12px;padding:13px 14px;color:var(--text);background:#172435;font-weight:650;min-height:48px}
+a.action:focus,a.action:hover{outline:2px solid var(--accent);outline-offset:2px}
+a.action small{display:block;color:var(--muted);font-weight:400;font-size:.83rem;margin-top:2px}
+a.primary{background:var(--accent);border-color:var(--accent);color:var(--accentText)}
+.note{border-right:3px solid var(--warn);padding:8px 12px;color:#f2e6d5;background:#201d19;border-radius:8px}
+ul{padding-right:22px;margin:.4rem 0}
+footer{margin-top:26px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:.83rem}
+code{overflow-wrap:anywhere}
+@media(min-width:560px){.links.two{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">MIDAD AI / مداد — CONTROL ROOM</div>
+  <h1>لوحة التشغيل من الهاتف</h1>
+  <p class="sub">واجهة خفيفة للوصول إلى البحث المجاني، فرص الدخل، تقارير الأدلة والتشغيل. لا تحتاج جهاز كمبيوتر أو مفتاح API داخل الصفحة.</p>
+  <span class="pill">قراءة عامة فقط</span><span class="pill">بدون رصيد TinyFish</span><span class="pill">بدون توقيع مالي</span>
+</header>
+
+<section>
+  <h2>1 — الأولوية: الدخل الفعلي</h2>
+  <div class="card">
+    <p><strong>الوضع الذي تم التحقق منه في 20 أكتوبر 2026:</strong> أربع فواتير/طلبات قديمة ملغاة، ولا توجد دفعة مؤكدة. لذلك نسجل «دخل = صفر مؤكد حتى يثبت القبض»، ولا نحسب الفرص أو الفواتير كإيراد.</p>
+    <div class="links">
+      <a class="action primary" href="https://sirahwaz.github.io/Control-room/revenue-forge.html">فتح متجر MIDAD <small>الخدمات الحالية وخدمة تشخيص مسار الدفع بقيمة 5 USDC</small></a>
+      <a class="action" href="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout">فحص كتالوج checkout للقراءة فقط <small>يعرض المنتجات والإصدار؛ لا ينشئ فاتورة</small></a>
+      <a class="action" href="https://taskmarket.dev/tasks">المهام العامة في Taskmarket <small>افحص تاريخ الانتهاء والشروط والمنافسة قبل بدء العمل</small></a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2 — وكيل المتصفح المجاني / Free Browser Agent</h2>
+  <div class="card">
+    <p>يجمع نصوص الصفحات العامة وبصمات SHA-256 وحالة HTTP والوقت ولقطة شاشة عند نجاح Chromium. لا يسجل الدخول أو ينقر لإرسال أعمال أو يوقع معاملات.</p>
+    <div class="links two">
+      <a class="action" href="https://github.com/Sirahwaz/Control-room/pull/73">مراجعة PR #73 <small>التغييرات معزولة؛ الدمج ينتظر فحوص CI</small></a>
+      <a class="action" href="https://github.com/Sirahwaz/Control-room/actions/workflows/midad-browser-agent-tests.yml">اختبارات الوكيل <small>GitHub sign-in مطلوب للتشغيل اليدوي</small></a>
+      <a class="action" href="https://github.com/Sirahwaz/Control-room/actions/workflows/midad-browser-agent-research.yml">تشغيل جمع الأدلة <small>يتاح بعد دمج workflow إلى main</small></a>
+      <a class="action" href="https://github.com/Sirahwaz/Control-room/tree/midad/free-browser-agent-v1/tools/midad-browser-agent">الكود والإعدادات <small>المصادر والحدود الأمنية</small></a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3 — سجل الاستمرارية والتشخيص</h2>
+  <div class="card">
+    <p>آخر نقطة مرجعية: مسار midad_public_checkout نُشر بالإصدار 18 بعد حفظ نسخة الرجوع؛ صفحة المتجر في GitHub main تحتوي بطاقة الخدمة الجديدة. ما زال فحص العرض الفعلي على GitHub Pages قيد الانتظار.</p>
+    <div class="links two">
+      <a class="action" href="https://github.com/Sirahwaz/midad-intelligence/tree/ops/backup-checkout-v17-20261020/ops/snapshots">نسخ الرجوع والتوثيق <small>المستودع الخاص؛ يحتاج صلاحية دخول</small></a>
+      <a class="action" href="https://github.com/Sirahwaz/Control-room/actions">سجل CI / Actions <small>تحقق من حالة الاختبارات قبل الدمج</small></a>
+      <a class="action" href="https://github.com/Sirahwaz/Control-room">مستودع Control Room</a>
+      <a class="action" href="https://supabase.com/dashboard/project/froegigfmpmvtecztfbf">لوحة Supabase <small>لا تنشر مفاتيح أو بيانات حساسة</small></a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>قواعد التشغيل</h2>
+  <div class="card">
+    <ul>
+      <li>الأولوية: دليل رسمي → تحقق الاستحقاق والمنطقة وKYC → حساب صافي العائد → ثم اختيار العمل.</li>
+      <li>الفرصة المكتشفة أو العمل المنجز لا يعني أن المكافأة صُرفت. لا نسجل دخلًا إلا بإثبات تسوية.</li>
+      <li>لا تسجيلات مكررة، لا اشتراكات مدفوعة، ولا أي شحن أدوات.</li>
+      <li>المحافظ للاستقبال والمراقبة فقط؛ التحويل والسحب والتوقيع والمعاملات الحية تبقى معطّلة.</li>
+      <li>التشغيل التلقائي يعمل فقط بعد وجود workflow على main؛ هذه الصفحة نفسها لا تملك صلاحية تشغيل عمل خلفي.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  MIDAD AI — Explainable Command Surface · حالة هذه الصفحة: لوحة روابط ثابتة، وليست لوحة حالة live. لا تخزن أي أسرار أو مفاتيح ولا ترسل أي بيانات للمواقع المرتبطة.
+</footer>
+</main>
+</body>
+</html>
