@@ -146,46 +146,45 @@ def _safe_slug(index: int, hostname: str) -> str:
     return f"{index:02d}-{safe or 'target'}"
 
 
-def _browser_capture(target: dict, screenshot_path: Path) -> dict:
+def require_read_only_method(method: str) -> str:
+    """Allow only idempotent HTTP methods for all outbound network requests."""
+    normalized = str(method or "").upper()
+    if normalized not in {"GET", "HEAD"}:
+        raise ValueError(f"Blocked state-changing HTTP method: {normalized or '<missing>'}")
+    return normalized
+
+
+def _render_local_evidence_screenshot(title: str, source_url: str, text: str, screenshot_path: Path) -> None:
+    """Render a local text-only evidence sheet; Chromium never navigates to the target site."""
     from playwright.sync_api import sync_playwright
 
-    allowed = set(target["allowed_hosts"])
+    safe_title = html.escape((title or "Public page capture")[:500])
+    safe_url = html.escape(source_url[:2000])
+    safe_text = html.escape((text or "[No visible text extracted]")[:MAX_TEXT_CHARS])
+    document = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIDAD public evidence capture</title>
+<style>
+*{{box-sizing:border-box}}body{{margin:0;padding:28px;background:#101723;color:#edf4fc;font:16px/1.55 system-ui,sans-serif}}
+header{{border-bottom:1px solid #46566b;padding-bottom:16px;margin-bottom:18px}}
+.kicker{{color:#9fd8ff;font-size:12px;font-weight:700;letter-spacing:.08em}}
+h1{{font-size:24px;line-height:1.3;margin:8px 0}}.url{{color:#bac7d8;overflow-wrap:anywhere;font-size:12px}}
+pre{{white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.6 system-ui,sans-serif;background:#182435;border:1px solid #34445a;border-radius:12px;padding:18px;margin:0}}
+footer{{color:#bac7d8;font-size:12px;margin-top:14px}}
+</style></head><body>
+<header><div class="kicker">MIDAD · READ-ONLY PUBLIC EVIDENCE</div><h1>{safe_title}</h1>
+<div class="url">Source: {safe_url}</div></header>
+<pre>{safe_text}</pre><footer>Captured text only. This is a local report rendering, not a screenshot of the original website.</footer>
+</body></html>"""
+    screenshot_path.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
-            context = browser.new_context(
-                viewport={"width": 1365, "height": 900},
-                device_scale_factor=1,
-                locale="en-US",
-                service_workers="block",
-                accept_downloads=False,
-            )
-            page = context.new_page()
-            page.set_default_navigation_timeout(20_000)
-            page.set_default_timeout(8_000)
-
-            def guard(route):
-                try:
-                    _guard_request_url(route.request.url, allowed)
-                    route.continue_()
-                except Exception:
-                    route.abort()
-
-            page.route("**/*", guard)
-            response = page.goto(target["url"], wait_until="domcontentloaded", timeout=20_000)
-            page.wait_for_timeout(400)
-            title = page.title()[:500]
-            text = page.locator("body").inner_text(timeout=8_000)[:MAX_TEXT_CHARS]
-            final_url = page.url
-            # A final redirect must remain inside the explicit host list.
-            _guard_request_url(final_url, allowed)
-            screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+            page = browser.new_page(viewport={"width": 1365, "height": 900}, device_scale_factor=1)
+            # Set the content locally; no remote URL is opened and all network requests are aborted.
+            page.route("**/*", lambda route: route.abort())
+            page.set_content(document, wait_until="domcontentloaded", timeout=8_000)
             page.screenshot(path=str(screenshot_path), full_page=False, animations="disabled")
-            status_code = response.status if response else None
-            context.close()
-            return {"capture_method": "playwright", "http_status": status_code, "title": title,
-                    "final_url": final_url, "text": text, "screenshot": str(screenshot_path),
-                    "status": "CAPTURED" if status_code is None or status_code < 400 else "HTTP_ERROR"}
         finally:
             browser.close()
 
@@ -196,15 +195,17 @@ class _SafeRedirectHandler(HTTPRedirectHandler):
         self.allowed_hosts = allowed_hosts
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # This handler runs before urllib follows each redirect hop.
+        require_read_only_method(req.get_method())
         destination = urljoin(req.full_url, newurl)
         _guard_request_url(destination, self.allowed_hosts)
         return super().redirect_request(req, fp, code, msg, headers, destination)
 
 
-def _fallback_capture(target: dict) -> dict:
+def _safe_http_capture(target: dict) -> dict:
     allowed = set(target["allowed_hosts"])
     _guard_request_url(target["url"], allowed)
-    request = Request(target["url"], headers={"User-Agent": USER_AGENT, "Accept": "text/html,text/plain;q=0.9"})
+    request = Request(target["url"], headers={"User-Agent": USER_AGENT, "Accept": "text/html,text/plain;q=0.9"}, method=require_read_only_method("GET"))
     opener = build_opener(_SafeRedirectHandler(allowed))
     try:
         with opener.open(request, timeout=18) as response:
@@ -223,7 +224,7 @@ def _fallback_capture(target: dict) -> dict:
             match = re.search(r"<title\b[^>]*>(.*?)</title\s*>", raw, flags=re.I | re.S)
             if match:
                 title_match = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", match.group(1))).split())[:500]
-            return {"capture_method": "urllib_fallback", "http_status": status_code,
+            return {"capture_method": "safe_http_get", "http_status": status_code,
                     "title": title_match or "", "final_url": final_url, "text": text, "screenshot": None,
                     "status": "CAPTURED" if status_code < 400 else "HTTP_ERROR"}
     except HTTPError as exc:
@@ -243,21 +244,27 @@ def collect_one(raw_target: str | dict, index: int, output_dir: Path, attempts: 
     capture = None
     for attempt in range(1, attempts + 1):
         try:
-            capture = _browser_capture(target, screenshot)
+            # Network I/O is handled only by urllib GET with a redirect guard.
+            capture = _safe_http_capture(target)
             break
         except Exception as exc:
-            errors.append(f"browser attempt {attempt}: {type(exc).__name__}: {str(exc)[:400]}")
+            errors.append(f"safe HTTP GET attempt {attempt}: {type(exc).__name__}: {str(exc)[:400]}")
             if attempt < attempts:
                 time.sleep(min(2 ** (attempt - 1), 4))
     if capture is None:
+        capture = {"capture_method": "none", "http_status": None, "title": "", "final_url": target["url"],
+                   "text": "", "screenshot": None, "screenshot_type": None, "status": "FAILED"}
+    elif capture.get("status") == "CAPTURED":
         try:
-            capture = _fallback_capture(target)
-            errors.append("Browser unavailable; standard-library fallback used.")
+            _render_local_evidence_screenshot(str(capture.get("title") or target["label"]),
+                                              str(capture.get("final_url") or target["url"]),
+                                              str(capture.get("text") or ""), screenshot)
+            capture["screenshot"] = str(screenshot)
+            capture["screenshot_type"] = "local_text_report"
         except Exception as exc:
-            errors.append(f"fallback: {type(exc).__name__}: {str(exc)[:500]}")
-            capture = {"capture_method": "none", "http_status": None, "title": "", "final_url": target["url"],
-                       "text": "", "screenshot": None, "status": "FAILED"}
-
+            capture["screenshot"] = None
+            capture["screenshot_type"] = None
+            errors.append(f"local screenshot rendering unavailable: {type(exc).__name__}: {str(exc)[:300]}")
     text = str(capture.pop("text", ""))[:MAX_TEXT_CHARS]
     fetched_at = datetime.now(timezone.utc).isoformat()
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
