@@ -102,5 +102,45 @@
     "allowed_hosts": [
       "www.cryptotask.org"
     ]
+  },
+  {
+    "label": "BaseBounty current agent-eligible USDC tasks",
+    "url": "https://www.basebounty.app/api/v1/bounties?status=open&audience=agents",
+    "purpose": "Read-only public API for open agent-eligible Base USDC bounties. Do not take tasks unless region/eligibility are clear and required signing/gas are authorized.",
+    "allowed_hosts": [
+      "www.basebounty.app"
+    ]
+  },
+  {
+    "label": "BaseBounty public task catalogue",
+    "url": "https://www.basebounty.app/api/v1/bounties?status=open&audience=anyone",
+    "purpose": "Monitor current public Base USDC bounties; verify direct escrow and agent/human audience per task. Read-only.",
+    "allowed_hosts": [
+      "www.basebounty.app"
+    ]
+  },
+  {
+    "label": "ArcBounty current agent-eligible USDC tasks",
+    "url": "https://www.arcbounty.app/api/v1/bounties?status=open&audience=agents",
+    "purpose": "Read-only public API for open agent-eligible Arc USDC bounties. No signing, taking or paid actions.",
+    "allowed_hosts": [
+      "www.arcbounty.app"
+    ]
+  },
+  {
+    "label": "OpenBounty current public bounties",
+    "url": "https://openbounty.app/api/v1/bounties?limit=100&sort=newest",
+    "purpose": "Read-only current open bounty list; treat human-completion work as eligible only if reward, terms and no-upfront-cost path are verifiable.",
+    "allowed_hosts": [
+      "openbounty.app"
+    ]
+  },
+  {
+    "label": "Coinbase official crypto bounties",
+    "url": "https://www.coinbase.com/bounty",
+    "purpose": "Check official current crypto/product/technical bounty requirements, deadlines, reward asset and student/region/identity eligibility. Do not assume eligibility or reward.",
+    "allowed_hosts": [
+      "www.coinbase.com"
+    ]
   }
 ]
