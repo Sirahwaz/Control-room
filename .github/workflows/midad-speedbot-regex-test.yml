@@ -3,6 +3,7 @@ name: MIDAD Speedbot Matcher Tests
 on:
   push:
     branches:
+      - main
       - "midad/fix-speedbot-target-regex-*"
     paths:
       - "qa/midad-speedbot-matching.ts"
