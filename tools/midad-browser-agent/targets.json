@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Immunefi public bounty catalogue",
+    "url": "https://immunefi.com/bug-bounty/",
+    "purpose": "Discover public Web3 bounty programs; listing is not a payment guarantee.",
+    "allowed_hosts": [
+      "immunefi.com"
+    ]
+  },
+  {
+    "label": "LaborX public jobs marketplace",
+    "url": "https://laborx.com/",
+    "purpose": "Inspect visible Web3 jobs and crypto payment/escrow claims; verify individual terms separately.",
+    "allowed_hosts": [
+      "laborx.com"
+    ]
+  },
+  {
+    "label": "Superteam Earn public opportunities",
+    "url": "https://earn.superteam.fun/",
+    "purpose": "Check public Solana ecosystem opportunities; verify eligibility and exact payout evidence separately.",
+    "allowed_hosts": [
+      "earn.superteam.fun"
+    ]
+  },
+  {
+    "label": "Gitcoin public site",
+    "url": "https://gitcoin.co/",
+    "purpose": "Explore public ecosystem grants and opportunities; classify payment terms separately.",
+    "allowed_hosts": [
+      "gitcoin.co"
+    ]
+  }
+]\n
