@@ -1,0 +1,66 @@
+[
+  {
+    "label": "Immunefi public bounty catalogue",
+    "url": "https://immunefi.com/bug-bounty/",
+    "purpose": "Discover public Web3 bounty programs; advertised maxima are not guaranteed payouts; verify scope, region and KYC.",
+    "allowed_hosts": [
+      "immunefi.com"
+    ]
+  },
+  {
+    "label": "LaborX public jobs marketplace",
+    "url": "https://laborx.com/",
+    "purpose": "Inspect public Web3 jobs; check individual listing payment asset, escrow, eligibility and platform fees.",
+    "allowed_hosts": [
+      "laborx.com"
+    ]
+  },
+  {
+    "label": "Superteam Earn public opportunities",
+    "url": "https://superteam.fun/earn/",
+    "purpose": "Inspect current Solana ecosystem tasks; verify exact listing terms and eligibility.",
+    "allowed_hosts": [
+      "superteam.fun"
+    ]
+  },
+  {
+    "label": "Taskmarket public task listings",
+    "url": "https://taskmarket.dev/tasks",
+    "purpose": "Compare official task status, real deadlines and competition with the task API; listings are not personal award guarantees.",
+    "allowed_hosts": [
+      "taskmarket.dev"
+    ]
+  },
+  {
+    "label": "Taskmarket public open-task API",
+    "url": "https://api.taskmarket.dev/api/tasks?status=open&sort=reward_desc&limit=20",
+    "purpose": "Collect current public task fields for cross-checking deadline and escrow status; no claims or submissions.",
+    "allowed_hosts": [
+      "api.taskmarket.dev"
+    ]
+  },
+  {
+    "label": "Gitcoin public site",
+    "url": "https://gitcoin.co/",
+    "purpose": "Explore public grants and ecosystem opportunities; distinguish grants, jobs and speculative rewards.",
+    "allowed_hosts": [
+      "gitcoin.co"
+    ]
+  },
+  {
+    "label": "Bounties.sh public FAQ",
+    "url": "https://bounties.sh/faqs",
+    "purpose": "Check public platform rules and payout mechanics; do not assume payout without task-level proof.",
+    "allowed_hosts": [
+      "bounties.sh"
+    ]
+  },
+  {
+    "label": "CryptoTask public marketplace information",
+    "url": "https://www.cryptotask.org/en/info",
+    "purpose": "Check public information about marketplace workflows and escrow; verify each job and net payout.",
+    "allowed_hosts": [
+      "www.cryptotask.org"
+    ]
+  }
+]

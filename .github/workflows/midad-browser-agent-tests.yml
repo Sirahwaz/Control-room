@@ -1,0 +1,58 @@
+name: MIDAD Free Browser Agent — Tests
+on:
+  push:
+    branches:
+      - midad/free-browser-agent-v1
+    paths:
+      - "tools/midad-browser-agent/**"
+      - ".github/workflows/midad-browser-agent-tests.yml"
+  pull_request:
+    paths:
+      - "tools/midad-browser-agent/**"
+      - ".github/workflows/midad-browser-agent-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run standard-library unit tests
+        working-directory: tools/midad-browser-agent
+        run: python -m unittest -v
+      - name: Smoke-test deployed checkout catalog (read-only GET)
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --max-time 20 \
+            "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout" \
+            -o /tmp/midad-checkout.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("/tmp/midad-checkout.json").read_text())
+          assert payload.get("ok") is True, payload
+          assert payload.get("mode") == "read_only", payload
+          assert any(item.get("id") == "payment-path-mini-v1" and item.get("usd") == 5 for item in payload.get("products", [])), payload
+          print("PASS: public catalog responds and includes the $5 diagnostic offer")
+          PY
+      - name: Smoke-test CORS preflight response
+        run: |
+          set -euo pipefail
+          endpoint="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout"
+          status=$(curl --silent --show-error --max-time 20 -D /tmp/midad-cors-headers -o /tmp/midad-cors-body -w "%{http_code}" \
+            -X OPTIONS "$endpoint" \
+            -H "Origin: https://sirahwaz.github.io" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type")
+          test "$status" = "204"
+          test ! -s /tmp/midad-cors-body
+          grep -qi '^access-control-allow-origin: \*' /tmp/midad-cors-headers
+          grep -qi '^access-control-allow-methods: .*OPTIONS' /tmp/midad-cors-headers
+          echo "PASS: CORS preflight returns 204 with an empty body and expected CORS headers"
