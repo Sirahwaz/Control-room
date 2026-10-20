@@ -70,7 +70,7 @@ class PublicUrlValidationTests(unittest.TestCase):
     def test_redirect_refuses_unallowlisted_host_before_following(self):
         handler = _SafeRedirectHandler({"example.com"})
         request = Request("https://example.com/start", method="GET")
-        with self.assertRaisesRegex(ValueError, "not in the allowlist"):
+        with self.assertRaisesRegex(ValueError, "out-of-allowlist"):
             handler.redirect_request(
                 request, None, 302, "Found", Message(),
                 "https://attacker.example/collect",
