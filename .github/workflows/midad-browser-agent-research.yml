@@ -1,0 +1,54 @@
+name: MIDAD Free Browser Research
+on:
+  push:
+    branches:
+      - midad/free-browser-agent-v1
+    paths:
+      - "tools/midad-browser-agent/**"
+      - ".github/workflows/midad-browser-agent-research.yml"
+  schedule:
+    - cron: "17 6,18 * * *"
+  workflow_dispatch:
+    inputs:
+      urls_json:
+        description: "Optional JSON array of public HTTPS URLs or target objects (empty uses targets.json)"
+        required: false
+        type: string
+        default: ""
+permissions:
+  contents: read
+jobs:
+  public-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Chromium
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Run deterministic safety tests
+        working-directory: tools/midad-browser-agent
+        run: python -m unittest -v
+      - name: Capture public sources
+        env:
+          TARGET_URLS_JSON: ${{ inputs.urls_json }}
+        run: |
+          if [ -n "$TARGET_URLS_JSON" ]; then
+            python tools/midad-browser-agent/agent.py --urls-json "$TARGET_URLS_JSON" --out tools/midad-browser-agent/output
+          else
+            python tools/midad-browser-agent/agent.py --targets tools/midad-browser-agent/targets.json --out tools/midad-browser-agent/output
+          fi
+      - name: Upload evidence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-public-evidence-${{ github.run_number }}
+          path: tools/midad-browser-agent/output/
+          if-no-files-found: warn
+          retention-days: 14
