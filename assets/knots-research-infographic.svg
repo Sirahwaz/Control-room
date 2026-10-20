@@ -41,6 +41,8 @@
   <path d="M130 724l22 40h-44z" fill="#ffc38e"/><rect x="128" y="736" width="4" height="14" fill="#3a2c2b"/><circle cx="130" cy="755" r="2.5" fill="#3a2c2b"/>
   <text x="180" y="730" font-size="26" fill="#ffd2a8" font-weight="800">IMPORTANT CAVEAT</text>
   <text x="180" y="772" font-size="25">A described reward mechanism is not proof of net yield. Verify actual transfers, payout costs and token value.</text>
-  <text x="86" y="849" font-size="18" fill="#a9bbd3">Source: knotsonstonk.com · Token mint starts 8RVB…EGkS · AI-created independent research graphic; not an official announcement.</text>
+  <text x="86" y="832" font-size="16" fill="#a9bbd3">Mycelium public allocation API · checked 2026-10-20 17:32 UTC: KNOTS $7,466.04 (22.37% of $33,370.21 total).</text>
+  <text x="86" y="859" font-size="16" fill="#a9bbd3">Raydium pools: ESF/KNOTS $3,963.67 · MYC/KNOTS $3,502.37 · issuer-reported, not independently audited.</text>
+  <text x="86" y="884" font-size="14" fill="#8fa6c3">Sources: knotsonstonk.com · mint 8RVB…EGkS · AI-created independent research; not an official announcement.</text>
 </g>
 </svg>
