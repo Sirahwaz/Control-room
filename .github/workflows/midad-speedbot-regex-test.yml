@@ -6,13 +6,13 @@ on:
       - main
       - "midad/fix-speedbot-target-regex-*"
     paths:
-      - "qa/midad-speedbot-matching.ts"
-      - "qa/midad-speedbot-matching_test.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching_test.ts"
       - ".github/workflows/midad-speedbot-regex-test.yml"
   pull_request:
     paths:
-      - "qa/midad-speedbot-matching.ts"
-      - "qa/midad-speedbot-matching_test.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching.ts"
+      - "supabase/functions/midad_speedbot_target_executor/matching_test.ts"
       - ".github/workflows/midad-speedbot-regex-test.yml"
 
 permissions:
@@ -27,6 +27,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Run matcher regression tests
-        run: deno test --no-check qa/midad-speedbot-matching_test.ts
+        run: deno test --no-check supabase/functions/midad_speedbot_target_executor/matching_test.ts
       - name: Type-check pure matcher
-        run: deno check qa/midad-speedbot-matching.ts
+        run: deno check supabase/functions/midad_speedbot_target_executor/matching.ts
