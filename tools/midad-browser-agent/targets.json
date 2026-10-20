@@ -24,41 +24,81 @@
     ]
   },
   {
-    "label": "Taskmarket public task listings",
+    "label": "Superteam official agent-eligible feed",
+    "url": "https://superteam.fun/api/listings?take=100",
+    "purpose": "Read public current listings and their agentAccess field. Human-only listings must stay blocked; this source never submits.",
+    "allowed_hosts": [
+      "superteam.fun"
+    ]
+  },
+  {
+    "label": "Superteam official agent documentation",
+    "url": "https://superteam.fun/earn/agents",
+    "purpose": "Check official agent access rules and the human claim/payout checkpoint.",
+    "allowed_hosts": [
+      "superteam.fun"
+    ]
+  },
+  {
+    "label": "Taskmarket current public task catalogue",
     "url": "https://taskmarket.dev/tasks",
-    "purpose": "Compare official task status, real deadlines and competition with the task API; listings are not personal award guarantees.",
+    "purpose": "Check current reward, remaining deadline, competition and submission requirements on the official site.",
     "allowed_hosts": [
       "taskmarket.dev"
     ]
   },
   {
-    "label": "Taskmarket public open-task API",
-    "url": "https://api.taskmarket.dev/api/tasks?status=open&sort=reward_desc&limit=20",
-    "purpose": "Collect current public task fields for cross-checking deadline and escrow status; no claims or submissions.",
+    "label": "Taskmarket open-task API top 50",
+    "url": "https://api.taskmarket.dev/api/tasks?status=open&sort=reward_desc&limit=50",
+    "purpose": "Scan current public task fields; cross-check exact task deadline and escrow before ranking.",
     "allowed_hosts": [
       "api.taskmarket.dev"
     ]
   },
   {
-    "label": "Gitcoin public site",
+    "label": "Taskmarket KNOTS bounty",
+    "url": "https://taskmarket.dev/tasks/0x2befd3d6bea85672e500fdbc1be2a81f440d6ece77d3705c21d071b56f313924",
+    "purpose": "Recheck exact KNOTS task requirements, deadline, submissions and reward terms. Read-only; no signature or submission.",
+    "allowed_hosts": [
+      "taskmarket.dev"
+    ]
+  },
+  {
+    "label": "Taskmarket Gable Guardians bounty",
+    "url": "https://taskmarket.dev/tasks/0x8c73fd4852d30bb061db3dc31fd91a9735161f814e377fddbea51a523a838a1d",
+    "purpose": "Recheck Gable task status/deadline and required public deliverables; read-only.",
+    "allowed_hosts": [
+      "taskmarket.dev"
+    ]
+  },
+  {
+    "label": "Mycelium official live allocation API",
+    "url": "https://www.myceliumfinance.com/api/mycelium-allocation",
+    "purpose": "Capture the timestamped KNOTS partner-pool allocation snapshot for research; values are issuer-published estimates, not payment evidence.",
+    "allowed_hosts": [
+      "www.myceliumfinance.com"
+    ]
+  },
+  {
+    "label": "Gitcoin public opportunities",
     "url": "https://gitcoin.co/",
-    "purpose": "Explore public grants and ecosystem opportunities; distinguish grants, jobs and speculative rewards.",
+    "purpose": "Explore grants and ecosystem opportunities; distinguish grants from payable tasks and verify crypto terms separately.",
     "allowed_hosts": [
       "gitcoin.co"
     ]
   },
   {
-    "label": "Bounties.sh public FAQ",
+    "label": "Bounties.sh official FAQ",
     "url": "https://bounties.sh/faqs",
-    "purpose": "Check public platform rules and payout mechanics; do not assume payout without task-level proof.",
+    "purpose": "Check public platform rules and payout mechanics; do not assume a task is payable without task-level proof.",
     "allowed_hosts": [
       "bounties.sh"
     ]
   },
   {
-    "label": "CryptoTask public marketplace information",
+    "label": "CryptoTask marketplace information",
     "url": "https://www.cryptotask.org/en/info",
-    "purpose": "Check public information about marketplace workflows and escrow; verify each job and net payout.",
+    "purpose": "Check marketplace workflow and escrow disclosures; verify each job and net payout.",
     "allowed_hosts": [
       "www.cryptotask.org"
     ]
