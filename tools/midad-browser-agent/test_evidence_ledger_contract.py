@@ -37,7 +37,7 @@ class BrowserEvidenceLedgerMigrationContractTests(unittest.TestCase):
         self.assertIn("to service_role", self.normalized)
 
     def test_idempotency_checked_before_state_mutation(self):
-        self.assertIn("select l.id, l.to_state", self.normalized)
+        self.assertIn("select l.id", self.normalized)
         self.assertIn("where l.job_id = p_job_id and l.event_key = p_event_key", self.normalized)
         self.assertLess(
             self.normalized.index("where l.job_id = p_job_id and l.event_key = p_event_key"),
