@@ -6,7 +6,9 @@ on:
       - midad/free-browser-agent-v1
     paths:
       - "tools/midad-browser-agent/**"
+      - "tools/midad-browser-runtime/**"
       - ".github/workflows/midad-browser-agent-tests.yml"
+      - ".github/workflows/midad-browser-runtime-tests.yml"
   pull_request:
     paths:
       - "tools/midad-browser-agent/**"
@@ -27,6 +29,9 @@ jobs:
           python-version: "3.12"
       - name: Run standard-library unit tests
         working-directory: tools/midad-browser-agent
+        run: python -m unittest -v
+      - name: Run isolated Playwright runtime contract tests
+        working-directory: tools/midad-browser-runtime
         run: python -m unittest -v
       - name: Smoke-test deployed checkout catalog (read-only GET)
         run: |
