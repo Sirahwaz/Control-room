@@ -295,11 +295,17 @@ Deno.serve(async (req: Request) => {
           nextAction: old.data.next_action || null,
         });
         if (!ledger.ok) return ledgerFailure(ledger.error);
-        return json({ ok: true, idempotent: true, job: old.data });
+        const refreshed = await getJob(sb, old.data.id);
+        if (refreshed.error || !refreshed.data) return json({ ok: false, error: "job_read_after_ledger_failed" }, 500);
+        return json({ ok: true, idempotent: true, job: refreshed.data });
       }
 
       const snap = await profileSnapshot(sb, ownerUserId);
-      const initialUrl = safeSourceUrl(body.current_url);
+      const hasInitialUrl = body.current_url !== undefined && body.current_url !== null && clip(body.current_url, 1500) !== "";
+      const initialUrl = hasInitialUrl ? safeSourceUrl(body.current_url) : null;
+      if (hasInitialUrl && !initialUrl) {
+        return json({ ok: false, error: "invalid_current_url", detail: "Only public HTTPS URLs without credentials or IP literals can be recorded." }, 400);
+      }
       const insert = {
         owner_user_id: ownerUserId,
         agent_key: agentKey,
@@ -396,9 +402,11 @@ Deno.serve(async (req: Request) => {
       const digest = digestInput(body);
       if (!digest.ok) return json({ ok: false, error: "invalid_content_sha256" }, 400);
 
-      const sourceUrl = body.current_url !== undefined
-        ? safeSourceUrl(body.current_url)
-        : safeSourceUrl(job.current_url);
+      const hasCurrentUrl = body.current_url !== undefined && body.current_url !== null && clip(body.current_url, 1500) !== "";
+      const sourceUrl = hasCurrentUrl ? safeSourceUrl(body.current_url) : safeSourceUrl(job.current_url);
+      if (hasCurrentUrl && !sourceUrl) {
+        return json({ ok: false, error: "invalid_current_url", detail: "Only public HTTPS URLs without credentials or IP literals can be recorded." }, 400);
+      }
       const eventType = normalizeLedgerEventType(originalEventType);
       const evidence = eventEvidence(body, "gateway_record_event", eventType);
       const actorKey = normalizeActorKey(body.agent_key || job.agent_key || "midad_browser_operator");
