@@ -1,0 +1,64 @@
+name: Store Fulfillment Contract Tests
+on:
+  push:
+    branches: [feature/store-fulfillment-v1]
+    paths:
+      - "supabase/functions/midad_store_fulfillment/**"
+      - "supabase/migrations/20261021130000_midad_store_fulfillment_v1.sql"
+      - "tests/store-fulfillment/**"
+      - ".github/workflows/store-fulfillment-contract-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_store_fulfillment/**"
+      - "supabase/functions/midad_public_checkout/index.ts"
+      - "supabase/functions/midad_payment_verifier/index.ts"
+      - "supabase/migrations/20261021130000_midad_store_fulfillment_v1.sql"
+      - "tests/store-fulfillment/**"
+      - ".github/workflows/store-fulfillment-contract-tests.yml"
+permissions:
+  contents: read
+jobs:
+  unit-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Run fulfillment adapter and payment-gate tests
+        run: node --test tests/store-fulfillment/adapter-registry.test.mjs
+  postgres-migration-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: midad_fulfillment_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d midad_fulfillment_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: midad_fulfillment_test
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Build isolated production-contract fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/store-fulfillment/fixtures.sql
+      - name: Apply migration to isolated PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021130000_midad_store_fulfillment_v1.sql
+      - name: Run negative, idempotency, SHA-256, and delivery transition tests
+        run: psql -v ON_ERROR_STOP=1 -f tests/store-fulfillment/migration-contract.sql
