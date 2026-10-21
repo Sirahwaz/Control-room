@@ -153,7 +153,7 @@ async function handlePublicOrderAction(body:any,req:Request,action:string){
   if(intentReadError)throw intentReadError;
   if(!intent)return json({ok:false,error:"order_payment_record_missing"},409);
 
-  const publicOrder=(row:any,statusOverride?:string)=>({
+  const publicOrder=(row:any,statusOverride?:string,delivery:any=null)=>({
     id:row.id,
     product_id:row.product_id,
     product_name:row.product_name,
@@ -164,42 +164,72 @@ async function handlePublicOrderAction(body:any,req:Request,action:string){
     payment_reconciliation_status:intent.reconciliation_status,
     payment_asset:intent.settlement_asset,
     payment_network:intent.network,
-    delivery:null
+    delivery
   });
 
   if(action==="order_status"){
-    return json({ok:true,order:publicOrder(order)});
+    let delivery:any=null;
+    if(order.fulfillment_job_id){
+      const {data:job,error:jobError}=await db.from("midad_store_fulfillment_jobs")
+        .select("id,status,output,output_sha256,delivered_at,adapter_key")
+        .eq("id",order.fulfillment_job_id).eq("order_id",order.id).maybeSingle();
+      if(jobError)throw jobError;
+      if(job){
+        delivery={status:job.status,output_sha256:job.output_sha256||null,delivered_at:job.delivered_at||null};
+        if(job.status==="DELIVERED"&&String(job.output?.report||"").trim()){
+          delivery.artifact=job.output.report;
+          delivery.adapter_key=job.adapter_key;
+          delivery.generated_at=job.output.generated_at||null;
+        }
+      }
+    }
+    return json({ok:true,order:publicOrder(order,undefined,delivery)});
   }
 
   const requirements=clean(body.requirements||body.customer_requirements,5000);
   if(!requirements)return json({ok:false,error:"requirements_required"},400);
+  if(order.status!=="PAID"||intent.status!=="paid"||intent.reconciliation_status!=="matched"||!intent.paid_at||!order.paid_at)
+    return json({ok:false,error:"verified_paid_order_required_before_resuming_fulfillment"},409);
+  if(order.delivered_at||order.status==="DELIVERED")
+    return json({ok:false,error:"order_already_delivered"},409);
+
+  const {data:job,error:jobReadError}=await db.from("midad_store_fulfillment_jobs")
+    .select("id,status,output_sha256").eq("order_id",order.id).maybeSingle();
+  if(jobReadError)throw jobReadError;
+  if(!job)return json({ok:false,error:"fulfillment_job_not_found"},409);
+  if(job.status==="DELIVERED")return json({ok:false,error:"order_already_delivered"},409);
+  if(!["WAITING_FOR_INPUT","FAILED"].includes(String(job.status||"")))
+    return json({ok:false,error:"fulfillment_not_accepting_input",fulfillment_status:job.status},409);
 
   const metadata=jsonObject(order.metadata);
-  if(order.status==="PAID"
-    &&metadata.customer_input_updated_at
-    &&String(order.customer_requirements||"")===requirements){
-    return json({ok:true,updated:true,idempotent:true,order:publicOrder(order)});
+  if(metadata.customer_input_updated_at&&String(order.customer_requirements||"")===requirements&&job.status==="QUEUED"){
+    return json({ok:true,updated:true,idempotent:true,order:publicOrder(order),fulfillment_status:job.status});
   }
-  if(order.status!=="NEEDS_CUSTOMER_INPUT")
-    return json({ok:false,error:"order_not_accepting_customer_input",order_status:order.status},409);
-  if(intent.status!=="paid"||intent.reconciliation_status!=="matched"||!intent.paid_at)
-    return json({ok:false,error:"verified_payment_required_before_resuming_fulfillment"},409);
-
   const now=new Date().toISOString();
   const nextMetadata={...metadata,customer_input_updated_at:now,customer_input_update_count:Number(metadata.customer_input_update_count||0)+1};
   const {data:updated,error:updateError}=await db.from("midad_store_orders").update({
-    customer_requirements:requirements,
-    status:"PAID",
-    paid_at:order.paid_at||intent.paid_at,
-    metadata:nextMetadata,
-    updated_at:now
-  }).eq("id",order.id).eq("public_order_key",orderKey).eq("status","NEEDS_CUSTOMER_INPUT")
+    customer_requirements:requirements,metadata:nextMetadata,updated_at:now
+  }).eq("id",order.id).eq("public_order_key",orderKey).eq("status","PAID")
     .select("id,product_id,product_name,status,paid_at,delivered_at,fulfillment_job_id,payment_intent_id,public_order_key,customer_requirements,metadata")
     .maybeSingle();
   if(updateError)throw updateError;
   if(!updated)return json({ok:false,error:"order_changed_during_update_retry_status"},409);
 
-  return json({ok:true,updated:true,order:publicOrder(updated,"PAID"),message:"Customer requirements saved. Payment remains verified; fulfillment state is tracked separately."});
+  const {error:queueError}=await db.from("midad_store_fulfillment_jobs").update({
+    status:"QUEUED",input_snapshot:{product_id:updated.product_id,requirements},last_error:null,updated_at:now
+  }).eq("id",job.id).in("status",["WAITING_FOR_INPUT","FAILED"]);
+  if(queueError)throw queueError;
+
+  let kick:any={ok:false,error:"fulfillment_worker_not_invoked"};
+  try{
+    const response=await fetch(URL+"/functions/v1/midad_store_fulfillment",{
+      method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+KEY},
+      body:JSON.stringify({action:"process_order",order_id:order.id}),signal:AbortSignal.timeout(90000)
+    });
+    kick=await response.json().catch(()=>({ok:false,error:"fulfillment_worker_invalid_response"}));
+    if(!response.ok)kick={...kick,http_status:response.status};
+  }catch(e){kick={ok:false,error:String((e as any)?.message||e).slice(0,250)};}
+  return json({ok:true,updated:true,order:publicOrder(updated),fulfillment: kick, message:"Requirements saved. Delivery status is reported separately from payment status."});
 }
 
 async function main(req:Request){
