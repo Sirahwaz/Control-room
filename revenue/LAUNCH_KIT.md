@@ -14,6 +14,9 @@ Exclusions: no wallet custody, transfers, signing, production access, or handlin
 
 ## Tracked links
 
+- **Published owned-media guide:** https://sirahwaz.github.io/Control-room/revenue/checkout-guide.html
+- **Guide CTA (tracked):** https://sirahwaz.github.io/Control-room/revenue/?product=payment-path-mini-v1&lang=en&utm_source=github&utm_medium=technical_article&utm_campaign=checkout_diagnostic_oct_2026&utm_content=guide_hero&lane=global_remote_crypto&ref=github-checkout-guide
+
 - **X:** https://sirahwaz.github.io/Control-room/revenue/?product=payment-path-mini-v1&lang=en&utm_source=x&utm_medium=social&utm_campaign=checkout_diagnostic_oct_2026&utm_content=short_post&lane=global_remote_crypto&ref=x-checkout-diagnostic
 - **dev.to / Medium article:** https://sirahwaz.github.io/Control-room/revenue/?product=payment-path-mini-v1&lang=en&utm_source=devto&utm_medium=article&utm_campaign=checkout_diagnostic_oct_2026&utm_content=technical_checklist&lane=global_remote_crypto&ref=devto-checkout-diagnostic
 
