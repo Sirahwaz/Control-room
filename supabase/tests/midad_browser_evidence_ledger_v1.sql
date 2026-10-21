@@ -28,7 +28,7 @@ BEGIN
     owner_user_id, agent_key, platform_key, objective, state, session_ref,
     input_data, profile_snapshot, human_gate, blocker, evidence, next_action, attempt_count
   ) VALUES (
-    v_owner, 'ledger_smoke_test', 'midad_test', 'Evidence ledger integration smoke',
+    v_owner, 'ledger_smoke_test', NULL, 'Evidence ledger integration smoke',
     'PREPARING', 'ledger-smoke-' || gen_random_uuid()::text,
     '{}'::jsonb, '{}'::jsonb, '{"required": false, "status": "none"}'::jsonb,
     '{}'::jsonb, '{}'::jsonb, 'test_only', 0
