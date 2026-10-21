@@ -27,7 +27,7 @@ No login, cookie import, account access, clicking buttons, downloading files, fo
 - Signing, transfers and withdrawals remain blocked by default and require both a separate financial gate and explicit operation approval.
 - CAPTCHA, MFA, human-verification bypass and bot-evasion actions are always blocked.
 
-**Important limitation:** the policy module is a decision layer, not a sandbox or browser runtime. It is not yet wired into the read-only collector or the Supabase browser gateway. The existing collector remains read-only. A future runtime must enforce this policy before every browser action, restrict redirects and network methods independently, isolate sessions, and record evidence. Passing a policy decision alone does not prove that an action was executed safely or completed.
+**Important limitation:** the policy module is a decision layer, not a sandbox or browser runtime. It is wired into the read-only collector's top-level navigation preflight, but not the Supabase browser gateway or any interactive authenticated runtime. The existing collector remains read-only. A future runtime must enforce this policy before every browser action, restrict redirects and network methods independently, isolate sessions, and record evidence. Passing a policy decision alone does not prove that an action was executed safely or completed.
 
 ## Run locally
 
