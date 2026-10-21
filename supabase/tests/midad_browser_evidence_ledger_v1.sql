@@ -305,7 +305,7 @@ BEGIN
   v_cleanup := public.midad_browser_smoke_cleanup_job_v1(v_owner, v_run);
   IF (v_cleanup ->> 'deleted_jobs')::integer <> 1
      OR (v_cleanup ->> 'deleted_events')::integer <> 1
-     OR (v_cleanup ->> 'deleted_evidence')::integer <> 1 THEN
+     OR (v_cleanup ->> 'deleted_evidence')::integer <> 3 THEN
     RAISE EXCEPTION 'test_job_cleanup_contract_failed: %', v_cleanup;
   END IF;
 
