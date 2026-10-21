@@ -1,0 +1,25 @@
+name: Store Fulfillment Safety Tests
+
+on:
+  push:
+    branches: [main, "feature/store-fulfillment-v1"]
+    paths:
+      - "supabase/functions/midad_store_fulfillment/**"
+      - "tests/store-fulfillment/**"
+      - ".github/workflows/store-fulfillment-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/midad_store_fulfillment/**"
+      - "tests/store-fulfillment/**"
+      - ".github/workflows/store-fulfillment-tests.yml"
+
+jobs:
+  adapter-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run store fulfillment safety tests
+        run: node --test tests/store-fulfillment/*.test.mjs
