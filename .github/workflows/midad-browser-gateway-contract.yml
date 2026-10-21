@@ -1,0 +1,23 @@
+name: MIDAD Browser Gateway — Offline Ledger Contract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - ".github/workflows/midad-browser-gateway-contract.yml"
+permissions:
+  contents: read
+jobs:
+  gateway-ledger-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check mirrored gateway source
+        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
+      - name: Run offline ledger contract tests
+        run: deno test supabase/functions/midad_browser_agent_gateway/ledger_test.ts
