@@ -155,6 +155,8 @@ DECLARE
   v_job uuid;
   v_cleanup jsonb;
   v_count integer;
+  v_state text;
+  v_idempotent boolean;
 BEGIN
   INSERT INTO auth.users(id, email, raw_user_meta_data)
   VALUES (
@@ -216,19 +218,86 @@ BEGIN
   )
   RETURNING id INTO v_job;
 
-  PERFORM * FROM public.midad_browser_record_evidence_v1(
+  -- Exercise the isolated human-gate state-machine path before cleanup.
+  SELECT r.state, r.idempotent INTO v_state, v_idempotent
+  FROM public.midad_browser_record_evidence_v1(
     v_job,
-    'smoke-cleanup-event-0001',
-    'job_created',
+    'smoke-human-gate-open-0001',
+    'human_gate_opened',
     'ledger_smoke_test',
-    NULL,
+    'HUMAN_GATE',
     'https://example.com/smoke',
     repeat('c', 64),
     jsonb_build_object('source_kind', 'smoke_test'),
+    'wait_for_human_gate',
+    NULL,
+    NULL
+  ) AS r;
+  IF v_state <> 'HUMAN_GATE' OR v_idempotent IS TRUE THEN
+    RAISE EXCEPTION 'human_gate_open_transition_failed: state %, idempotent %', v_state, v_idempotent;
+  END IF;
+
+  SELECT r.state, r.idempotent INTO v_state, v_idempotent
+  FROM public.midad_browser_record_evidence_v1(
+    v_job,
+    'smoke-human-gate-resume-0001',
+    'human_gate_resumed',
+    'ledger_smoke_test',
+    'RUNNING',
+    'https://example.com/smoke',
+    repeat('c', 64),
+    jsonb_build_object('source_kind', 'smoke_test'),
+    'resume_browser_session',
+    NULL,
+    NULL
+  ) AS r;
+  IF v_state <> 'RUNNING' OR v_idempotent IS TRUE THEN
+    RAISE EXCEPTION 'human_gate_resume_transition_failed: state %, idempotent %', v_state, v_idempotent;
+  END IF;
+
+  -- Replaying the resume event with different requested state must be a no-op.
+  SELECT r.state, r.idempotent INTO v_state, v_idempotent
+  FROM public.midad_browser_record_evidence_v1(
+    v_job,
+    'smoke-human-gate-resume-0001',
+    'job_cancelled',
+    'ledger_smoke_test',
+    'CANCELLED',
+    NULL,
+    NULL,
+    '{}'::jsonb,
+    'should_not_run',
+    NULL,
+    NULL
+  ) AS r;
+  IF v_state <> 'RUNNING' OR v_idempotent IS NOT TRUE THEN
+    RAISE EXCEPTION 'human_gate_resume_idempotency_failed: state %, idempotent %', v_state, v_idempotent;
+  END IF;
+
+  SELECT r.state, r.idempotent INTO v_state, v_idempotent
+  FROM public.midad_browser_record_evidence_v1(
+    v_job,
+    'smoke-cancel-job-0001',
+    'job_cancelled',
+    'ledger_smoke_test',
+    'CANCELLED',
+    NULL,
+    NULL,
+    jsonb_build_object('source_kind', 'smoke_test', 'policy_code', 'TEST_CANCELLED'),
     'test_cleanup',
     NULL,
     NULL
-  );
+  ) AS r;
+  IF v_state <> 'CANCELLED' OR v_idempotent IS TRUE THEN
+    RAISE EXCEPTION 'human_gate_cancel_transition_failed: state %, idempotent %', v_state, v_idempotent;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.midad_browser_jobs
+    WHERE id = v_job AND state = 'CANCELLED' AND completed_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'cancelled_job_state_or_completed_at_missing';
+  END IF;
 
   INSERT INTO public.midad_agent_events(job_id, agent_key, event_type, state, payload)
   VALUES (v_job, 'ledger_smoke_test', 'job_created', 'PREPARING', '{"test_only": true}'::jsonb);
