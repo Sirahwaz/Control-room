@@ -113,6 +113,8 @@ jobs:
 
       - name: Apply evidence ledger migration to isolated PostgreSQL
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
+      - name: Apply one-shot smoke-test authorization migration to isolated PostgreSQL
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql
 
       - name: Run idempotency, transition, and URL-redaction integration test
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_evidence_ledger_v1.sql
