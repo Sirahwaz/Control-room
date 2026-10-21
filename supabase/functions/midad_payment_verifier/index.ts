@@ -233,6 +233,20 @@ async function audit(sb:any,userId:string,p:any){
 }
 
 
+async function kickStoreFulfillment(orderId:string){
+  const sk=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
+  if(!sk||!orderId)return {ok:false,reason:"fulfillment_invocation_unavailable"};
+  try{
+    const response=await fetch((Deno.env.get("SUPABASE_URL")||"")+"/functions/v1/midad_store_fulfillment",{
+      method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+sk},
+      body:JSON.stringify({action:"process_order",order_id:orderId}),
+      signal:AbortSignal.timeout(90000)
+    });
+    const result=await response.json().catch(()=>({ok:false,error:"invalid_worker_response"}));
+    return response.ok?result:{...result,ok:false,http_status:response.status};
+  }catch(error){return {ok:false,reason:String((error as any)?.message||error).slice(0,250)};}
+}
+
 async function syncPublicStoreOrderPaid(sb:any,intent:any,paidAt:string|null){
   if(String(asObject(intent?.metadata).created_by||"")!=="midad_public_checkout_v1")
     return {ok:true,skipped:true,reason:"not_public_checkout"};
@@ -313,8 +327,9 @@ Deno.serve(async(req)=>{
       if(!intent)return json({error:"payment_intent_not_found"},404);
       if(intent.status==="paid"&&intent.reconciliation_status==="matched"){
         const storeOrderSync=await syncPublicStoreOrderPaid(sb,intent,intent.paid_at||null);
-        if(!storeOrderSync.ok)await audit(sb,profile.id,{subject_id:intentId,action:"sync_store_order_after_verified_payment",status:"pending_manual_review",risk_class:"medium",summary:"الدفع مطابق مسبقًا؛ حالة طلب المتجر تحتاج إلى مزامنة أو مراجعة. لا تحويل ولا توقيع.",details:{store_order_sync:storeOrderSync,live_transfer:false,settlement_performed:false}});
-        return json({ok:true,status:"reconciled",idempotent:true,store_order_sync:storeOrderSync,live_transfer:false,settlement_performed:false});
+        const storeFulfillment=storeOrderSync.ok&&storeOrderSync.order_id?await kickStoreFulfillment(String(storeOrderSync.order_id)):null;
+        if(!storeOrderSync.ok||storeFulfillment?.ok===false)await audit(sb,profile.id,{subject_id:intentId,action:"sync_store_order_after_verified_payment",status:"pending_manual_review",risk_class:"medium",summary:"الدفع مطابق؛ تسليم المتجر قيد الانتظار أو المراجعة. لا تحويل ولا توقيع.",details:{store_order_sync:storeOrderSync,store_fulfillment:storeFulfillment,live_transfer:false,settlement_performed:false}});
+        return json({ok:true,status:"reconciled",idempotent:true,store_order_sync:storeOrderSync,store_fulfillment:storeFulfillment,live_transfer:false,settlement_performed:false});
       }
       const intentStatus=String(intent.status||"").toLowerCase();
       const expiresAt=Date.parse(intent.expires_at||"");
@@ -462,9 +477,10 @@ Deno.serve(async(req)=>{
         return await markReview("payment_intent_update_not_verified",{...checks});
       }
       const storeOrderSync=await syncPublicStoreOrderPaid(sb,intent,verifiedAt);
-      if(!storeOrderSync.ok)await audit(sb,profile.id,{subject_id:intentId,action:"sync_store_order_after_verified_payment",status:"pending_manual_review",risk_class:"medium",summary:"تم التحقق من الدفع لكن حالة طلب المتجر لم تتزامن بالكامل؛ لا تحويل ولا توقيع.",details:{store_order_sync:storeOrderSync,live_transfer:false,settlement_performed:false}});
-      await audit(sb,profile.id,{subject_id:intentId,action:"reconcile_payment",status:"reconciled",risk_class:"medium",summary:"تمت مطابقة دفعة واردة مع إيصال سلسلة مستقل واحد، دون تنفيذ تحويل أو توقيع.",details:{...checks,receipt_id:receipt.id,route_id:route.id,store_order_sync:storeOrderSync,live_transfer:false,settlement_performed:false}});
-      return json({ok:true,status:"reconciled",reconciliation:checks,receipt_id:receipt.id,store_order_sync:storeOrderSync,live_transfer:false,settlement_performed:false,financial_actions:{transfers:0,signatures:0,settlement_performed:false}});
+      const storeFulfillment=storeOrderSync.ok&&storeOrderSync.order_id?await kickStoreFulfillment(String(storeOrderSync.order_id)):null;
+      if(!storeOrderSync.ok||storeFulfillment?.ok===false)await audit(sb,profile.id,{subject_id:intentId,action:"sync_store_order_after_verified_payment",status:"pending_manual_review",risk_class:"medium",summary:"تم التحقق من الدفع؛ تسليم المتجر قيد الانتظار أو المراجعة. لا تحويل ولا توقيع.",details:{store_order_sync:storeOrderSync,store_fulfillment:storeFulfillment,live_transfer:false,settlement_performed:false}});
+      await audit(sb,profile.id,{subject_id:intentId,action:"reconcile_payment",status:"reconciled",risk_class:"medium",summary:"تمت مطابقة دفعة واردة مع إيصال سلسلة مستقل واحد، دون تنفيذ تحويل أو توقيع.",details:{...checks,receipt_id:receipt.id,route_id:route.id,store_order_sync:storeOrderSync,store_fulfillment:storeFulfillment,live_transfer:false,settlement_performed:false}});
+      return json({ok:true,status:"reconciled",reconciliation:checks,receipt_id:receipt.id,store_order_sync:storeOrderSync,store_fulfillment:storeFulfillment,live_transfer:false,settlement_performed:false,financial_actions:{transfers:0,signatures:0,settlement_performed:false}});
     }
 
     return json({error:"unknown_action"},400);
