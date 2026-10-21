@@ -13,6 +13,10 @@ from runner import (
 
 
 class URLPolicyTests(unittest.TestCase):
+    def setUp(self):
+        self.dns = patch("runner.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))])
+        self.dns.start()
+        self.addCleanup(self.dns.stop)
     def test_allows_exact_allowlisted_https_host(self):
         self.assertEqual(
             validate_navigation_url("https://example.com/path", {"example.com"}),
@@ -41,13 +45,17 @@ class URLPolicyTests(unittest.TestCase):
 
 
 class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.dns = patch("runner.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))])
+        self.dns.start()
+        self.addCleanup(self.dns.stop)
     def make_runner(self, **kwargs):
         config = BrowserConfig(
             supabase_url="https://project.supabase.co",
             ingest_key="test-key-not-real",
             allowed_hosts=frozenset({"example.com"}),
             navigation_timeout_ms=250,
-            overall_timeout_seconds=1,
+            overall_timeout_seconds=kwargs.pop("overall_timeout_seconds", 1),
             **kwargs,
         )
         return BrowserJobRunner(config, gateway=AsyncMock(), playwright_factory=AsyncMock())
