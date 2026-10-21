@@ -81,3 +81,18 @@ test("accepts only the uniquely matched receipt bound to the payment intent", ()
   const fixture = validGateFixture();
   assert.equal(validatePaymentGate(fixture).ok, true);
 });
+
+test("keeps Solana transaction signatures case-sensitive", () => {
+  const fixture = validGateFixture();
+  fixture.intent.network = "solana";
+  fixture.intent.received_tx_hash = "AbC123";
+  fixture.intent.quoted_crypto_amount = 5.000123;
+  fixture.receipts[0] = {
+    ...fixture.receipts[0],
+    tx_hash: "abc123",
+    network: "solana",
+    mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  };
+  fixture.job.payment_evidence.tx_hash = "abc123";
+  assert.equal(validatePaymentGate(fixture).ok, false);
+});
