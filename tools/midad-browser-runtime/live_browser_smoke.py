@@ -60,7 +60,13 @@ async def main():
                 async def adversarial_routes(route):
                     url = route.request.url
                     if url == "https://example.com/redirect-fixture":
-                        await route.fulfill(status=302, headers={"Location": ATTACKER + "landing"})
+                        # Use an actual browser-driven top-level redirect. A fulfilled synthetic
+                        # 302 is not consistently followed by Chromium's intercepted route path.
+                        await route.fulfill(
+                            status=200,
+                            content_type="text/html",
+                            body="<html><body>redirect fixture</body></html>",
+                        )
                         return
                     if url == "https://example.com/subresource-fixture":
                         html = '<html><body>fixture<script src="https://attacker.test/evil.js"></script><img src="https://attacker.test/pixel.png"></body></html>'
@@ -74,7 +80,7 @@ async def main():
                     except BrowserPolicyError as exc:
                         host = route.request.url.split("/")[2] if "://" in route.request.url else "invalid"
                         blocked.append({"code": str(exc), "host": host})
-                        if "redirect" in url or host == "attacker.test":
+                        if host == "attacker.test":
                             intercepted["redirect"] = True
                             if url.endswith("/evil.js"):
                                 intercepted["script"] = True
@@ -83,10 +89,17 @@ async def main():
                         await route.abort("blockedbyclient")
 
                 await page.route("**/*", adversarial_routes)
+                await page.goto("https://example.com/redirect-fixture", wait_until="domcontentloaded", timeout=2000)
+                # Initiate a genuine browser navigation to the blocked host. The route guard
+                # must abort it before any external network request can be made.
                 try:
-                    await page.goto("https://example.com/redirect-fixture", wait_until="domcontentloaded", timeout=2000)
+                    await page.evaluate("url => { window.location.href = url; }", ATTACKER + "landing")
                 except PlaywrightError:
                     pass
+                for _ in range(30):
+                    if intercepted["redirect"]:
+                        break
+                    await asyncio.sleep(0.05)
                 assert intercepted["redirect"], "non-allowlisted redirect destination was not blocked"
                 response = await page.goto("https://example.com/subresource-fixture", wait_until="domcontentloaded", timeout=3000)
                 assert response is not None and response.status == 200, "subresource fixture did not load"
