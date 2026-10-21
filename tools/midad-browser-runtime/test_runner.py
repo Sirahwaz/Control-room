@@ -132,5 +132,29 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         fake_browser.close.assert_awaited()
 
 
+    async def test_cancel_event_interrupts_hanging_navigation_and_cleans_up(self):
+        runner = self.make_runner(overall_timeout_seconds=1)
+        runner.gateway.record_event.return_value = {"ok": True}
+        fake_page = AsyncMock()
+        fake_page.url = "https://example.com/"
+        fake_context = AsyncMock()
+        fake_context.pages = [fake_page]
+        fake_browser = AsyncMock()
+        fake_browser.new_context.return_value = fake_context
+        runner._open_browser = AsyncMock(return_value=(AsyncMock(), fake_browser, fake_context, fake_page))
+        async def hang(*_args, **_kwargs):
+            await asyncio.sleep(5)
+        runner._navigate_and_capture = AsyncMock(side_effect=hang)
+        cancel = asyncio.Event()
+        async def trigger_cancel():
+            await asyncio.sleep(0.02)
+            cancel.set()
+        asyncio.create_task(trigger_cancel())
+        with self.assertRaises(asyncio.CancelledError):
+            await runner.run({"id": "job-cancel", "current_url": "https://example.com/"}, cancel)
+        fake_context.close.assert_awaited()
+        fake_browser.close.assert_awaited()
+        runner.gateway.record_event.assert_awaited()
+
 if __name__ == "__main__":
     unittest.main()
