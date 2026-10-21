@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mesh_key": "midad-distribution-mesh-v1",
-  "status": "VERIFIED_E2E",
+  "status": "PRELAUNCH_VERIFIED_NO_PAID_E2E",
   "canonical_landing": "https://sirahwaz.github.io/Control-room/revenue/",
   "daily_target": {
     "qualified_targets_min": 10,
@@ -21,6 +21,8 @@
     "direct_default_source": "direct"
   },
   "offer_catalog": [
+    "payment-path-mini-v1",
+    "miner-microscope-v1",
     "opportunity-radar-v1",
     "research-revenue-sprint-v1",
     "bug-fix-sprint-v1",
@@ -81,16 +83,33 @@
     "payment_verified_on_chain_before_revenue_recognition": true,
     "human_approval_for_external_submission": true
   },
-  "last_verified_at": "2026-10-07T06:44:30Z",
+  "last_verified_at": "2026-10-21T08:42:27Z",
   "verification": {
-    "github_pages_live": true,
+    "storefront_languages": [
+      "en",
+      "ar",
+      "fa",
+      "es",
+      "fr",
+      "de"
+    ],
+    "storefront_default_language": "en",
+    "storefront_products_count": 8,
+    "storefront_build": "passed",
     "control_room_ci": "passed",
-    "pull_request": 47,
-    "merge_commit": "7591ef8869187df7c4ce2630e789853b5dc7ea9d",
-    "public_checkout_version": 8,
-    "attribution_persistence": "verified",
-    "non_payment_checkout_created": true,
-    "non_payment_checkout_cleaned_up": true
+    "public_checkout_deployment_version": 21,
+    "public_checkout_api_get": "HTTP 200; read_only; 8 products",
+    "order_status_invalid_key_test": "400 invalid_order_key",
+    "order_status_unknown_key_test": "404 order_not_found",
+    "customer_input_unknown_key_test": "404 order_not_found",
+    "base_usdc_receiving_routes": "2 routes VERIFIED; error_count=0; scan_caught_up=true at 2026-10-21T08:42:00Z",
+    "base_usdc_receipts_detected": 0,
+    "payment_events": 0,
+    "wallet_receipts": 0,
+    "paid_store_orders": 0,
+    "paid_end_to_end_checkout": "not run; no test invoice created",
+    "valid_order_key_success_path": "not runtime-tested; no current customer order available",
+    "no_payment_or_signature_actions": true
   },
   "lead_activation": {
     "internal_targets_created": 10,
