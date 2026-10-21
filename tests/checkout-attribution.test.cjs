@@ -73,3 +73,13 @@ test('ignores non-HTTP referrers', () => {
 
   assert.equal(Object.hasOwn(actual, 'ref'), false);
 });
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+test('Revenue Forge passes actual URL/referrer attribution instead of a hard-coded campaign', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../revenue-forge.html'), 'utf8');
+  assert.match(html, /<script src="\.\/revenue\/checkout-attribution\.js"><\/script>/);
+  assert.match(html, /attribution:\s*window\.MIDADCheckoutAttribution\.buildCheckoutAttribution\(window\.location\.href,\s*document\.referrer\)/);
+  assert.doesNotMatch(html, /attribution:\s*\{\s*utm_source:\s*"midad_revenue_forge"/);
+});
