@@ -56,7 +56,7 @@ class BrowserEvidenceLedgerMigrationContractTests(unittest.TestCase):
         self.assertIn("v_authority like '%@%'", self.normalized)
 
     def test_valid_state_transition_matrix_is_explicit(self):
-        for state in ("queued", "preparing", "running", "human_gate", "blocked", "failed", "completed", "cancelled"):
+        for state in ("queued", "researching", "preparing", "running", "human_gate", "blocked", "submitted", "verifying", "failed", "completed", "cancelled"):
             self.assertIn("'" + state + "'", self.normalized)
         self.assertIn("invalid_browser_state_transition", self.normalized)
 
