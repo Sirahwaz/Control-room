@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
+      - "supabase/functions/midad_browser_gateway_smoke_runner/**"
       - ".github/workflows/midad-browser-gateway-ledger-tests.yml"
   push:
     branches:
@@ -30,4 +31,4 @@ jobs:
       - name: Run ledger adapter tests
         run: deno test --no-check supabase/functions/midad_browser_agent_gateway/ledger.test.ts
       - name: Type-check gateway and ledger adapter
-        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
+        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts supabase/functions/midad_browser_gateway_smoke_runner/index.ts
