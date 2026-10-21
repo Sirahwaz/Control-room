@@ -38,13 +38,18 @@ function safeCode(value: unknown, fallback = "BLOCKED_BY_POLICY") {
   return code && /^[A-Za-z0-9_.:-]+$/.test(code) ? code : fallback;
 }
 
-function eventEvidence(body: Record<string, any>, defaultSourceKind: string) {
+function eventEvidence(body: Record<string, any>, defaultSourceKind: string, eventType: string) {
   const incoming = body.evidence && typeof body.evidence === "object" && !Array.isArray(body.evidence)
     ? body.evidence
     : {};
   const combined: Record<string, unknown> = { ...incoming };
   if (!combined.source_kind) combined.source_kind = defaultSourceKind;
-  if (body.code !== undefined && combined.policy_code === undefined) combined.policy_code = body.code;
+  if (eventType === "policy_decision" && body.code !== undefined && combined.policy_code === undefined) {
+    combined.policy_code = body.code;
+  }
+  if (eventType === "error" && body.code !== undefined && combined.error_code === undefined) {
+    combined.error_code = body.code;
+  }
   if (body.retryable !== undefined && combined.retryable === undefined) combined.retryable = body.retryable;
   if (body.attempt_count !== undefined && combined.attempt === undefined) combined.attempt = body.attempt_count;
   return sanitizeLedgerEvidence(combined);
@@ -394,14 +399,15 @@ Deno.serve(async (req: Request) => {
       const sourceUrl = body.current_url !== undefined
         ? safeSourceUrl(body.current_url)
         : safeSourceUrl(job.current_url);
-      const evidence = eventEvidence(body, "gateway_record_event");
       const eventType = normalizeLedgerEventType(originalEventType);
+      const evidence = eventEvidence(body, "gateway_record_event", eventType);
       const actorKey = normalizeActorKey(body.agent_key || job.agent_key || "midad_browser_operator");
       const nextAction = body.next_action === undefined ? null : clip(body.next_action, 300) || null;
-      const rawBlockerCode = body.blocker?.code ?? body.code;
-      const blockerCode = stateInput.value === "BLOCKED"
-        ? safeCode(rawBlockerCode, "BLOCKED_BY_POLICY")
-        : (rawBlockerCode ? safeCode(rawBlockerCode, "BLOCKED_BY_POLICY") : null);
+      const hasBlockerUpdate = body.blocker !== undefined || stateInput.value === "BLOCKED";
+      const rawBlockerCode = body.blocker?.code ?? (stateInput.value === "BLOCKED" ? body.code : null);
+      const blockerCode = hasBlockerUpdate
+        ? safeCode(rawBlockerCode, stateInput.value === "BLOCKED" ? "BLOCKED_BY_POLICY" : "POLICY_EVENT")
+        : null;
       const ledger = await recordLedger(sb, {
         jobId: id,
         eventKey: await makeLedgerEventKey({
@@ -413,6 +419,7 @@ Deno.serve(async (req: Request) => {
           blockerCode,
           attemptCount: attemptInput.value,
           evidence,
+          contentSha256: digest.value,
         }, body.event_key ?? body.idempotency_key),
         eventType,
         actorKey,
@@ -494,7 +501,8 @@ Deno.serve(async (req: Request) => {
       if (job.state === "RUNNING" && job.human_gate?.status === "COMPLETED") {
         return json({ ok: true, idempotent: true, job });
       }
-      if (job.state !== "HUMAN_GATE") {
+      const recoveringGateUpdate = job.state === "RUNNING" && job.human_gate?.status === "OPEN";
+      if (job.state !== "HUMAN_GATE" && !recoveringGateUpdate) {
         return json({ ok: false, error: "human_gate_not_open", state: job.state }, 409);
       }
 
