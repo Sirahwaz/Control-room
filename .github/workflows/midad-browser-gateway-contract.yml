@@ -1,4 +1,4 @@
-name: MIDAD Browser Gateway — Isolated Contract Suite
+name: MIDAD Browser Gateway — Contract Suite
 on:
   workflow_dispatch:
   push:
@@ -76,3 +76,26 @@ jobs:
           END;
           $check$;
           SQL
+      - name: Verify live gateway rejects unauthenticated request
+        env:
+          MIDAD_GATEWAY_URL: https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_browser_agent_gateway
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error --max-time 10 -o "$response_file" -w "%{http_code}" \
+            -X POST "$MIDAD_GATEWAY_URL" \
+            -H "content-type: application/json" \
+            --data '{"action":"capabilities"}')"
+          if [ "$status" != "401" ]; then
+            echo "Expected an unauthenticated 401; received HTTP $status."
+            exit 1
+          fi
+          python3 - "$response_file" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              body = json.load(stream)
+          if body.get("ok") is not False or body.get("error") != "unauthorized":
+              raise SystemExit("Gateway did not return the expected unauthorized contract")
+          print("Live gateway correctly rejected the unauthenticated request with HTTP 401.")
+          PY
+          rm -f "$response_file"
