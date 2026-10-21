@@ -53,7 +53,7 @@ export function validatePaymentGate({ order, intent, receipts, job }) {
   const matches = (receipts || []).filter((r) =>
     String(r.matched_payment_intent_id || "") === String(intent.id) &&
     String(r.direction || "") === "inbound" &&
-    String(r.tx_hash || "").toLowerCase() === String(intent.received_tx_hash).toLowerCase() &&
+    (network === "base" ? String(r.tx_hash || "").toLowerCase() === String(intent.received_tx_hash).toLowerCase() : String(r.tx_hash || "") === String(intent.received_tx_hash)) &&
     String(r.asset || "") === String(intent.settlement_asset || "") &&
     String(r.network || "").toLowerCase() === network &&
     Math.abs(Number(r.amount) - Number(intent.quoted_crypto_amount)) < 0.0000005 &&
