@@ -153,6 +153,7 @@ export interface LedgerEventKeyInput {
   blockerCode?: string | null;
   attemptCount?: number | null;
   evidence?: unknown;
+  contentSha256?: string | null;
 }
 
 function validEventKey(value: unknown): value is string {
@@ -174,6 +175,7 @@ export async function makeLedgerEventKey(input: LedgerEventKeyInput, supplied?: 
     nextAction: safeToken(input.nextAction, 300),
     blockerCode: safeToken(input.blockerCode, 100),
     attemptCount: typeof input.attemptCount === "number" && Number.isInteger(input.attemptCount) ? input.attemptCount : null,
+    contentSha256: typeof input.contentSha256 === "string" && /^[a-fA-F0-9]{64}$/.test(input.contentSha256) ? input.contentSha256.toLowerCase() : null,
     evidence: orderedEvidence,
   });
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
