@@ -59,6 +59,6 @@ jobs:
       - name: Apply the recorded v1 migration source to an isolated database
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021092715_midad_store_fulfillment_v1.sql
       - name: Apply SHA-256 hardening migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021102000_midad_store_fulfillment_sha256_guard_v1.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021101605_midad_store_fulfillment_sha256_guard_v1.sql
       - name: Run negative receipt, idempotency, and artifact digest tests
         run: psql -v ON_ERROR_STOP=1 -f tests/store-fulfillment/migration-contract.sql
