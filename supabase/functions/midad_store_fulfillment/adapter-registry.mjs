@@ -17,7 +17,7 @@ export function getAdapter(productId) {
       const text = typeof value === "string" ? value.trim() : "";
       if (!text) return false;
       if (!ADAPTERS[id].requiresSourceMaterial) return true;
-      const hasSourceMarker = /```|[\r\n]|[{}\[\],]|(?:error|stack trace|log|csv|json|source code|function\\b|const\\b|import\\b|metrics|hashrate|worker|column|rows|data sample)/i.test(text);
+      const hasSourceMarker = /```|[\r\n]|[{}\[\],]|(?:error|stack trace|log|csv|json|source code|function\b|const\b|import\b|metrics|hashrate|worker|column|rows|data sample)/i.test(text);
       return text.length >= 60 && hasSourceMarker;
     }
   };
