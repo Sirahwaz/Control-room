@@ -128,6 +128,11 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertRegex(result["content_sha256"], r"^[a-f0-9]{64}$")
         self.assertNotIn("public evidence", str(result))
         runner.gateway.record_event.assert_awaited()
+        event_payload = runner.gateway.record_event.await_args.kwargs
+        self.assertEqual(event_payload["content_sha256"], result["content_sha256"])
+        self.assertIn("duration_ms", event_payload["evidence"])
+        self.assertIn("bytes_read", event_payload["evidence"])
+        self.assertNotIn("title", event_payload["evidence"])
         fake_context.close.assert_awaited()
         fake_browser.close.assert_awaited()
 
