@@ -154,7 +154,7 @@ begin
 
   v_expected_mint := case
     when lower(v_intent.network) = 'base' and upper(v_intent.settlement_asset) = 'USDC' then '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-    when lower(v_intent.network) = 'solana' and upper(v_intent.settlement_asset) = 'USDC' then 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGkZwyTDt1v'
+    when lower(v_intent.network) = 'solana' and upper(v_intent.settlement_asset) = 'USDC' then 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
     when lower(v_intent.network) = 'solana' and upper(v_intent.settlement_asset) = 'USDT' then 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
     else null end;
   if v_expected_mint is null then raise exception using errcode='55000', message='unsupported_canonical_token'; end if;
