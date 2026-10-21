@@ -139,8 +139,8 @@ BEGIN
   END;
 
   IF v_target_state IS NOT NULL AND v_target_state NOT IN (
-    'QUEUED', 'PREPARING', 'RUNNING', 'HUMAN_GATE', 'BLOCKED',
-    'FAILED', 'COMPLETED', 'CANCELLED', 'PAID'
+    'QUEUED', 'RESEARCHING', 'PREPARING', 'RUNNING', 'HUMAN_GATE', 'BLOCKED',
+    'SUBMITTED', 'VERIFYING', 'FAILED', 'COMPLETED', 'CANCELLED', 'PAID'
   ) THEN
     RAISE EXCEPTION 'invalid_browser_job_state' USING ERRCODE = '22023';
   END IF;
@@ -234,12 +234,15 @@ BEGIN
     v_changed := true;
 
     IF NOT (
-      (v_current_state = 'QUEUED' AND v_target_state IN ('PREPARING', 'BLOCKED', 'CANCELLED'))
+      (v_current_state = 'QUEUED' AND v_target_state IN ('RESEARCHING', 'PREPARING', 'BLOCKED', 'CANCELLED'))
+      OR (v_current_state = 'RESEARCHING' AND v_target_state IN ('PREPARING', 'BLOCKED', 'FAILED', 'CANCELLED'))
       OR (v_current_state = 'PREPARING' AND v_target_state IN ('RUNNING', 'HUMAN_GATE', 'BLOCKED', 'FAILED', 'CANCELLED'))
-      OR (v_current_state = 'RUNNING' AND v_target_state IN ('HUMAN_GATE', 'BLOCKED', 'FAILED', 'COMPLETED', 'CANCELLED'))
+      OR (v_current_state = 'RUNNING' AND v_target_state IN ('HUMAN_GATE', 'BLOCKED', 'FAILED', 'SUBMITTED', 'COMPLETED', 'CANCELLED'))
       OR (v_current_state = 'HUMAN_GATE' AND v_target_state IN ('RUNNING', 'BLOCKED', 'FAILED', 'CANCELLED'))
-      OR (v_current_state = 'BLOCKED' AND v_target_state IN ('PREPARING', 'CANCELLED'))
-      OR (v_current_state = 'FAILED' AND v_target_state IN ('PREPARING', 'CANCELLED'))
+      OR (v_current_state = 'SUBMITTED' AND v_target_state IN ('VERIFYING', 'BLOCKED', 'FAILED', 'CANCELLED'))
+      OR (v_current_state = 'VERIFYING' AND v_target_state IN ('COMPLETED', 'BLOCKED', 'FAILED', 'CANCELLED'))
+      OR (v_current_state = 'BLOCKED' AND v_target_state IN ('RESEARCHING', 'PREPARING', 'CANCELLED'))
+      OR (v_current_state = 'FAILED' AND v_target_state IN ('RESEARCHING', 'PREPARING', 'CANCELLED'))
     ) THEN
       RAISE EXCEPTION 'invalid_browser_state_transition: % -> %', v_current_state, v_target_state
         USING ERRCODE = '23514';
