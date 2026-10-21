@@ -97,7 +97,7 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         fake_context.pages = [fake_page]
         fake_browser = AsyncMock()
         fake_browser.new_context.return_value = fake_context
-        runner._open_browser = AsyncMock(return_value=(fake_browser, fake_context, fake_page))
+        runner._open_browser = AsyncMock(return_value=(AsyncMock(), fake_browser, fake_context, fake_page))
         async def hang(*_args, **_kwargs):
             await asyncio.sleep(1)
         runner._navigate_and_capture = AsyncMock(side_effect=hang)
@@ -119,7 +119,7 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         fake_context.pages = [fake_page]
         fake_browser = AsyncMock()
         fake_browser.new_context.return_value = fake_context
-        runner._open_browser = AsyncMock(return_value=(fake_browser, fake_context, fake_page))
+        runner._open_browser = AsyncMock(return_value=(AsyncMock(), fake_browser, fake_context, fake_page))
         runner._navigate_and_capture = AsyncMock(return_value={
             "url": "https://example.com/", "title": "Example", "text": "public evidence", "http_status": 200,
         })
