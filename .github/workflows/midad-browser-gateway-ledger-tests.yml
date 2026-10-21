@@ -1,0 +1,33 @@
+name: MIDAD Browser Gateway Ledger — Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - ".github/workflows/midad-browser-gateway-ledger-tests.yml"
+  push:
+    branches:
+      - main
+      - midad/browser-gateway-ledger-v1
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - ".github/workflows/midad-browser-gateway-ledger-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deno-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run ledger adapter tests
+        run: deno test --no-check supabase/functions/midad_browser_agent_gateway/ledger.test.ts
+      - name: Type-check gateway and ledger adapter
+        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
