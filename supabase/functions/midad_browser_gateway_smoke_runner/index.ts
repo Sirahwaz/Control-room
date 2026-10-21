@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
 
     const created = await db.auth.admin.createUser({
       email,
-      password: crypto.randomUUID() + "-" + crypto.randomUUID(),
+      password: "MIDAD-smoke-" + crypto.randomUUID(),
       email_confirm: true,
       user_metadata: {
         midad_browser_smoke_identity: "true",
