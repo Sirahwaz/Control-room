@@ -80,7 +80,7 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         fake_context.pages = [fake_page]
         fake_browser = AsyncMock()
         fake_browser.new_context.return_value = fake_context
-        runner._open_browser = AsyncMock(return_value=(fake_browser, fake_context, fake_page))
+        runner._open_browser = AsyncMock(return_value=(AsyncMock(), fake_browser, fake_context, fake_page))
         runner._navigate_and_capture = AsyncMock(side_effect=asyncio.CancelledError())
         with self.assertRaises(asyncio.CancelledError):
             await runner.run({"id": "job-1", "current_url": "https://example.com/"}, asyncio.Event())
