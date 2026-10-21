@@ -1,105 +1,159 @@
 import {
+  makeLedgerEventKey,
+  normalizeActorKey,
   normalizeLedgerEventType,
   normalizeTargetState,
   safeSourceUrl,
   sanitizeLedgerEvidence,
-  makeLedgerEventKey,
 } from "./ledger.ts";
 
-function assertEquals(actual: unknown, expected: unknown, message = "values differ") {
-  const a = JSON.stringify(actual);
-  const e = JSON.stringify(expected);
-  if (a !== e) throw new Error(message + ": expected " + e + ", got " + a);
-}
-
-function assert(condition: boolean, message: string) {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-Deno.test("source URL strips query/fragment and rejects unsafe URLs", () => {
-  assertEquals(
-    safeSourceUrl("https://Taskmarket.dev/tasks?id=123&token=private#section"),
-    "https://taskmarket.dev/tasks",
+function stable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stable);
+  if (value && typeof value === "object") {
+    const input = value as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(input).sort().map((key) => [key, stable(input[key])]));
+  }
+  return value;
+}
+
+function assertEqual(actual: unknown, expected: unknown, message: string) {
+  const a = JSON.stringify(stable(actual));
+  const e = JSON.stringify(stable(expected));
+  assert(a === e, message + "\nexpected: " + e + "\nactual:   " + a);
+}
+
+Deno.test("safeSourceUrl normalizes HTTPS and removes query and fragment", () => {
+  assertEqual(
+    safeSourceUrl("  https://EXAMPLE.com:443/reports/item?token=private#section  "),
+    "https://example.com/reports/item",
+    "URL should be normalized and query/fragment removed",
   );
-  assertEquals(safeSourceUrl("https://user:password@taskmarket.dev/tasks"), null);
-  assertEquals(safeSourceUrl("http://taskmarket.dev/tasks"), null);
-  assertEquals(safeSourceUrl("https://127.0.0.1/admin"), null);
-  assertEquals(safeSourceUrl("not-a-url"), null);
 });
 
-Deno.test("gateway event names map to ledger contract enum", () => {
-  assertEquals(normalizeLedgerEventType("job_created"), "job_created");
-  assertEquals(normalizeLedgerEventType("human_gate_completed"), "human_gate_resumed");
-  assertEquals(normalizeLedgerEventType("hard_block"), "policy_decision");
-  assertEquals(normalizeLedgerEventType("navigation"), "navigation_observed");
-  assertEquals(normalizeLedgerEventType("unknown_custom_event"), "state_transition");
+Deno.test("safeSourceUrl rejects HTTP, credentials, unusual ports, IP literals and local hosts", () => {
+  const rejected = [
+    "http://example.com/",
+    "https://user:pass@example.com/",
+    "https://example.com:8443/",
+    "https://127.0.0.1/",
+    "https://10.0.0.1/",
+    "https://[::1]/",
+    "https://localhost/",
+    "https://service.local/",
+    "https://service.internal/",
+    "https://service.localhost/",
+    "",
+    null,
+    42,
+  ];
+  for (const candidate of rejected) {
+    assertEqual(safeSourceUrl(candidate), null, "unsafe source URL should be rejected: " + String(candidate));
+  }
 });
 
-Deno.test("target state is a declared browser state and PAID is not silently removed", () => {
-  assertEquals(normalizeTargetState("running"), "RUNNING");
-  assertEquals(normalizeTargetState("submitted"), "SUBMITTED");
-  assertEquals(normalizeTargetState(null), null);
-  assertEquals(normalizeTargetState("made_up"), null);
-  assertEquals(normalizeTargetState("PAID"), "PAID");
-});
-
-Deno.test("evidence metadata is scalar-only, allowlisted and redacted", () => {
-  const evidence = sanitizeLedgerEvidence({
-    source_kind: "public_page",
+Deno.test("sanitizeLedgerEvidence allowlists fields and strips sensitive or unrecognized values", () => {
+  const digest = "AB".repeat(32);
+  const result = sanitizeLedgerEvidence({
+    source_kind: " browser\u0000 smoke ",
     http_status: 200,
-    bytes_read: 2048,
+    content_type: " text/html ",
+    bytes_read: 42,
+    duration_ms: 123,
+    policy_code: " REDIRECT_BLOCKED ",
     retryable: false,
-    policy_status: "ALLOW",
-    artifact_sha256: "a".repeat(64),
-    artifact_url: "https://example.com/output.json?signature=secret#fragment",
-    access_token: "must-not-persist",
-    raw_html: "<html>secret</html>",
-    details: { private: true },
-    long_text: "x".repeat(600),
-    malformed_hash: "xyz",
+    artifact_sha256: digest,
+    artifact_url: "https://EXAMPLE.com/report?token=private#fragment",
+    title: "private page title",
+    page_text: "private page body",
+    cookies: "session=private",
+    storage_state: { token: "private" },
+    attempt: 4,
+    error_code: "contains spaces",
   });
-  assertEquals(evidence.source_kind, "public_page");
-  assertEquals(evidence.http_status, 200);
-  assertEquals(evidence.bytes_read, 2048);
-  assertEquals(evidence.retryable, false);
-  assertEquals(evidence.policy_status, "ALLOW");
-  assertEquals(evidence.artifact_sha256, "a".repeat(64));
-  assertEquals(evidence.artifact_url, "https://example.com/output.json");
-  assert(!("access_token" in evidence), "unexpected token key");
-  assert(!("raw_html" in evidence), "unexpected raw html key");
-  assert(!("details" in evidence), "unexpected object value");
-  assert(!("long_text" in evidence), "oversize string should be dropped");
-  assert(!("malformed_hash" in evidence), "invalid hash should be dropped");
+
+  assertEqual(result, {
+    artifact_sha256: digest.toLowerCase(),
+    artifact_url: "https://example.com/report",
+    bytes_read: 42,
+    content_type: "text/html",
+    duration_ms: 123,
+    http_status: 200,
+    policy_code: "REDIRECT_BLOCKED",
+    retryable: false,
+    source_kind: "browser smoke",
+  }, "sanitizer should retain only valid contract fields");
+  const serialized = JSON.stringify(result);
+  for (const secret of ["private page title", "private page body", "session=private", "storage_state"]) {
+    assert(!serialized.includes(secret), "sanitized evidence must not contain " + secret);
+  }
 });
 
-Deno.test("content digest changes generated idempotency key", async () => {
-  const base = {
-    jobId: "00000000-0000-4000-8000-000000000001",
-    eventType: "evidence_captured",
+Deno.test("sanitizeLedgerEvidence rejects out-of-range, non-integer and wrong-type values", () => {
+  const result = sanitizeLedgerEvidence({
+    http_status: 99,
+    bytes_read: -1,
+    duration_ms: 120001,
+    attempt: 4,
+    retryable: "false",
+    error_code: "invalid value",
+    source_kind: "x".repeat(101),
+    artifact_sha256: "not-a-digest",
+    artifact_url: "http://example.com/",
+  });
+  assertEqual(result, {}, "invalid values must be dropped, not coerced");
+});
+
+Deno.test("event and state normalizers map aliases while retaining the declared PAID enum", () => {
+  assertEqual(normalizeLedgerEventType(" human_gate_completed "), "human_gate_resumed", "human gate alias");
+  assertEqual(normalizeLedgerEventType("external_redirect_blocked"), "policy_decision", "block alias");
+  assertEqual(normalizeLedgerEventType("unrecognized-value"), "state_transition", "unknown event fallback");
+  assertEqual(normalizeTargetState(" running "), "RUNNING", "state is normalized");
+  assertEqual(normalizeTargetState("PAID"), "PAID", "PAID exists in the enum; the SQL transition RPC must reject self-assertion");
+  assertEqual(normalizeTargetState("NOT_A_REAL_STATE"), null, "unknown state is rejected");
+  assertEqual(normalizeTargetState(null), null, "non-string state is rejected");
+});
+
+Deno.test("event key is stable across input property order and normalized representations", async () => {
+  const one = await makeLedgerEventKey({
+    jobId: "job-1",
+    eventType: "navigate",
+    targetState: "running",
+    sourceUrl: "https://EXAMPLE.com/page?tracking=1",
+    evidence: { source_kind: "browser", http_status: 200, duration_ms: 10 },
+  });
+  const two = await makeLedgerEventKey({
+    evidence: { duration_ms: 10, http_status: 200, source_kind: "browser" },
+    sourceUrl: "https://example.com/page?tracking=2",
     targetState: "RUNNING",
-    sourceUrl: "https://taskmarket.dev/tasks",
-    evidence: { source_kind: "public_page" },
-  };
-  const a = await makeLedgerEventKey({ ...base, contentSha256: "a".repeat(64) });
-  const b = await makeLedgerEventKey({ ...base, contentSha256: "b".repeat(64) });
-  assert(a !== b, "different content hashes must have different event keys");
-});
+    eventType: "navigation_observed",
+    jobId: "job-1",
+  });
+  assertEqual(one, two, "same normalized event must generate the same idempotency key");
+  assert(/^ev:[a-f0-9]{64}$/.test(one), "generated key must be a SHA-256 digest with ev: prefix");
 
-Deno.test("idempotency key is deterministic, valid and stable when explicitly supplied", async () => {
-  const input = {
-    jobId: "00000000-0000-4000-8000-000000000001",
+  const changed = await makeLedgerEventKey({
+    jobId: "job-1",
     eventType: "navigation_observed",
     targetState: "RUNNING",
-    sourceUrl: "https://taskmarket.dev/tasks?session=should-not-matter",
-    nextAction: "read_dom",
-    blockerCode: null,
-    attemptCount: 1,
-    evidence: { source_kind: "public_page", http_status: 200 },
-  };
-  const a = await makeLedgerEventKey(input);
-  const b = await makeLedgerEventKey({...input, sourceUrl: "https://taskmarket.dev/tasks?different=private"});
-  assertEquals(a, b, "query string should not affect idempotency key");
-  assert(/^ev:[a-f0-9]{64}$/.test(a), "generated event key is invalid");
-  assertEquals(await makeLedgerEventKey(input, "caller-event-key-0001"), "caller-event-key-0001");
-  assertEquals(await makeLedgerEventKey(input, "bad key with spaces"), a);
+    sourceUrl: "https://example.com/page",
+    evidence: { source_kind: "browser", http_status: 201, duration_ms: 10 },
+  });
+  assert(one !== changed, "different evidence must generate a different key");
+});
+
+Deno.test("valid supplied idempotency key is honored and invalid key is replaced", async () => {
+  const base = { jobId: "job-2", eventType: "error", evidence: { error_code: "TIMEOUT" } };
+  assertEqual(await makeLedgerEventKey(base, "test-event:0001"), "test-event:0001", "valid supplied key");
+  const generated = await makeLedgerEventKey(base, "not a valid key");
+  assert(/^ev:[a-f0-9]{64}$/.test(generated), "invalid supplied key must be replaced with generated key");
+});
+
+Deno.test("actor keys are normalized and unsafe values fall back", () => {
+  assertEqual(normalizeActorKey("  Agent_7:v1  "), "Agent_7:v1", "valid actor token");
+  assertEqual(normalizeActorKey("unsafe actor"), "midad_browser_gateway", "unsafe actor token fallback");
+  assertEqual(normalizeActorKey(null, "fallback_actor"), "fallback_actor", "custom fallback");
 });
