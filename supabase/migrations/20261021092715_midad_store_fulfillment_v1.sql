@@ -94,7 +94,7 @@ begin
   into v_receipt
   from public.midad_wallet_receipts r
   where r.matched_payment_intent_id = v_intent.id
-    and (case when lower(v_intent.network) = 'base' then lower(r.tx_hash) = lower(v_intent.received_tx_hash) else r.tx_hash = v_intent.received_tx_hash end)
+    and lower(r.tx_hash) = lower(v_intent.received_tx_hash)
     and r.asset = v_intent.settlement_asset
     and lower(r.network) = lower(v_intent.network)
     and r.direction = 'inbound'
