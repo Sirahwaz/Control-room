@@ -1,17 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getAdapter, buildFulfillmentPrompt, validateDelivery } from "../supabase/functions/midad_store_fulfillment/adapter-registry.mjs";
+import { getAdapter, buildFulfillmentPrompt, validateDelivery } from "../../supabase/functions/midad_store_fulfillment/adapter-registry.mjs";
 
 test("rejects unknown product IDs instead of selecting a generic adapter", () => {
   assert.equal(getAdapter("not-a-real-product"), null);
 });
 
 test("all eight storefront products map to explicit, distinct adapters", () => {
-  const ids = [
-    "payment-path-mini-v1", "miner-microscope-v1", "opportunity-radar-v1",
-    "research-revenue-sprint-v1", "bug-fix-sprint-v1", "data-rescue-pack-v1",
-    "decision-research-brief-v1", "code-health-review-v1"
-  ];
+  const ids = ["payment-path-mini-v1", "miner-microscope-v1", "opportunity-radar-v1", "research-revenue-sprint-v1", "bug-fix-sprint-v1", "data-rescue-pack-v1", "decision-research-brief-v1", "code-health-review-v1"];
   const adapters = ids.map(getAdapter);
   assert.ok(adapters.every(Boolean));
   assert.equal(new Set(adapters.map(x => x.key)).size, ids.length);
