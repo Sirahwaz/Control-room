@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
+      - "supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql"
       - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
       - "tools/midad-browser-agent/**"
       - ".github/workflows/midad-browser-evidence-ledger-tests.yml"
@@ -11,6 +12,7 @@ on:
     branches:
       - main
       - midad/browser-evidence-ledger-v1
+      - midad/browser-authenticated-smoke-v1
     paths:
       - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
       - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
