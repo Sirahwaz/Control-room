@@ -17,6 +17,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from action_policy import evaluate_action
+
 MAX_TARGETS = 25
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_TEXT_CHARS = 60_000
@@ -238,6 +240,9 @@ def _safe_http_capture(target: dict) -> dict:
 
 def collect_one(raw_target: str | dict, index: int, output_dir: Path, attempts: int = 3) -> dict:
     target = _target_record(raw_target)
+    policy = evaluate_action("navigate", target["url"], target["allowed_hosts"])
+    if policy["status"] != "ALLOW":
+        raise ValueError(f"Action blocked by policy ({policy['code']}): {policy['reason']}")
     slug = _safe_slug(index, target["hostname"])
     screenshot = output_dir / "screenshots" / f"{slug}.png"
     errors = []
