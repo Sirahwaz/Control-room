@@ -146,6 +146,7 @@ async function copyOffer(s, button){
   }
 }
 </script>
+<script src="./revenue/checkout-attribution.js"></script>
 <script>
 const MIDAD_CHECKOUT="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout";
 function checkoutKey(product){
@@ -195,7 +196,7 @@ async function makeCheckout(product){
       body:JSON.stringify({
         product_id:product,order_key:orderKey,customer_name:name,
         customer_email:email,customer_requirements:requirements,
-        attribution:{utm_source:"midad_revenue_forge",landing_path:"/Control-room/revenue-forge.html"}
+        attribution:window.MIDADCheckoutAttribution.buildCheckoutAttribution(window.location.href, document.referrer)
       })
     });
     const d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
