@@ -96,3 +96,9 @@ test("keeps Solana transaction signatures case-sensitive", () => {
   fixture.job.payment_evidence.tx_hash = "abc123";
   assert.equal(validatePaymentGate(fixture).ok, false);
 });
+
+test("source-dependent products wait for actual source material, not a vague request", () => {
+  const adapter = getAdapter("bug-fix-sprint-v1");
+  assert.equal(adapter.inputReady("Please fix my code"), false);
+  assert.equal(adapter.inputReady("function add(a, b) { return a + b; }\nFailing assertion: assert.equal(add(1, 1), 3)"), true);
+});
