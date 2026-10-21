@@ -175,8 +175,9 @@ async function handlePublicOrderAction(body:any,req:Request,action:string){
         .eq("id",order.fulfillment_job_id).eq("order_id",order.id).maybeSingle();
       if(jobError)throw jobError;
       if(job){
-        delivery={status:job.status,output_sha256:job.output_sha256||null,delivered_at:job.delivered_at||null};
+        delivery={status:job.status,sha256:job.output_sha256||null,output_sha256:job.output_sha256||null,delivered_at:job.delivered_at||null};
         if(job.status==="DELIVERED"&&String(job.output?.report||"").trim()){
+          delivery.report=job.output.report;
           delivery.artifact=job.output.report;
           delivery.adapter_key=job.adapter_key;
           delivery.generated_at=job.output.generated_at||null;
