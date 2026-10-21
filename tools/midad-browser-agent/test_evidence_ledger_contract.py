@@ -27,7 +27,7 @@ class BrowserEvidenceLedgerMigrationContractTests(unittest.TestCase):
         self.assertIn("enable row level security", self.normalized)
         self.assertIn("force row level security", self.normalized)
         self.assertRegex(self.normalized, r"revoke[^;]*update[^;]*delete[^;]*midad_browser_evidence_ledger")
-        self.assertIn("grant select on public.midad_browser_evidence_ledger to service_role", self.normalized)
+        self.assertIn("grant select on table public.midad_browser_evidence_ledger to service_role", self.normalized)
 
     def test_security_definer_rpc_has_locked_search_path_and_service_role_only(self):
         self.assertIn("security definer", self.normalized)
