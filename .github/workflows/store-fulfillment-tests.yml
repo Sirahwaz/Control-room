@@ -6,6 +6,7 @@ on:
     paths:
       - "supabase/functions/midad_store_fulfillment/**"
       - "tests/store-fulfillment/**"
+      - "supabase/migrations/**"
       - ".github/workflows/store-fulfillment-tests.yml"
   pull_request:
     paths:
