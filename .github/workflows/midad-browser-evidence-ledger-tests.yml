@@ -1,0 +1,137 @@
+name: MIDAD Browser Evidence Ledger — PostgreSQL Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
+      - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
+      - "tools/midad-browser-agent/**"
+      - ".github/workflows/midad-browser-evidence-ledger-tests.yml"
+  push:
+    branches:
+      - main
+      - midad/browser-evidence-ledger-v1
+    paths:
+      - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
+      - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
+      - "tools/midad-browser-agent/**"
+      - ".github/workflows/midad-browser-evidence-ledger-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-migration-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: midad_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d midad_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/midad_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run browser and migration contract unit tests
+        working-directory: tools/midad-browser-agent
+        run: python -m unittest -v
+
+      - name: Build minimal Supabase-compatible schema fixture
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          CREATE SCHEMA auth;
+          CREATE TABLE auth.users (id uuid PRIMARY KEY);
+          CREATE TABLE public.profiles (
+            id uuid PRIMARY KEY REFERENCES auth.users(id),
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          INSERT INTO auth.users(id) VALUES ('00000000-0000-4000-8000-000000000001');
+          INSERT INTO public.profiles(id) VALUES ('00000000-0000-4000-8000-000000000001');
+
+          CREATE TABLE public.midad_browser_jobs (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            owner_user_id uuid NOT NULL REFERENCES auth.users(id),
+            agent_key text NOT NULL,
+            platform_key text,
+            objective text NOT NULL,
+            state text NOT NULL DEFAULT 'QUEUED'
+              CHECK (state = ANY (ARRAY[
+                'QUEUED','RESEARCHING','PREPARING','RUNNING','HUMAN_GATE','BLOCKED',
+                'SUBMITTED','VERIFYING','PAID','COMPLETED','FAILED','CANCELLED'
+              ])),
+            session_ref text,
+            current_url text,
+            input_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+            profile_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+            human_gate jsonb NOT NULL DEFAULT '{}'::jsonb,
+            blocker jsonb NOT NULL DEFAULT '{}'::jsonb,
+            evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
+            next_action text,
+            attempt_count integer NOT NULL DEFAULT 0,
+            last_error text,
+            started_at timestamptz,
+            completed_at timestamptz,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            updated_at timestamptz NOT NULL DEFAULT now()
+          );
+          ALTER TABLE public.midad_browser_jobs ENABLE ROW LEVEL SECURITY;
+          SQL
+
+      - name: Apply evidence ledger migration to isolated PostgreSQL
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
+
+      - name: Run idempotency, transition, and URL-redaction integration test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_evidence_ledger_v1.sql
+
+      - name: Verify ledger privileges and row-security posture
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $check$
+          DECLARE
+            fn text := 'public.midad_browser_record_evidence_v1(uuid,text,text,text,text,text,text,jsonb,text,text,integer)';
+            r record;
+          BEGIN
+            SELECT relrowsecurity, relforcerowsecurity INTO r
+            FROM pg_class WHERE oid = 'public.midad_browser_evidence_ledger'::regclass;
+            IF r.relrowsecurity IS NOT TRUE OR r.relforcerowsecurity IS NOT TRUE THEN
+              RAISE EXCEPTION 'ledger_rls_not_enforced';
+            END IF;
+            IF has_table_privilege('anon', 'public.midad_browser_evidence_ledger', 'SELECT')
+               OR has_table_privilege('authenticated', 'public.midad_browser_evidence_ledger', 'SELECT')
+               OR has_table_privilege('service_role', 'public.midad_browser_evidence_ledger', 'INSERT')
+               OR has_table_privilege('service_role', 'public.midad_browser_evidence_ledger', 'UPDATE')
+               OR has_table_privilege('service_role', 'public.midad_browser_evidence_ledger', 'DELETE') THEN
+              RAISE EXCEPTION 'ledger_privilege_boundary_failed';
+            END IF;
+            IF has_function_privilege('anon', fn, 'EXECUTE')
+               OR has_function_privilege('authenticated', fn, 'EXECUTE')
+               OR NOT has_function_privilege('service_role', fn, 'EXECUTE') THEN
+              RAISE EXCEPTION 'ledger_rpc_privilege_boundary_failed';
+            END IF;
+          END
+          $check$;
+          SELECT 'BROWSER_EVIDENCE_LEDGER_TESTS_PASSED' AS result;
+          SQL
