@@ -109,6 +109,16 @@ jobs:
             updated_at timestamptz NOT NULL DEFAULT now()
           );
           ALTER TABLE public.midad_browser_jobs ENABLE ROW LEVEL SECURITY;
+
+          CREATE TABLE public.midad_agent_events (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            job_id uuid REFERENCES public.midad_browser_jobs(id) ON DELETE SET NULL,
+            agent_key text NOT NULL,
+            event_type text NOT NULL,
+            state text,
+            payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
           SQL
 
       - name: Apply evidence ledger migration to isolated PostgreSQL
