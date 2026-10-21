@@ -49,7 +49,7 @@ class BrowserEvidenceLedgerMigrationContractTests(unittest.TestCase):
         self.assertIn("requires a separate verified receipt workflow", self.normalized)
 
     def test_metadata_is_allowlisted_and_urls_cannot_store_query_or_credentials(self):
-        self.assertIn("jsonb_object_keys", self.normalized)
+        self.assertIn("jsonb_each", self.normalized)
         self.assertIn("not in (", self.normalized)
         self.assertIn("position('?' in v_safe_url)", self.normalized)
         self.assertIn("position('#' in v_safe_url)", self.normalized)
