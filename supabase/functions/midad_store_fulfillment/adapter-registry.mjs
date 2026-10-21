@@ -11,7 +11,16 @@ const ADAPTERS = {
 export function getAdapter(productId) {
   const id = String(productId || "");
   if (!Object.prototype.hasOwnProperty.call(ADAPTERS, id)) return null;
-  return { ...ADAPTERS[id], inputReady: (value) => typeof value === "string" && value.trim().length > 0 };
+  return {
+    ...ADAPTERS[id],
+    inputReady: (value) => {
+      const text = typeof value === "string" ? value.trim() : "";
+      if (!text) return false;
+      if (!ADAPTERS[id].requiresSourceMaterial) return true;
+      const hasSourceMarker = /```|[\\r\\n]|[{}\\[\\],]|(?:error|stack trace|log|csv|json|source code|function\\b|const\\b|import\\b|metrics|hashrate|worker|column|rows|data sample)/i.test(text);
+      return text.length >= 60 && hasSourceMarker;
+    }
+  };
 }
 export function buildFulfillmentPrompt(adapter, requirements) {
   return [
