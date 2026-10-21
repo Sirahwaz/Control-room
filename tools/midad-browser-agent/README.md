@@ -16,6 +16,19 @@ A free, public-source evidence collector intended to replace the **public eviden
 
 No login, cookie import, account access, clicking buttons, downloading files, form submission, external job applications, submissions, payments, wallet signing or financial actions. A captured page is untrusted evidence, not proof that a bounty is payable or an applicant is eligible. Human review is required before changing any opportunity's eligibility or payout gate.
 
+## Provider-neutral action policy (v1 foundation)
+
+`action_policy.py` defines a fail-closed decision contract intended to sit in front of future browser providers:
+
+- Public read actions require HTTPS and an exact, non-wildcard hostname allowlist.
+- Click/fill/upload/download actions require explicit task/action approval.
+- Session-dependent work requires a confirmed, authorized site session.
+- Form submission, publication, applications and outbound messages require explicit per-task approval.
+- Signing, transfers and withdrawals remain blocked by default and require both a separate financial gate and explicit operation approval.
+- CAPTCHA, MFA, human-verification bypass and bot-evasion actions are always blocked.
+
+**Important limitation:** the policy module is a decision layer, not a sandbox or browser runtime. It is not yet wired into the read-only collector or the Supabase browser gateway. The existing collector remains read-only. A future runtime must enforce this policy before every browser action, restrict redirects and network methods independently, isolate sessions, and record evidence. Passing a policy decision alone does not prove that an action was executed safely or completed.
+
 ## Run locally
 
 Python 3.11+ recommended:
@@ -33,7 +46,7 @@ For a one-off capture:
 python tools/midad-browser-agent/agent.py --urls-json '[{"url":"https://immunefi.com/bug-bounty/","label":"Immunefi public catalogue","purpose":"Inspect currently listed public bounty programs","allowed_hosts":["immunefi.com"]}]'
 ```
 
-Only provide hostnames you actually intend to inspect in `allowed_hosts`. Do not use private services, personal pages, pages containing sensitive user data, or signed/tokenized URLs.
+Only provide hostname allowlists that you actually intend to inspect. Do not use private services, personal pages, pages containing sensitive user data, or signed/tokenized URLs.
 
 ## Outputs
 
