@@ -106,6 +106,7 @@ class BrowserJobRunner:
         if not job_id: raise ValueError("job_id_required")
         target=validate_navigation_url(str(job.get("current_url") or ""),self.config.allowed_hosts)
         started=time.monotonic(); pw=browser=context=page=None; result={"job_id":job_id,"status":"FAILED"}
+        work = cancel_wait = None
         try:
             async def execute():
                 nonlocal pw,browser,context,page
@@ -154,6 +155,9 @@ class BrowserJobRunner:
             try: await self._record(job_id,"error","FAILED",target,{"error_code":"browser_runtime_failed"},"review_or_retry")
             except Exception: pass
         finally:
+            for pending_task in (work, cancel_wait):
+                if pending_task is not None and not pending_task.done():
+                    pending_task.cancel()
             for resource in (context,browser):
                 if resource is not None:
                     try: await asyncio.shield(resource.close())
