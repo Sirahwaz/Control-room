@@ -32,3 +32,40 @@ export function buildFulfillmentPrompt(adapter, requirements) {
 export function validateDelivery(value, maxChars = 20000) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= maxChars;
 }
+
+const TOKEN_MINTS = {
+  "base:USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "solana:USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "solana:USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+};
+
+export function validatePaymentGate({ order, intent, receipts, job }) {
+  if (!order || order.status !== "PAID" || !order.paid_at) return { ok: false, reason: "verified_paid_store_order_required" };
+  if (!intent || intent.status !== "paid" || intent.reconciliation_status !== "matched" ||
+      !intent.paid_at || !intent.received_tx_hash ||
+      String(intent.metadata?.created_by || "") !== "midad_public_checkout_v1" ||
+      String(intent.metadata?.product_id || "") !== String(order.product_id)) {
+    return { ok: false, reason: "verified_paid_store_order_required" };
+  }
+  const network = String(intent.network || "").toLowerCase();
+  const asset = String(intent.settlement_asset || "").toUpperCase();
+  const expectedMint = TOKEN_MINTS[network + ":" + asset];
+  const matches = (receipts || []).filter((r) =>
+    String(r.matched_payment_intent_id || "") === String(intent.id) &&
+    String(r.direction || "") === "inbound" &&
+    String(r.tx_hash || "").toLowerCase() === String(intent.received_tx_hash).toLowerCase() &&
+    String(r.asset || "") === String(intent.settlement_asset || "") &&
+    String(r.network || "").toLowerCase() === network &&
+    Math.abs(Number(r.amount) - Number(intent.quoted_crypto_amount)) < 0.0000005 &&
+    expectedMint && (network === "base"
+      ? String(r.mint || "").toLowerCase() === expectedMint.toLowerCase()
+      : String(r.mint || "") === expectedMint)
+  );
+  if (matches.length !== 1) return { ok: false, reason: "unique_matching_verified_receipt_required" };
+  const receipt = matches[0];
+  if (String(job?.payment_evidence?.receipt_id || "") !== String(receipt.id) ||
+      String(job?.payment_evidence?.tx_hash || "").toLowerCase() !== String(receipt.tx_hash || "").toLowerCase()) {
+    return { ok: false, reason: "payment_evidence_snapshot_mismatch" };
+  }
+  return { ok: true, receipt };
+}
