@@ -379,8 +379,9 @@ async function refreshOrderStatus(){
   if(o.payment_status)view+='<br>'+esc(tr('paymentStateLabel'))+': <b>'+esc(statusLabel(o.payment_status))+'</b>';
   if(o.payment_reconciliation_status)view+='<br>'+esc(tr('reconciliationStateLabel'))+': '+esc(statusLabel(o.payment_reconciliation_status));
   if(o.paid_at)view+='<br>'+esc(tr('paidAtLabel'))+': '+esc(new Date(o.paid_at).toLocaleString());
+  if(d.status&&d.status!=='DELIVERED')view+='<br>'+esc(tr('deliveryLabel'))+': <b>'+esc(statusLabel(d.status))+'</b>';
   if(d.report)view+='<hr><b>'+esc(tr('deliveryLabel'))+'</b><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit">'+esc(d.report)+'</pre><div class="fineprint">'+esc(tr('shaLabel'))+': <span dir="ltr" style="word-break:break-all">'+esc(d.sha256||'')+'</span></div>';
-  if(o.status==='NEEDS_CUSTOMER_INPUT')view+='<hr><div class="field"><label for="updatedRequirements">'+esc(tr('updateRequirements'))+'</label><textarea id="updatedRequirements" maxlength="5000" placeholder="'+esc(tr('requirementsPlaceholder'))+'"></textarea></div><button class="btn-primary full" onclick="submitUpdatedRequirements()">'+esc(tr('submitRequirements'))+'</button>';
+  if(o.status==='NEEDS_CUSTOMER_INPUT'||(o.status==='PAID'&&d.status==='WAITING_FOR_INPUT'))view+='<hr><div class="field"><label for="updatedRequirements">'+esc(tr('updateRequirements'))+'</label><textarea id="updatedRequirements" maxlength="5000" placeholder="'+esc(tr('requirementsPlaceholder'))+'"></textarea></div><button class="btn-primary full" onclick="submitUpdatedRequirements()">'+esc(tr('submitRequirements'))+'</button>';
   if(o.status==='AWAITING_PAYMENT')view+='<div class="status warn">'+esc(tr('waitingPayment'))+'</div>';
   if(target)target.innerHTML=view;else document.getElementById('mBody').innerHTML='<div id="statusRefresh" class="status">'+view+'</div>';
  }catch(e){target=document.getElementById('statusRefresh');if(target)target.innerHTML='<span class="status error">'+esc(tr('fetchFailed'))+': '+esc(e.message||'')+'</span>';else document.getElementById('mBody').innerHTML='<div class="status error">'+esc(tr('fetchFailed'))+'</div>'}
