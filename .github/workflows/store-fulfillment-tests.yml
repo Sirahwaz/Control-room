@@ -2,7 +2,7 @@ name: Store Fulfillment Safety Tests
 
 on:
   push:
-    branches: [main, "feature/store-fulfillment-v1"]
+    branches: [main, "feature/store-fulfillment-v1", "fix/store-fulfillment-sha256-guard-v1"]
     paths:
       - "supabase/functions/midad_store_fulfillment/**"
       - "tests/store-fulfillment/**"
@@ -25,3 +25,40 @@ jobs:
           node-version: 22
       - name: Run store fulfillment safety tests
         run: node --test tests/store-fulfillment/*.test.mjs
+
+  postgres-migration-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: midad_fulfillment_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d midad_fulfillment_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: midad_fulfillment_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Build isolated schema fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/store-fulfillment/fixtures.sql
+      - name: Apply the recorded v1 migration source to an isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021092715_midad_store_fulfillment_v1.sql
+      - name: Apply SHA-256 hardening migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021102000_midad_store_fulfillment_sha256_guard_v1.sql
+      - name: Run negative receipt, idempotency, and artifact digest tests
+        run: psql -v ON_ERROR_STOP=1 -f tests/store-fulfillment/migration-contract.sql
