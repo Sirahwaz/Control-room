@@ -72,6 +72,19 @@ Deno.test("evidence metadata is scalar-only, allowlisted and redacted", () => {
   assert(!("malformed_hash" in evidence), "invalid hash should be dropped");
 });
 
+Deno.test("content digest changes generated idempotency key", async () => {
+  const base = {
+    jobId: "00000000-0000-4000-8000-000000000001",
+    eventType: "evidence_captured",
+    targetState: "RUNNING",
+    sourceUrl: "https://taskmarket.dev/tasks",
+    evidence: { source_kind: "public_page" },
+  };
+  const a = await makeLedgerEventKey({ ...base, contentSha256: "a".repeat(64) });
+  const b = await makeLedgerEventKey({ ...base, contentSha256: "b".repeat(64) });
+  assert(a !== b, "different content hashes must have different event keys");
+});
+
 Deno.test("idempotency key is deterministic, valid and stable when explicitly supplied", async () => {
   const input = {
     jobId: "00000000-0000-4000-8000-000000000001",
