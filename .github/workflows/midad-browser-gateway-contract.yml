@@ -1,17 +1,37 @@
-name: MIDAD Browser Gateway — Offline Ledger Contract
+name: MIDAD Browser Gateway — Isolated Contract Suite
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
+      - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
+      - "supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql"
+      - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
+      - "supabase/tests/fixtures/**"
       - ".github/workflows/midad-browser-gateway-contract.yml"
 permissions:
   contents: read
 jobs:
   gateway-ledger-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: midad_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d midad_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      MIDAD_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/midad_test
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -19,5 +39,40 @@ jobs:
           deno-version: v2.x
       - name: Type-check mirrored gateway source
         run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
-      - name: Run offline ledger contract tests
-        run: deno test supabase/functions/midad_browser_agent_gateway/ledger_test.ts
+      - name: Run offline ledger helper tests
+        run: deno test supabase/functions/midad_browser_agent_gateway/ledger.test.ts
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Initialize disposable Supabase-compatible PostgreSQL fixture
+        run: psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/midad_browser_gateway_base_schema.sql
+      - name: Apply browser evidence ledger migrations to disposable database
+        run: |
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql
+      - name: Run SQL ledger, idempotency, PAID-guard and cleanup contract tests
+        run: psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_evidence_ledger_v1.sql
+      - name: Verify disposable database returned to baseline
+        run: |
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $check$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM public.midad_browser_jobs) THEN
+              RAISE EXCEPTION 'browser_jobs_remain_after_contract_test';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.midad_browser_evidence_ledger) THEN
+              RAISE EXCEPTION 'evidence_rows_remain_after_contract_test';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.midad_agent_events) THEN
+              RAISE EXCEPTION 'agent_events_remain_after_contract_test';
+            END IF;
+            IF EXISTS (SELECT 1 FROM public.midad_browser_smoke_tokens) THEN
+              RAISE EXCEPTION 'smoke_tokens_remain_after_contract_test';
+            END IF;
+            IF (SELECT count(*) FROM auth.users) <> 1 THEN
+              RAISE EXCEPTION 'unexpected_auth_users_after_contract_test';
+            END IF;
+          END;
+          $check$;
+          SQL
