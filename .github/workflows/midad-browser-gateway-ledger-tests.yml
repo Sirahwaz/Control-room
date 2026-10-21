@@ -10,8 +10,10 @@ on:
     branches:
       - main
       - midad/browser-gateway-ledger-v1
+      - midad/browser-authenticated-smoke-v1
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
+      - "supabase/functions/midad_browser_gateway_smoke_runner/**"
       - ".github/workflows/midad-browser-gateway-ledger-tests.yml"
 
 permissions:
