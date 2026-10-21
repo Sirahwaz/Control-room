@@ -55,6 +55,12 @@ class BrowserEvidenceLedgerMigrationContractTests(unittest.TestCase):
         self.assertIn("position('#' in v_safe_url)", self.normalized)
         self.assertIn("v_authority like '%@%'", self.normalized)
 
+    def test_artifact_metadata_is_validated_and_sanitized(self):
+        self.assertIn("'artifact_url'", self.normalized)
+        self.assertIn("'artifact_sha256'", self.normalized)
+        self.assertIn("invalid_or_unsafe_artifact_url", self.normalized)
+        self.assertIn("invalid_artifact_sha256", self.normalized)
+
     def test_valid_state_transition_matrix_is_explicit(self):
         for state in ("queued", "researching", "preparing", "running", "human_gate", "blocked", "submitted", "verifying", "failed", "completed", "cancelled"):
             self.assertIn("'" + state + "'", self.normalized)
