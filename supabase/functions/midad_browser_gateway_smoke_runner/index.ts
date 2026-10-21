@@ -167,7 +167,9 @@ Deno.serve(async (req: Request) => {
       reason: "Smoke-test checkpoint only.",
       evidence: { source_kind: "smoke_test", policy_status: "HUMAN_GATE" },
     });
-    if (gate.state !== "HUMAN_GATE" || gate.human_gate?.status !== "OPEN") {
+    const gateState = gate.state ?? gate.job?.state;
+    const gateDetails = gate.human_gate ?? gate.job?.human_gate;
+    if (gateState !== "HUMAN_GATE" || gateDetails?.status !== "OPEN") {
       throw new Error("human_gate_transition_failed");
     }
 
