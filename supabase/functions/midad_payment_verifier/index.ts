@@ -5,7 +5,7 @@ const H={"content-type":"application/json; charset=utf-8","access-control-allow-
 const json=(x:any,status=200)=>new Response(JSON.stringify(x),{status,headers:H});
 const clip=(v:any,n=4000)=>String(v??"").trim().slice(0,n);
 const n=(v:any)=>{const x=Number(v);return Number.isFinite(x)?x:null};
-const VERIFIER_VERSION=38;
+const VERIFIER_VERSION=35;
 const VERIFIER_CAPABILITIES={
   exact_asset_network:true,
   exact_usdc_micro_units:true,
