@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111d">
+<meta name="description" content="A practical checklist for separating payment intents, verified on-chain receipts, and order fulfillment—before a checkout failure becomes an accounting problem.">
+<link rel="canonical" href="https://sirahwaz.github.io/Control-room/revenue/checkout-guide.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Your Checkout Isn't Done When the Invoice Is Created">
+<meta property="og:description" content="A practical, evidence-first guide to checkout reconciliation, idempotency, and reliable order-state transitions.">
+<meta property="og:url" content="https://sirahwaz.github.io/Control-room/revenue/checkout-guide.html">
+<title>Your Checkout Isn't Done When the Invoice Is Created — MIDAD+</title>
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"Article",
+  "headline":"Your Checkout Isn't Done When the Invoice Is Created",
+  "description":"A practical checklist for payment-intent integrity, verified on-chain receipts, reconciliation, and delivery state.",
+  "datePublished":"2026-10-21",
+  "dateModified":"2026-10-21",
+  "author":{"@type":"Organization","name":"MIDAD AI"},
+  "publisher":{"@type":"Organization","name":"MIDAD AI"},
+  "mainEntityOfPage":"https://sirahwaz.github.io/Control-room/revenue/checkout-guide.html"
+}
+</script>
+<style>
+:root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--text:#edf5ff;--muted:#a2b4c8;--subtle:#7489a1;--line:#26394f;--accent:#7cebd0;--accent2:#b0f3e5;--warn:#ffd7a0}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(ellipse at 12% 0,#163c4830,transparent 34%),linear-gradient(180deg,var(--bg),#091521 70%,#07111d);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.shell{width:min(850px,calc(100% - 36px));margin:0 auto}
+nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:21px 0;border-bottom:1px solid #ffffff12}
+.brand{display:inline-flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-weight:900;letter-spacing:.1em}
+.mark{display:grid;place-items:center;width:38px;height:38px;border:1px solid #83e9d34d;border-radius:13px;background:#183343;color:var(--accent);letter-spacing:-.06em}
+.nav-link{font-size:12px;font-weight:800;text-decoration:none;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#ffffff05}
+article{padding:50px 0 58px}
+.kicker{color:var(--accent);font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+h1{max-width:780px;font-size:clamp(38px,7vw,63px);line-height:1.03;letter-spacing:-.055em;margin:16px 0 21px}
+.dek{max-width:740px;font-size:clamp(16px,2.2vw,19px);line-height:1.85;color:#bac8d9;margin:0}
+.byline{display:flex;flex-wrap:wrap;gap:10px 16px;color:var(--subtle);font-size:11px;margin-top:20px}
+.hero-cta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:45px;padding:11px 16px;border-radius:12px;text-decoration:none;font-size:12px;font-weight:850}
+.primary{background:var(--accent);color:#052018}.secondary{color:var(--text);border:1px solid var(--line);background:#ffffff05}
+.tldr{margin:0 0 33px;padding:20px 22px;border:1px solid #3a766c;border-radius:17px;background:linear-gradient(120deg,#17353c,#101e2c)}
+.tldr strong{display:block;color:var(--accent);font-size:11px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:8px}
+.tldr p{margin:0;color:#dbe8f2;font-size:14px;line-height:1.85}
+h2{font-size:clamp(24px,4vw,32px);line-height:1.15;letter-spacing:-.04em;margin:42px 0 13px}
+h3{font-size:17px;line-height:1.35;margin:0 0 6px}
+p{margin:0 0 16px;color:#c2cedc;font-size:14px}
+.lede{font-size:16px;color:#dae4ee}
+.state-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:21px 0 25px}
+.state{padding:17px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,#122337,#0c1826)}
+.number{display:block;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.13em;margin-bottom:11px}
+.state p{font-size:12px;margin:0;line-height:1.8}
+.callout{padding:18px 20px;margin:20px 0;border-inline-start:3px solid var(--accent);background:#7cebd009;border-radius:0 13px 13px 0}
+.callout p{margin:0;font-size:13px}
+.checklist{list-style:none;display:grid;gap:12px;padding:0;margin:18px 0 25px}
+.checklist li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;color:#cbd7e5;font-size:13px;line-height:1.8}
+.check{display:grid;place-items:center;width:21px;height:21px;border-radius:7px;background:#7cebd012;border:1px solid #7cebd03b;color:var(--accent);font-size:11px;font-weight:900;margin-top:2px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#b0f3e5;background:#ffffff0b;border:1px solid #ffffff0b;border-radius:5px;padding:1px 4px;font-size:.92em}
+table{width:100%;border-collapse:collapse;margin:18px 0 26px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:12px 13px;text-align:start;vertical-align:top;border-bottom:1px solid var(--line);font-size:12px}
+th{color:var(--accent);background:#122235;font-weight:850}td{color:#c4d0de;background:#ffffff02}tr:last-child td{border-bottom:0}
+.final-card{margin-top:43px;border:1px solid #4d8c81;border-radius:21px;padding:24px;background:radial-gradient(ellipse at 100% 0,#19504436,transparent 55%),linear-gradient(145deg,#142e3b,#0e1a28)}
+.final-card .price{font-size:36px;font-weight:900;letter-spacing:-.05em;margin:8px 0}
+.final-card p{max-width:650px}.final-card .scope{font-size:11px;color:var(--muted);margin-top:12px}
+.footer{padding:22px 0 35px;border-top:1px solid #ffffff12;display:flex;justify-content:space-between;gap:20px;color:var(--subtle);font-size:11px}
+.footer a{white-space:nowrap;text-decoration:none}
+@media(max-width:620px){.shell{width:calc(100% - 28px)}nav{padding:15px 0}article{padding:36px 0 42px}.state-grid{grid-template-columns:1fr}.state{padding:15px}.tldr{padding:17px}.footer{flex-direction:column}.nav-link{font-size:11px;padding:9px}.hero-cta .btn{flex:1}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav aria-label="Primary navigation">
+<a class="brand" href="./"><span class="mark" aria-hidden="true">M+</span><span>MIDAD+</span></a>
+<a class="nav-link" href="./?lang=en">Service store ↗</a>
+</nav>
+<article>
+<header>
+<div class="kicker">Engineering notes · Checkout reliability</div>
+<h1>Your checkout isn't done when the invoice is created.</h1>
+<p class="dek">A practical checklist for separating payment requests, verified receipts and order fulfillment—before a silent state mismatch becomes an accounting problem.</p>
+<div class="byline"><span>MIDAD AI</span><span>8-minute technical read</span><span>Updated October 21, 2026</span></div>
+<div class="hero-cta"><a class="btn primary" href="./?product=payment-path-mini-v1&amp;lang=en&amp;utm_source=github&amp;utm_medium=technical_article&amp;utm_campaign=checkout_diagnostic_oct_2026&amp;utm_content=guide_hero&amp;lane=global_remote_crypto&amp;ref=github-checkout-guide">Request the $5 diagnostic ↗</a><a class="btn secondary" href="#checklist">Jump to the checklist ↓</a></div>
+</header>
+<section class="tldr" aria-label="Key takeaway">
+<strong>The key principle</strong>
+<p>An invoice means a payment was requested. A verified receipt means the payment evidence matches the intended transaction. A fulfilled order means the promised work was delivered. These are separate facts and should be stored, verified and displayed separately.</p>
+</section>
+<h2>Three states, three different questions</h2>
+<p class="lede">When a buyer reports “I paid, but the order still says pending,” the first task is to identify which state failed to advance. A resilient design does not let one state stand in for another.</p>
+<div class="state-grid">
+<section class="state"><span class="number">01 / PAYMENT INTENT</span><h3>What was requested?</h3><p>The expected amount, asset, network, recipient address and expiry. It is a quote or request—not proof of funds received.</p></section>
+<section class="state"><span class="number">02 / VERIFIED RECEIPT</span><h3>What actually arrived?</h3><p>An independently observed transaction matching the amount, asset, network, recipient and required chain evidence or finality.</p></section>
+<section class="state"><span class="number">03 / ORDER FULFILLMENT</span><h3>What was delivered?</h3><p>The order’s business lifecycle: awaiting payment, paid, in progress, needing input, delivered or cancelled. “Paid” is not the same as “delivered.”</p></section>
+</div>
+<h2>Where silent checkout failures come from</h2>
+<h3>1. Two database writes, only one succeeds</h3>
+<p>A service might save a payment intent, then fail while creating the order. The result is an orphan record and a customer-facing flow that has no reliable order to follow. Where the records must exist together, create them in one database transaction or a single atomic operation, and verify the returned identifiers.</p>
+<h3>2. Duplicate events or repeated requests</h3>
+<p>Webhooks retry. Users refresh. Browsers repeat a request after a timeout. Idempotency keys and uniqueness constraints should make a repeated request safe, without producing duplicate orders or counting the same receipt twice.</p>
+<h3>3. The receipt is detected, but not fully reconciled</h3>
+<p>A transaction hash alone is not enough. Check the intended asset and network, the exact recipient, the quoted amount in base units, transaction evidence, confirmation/finality rules and whether the receipt has already been assigned to another order.</p>
+<h3>4. Payment and order status drift apart</h3>
+<p>Even after a verified payment state is recorded, updating the related order may fail. Reconciliation needs an idempotent way to repair that mismatch and an audit trail explaining whether it succeeded or requires manual review.</p>
+<h3>5. The status screen tells the wrong story</h3>
+<p>A status endpoint can reject a request that the front end assumes is supported; or it can return only the order status while hiding that payment verification is still pending. Every action button needs a matching API contract, and the response should distinguish payment state from delivery state.</p>
+<div class="callout"><p><strong>Safety rule:</strong> if payment evidence is ambiguous, stop at “review required.” Do not ask the buyer to pay again simply because one internal state failed to update.</p></div>
+<h2 id="checklist">The evidence-first checkout checklist</h2>
+<ul class="checklist">
+<li><span class="check">✓</span><span><strong>Atomic creation:</strong> create the intent and order together; check that their IDs and product details match.</span></li>
+<li><span class="check">✓</span><span><strong>Strong order reference:</strong> bind a high-entropy order key to exactly one order. Reject malformed and unknown keys without returning customer data.</span></li>
+<li><span class="check">✓</span><span><strong>Exact receipt matching:</strong> verify asset, network, recipient, exact quoted amount, transaction identity and required chain evidence.</span></li>
+<li><span class="check">✓</span><span><strong>Idempotent reconciliation:</strong> retries should converge on one result; duplicates or contradictory evidence should be routed to review.</span></li>
+<li><span class="check">✓</span><span><strong>Order-state synchronization:</strong> after verification, update the matching order safely and confirm the persisted result.</span></li>
+<li><span class="check">✓</span><span><strong>Separate payment and delivery:</strong> do not mark work delivered merely because the receipt is verified.</span></li>
+<li><span class="check">✓</span><span><strong>Privacy at the status endpoint:</strong> return only what the customer needs. Never expose other customers’ contact details or requirements.</span></li>
+<li><span class="check">✓</span><span><strong>Safe test plan:</strong> verify malformed keys, unknown orders, duplicate requests and update failures without sending funds or creating a paid test order in production.</span></li>
+</ul>
+<h2>What a useful diagnostic should produce</h2>
+<p>A useful report does more than say “the checkout looks fine.” For each finding, record the affected state, the evidence that supports it, a reproducible way to trigger the issue, the expected result, the observed result and the smallest safe next step. Where a path cannot be tested without a real payment or production side effect, say so explicitly rather than pretending the end-to-end test passed.</p>
+<table aria-label="Example report structure"><thead><tr><th>Field</th><th>What to document</th></tr></thead><tbody>
+<tr><td>Finding</td><td>Short, specific description of the state mismatch or missing guard.</td></tr>
+<tr><td>Evidence</td><td>Relevant response, sanitized log, row-state comparison or chain proof—without secrets.</td></tr>
+<tr><td>Reproduction</td><td>Minimal steps or input that reproduces the observed behavior.</td></tr>
+<tr><td>Expected vs. actual</td><td>The contract and what the system returned or persisted.</td></tr>
+<tr><td>Retest</td><td>A repeatable check that proves the smallest fix worked and did not create a duplicate.</td></tr>
+</tbody></table>
+<div class="final-card">
+<div class="kicker">Fixed-scope service</div>
+<h2 style="margin-top:10px">Single-Path Checkout Diagnostic</h2>
+<div class="price">$5 USDC</div>
+<p>One public checkout, webhook or reconciliation path reviewed, with written findings, supporting evidence, a reproducible retest checklist and prioritized next steps.</p>
+<a class="btn primary" href="./?product=payment-path-mini-v1&amp;lang=en&amp;utm_source=github&amp;utm_medium=technical_article&amp;utm_campaign=checkout_diagnostic_oct_2026&amp;utm_content=guide_footer&amp;lane=global_remote_crypto&amp;ref=github-checkout-guide">View the service and request a scoped review ↗</a>
+<p class="scope">No wallet custody, fund transfers, signing, production credentials or handling of customer funds. The price covers the defined diagnostic scope; it is not a guarantee that every issue can be fixed within that scope.</p>
+</div>
+</article>
+<footer class="footer"><span>© MIDAD AI · Evidence-led technical work.</span><a href="./?lang=en">Back to the service store ↑</a></footer>
+</div>
+</body>
+</html>
