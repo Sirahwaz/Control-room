@@ -140,3 +140,115 @@ BEGIN
   DELETE FROM public.midad_browser_jobs WHERE id = v_job;
 END;
 $test$;
+
+
+-- Smoke-auth harness contract: one-shot Vault reference, expiry, and narrowly-scoped cleanup.
+DO $smoke_auth_test$
+DECLARE
+  v_owner uuid := gen_random_uuid();
+  v_secret uuid := gen_random_uuid();
+  v_token text := repeat('smoketest', 8);
+  v_run text := 'midad-browser-smoke:00112233-4455-6677-8899-aabbccddeeff';
+  v_token_id uuid;
+  v_authorized_id uuid;
+  v_second_authorization uuid;
+  v_job uuid;
+  v_cleanup jsonb;
+  v_count integer;
+BEGIN
+  INSERT INTO auth.users(id, email, raw_user_meta_data)
+  VALUES (
+    v_owner,
+    'midad-browser-smoke-fixture@example.invalid',
+    jsonb_build_object(
+      'midad_browser_smoke_identity', 'true',
+      'midad_browser_smoke_run', v_run
+    )
+  );
+
+  INSERT INTO vault.secrets(id, name, description, secret)
+  VALUES (v_secret, 'midad:browser:smoke:fixture', 'isolated smoke fixture only', v_token);
+
+  INSERT INTO public.midad_browser_smoke_tokens(vault_secret_id, token_sha256, expires_at)
+  VALUES (
+    v_secret,
+    encode(extensions.digest(convert_to(v_token, 'UTF8'), 'sha256'), 'hex'),
+    now() + interval '5 minutes'
+  )
+  RETURNING id INTO v_token_id;
+
+  v_authorized_id := public.midad_browser_smoke_authorize_v1(v_token);
+  IF v_authorized_id IS DISTINCT FROM v_token_id THEN
+    RAISE EXCEPTION 'one_shot_token_authorization_failed';
+  END IF;
+
+  v_second_authorization := public.midad_browser_smoke_authorize_v1(v_token);
+  IF v_second_authorization IS NOT NULL THEN
+    RAISE EXCEPTION 'one_shot_token_was_reusable';
+  END IF;
+
+  IF public.midad_browser_smoke_cleanup_token_v1(v_token_id) IS NOT TRUE THEN
+    RAISE EXCEPTION 'one_shot_token_cleanup_failed';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM vault.secrets WHERE id = v_secret)
+     OR EXISTS (SELECT 1 FROM public.midad_browser_smoke_tokens WHERE id = v_token_id) THEN
+    RAISE EXCEPTION 'smoke_secret_or_token_row_remains';
+  END IF;
+
+  INSERT INTO public.midad_browser_jobs (
+    owner_user_id, agent_key, platform_key, objective, state, session_ref,
+    input_data, profile_snapshot, human_gate, blocker, evidence, next_action, attempt_count
+  ) VALUES (
+    v_owner,
+    'midad_gateway_smoke',
+    NULL,
+    'MIDAD Browser Gateway Smoke Test (temporary; safe to delete)',
+    'PREPARING',
+    v_run,
+    '{}'::jsonb,
+    '{}'::jsonb,
+    '{"required": false, "status": "none"}'::jsonb,
+    '{}'::jsonb,
+    '{}'::jsonb,
+    'test_cleanup',
+    0
+  )
+  RETURNING id INTO v_job;
+
+  PERFORM * FROM public.midad_browser_record_evidence_v1(
+    v_job,
+    'smoke-cleanup-event-0001',
+    'job_created',
+    'ledger_smoke_test',
+    NULL,
+    'https://example.com/smoke',
+    repeat('c', 64),
+    jsonb_build_object('source_kind', 'smoke_test'),
+    'test_cleanup',
+    NULL,
+    NULL
+  );
+
+  INSERT INTO public.midad_agent_events(job_id, agent_key, event_type, state, payload)
+  VALUES (v_job, 'ledger_smoke_test', 'job_created', 'PREPARING', '{"test_only": true}'::jsonb);
+
+  v_cleanup := public.midad_browser_smoke_cleanup_job_v1(v_owner, v_run);
+  IF (v_cleanup ->> 'deleted_jobs')::integer <> 1
+     OR (v_cleanup ->> 'deleted_events')::integer <> 1
+     OR (v_cleanup ->> 'deleted_evidence')::integer <> 1 THEN
+    RAISE EXCEPTION 'test_job_cleanup_contract_failed: %', v_cleanup;
+  END IF;
+
+  DELETE FROM auth.users WHERE id = v_owner;
+
+  SELECT count(*) INTO v_count FROM public.midad_browser_jobs;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'smoke_test_left_browser_jobs: %', v_count; END IF;
+
+  SELECT count(*) INTO v_count FROM public.midad_browser_evidence_ledger;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'smoke_test_left_evidence_rows: %', v_count; END IF;
+
+  SELECT count(*) INTO v_count FROM public.midad_browser_smoke_tokens;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'smoke_test_left_tokens: %', v_count; END IF;
+END;
+$smoke_auth_test$;
