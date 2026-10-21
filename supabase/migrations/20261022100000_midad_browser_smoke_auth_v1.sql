@@ -46,8 +46,8 @@ BEGIN
   WHERE t.token_sha256 = encode(extensions.digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex')
     AND t.expires_at > clock_timestamp()
     AND t.consumed_at IS NULL
-  FOR UPDATE OF t SKIP LOCKED
-  LIMIT 1;
+  LIMIT 1
+  FOR UPDATE OF t SKIP LOCKED;
 
   IF NOT FOUND THEN
     RETURN NULL;
