@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import postgres from "npm:postgres@3.4.7";
-import { buildFulfillmentPrompt, getAdapter, validateDelivery } from "./adapter-registry.mjs";
+import { buildFulfillmentPrompt, getAdapter, validateDelivery, validatePaymentGate } from "./adapter-registry.mjs";
 
 const URL = Deno.env.get("SUPABASE_URL") || "";
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -73,20 +73,9 @@ async function processOrder(orderId: string) {
     .eq("asset", intent.settlement_asset).eq("network", intent.network)
     .ilike("tx_hash", String(intent.received_tx_hash)).limit(2);
   if (receiptError) throw receiptError;
-  const expectedMint = TOKEN_MINTS[String(intent.network).toLowerCase() + ":" + String(intent.settlement_asset).toUpperCase()];
-  const matching = (receipts || []).filter((r: any) =>
-    String(r.tx_hash || "").toLowerCase() === String(intent.received_tx_hash).toLowerCase() &&
-    Math.abs(Number(r.amount) - Number(intent.quoted_crypto_amount)) < 0.0000005 &&
-    expectedMint && (String(intent.network).toLowerCase() === "base"
-      ? String(r.mint || "").toLowerCase() === expectedMint.toLowerCase()
-      : String(r.mint || "") === expectedMint)
-  );
-  if (matching.length !== 1) return json({ ok: false, error: "unique_matching_verified_receipt_required" }, 409);
-  const receipt = matching[0];
-  if (String(job.payment_evidence?.receipt_id || "") !== String(receipt.id) ||
-      String(job.payment_evidence?.tx_hash || "").toLowerCase() !== String(receipt.tx_hash).toLowerCase()) {
-    return json({ ok: false, error: "payment_evidence_snapshot_mismatch" }, 409);
-  }
+  const gate = validatePaymentGate({ order, intent, receipts: receipts || [], job });
+  if (!gate.ok) return json({ ok: false, error: gate.reason }, 409);
+  const receipt = gate.receipt;
 
   const adapter = getAdapter(order.product_id);
   if (!adapter || adapter.key !== job.adapter_key) {
