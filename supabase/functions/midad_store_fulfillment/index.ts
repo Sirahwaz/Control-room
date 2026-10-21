@@ -9,11 +9,6 @@ const DATABASE_URL = Deno.env.get("SUPABASE_DB_URL") || "";
 const db = createClient(URL, KEY);
 const sql = DATABASE_URL ? postgres(DATABASE_URL, { max: 1, idle_timeout: 5, connect_timeout: 10, ssl: "require", prepare: false }) : null;
 const MAX_REPORT_CHARS = 20000;
-const TOKEN_MINTS: Record<string,string> = {
-  "base:USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  "solana:USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  "solana:USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
-};
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
 });
@@ -75,7 +70,6 @@ async function processOrder(orderId: string) {
   if (receiptError) throw receiptError;
   const gate = validatePaymentGate({ order, intent, receipts: receipts || [], job });
   if (!gate.ok) return json({ ok: false, error: gate.reason }, 409);
-  const receipt = gate.receipt;
 
   const adapter = getAdapter(order.product_id);
   if (!adapter || adapter.key !== job.adapter_key) {
