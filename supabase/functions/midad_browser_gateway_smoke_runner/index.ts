@@ -73,7 +73,6 @@ Deno.serve(async (req: Request) => {
   let ownerId: string | null = null;
   let jobDeleted = false;
   let identityDeleted = false;
-  let tokenDeleted = false;
   let cleanupErrors: string[] = [];
   let result: Record<string, unknown> = {};
   let failureCode: string | null = null;
@@ -230,10 +229,6 @@ Deno.serve(async (req: Request) => {
       else identityDeleted = true;
     }
 
-    const secretCleanup = await db.rpc("midad_browser_smoke_cleanup_token_v1", { p_token_id: tokenReference });
-    if (secretCleanup.error || secretCleanup.data !== true) cleanupErrors.push("test_secret_cleanup_failed");
-    else tokenDeleted = true;
-
     try {
       finalCounts = {
         jobs: await countRows(db, "midad_browser_jobs"),
@@ -244,7 +239,10 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const clean = jobDeleted && identityDeleted && tokenDeleted &&
+  // The launcher's short-lived Vault token is intentionally retained until the HTTP
+  // response is collected. This avoids a race where the async pg_net caller loses its
+  // request_id before it can collect the response. The launcher deletes it immediately after.
+  const clean = jobDeleted && identityDeleted &&
     finalCounts.jobs === baseline.jobs && finalCounts.evidence === baseline.evidence &&
     cleanupErrors.length === 0;
   return response({
@@ -257,7 +255,7 @@ Deno.serve(async (req: Request) => {
     cleanup: {
       temporary_job_deleted: jobDeleted,
       temporary_identity_deleted: identityDeleted,
-      one_shot_vault_secret_deleted: tokenDeleted,
+      one_shot_vault_secret_pending_launcher_cleanup: true,
     },
     baseline_counts: baseline,
     final_counts: finalCounts,
