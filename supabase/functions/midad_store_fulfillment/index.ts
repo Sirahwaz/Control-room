@@ -62,11 +62,14 @@ async function processOrder(orderId: string) {
     return json({ ok: false, error: "verified_paid_store_order_required" }, 409);
   }
 
-  const { data: receipts, error: receiptError } = await db.from("midad_wallet_receipts")
+  let receiptQuery: any = db.from("midad_wallet_receipts")
     .select("id,tx_hash,asset,network,amount,mint,direction,matched_payment_intent_id,commitment,evidence,detected_at")
     .eq("matched_payment_intent_id", intent.id).eq("direction", "inbound")
-    .eq("asset", intent.settlement_asset).eq("network", intent.network)
-    .ilike("tx_hash", String(intent.received_tx_hash)).limit(2);
+    .eq("asset", intent.settlement_asset).eq("network", intent.network);
+  receiptQuery = String(intent.network).toLowerCase() === "base"
+    ? receiptQuery.ilike("tx_hash", String(intent.received_tx_hash))
+    : receiptQuery.eq("tx_hash", String(intent.received_tx_hash));
+  const { data: receipts, error: receiptError } = await receiptQuery.limit(2);
   if (receiptError) throw receiptError;
   const gate = validatePaymentGate({ order, intent, receipts: receipts || [], job });
   if (!gate.ok) return json({ ok: false, error: gate.reason }, 409);
