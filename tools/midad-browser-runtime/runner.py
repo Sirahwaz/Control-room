@@ -114,7 +114,34 @@ class BrowserJobRunner:
                 digest=hashlib.sha256(captured["text"].encode()).hexdigest()
                 result.update({"job_id":job_id,"status":"CAPTURED","url":captured["url"],"title":captured["title"],"http_status":captured["http_status"],"content_sha256":digest,"text_chars":len(captured["text"]),"elapsed_ms":int((time.monotonic()-started)*1000)})
                 await self._record(job_id,"navigation","RUNNING",captured["url"],{"http_status":captured["http_status"],"title":captured["title"],"content_sha256":digest,"text_chars":len(captured["text"]),"elapsed_ms":result["elapsed_ms"]},"review_public_evidence")
-            await asyncio.wait_for(execute(),timeout=self.config.overall_timeout_seconds)
+            work = asyncio.create_task(execute())
+            cancel_wait = asyncio.create_task(cancel.wait())
+            done, pending = await asyncio.wait(
+                {work, cancel_wait},
+                timeout=self.config.overall_timeout_seconds,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if cancel_wait in done and cancel.is_set():
+                work.cancel()
+                try:
+                    await work
+                except asyncio.CancelledError:
+                    pass
+                raise asyncio.CancelledError()
+            if work in done:
+                await work
+            else:
+                work.cancel()
+                try:
+                    await work
+                except asyncio.CancelledError:
+                    pass
+                raise asyncio.TimeoutError()
+            cancel_wait.cancel()
+            try:
+                await cancel_wait
+            except asyncio.CancelledError:
+                pass
         except asyncio.TimeoutError:
             result.update({"status":"TIMEOUT","error":"overall_timeout"})
             await self._record(job_id,"error","FAILED",target,{"error_code":"browser_timeout"},"review_or_retry")
