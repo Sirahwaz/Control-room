@@ -248,6 +248,9 @@ class BrowserWorkerLifecycleContractTests(unittest.IsolatedAsyncioTestCase):
         result = await runner.run({"id": "job-retry", "state": "PREPARING", "current_url": "https://example.com/"})
         self.assertEqual(result["status"], "CAPTURED")
         self.assertEqual(runner._navigate_and_capture.await_count, 2)
+        navigation_calls = [call.kwargs for call in runner.gateway.record_event.await_args_list
+                            if call.kwargs.get("event_type") == "navigation_observed"]
+        self.assertEqual(navigation_calls[-1]["attempt_count"], 1)
 
     async def test_cancelled_job_records_cancelled_state_not_failed_or_paid(self):
         runner = self.make_runner()
@@ -265,3 +268,35 @@ class BrowserWorkerLifecycleContractTests(unittest.IsolatedAsyncioTestCase):
         payloads = [call.kwargs for call in runner.gateway.record_event.await_args_list]
         self.assertTrue(any(p.get("event_type") == "job_cancelled" and p.get("state") == "CANCELLED" for p in payloads))
         self.assertFalse(any(p.get("state") == "PAID" for p in payloads))
+
+
+class BrowserWorkerRetryLimitTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.dns = patch("runner.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))])
+        self.dns.start()
+        self.addCleanup(self.dns.stop)
+
+    async def test_transient_failure_retries_are_bounded_and_never_claim_paid(self):
+        config = BrowserConfig(
+            supabase_url="https://project.supabase.co",
+            ingest_key="test-key-not-real",
+            allowed_hosts=frozenset({"example.com"}),
+            navigation_timeout_ms=250,
+            overall_timeout_seconds=1,
+            max_attempts=99,
+        )
+        runner = BrowserJobRunner(config, gateway=AsyncMock(), playwright_factory=AsyncMock())
+        runner.gateway.record_event.return_value = {"ok": True}
+        fake_page = AsyncMock()
+        fake_page.url = "https://example.com/"
+        fake_context = AsyncMock()
+        fake_context.pages = [fake_page]
+        fake_browser = AsyncMock()
+        fake_browser.new_context.return_value = fake_context
+        runner._open_browser = AsyncMock(return_value=(AsyncMock(), fake_browser, fake_context, fake_page))
+        runner._navigate_and_capture = AsyncMock(side_effect=RuntimeError("transient"))
+        result = await runner.run({"id": "job-retry-limit", "state": "PREPARING", "current_url": "https://example.com/"})
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(runner._navigate_and_capture.await_count, 3)
+        self.assertFalse(any(call.kwargs.get("state") == "PAID"
+                             for call in runner.gateway.record_event.await_args_list))
