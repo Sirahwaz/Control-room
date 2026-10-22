@@ -19,6 +19,7 @@ class BrowserConfig:
     navigation_timeout_ms: int = 15000
     overall_timeout_seconds: float = 45.0
     max_text_chars: int = 30000
+    max_attempts: int = 3
     @classmethod
     def from_env(cls):
         hosts=frozenset(x.strip().lower().rstrip(".") for x in os.environ.get("MIDAD_BROWSER_ALLOWED_HOSTS","").split(",") if x.strip())
@@ -106,17 +107,40 @@ class BrowserJobRunner:
     async def run(self,job,cancel=None):
         cancel=cancel or asyncio.Event(); job_id=str(job.get("id") or job.get("job_id") or "")
         if not job_id: raise ValueError("job_id_required")
+        state=str(job.get("state") or "").strip().upper()
+        if state == "HUMAN_GATE":
+            return {"job_id":job_id,"status":"DEFERRED","reason":"HUMAN_GATE"}
+        if state in {"PAID","COMPLETED","CANCELLED","SUBMITTED","VERIFYING"}:
+            return {"job_id":job_id,"status":"SKIPPED","reason":"TERMINAL_JOB_STATE"}
+        if state and state not in {"QUEUED","RESEARCHING","PREPARING","RUNNING"}:
+            return {"job_id":job_id,"status":"DEFERRED","reason":"JOB_STATE_NOT_RUNNABLE"}
         target=validate_navigation_url(str(job.get("current_url") or ""),self.config.allowed_hosts)
         started=time.monotonic(); pw=browser=context=page=None; result={"job_id":job_id,"status":"FAILED"}
         work = cancel_wait = None
         try:
+            await self._record(job_id,"state_transition","RUNNING",target,{"source_kind":"worker_lifecycle","attempt":int(job.get("attempt_count") or 0)},"capture_public_evidence")
             async def execute():
                 nonlocal pw,browser,context,page
                 pw,browser,context,page=await self._open_browser()
-                captured=await self._navigate_and_capture(page,target,cancel)
+                captured=None
+                last_error=None
+                attempt_limit=max(1,min(int(self.config.max_attempts),3))
+                for attempt in range(1,attempt_limit+1):
+                    if cancel.is_set():
+                        raise asyncio.CancelledError()
+                    try:
+                        captured=await self._navigate_and_capture(page,target,cancel)
+                        break
+                    except Exception as exc:
+                        last_error=exc
+                        if attempt >= attempt_limit or cancel.is_set():
+                            raise
+                        await asyncio.sleep(min(0.1*attempt,0.5))
+                if captured is None:
+                    raise RuntimeError("browser_capture_failed") from last_error
                 digest=hashlib.sha256(captured["text"].encode()).hexdigest()
-                result.update({"job_id":job_id,"status":"CAPTURED","url":captured["url"],"title":captured["title"],"http_status":captured["http_status"],"content_sha256":digest,"text_chars":len(captured["text"]),"elapsed_ms":int((time.monotonic()-started)*1000)})
-                await self._record(job_id,"navigation_observed","RUNNING",captured["url"],{"http_status":captured["http_status"],"bytes_read":len(captured["text"].encode()),"duration_ms":result["elapsed_ms"]},"review_public_evidence",content_sha256=digest)
+                result.update({"job_id":job_id,"status":"CAPTURED","url":captured["url"],"title":captured["title"],"http_status":captured["http_status"],"content_sha256":digest,"text_chars":len(captured["text"]),"attempts":attempt,"elapsed_ms":int((time.monotonic()-started)*1000)})
+                await self._record(job_id,"navigation_observed","RUNNING",captured["url"],{"http_status":captured["http_status"],"bytes_read":len(captured["text"].encode()),"duration_ms":result["elapsed_ms"],"attempt":attempt},"review_public_evidence",content_sha256=digest)
             work = asyncio.create_task(execute())
             cancel_wait = asyncio.create_task(cancel.wait())
             done, pending = await asyncio.wait(
@@ -150,7 +174,7 @@ class BrowserJobRunner:
             await self._record(job_id,"error","FAILED",target,{"error_code":"browser_timeout","retryable":True},"review_or_retry")
         except asyncio.CancelledError:
             result.update({"status":"CANCELLED","error":"cancelled"})
-            try: await asyncio.shield(self._record(job_id,"error","FAILED",target,{"error_code":"browser_cancelled","retryable":False},"resume_or_review"))
+            try: await asyncio.shield(self._record(job_id,"job_cancelled","CANCELLED",target,{"error_code":"browser_cancelled","retryable":False},"resume_or_review"))
             finally: raise
         except Exception:
             result.update({"status":"FAILED","error":"browser_runtime_failed"})
