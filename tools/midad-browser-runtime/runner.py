@@ -98,11 +98,12 @@ class BrowserJobRunner:
         title=(await page.title())[:500]
         text=(await page.locator("body").inner_text(timeout=self.config.navigation_timeout_ms))[:self.config.max_text_chars]
         return {"url":final,"title":title,"text":text,"http_status":response.status if response else None}
-    async def _record(self,job_id,event_type,state,current_url,evidence,next_action,content_sha256=None):
+    async def _record(self,job_id,event_type,state,current_url,evidence,next_action,content_sha256=None,attempt_count=None):
         try: safe_url=validate_navigation_url(current_url,self.config.allowed_hosts)
         except BrowserPolicyError: safe_url=None
         payload={"job_id":job_id,"event_type":event_type,"state":state,"current_url":safe_url,"next_action":next_action,"evidence":{"source_kind":"isolated_playwright",**evidence}}
         if content_sha256 is not None: payload["content_sha256"]=content_sha256
+        if attempt_count is not None: payload["attempt_count"]=max(0,min(int(attempt_count),3))
         return await self.gateway.record_event(**payload)
     async def run(self,job,cancel=None):
         cancel=cancel or asyncio.Event(); job_id=str(job.get("id") or job.get("job_id") or "")
@@ -118,7 +119,7 @@ class BrowserJobRunner:
         started=time.monotonic(); pw=browser=context=page=None; result={"job_id":job_id,"status":"FAILED"}
         work = cancel_wait = None
         try:
-            await self._record(job_id,"state_transition","RUNNING",target,{"source_kind":"worker_lifecycle","attempt":int(job.get("attempt_count") or 0)},"capture_public_evidence")
+            await self._record(job_id,"state_transition","RUNNING",target,{"source_kind":"worker_lifecycle","attempt":int(job.get("attempt_count") or 0)},"capture_public_evidence",attempt_count=int(job.get("attempt_count") or 0))
             async def execute():
                 nonlocal pw,browser,context,page
                 pw,browser,context,page=await self._open_browser()
@@ -140,7 +141,7 @@ class BrowserJobRunner:
                     raise RuntimeError("browser_capture_failed") from last_error
                 digest=hashlib.sha256(captured["text"].encode()).hexdigest()
                 result.update({"job_id":job_id,"status":"CAPTURED","url":captured["url"],"title":captured["title"],"http_status":captured["http_status"],"content_sha256":digest,"text_chars":len(captured["text"]),"attempts":attempt,"elapsed_ms":int((time.monotonic()-started)*1000)})
-                await self._record(job_id,"navigation_observed","RUNNING",captured["url"],{"http_status":captured["http_status"],"bytes_read":len(captured["text"].encode()),"duration_ms":result["elapsed_ms"],"attempt":attempt},"review_public_evidence",content_sha256=digest)
+                await self._record(job_id,"navigation_observed","RUNNING",captured["url"],{"http_status":captured["http_status"],"bytes_read":len(captured["text"].encode()),"duration_ms":result["elapsed_ms"],"attempt":attempt},"review_public_evidence",content_sha256=digest,attempt_count=min(3,int(job.get("attempt_count") or 0)+attempt-1))
             work = asyncio.create_task(execute())
             cancel_wait = asyncio.create_task(cancel.wait())
             done, pending = await asyncio.wait(
