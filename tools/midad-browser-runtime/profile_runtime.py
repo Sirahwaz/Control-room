@@ -9,17 +9,39 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 from profile_vault import ProfileError, ProfileRecord, ProfileStore, request_policy, validate_profile_url
+from runner import BrowserPolicyError, validate_navigation_url
 
 
 @dataclass
 class BrowserProfileSession:
+    """Narrow read-only surface for agents; no public Playwright page/context handle."""
     profile_id: str
-    context: Any
-    page: Any
     allowed_hosts: tuple[str, ...]
+    _context: Any
+    _page: Any
     mode: str = "agent_read_only"
+
+    async def snapshot(self, *, max_text_chars: int = 12000) -> dict:
+        """Return bounded visible text for in-memory agent reasoning; callers must not log it."""
+        limit = max(1, min(int(max_text_chars), 20000))
+        page_url = urlsplit(self._page.url)
+        safe_url = f"{page_url.scheme}://{page_url.hostname}/" if page_url.hostname else "about:blank"
+        title = (await self._page.title())[:300]
+        text = (await self._page.locator("body").inner_text(timeout=10000))[:limit]
+        return {"profile_id": self.profile_id, "url": safe_url, "title": title, "text": text}
+
+    async def navigate(self, url: str, *, timeout_ms: int = 15000) -> dict:
+        """Navigate with GET only inside this profile's exact HTTPS host scope."""
+        target = validate_profile_url(url, self.allowed_hosts)
+        try:
+            validate_navigation_url(target, self.allowed_hosts)
+        except BrowserPolicyError as exc:
+            raise ProfileError(str(exc)) from exc
+        await self._page.goto(target, wait_until="domcontentloaded", timeout=max(1000, min(int(timeout_ms), 30000)))
+        return await self.snapshot()
 
 
 async def _start_playwright(playwright_factory: Callable | None = None):
@@ -34,11 +56,17 @@ async def _start_playwright(playwright_factory: Callable | None = None):
 async def _guard_context(context, allowed_hosts, mode: str) -> None:
     async def guard(route):
         request = route.request
-        if request_policy(request.url, request.method, allowed_hosts, mode=mode):
-            await route.continue_()
-        else:
+        if not request_policy(request.url, request.method, allowed_hosts, mode=mode):
             # Do not log the URL: it may contain private query values.
             await route.abort("blockedbyclient")
+            return
+        try:
+            # Resolve and validate public DNS as well as scheme/host before each request.
+            validate_navigation_url(request.url, allowed_hosts)
+        except (BrowserPolicyError, ValueError, OSError):
+            await route.abort("blockedbyclient")
+            return
+        await route.continue_()
     await context.route("**/*", guard)
 
 
@@ -106,11 +134,11 @@ async def open_profile_session(
     navigation_timeout_ms: int = 15000,
     playwright_factory: Callable | None = None,
 ):
-    """Yield a signed-in Playwright page using an approved persistent profile.
+    """Yield a signed-in, persistent read-only profile facade to an MIDAD agent.
 
     Only exact allowlisted HTTPS hosts and GET/HEAD/OPTIONS requests are
-    permitted. This first release intentionally does not submit forms, publish,
-    claim tasks, transfer funds, sign messages, or perform other write actions.
+    permitted. This first release intentionally exposes no click, fill, submit,
+    download, publication, claim, wallet, transfer, or signing API.
     """
     record: ProfileRecord = store.require_ready(profile_id)
     target_url = validate_profile_url(url, record.allowed_hosts)
@@ -132,9 +160,9 @@ async def open_profile_session(
         await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
         yield BrowserProfileSession(
             profile_id=record.profile_id,
-            context=context,
-            page=page,
             allowed_hosts=record.allowed_hosts,
+            _context=context,
+            _page=page,
         )
     finally:
         if context is not None:
