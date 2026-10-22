@@ -8,6 +8,8 @@ A separate, fail-closed Playwright worker for public, read-only browser inspecti
 - Every browser request, including redirects, scripts, images and XHR, is checked before continuation. Only GET/HEAD; disallowed requests are aborted.
 - Fresh browser context per job, no persistent profile, imported cookies, storage state or user sessions. Downloads and service workers disabled.
 - Captures bounded visible body text locally, hashes it, and sends only title/status/hash/length metadata to the evidence ledger.
+- Records the RUNNING transition before navigation; defers HUMAN_GATE and skips terminal jobs without opening a browser.
+- Retries transient navigation errors up to three attempts, records attempt metadata, and records cancellation as CANCELLED rather than FAILED.
 - Explicit navigation and overall timeouts; browser context, browser and Playwright runtime are closed in finally.
 - No CAPTCHA/MFA bypass, anti-bot evasion, login, clicks, fills, downloads, submissions, publication, wallet operations or payments.
 - No paid browser provider. This is a worker library, not deployed as a persistent consumer.
@@ -26,7 +28,7 @@ Configure secrets outside source control:
 Run only an existing authorized job:
 python tools/midad-browser-runtime/runner.py --job-json '{"id":"EXISTING_JOB_UUID","current_url":"https://example.com/"}'
 
-Tests use fakes; no network or real browser is needed:
+Tests use fakes; no network or real browser is needed. Lifecycle contracts cover RUNNING, HUMAN_GATE, bounded retry, cancellation, and never claiming PAID:
 cd tools/midad-browser-runtime && python -m unittest -v
 
 No live browser or gateway integration is claimed by unit tests. The worker does not create jobs or activate a queue.
