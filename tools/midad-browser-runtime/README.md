@@ -40,21 +40,22 @@ cd tools/midad-browser-runtime && python -m unittest -v
 No live browser or gateway integration is claimed by unit tests. The worker does not create jobs or activate a queue.
 
 ## Revenue Radar adapter (offline-first)
-`revenue_radar.py` bridges existing Revenue Radar / `public.opportunities`-shaped rows into:
-1. A strict official-host HTTPS source allowlist (J4C, Bounties.sh, CryptoTask, TaskMarket, BountyBook, BasedAgents, UGig, Superteam).
-2. Listing-level payout gates: explicit crypto asset **and network**, official payout terms and listing-specific payment evidence, funded status, region/KYC, automation eligibility, and zero upfront/claim cost.
-3. Net value = gross reward − platform fee − network fee − claim fee. Priority = net × acceptance probability × payout confidence ÷ estimated hours.
-4. Cross-source deduplication by listing ID, canonical URL, then normalized title+host.
-5. Read-only GET target plans for the existing Browser Worker. It never creates browser jobs or takes external actions.
+`revenue_radar.py` maps existing Revenue Radar / `public.opportunities`-shaped rows to qualification results and exact-host, read-only Browser Worker target plans. Registered source hosts: J4C, Bounties.sh, CryptoTask, TaskMarket, BountyBook, BasedAgents, UGig, and Superteam. **Registration means only that the host is a permitted public-read target; it does not mean the source or every listing has verified payout.**
 
-Defaults intentionally suppress small opportunities: gross >= $100, net >= $75, expected net >= $50. Tune these thresholds via CLI flags when needed. The adapter fails closed: `payment_coin`, a `funded_signal`, an advertised prize pool, or platform-level crypto support alone never proves a funded crypto payout. Every result has `action_authorized: false`; READY_FOR_REVIEW means evidence is sufficient for review, not permission to submit or claim.
+The current payout-terms allowlist is intentionally narrower:
+- Bounties.sh official payment FAQ: `https://bounties.sh/faqs` (USDC; escrow required for posted bounties; platform says no commission and covers certain in-platform fees; third-party withdrawal fees remain variable).
+- BasedAgents official docs: `https://basedagents.ai/docs` (USDC payout, escrow by default on eligible tasks; settlement depends on acceptance or the stated review timer).
+- Taskmarket official fee/payment docs: `https://docs.taskmarket.dev/concepts/fees-payments` (USDC on Base; default 7.5% platform fee; some paid actions cost 0.001 USDC and claim-mode deposits may apply).
+
+Other registered sources remain blocked for payout qualification until their official payment terms are reviewed and added explicitly. Per listing, the adapter also requires explicit asset **and network**, official listing-specific payment evidence, hashes of both the listing and payout terms, evidence checked within 24 hours, funded status, region/KYC eligibility, automation permission, and zero upfront/claim cost. A `payment_coin`, `funded_signal`, prize pool headline, or platform-level crypto support alone never proves the specific task is payable.
+
+Net value = gross reward − platform fee − network fee − claim fee. Priority = net × acceptance probability × payout confidence ÷ estimated hours. Cross-source duplicates are collapsed by listing ID, canonical URL, then normalized title+host. Defaults suppress small opportunities: gross >= $100, net >= $75, expected net >= $50. Each result has `action_authorized: false`; READY_FOR_REVIEW means only that supplied evidence passed the data gates, not permission to submit or claim.
 
 Run against a JSON export (no credentials or network needed):
 ```sh
 cd tools/midad-browser-runtime
 python revenue_radar_cli.py opportunities.json > revenue-radar-report.json
-# or pipe JSON to stdin:
 cat opportunities.json | python revenue_radar_cli.py
 python -m unittest -v
 ```
-Input may be a JSON array or `{"candidates":[...]}`. For rows shaped like existing `public.opportunities`, the adapter maps only explicit evidence fields; it does not promote inferred or legacy fields to verified payout proof. Output states `paid_provider_used: false`, `browser_jobs_created: 0`, and `external_actions_performed: 0`. This is a local qualification/plan adapter, not yet a deployed Supabase queue consumer or a claim that any live payout has been verified.
+Input may be a JSON array or `{"candidates":[...]}`. The CLI reports `paid_provider_used: false`, `browser_jobs_created: 0`, and `external_actions_performed: 0`. This is an offline qualification and planning adapter, not yet a deployed Supabase queue consumer; it does not claim any live payout has been verified.
