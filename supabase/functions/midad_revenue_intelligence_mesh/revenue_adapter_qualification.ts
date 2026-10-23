@@ -106,6 +106,9 @@ function isOfficialProviderUrl(value: unknown, sourceSlug: string): boolean {
  * both an explicit provider assertion and an HTTPS URL on that provider's domain.
  */
 export function extractQualificationEvidence(raw: unknown, sourceSlug: string): QualificationEvidence {
+  // BountyBook JSON field names have not been confirmed from a first-party
+  // job payload or schema. Do not run the generic alias mapper for that source.
+  if (sourceSlug.toLowerCase().includes("bountybook")) return {};
   const record = asRecord(raw);
   if (!record) return {};
   const out: QualificationEvidence = {};
@@ -208,6 +211,13 @@ export function basedAgentsQualificationEvidence(raw: unknown): QualificationEvi
  * policy evidence; it is not a complete OpenAPI/schema document.
  */
 export const BOUNTYBOOK_FEE_EVIDENCE_URL = "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d";
+/**
+ * Keep false until an official GET captures a job payload or a first-party
+ * machine-readable schema; see docs/audits/bountybook-api-verification-2026-10-23.md.
+ * Candidate aliases must not establish provider fee/net/split/payout facts by
+ * themselves, even when a synthetic sample happens to balance arithmetically.
+ */
+const BOUNTYBOOK_API_SCHEMA_VERIFIED = false;
 const BOUNTYBOOK_PLATFORM_FEE_RATE = 0.04;
 const roundUsd = (amount: number) => Math.round(amount * 1_000_000) / 1_000_000;
 const closeUsd = (left: number, right: number) => Math.abs(left - right) <= 0.000001;
@@ -222,7 +232,18 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   const record = asRecord(raw);
   if (!record) return {};
 
-  const out: QualificationEvidence = {};
+  const out: QualificationEvidence = {
+    claimFee: 0,
+    submissionFee: 0,
+    feeScheduleVerified: false,
+  };
+
+  // The first-party page supports only the free claim/submission policy. The
+  // API contract is still unverified, so do not map candidate fee/net/split/
+  // payout aliases into qualification evidence until the explicit schema gate
+  // is changed as part of a review backed by captured first-party evidence.
+  if (!BOUNTYBOOK_API_SCHEMA_VERIFIED) return out;
+
   const gross = explicitNumber(record, ["budget_usdc", "budgetUsdc", "gross_reward_usdc", "grossRewardUsd"]);
   const explicitPlatformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
   const explicitNet = explicitNumber(record, ["agent_receives_usdc", "netRewardUsd", "net_reward_usd"]);
@@ -241,11 +262,6 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   if (individualReward !== undefined) out.individualRewardUsd = individualReward;
 
   if (explicitNet !== undefined) out.providerNetRewardUsd = explicitNet;
-
-  // Official BountyBook job pages state both actions are free. Keep these
-  // separate from the platform fee deducted from the reward.
-  out.claimFee = 0;
-  out.submissionFee = 0;
 
   const platformFeeMatches = expectedFee !== undefined
     && explicitPlatformFee !== undefined
