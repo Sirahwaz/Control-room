@@ -1,0 +1,31 @@
+name: MIDAD Revenue Qualification Regression Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-revenue-qualification-tests.yml"
+  push:
+    branches:
+      - "fix/revenue-mesh-source-and-qualification-gates"
+    paths:
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-revenue-qualification-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  revenue-qualification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check qualification gate
+        run: deno check supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts
+      - name: Run revenue qualification regression tests
+        run: deno test --no-check supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts
