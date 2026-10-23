@@ -108,7 +108,7 @@ function bountybook(body:any,httpStatus:number){
    deadline,region:"unknown",kyc:"unknown",identity:"unknown",
    caps:tags.concat([String(t.job_type||"task")]),tags,competition:0,test:test||!open,
    notes:["Public feed lists the job and budget but does not itself prove this individual job's escrow balance.","BountyBook x402 discovery docs indicate USDC/Base and escrow-at-post by default; task-specific funded escrow must be verified before claim.","Historical payout reliability should be checked separately; no claim or wallet signing is performed."],
-   ...bountyBookQualificationEvidence(t),...extractQualificationEvidence(t,"bountybook_api"),raw:t,httpStatus,contentHash:null
+   ...extractQualificationEvidence(t,"bountybook_api"),...bountyBookQualificationEvidence(t),raw:t,httpStatus,contentHash:null
   };
  }).filter((c:any)=>c.externalId&&c.title);
 }
