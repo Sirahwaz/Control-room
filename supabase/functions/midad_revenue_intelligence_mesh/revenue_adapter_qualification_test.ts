@@ -181,3 +181,47 @@ Deno.test("Taskmarket award metadata identifies a split payout without inventing
     { payoutSplitCount: 2 },
   );
 });
+
+
+Deno.test("BountyBook derives the documented four-percent platform fee and zero claim/submission fees from gross budget", async () => {
+  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+  assertEquals(
+    bountyBookQualificationEvidence({ budget_usdc: "25", chain_id: 8453 }),
+    {
+      platformFee: 1,
+      providerNetRewardUsd: 24,
+      claimFee: 0,
+      submissionFee: 0,
+      feeScheduleVerified: true,
+      feeScheduleEvidenceUrl: "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d",
+    },
+  );
+});
+
+Deno.test("BountyBook only verifies the four-percent policy when explicit fee and provider net agree with gross", async () => {
+  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+  assertEquals(
+    bountyBookQualificationEvidence({
+      budget_usdc: "100",
+      platform_fee_usdc: "4",
+      agent_receives_usdc: "96",
+    }).feeScheduleVerified,
+    true,
+  );
+  assertEquals(
+    bountyBookQualificationEvidence({
+      budget_usdc: "100",
+      platform_fee_usdc: "4",
+      agent_receives_usdc: "90",
+    }).feeScheduleVerified,
+    undefined,
+  );
+});
+
+Deno.test("BountyBook does not invent a fee amount or mark its schedule verified without a gross reward", async () => {
+  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+  assertEquals(
+    bountyBookQualificationEvidence({ platform_fee_usdc: "4", agent_receives_usdc: "96" }).feeScheduleVerified,
+    undefined,
+  );
+});
