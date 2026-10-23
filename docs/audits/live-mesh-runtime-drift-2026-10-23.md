@@ -1,0 +1,91 @@
+# Production Revenue Mesh runtime drift and safe reconciliation — 2026-10-23
+
+## Finding
+
+The production runtime and the open PR branch have materially different qualification behavior.
+
+### Production runtime observed
+
+- Supabase project: `froegigfmpmvtecztfbf`
+- Function: `midad_revenue_intelligence_mesh`
+- Status/version: `ACTIVE`, version 14
+- Deployed bundle SHA-256: `f4bc30701188564ef5b5b6b0c0a07c85a59c3cd6be3df5cdd3fb9621b8ab8bb6`
+- The retrieved live `index.ts` does not import/use `qualifyRevenueCandidate`, the new region/KYC/identity qualification gate, or the shared-pool parser. Its `classify` path promotes a candidate to `READY_FOR_REVIEW` after checking basic deadline/cost/asset and `paymentProof` signals. It does not gate on explicit region eligibility, KYC eligibility, identity eligibility, or recipient-specific split reward.
+- Active scheduled job: `midad-revenue-intelligence-15m`, cron `*/15 * * * *`, job id 42.
+- Latest run observed at this audit: 2026-10-23 03:45 UTC. It completed 8/8 feeds, observed/upserted 90 candidates, and counted 3 payout-gate passes.
+
+### Production rows exposing the gap
+
+The live database still contained `READY_FOR_REVIEW` rows with unknown region/KYC/identity, including:
+
+| Opportunity | Live state | Evidence concern |
+|---|---|---|
+| Generative Art Card | `READY_FOR_REVIEW`, estimated net 9.25 USDC | 201 submissions for one winner; region/KYC/identity unknown. Escrow funding proof is not proof that this user is eligible or will win. |
+| FlapJax Receipt Relay Q41 | `READY_FOR_REVIEW`, estimated net 0.925 USDC | Listing explicitly splits the $1 USDC pool across up to two answers. 0.925 USDC is the post-platform-fee pool, not the proven individual net. |
+| FlapJax public repost bonus | `READY_FOR_REVIEW`, estimated net 0.925 USDC | Task has a previous-submission prerequisite; its description states $0.10 USDC per accepted slot while the feed/escrow amounts differ; off-platform FLAPJAX bonus is unverified. |
+| Previously listed Knots, Gable Guardians and Receipt Relay items | Some remained `READY_FOR_REVIEW` after their stored deadlines elapsed | Existing rows are not guaranteed to reappear in a later open-only source feed, so they can retain an old READY state unless expired rows are reconciled. |
+
+These are production observations, not guesses from feed cards. The exact rows were retrieved read-only. No production data was modified in this audit.
+
+## Branch fixes prepared and tested
+
+Branch: `fix/revenue-mesh-source-and-qualification-gates`  
+PR: https://github.com/Sirahwaz/Control-room/pull/95
+
+1. The Taskmarket adapter detects explicit shared-pool language; no individual net amount is inferred from a shared pool.
+2. Qualification remains fail-closed if region, KYC, identity, individual share or fee schedule is unknown.
+3. Added a pure stale-reconciliation decision helper and regression tests. The discovery cycle will mark previously READY rows as `STALE` when a valid deadline is in the past, clear the current estimated net, set priority to zero, and add `deadline_expired` to the gate reasons.
+4. The reconciliation helper explicitly protects `PAID`, `CLAIMED`, `IN_PROGRESS`, `DELIVERED`, and `AWAITING_ACCEPTANCE` statuses. The database update is conditional on the row still being READY and expired, so a concurrent state change is not overwritten.
+5. The stale reconciliation is bounded to 500 expired rows per discovery cycle and contributes its count to the run summary.
+
+### Verification on the code-bearing commit
+
+Code commit: `c4b3d558e884287c653b0276a56c36f54d0c716e`
+
+- [Revenue Qualification Regression Tests #98](https://github.com/Sirahwaz/Control-room/actions/runs/39897875851): **49 passed, 0 failed**; `deno check` passed.
+- [MIDAD Control Room Verify #895](https://github.com/Sirahwaz/Control-room/actions/runs/39897876036): passed.
+- [MIDAD FIX Contract #483](https://github.com/Sirahwaz/Control-room/actions/runs/39897875854): passed.
+
+These results verify the branch code only. They do not mean production has been repaired, merged or deployed.
+
+## Why production was not altered
+
+The deployed function is missing the reviewed branch code, while the user-authorized workflow for this phase is to keep PR #95 as a Draft and not merge/deploy it. Updating production rows directly would be temporary and misleading because the active old 15-minute discovery job can rewrite them to READY again. Pausing the full discovery scheduler would also stop revenue discovery across all providers. Neither workaround is safer than first completing review of the code revision.
+
+Accordingly, this report does **not** claim the live issue has been remediated. Production remains on the older bundle until a reviewed deployment is separately authorized.
+
+## Required verification after a future approved deployment
+
+1. Record the new deployed function version and source hash.
+2. Execute a read-only `health` check and one controlled discovery run.
+3. Verify that open Taskmarket listings with unknown region/KYC/identity are no longer `READY_FOR_REVIEW`.
+4. Verify Q41's per-user estimated net is null/blocked until its individual share is explicitly provided.
+5. Verify expired READY rows transition to `STALE`; assert paid/in-progress/delivered rows remain unchanged.
+6. Confirm source-feed discovery continues and inspect the resulting run summary, error list and opportunity/evidence counts.
+
+## Safety status
+
+- No production DB mutation, source disablement, deployment or merge was performed.
+- No account registration, claim, external submission, wallet connection/signature, purchase or financial transaction was performed.
+- PR #95 remains open and Draft.
+
+
+## Parallel triage refresh — 2026-10-23 04:04 UTC
+
+This section supersedes the 03:45 UTC run snapshot above and records a read-only refresh across the production database, Edge Function inventory, logs, queue, and GitHub Actions.
+
+### Current run and state (production)
+
+- The 04:00:06–04:00:25 UTC discovery run completed successfully: **8/8 feeds**, **90 candidates seen/upserted**, **3 payout-gate passes**, **10 upfront-cost blocks**, **0 stale/invalid counted by the live v14 runtime**.
+- The live bundle remains **ACTIVE v14**, SHA-256 `f4bc30701188564ef5b5b6b0c0a07c85a59c3cd6be3df5cdd3fb9621b8ab8bb6`; the 15-minute discovery cron remains active.
+- Important schema detail: readiness is held in `gate_decision`; rows considered ready have `status='QUALIFIED'` and `gate_decision='READY_FOR_REVIEW'`. Filtering only `status='READY_FOR_REVIEW'` produces a false zero.
+- The current read-only snapshot found **7** Taskmarket rows with `gate_decision='READY_FOR_REVIEW'`, of which **4 had expired deadlines**. The three top candidates in the 04:00 run still had unknown region, KYC and identity gates. Q41 and the repost task still must not be treated as verified individual-net opportunities.
+- The three latest GitHub Actions runs associated with the branch all completed successfully. The revenue qualification job's log confirms **49 passed, 0 failed**, with `deno check` completed.
+
+### Work-queue bottleneck
+
+The current work queue has **120 BLOCKED** `independent_payment_proof` tasks with blocker `task_specific_independent_payout_proof_missing`; **4 BLOCKED** official program eligibility reviews; **2 BLOCKED** airdrop activity reviews; and **2 FAILED** independent-payment checks after retries with `base_receipt_not_available_yet`. These are not proof of income; they are the main unresolved evidence pipeline. The queue worker is active, but missing primary evidence remains the blocker and should not be bypassed by relaxing gates.
+
+### Immediate decision
+
+The branch's stale reconciliation queries by `gate_decision='READY_FOR_REVIEW'`, not by the UI-facing `status`, and protects paid/in-progress/delivery states. Its expected effect is **not yet live**. The safe next step is a review of PR #95 followed, only after the existing deployment gate is explicitly changed, by a controlled deployment and post-deploy checks listed above. No production writes, cron edits, merges, deployments, claims, submissions, signatures or transfers were performed for this refresh.

@@ -1,0 +1,31 @@
+name: MIDAD Revenue Qualification Regression Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-revenue-qualification-tests.yml"
+  push:
+    branches:
+      - "fix/revenue-mesh-source-and-qualification-gates"
+    paths:
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-revenue-qualification-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  revenue-qualification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check restored mesh and provider qualification modules
+        run: deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_fixtures.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
+      - name: Run qualification and provider adapter integration tests
+        run: deno test --no-check supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
