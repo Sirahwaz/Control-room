@@ -74,14 +74,14 @@ Deno.test("does not treat an unverified listing claim as a verified fee schedule
   );
 });
 
-Deno.test("only maps a split payout when a per-recipient amount is explicitly present", () => {
+Deno.test("does not infer BountyBook split fields while the provider JSON contract is unverified", () => {
   assertEquals(
     extractQualificationEvidence({ rewardPoolUsd: 500, payoutSplitCount: 5, rewardIsSharedPool: true }, "bountybook_api"),
-    { payoutSplitCount: 5, rewardIsSharedPool: true },
+    {},
   );
   assertEquals(
     extractQualificationEvidence({ rewardPoolUsd: 500, payoutSplitCount: 5, individualRewardUsd: 100 }, "bountybook_api"),
-    { individualRewardUsd: 100, payoutSplitCount: 5 },
+    {},
   );
 });
 
@@ -194,23 +194,28 @@ Deno.test("BountyBook gross budget alone yields no asserted fee/net fields and r
   );
 });
 
-Deno.test("BountyBook only verifies the four-percent policy when explicit fee and provider net agree with gross", () => {
-  assertEquals(
-    bountyBookQualificationEvidence({
-      budget_usdc: "100",
-      platform_fee_usdc: "4",
-      agent_receives_usdc: "96",
-    }).feeScheduleVerified,
-    true,
-  );
-  assertEquals(
-    bountyBookQualificationEvidence({
-      budget_usdc: "100",
-      platform_fee_usdc: "4",
-      agent_receives_usdc: "90",
-    }).feeScheduleVerified,
-    false,
-  );
+Deno.test("BountyBook candidate-shaped gross, fee and net do not verify an unobserved API schema", () => {
+  const consistent = bountyBookQualificationEvidence({
+    budget_usdc: "100",
+    platform_fee_usdc: "4",
+    agent_receives_usdc: "96",
+  });
+  assertEquals(consistent, {
+    claimFee: 0,
+    submissionFee: 0,
+    feeScheduleVerified: false,
+  });
+
+  const inconsistent = bountyBookQualificationEvidence({
+    budget_usdc: "100",
+    platform_fee_usdc: "4",
+    agent_receives_usdc: "90",
+  });
+  assertEquals(inconsistent, {
+    claimFee: 0,
+    submissionFee: 0,
+    feeScheduleVerified: false,
+  });
 });
 
 Deno.test("BountyBook does not invent a fee amount or mark its schedule verified without a gross reward", () => {
