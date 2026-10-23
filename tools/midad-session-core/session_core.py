@@ -198,7 +198,7 @@ def _validate_storage_state(storage_state: Any, allowed_hosts: list[str]) -> dic
         if domain is not None:
             if not isinstance(domain, str):
                 raise ProfilePolicyError("INVALID_COOKIE_DOMAIN")
-            canonical = _canonical_host(domain.lstrip("."))
+            canonical = _canonical_host(domain[1:] if domain.startswith(".") else domain)
             if canonical not in allowed_hosts:
                 raise ProfilePolicyError("COOKIE_DOMAIN_NOT_ALLOWED")
         elif cookie_url is not None:
@@ -276,7 +276,10 @@ def _safe_result(value: Any, allowed_hosts: list[str]) -> dict[str, Any]:
             continue
         if key == "url":
             try:
-                output[key] = validate_target_url(item, allowed_hosts)
+                safe_url = validate_target_url(item, allowed_hosts)
+                parsed = urlsplit(safe_url)
+                # Query strings can contain one-time links or access tokens.
+                output[key] = urlunsplit(("https", parsed.netloc, parsed.path, "", ""))
             except ProfilePolicyError:
                 continue
         elif key in {"title", "text", "reason_code", "next_action"} and isinstance(item, str):
@@ -421,7 +424,7 @@ class EncryptedFileSessionStore:
                 raise SessionIntegrityError("STORAGE_STATE_TOO_LARGE")
             state = _validate_storage_state(json.loads(plain.decode("utf-8")), metadata["allowed_hosts"])
             return metadata, state
-        except (InvalidTag, UnicodeError, json.JSONDecodeError, ValueError, TypeError, KeyError, OSError):
+        except (InvalidTag, UnicodeError, json.JSONDecodeError, ValueError, TypeError, KeyError, OSError, ProfilePolicyError):
             raise SessionIntegrityError("PROFILE_DECRYPTION_OR_VALIDATION_FAILED") from None
 
     def delete(self, profile_id: str) -> None:
@@ -459,8 +462,10 @@ class GrantAuthority:
             raise GrantRejected("INVALID_GRANT_TTL")
         if isinstance(scopes, (str, bytes)) or not isinstance(scopes, (list, tuple, set, frozenset)):
             raise GrantRejected("INVALID_GRANT_SCOPES")
+        if any(not isinstance(scope, str) for scope in scopes):
+            raise GrantRejected("UNSUPPORTED_GRANT_SCOPE")
         scope_set = sorted(set(scopes))
-        if not scope_set or any(not isinstance(scope, str) or scope not in ALLOWED_SCOPES for scope in scope_set):
+        if not scope_set or any(scope not in ALLOWED_SCOPES for scope in scope_set):
             raise GrantRejected("UNSUPPORTED_GRANT_SCOPE")
         issued_at = int(time.time() if now is None else now)
         payload = {
@@ -580,14 +585,14 @@ class SessionCore:
         if normalized_operation not in OPERATION_SCOPE:
             raise PolicyDenied("OPERATION_NOT_ALLOWED")
 
-        metadata, storage_state = self.store.load(profile_id)
         now = int(self.clock())
-        if metadata["expires_at"] is not None and metadata["expires_at"] <= now:
-            raise ProfilePolicyError("PROFILE_EXPIRED")
-
         grant = self.grant_authority.verify(grant_token, now=now)
         if grant["profile_id"] != profile_id:
             raise GrantRejected("GRANT_PROFILE_MISMATCH")
+
+        metadata, storage_state = self.store.load(profile_id)
+        if metadata["expires_at"] is not None and metadata["expires_at"] <= now:
+            raise ProfilePolicyError("PROFILE_EXPIRED")
         target = validate_target_url(target_url, metadata["allowed_hosts"])
         host = urlsplit(target).hostname
         if host not in grant["allowed_hosts"]:
