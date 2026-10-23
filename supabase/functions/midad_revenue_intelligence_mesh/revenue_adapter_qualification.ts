@@ -202,17 +202,60 @@ export function basedAgentsQualificationEvidence(raw: unknown): QualificationEvi
   return {};
 }
 
-/** Map only explicit BountyBook amounts/statuses; do not infer a flat percentage fee. */
+/**
+ * BountyBook's official job pages state that the platform deducts a 4% fee
+ * and that claiming/submitting are free. This page is retained as first-party
+ * policy evidence; it is not a complete OpenAPI/schema document.
+ */
+export const BOUNTYBOOK_FEE_EVIDENCE_URL = "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d";
+const BOUNTYBOOK_PLATFORM_FEE_RATE = 0.04;
+const roundUsd = (amount: number) => Math.round(amount * 1_000_000) / 1_000_000;
+const closeUsd = (left: number, right: number) => Math.abs(left - right) <= 0.000001;
+
+/**
+ * Use the published 4% fee policy only when the job's gross reward and any
+ * provider-reported net amount are internally consistent. Fee fields are
+ * estimates from a public job record; they do not prove escrow funding,
+ * individual payout splitting, user eligibility or payment settlement.
+ */
 export function bountyBookQualificationEvidence(raw: unknown): QualificationEvidence {
   const record = asRecord(raw);
   if (!record) return {};
+
   const out: QualificationEvidence = {};
-  const platformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
+  const gross = explicitNumber(record, ["budget_usdc", "budgetUsdc", "gross_reward_usdc", "grossRewardUsd"]);
+  const explicitPlatformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
+  const explicitNet = explicitNumber(record, ["agent_receives_usdc", "netRewardUsd", "net_reward_usd"]);
+  const expectedFee = gross === undefined ? undefined : roundUsd(gross * BOUNTYBOOK_PLATFORM_FEE_RATE);
+  const platformFee = explicitPlatformFee ?? expectedFee;
+  const expectedNet = gross !== undefined && platformFee !== undefined
+    ? roundUsd(gross - platformFee)
+    : undefined;
+
   if (platformFee !== undefined) out.platformFee = platformFee;
+
   const individualReward = explicitNumber(record, ["individualRewardUsd", "individual_reward_usd", "perRecipientRewardUsd", "per_recipient_reward_usd"]);
   if (individualReward !== undefined) out.individualRewardUsd = individualReward;
-  const providerNetReward = explicitNumber(record, ["agent_receives_usdc", "netRewardUsd", "net_reward_usd"]);
-  if (providerNetReward !== undefined) out.providerNetRewardUsd = providerNetReward;
+
+  if (explicitNet !== undefined) out.providerNetRewardUsd = explicitNet;
+  else if (expectedNet !== undefined) out.providerNetRewardUsd = expectedNet;
+
+  // Official BountyBook job pages state both actions are free. Keep these
+  // separate from the platform fee deducted from the reward.
+  out.claimFee = 0;
+  out.submissionFee = 0;
+
+  const platformFeeMatches = expectedFee !== undefined
+    && platformFee !== undefined
+    && closeUsd(platformFee, expectedFee);
+  const netMatches = explicitNet === undefined
+    || (expectedNet !== undefined && closeUsd(explicitNet, expectedNet));
+
+  // Explicit false is deliberate: a raw listing's own self-assertion must not
+  // override a mismatch or missing gross amount via the generic extractor.
+  out.feeScheduleVerified = gross !== undefined && platformFeeMatches && netMatches;
+  if (out.feeScheduleVerified) out.feeScheduleEvidenceUrl = BOUNTYBOOK_FEE_EVIDENCE_URL;
+
   const payoutStatus = String(record.payout_status ?? "").trim().toLowerCase();
   const payoutTx = record.payout_tx_hash;
   if (payoutStatus === "paid" && typeof payoutTx === "string" && /^0x[a-f0-9]{64}$/i.test(payoutTx)) {
@@ -220,6 +263,7 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   } else if (["none", "pending", "refunded", "unpaid"].includes(payoutStatus)) {
     out.providerReportsPaid = false;
   }
+
   return out;
 }
 
