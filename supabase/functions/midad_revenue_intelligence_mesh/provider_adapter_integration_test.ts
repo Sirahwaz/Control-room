@@ -12,18 +12,15 @@ import {
   taskmarketFixture,
 } from "./provider_adapter_fixtures.ts";
 
-Deno.test("Taskmarket fixture: first five bounty/benchmark submissions are free only when count is known", () => {
-  assertEquals(taskmarketOfficialFeeEvidence(taskmarketFixture), {
-    submissionFee: 0,
-    feeScheduleVerified: true,
-    feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
-  });
+Deno.test("Taskmarket public task submissionCount is not the worker's free-submission count", () => {
+  assertEquals(taskmarketOfficialFeeEvidence(taskmarketFixture), {});
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty" }), {});
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 2 }).submissionFee, 0);
 });
 
 Deno.test("Taskmarket fixture: sixth and later bounty/benchmark submissions incur 0.001 USDC", () => {
-  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", submissionCount: 5 }).submissionFee, 0.001);
-  assertEquals(taskmarketOfficialFeeEvidence({ mode: "benchmark", submissionCount: 8 }).submissionFee, 0.001);
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 5 }).submissionFee, 0.001);
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "benchmark", workerSubmissionCount: 8 }).submissionFee, 0.001);
 });
 
 Deno.test("Taskmarket pitch and auction actions carry the documented 0.001 USDC action fee", () => {
