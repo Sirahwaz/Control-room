@@ -1,4 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import { extractQualificationEvidence } from "./revenue_adapter_qualification.ts";
 import {
   basedAgentsQualificationEvidence,
   bountyBookQualificationEvidence,
@@ -43,20 +44,45 @@ Deno.test("BasedAgents missing task-specific escrow evidence stays unknown", () 
   }), {});
 });
 
-Deno.test("BountyBook fixture maps explicit fee and payout fields without assuming the platform fee percentage", () => {
+Deno.test("BountyBook fixture maps the official 4% platform fee, free claim/submission, and provider payout fields", () => {
   assertEquals(bountyBookQualificationEvidence(bountyBookFixture), {
     platformFee: 1,
     providerNetRewardUsd: 24,
+    claimFee: 0,
+    submissionFee: 0,
+    feeScheduleVerified: true,
+    feeScheduleEvidenceUrl: "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d",
     providerReportsPaid: false,
   });
 });
 
-Deno.test("BountyBook budget alone does not prove funded escrow or an individual net payout", () => {
-  assertEquals(bountyBookQualificationEvidence({
+Deno.test("BountyBook gross budget derives fee estimate but does not prove escrow funding or payout", () => {
+  const evidence = bountyBookQualificationEvidence({
     id: "job-budget-only",
     budget_usdc: "25",
     chain_id: 8453,
-  }), {});
+  });
+  assertEquals(evidence.platformFee, 1);
+  assertEquals(evidence.providerNetRewardUsd, 24);
+  assertEquals(evidence.feeScheduleVerified, true);
+  assertEquals(evidence.escrowFunded, undefined);
+  assertEquals(evidence.providerReportsPaid, undefined);
+});
+
+Deno.test("BountyBook shared reward pool is not converted into an individual payout", () => {
+  const raw = {
+    id: "job-split",
+    budget_usdc: "100",
+    platform_fee_usdc: "4",
+    agent_receives_usdc: "96",
+    award_count: 4,
+    reward_is_shared_pool: true,
+  };
+  const feeEvidence = bountyBookQualificationEvidence(raw);
+  const eligibilityEvidence = extractQualificationEvidence(raw, "bountybook_api");
+  assertEquals(feeEvidence.individualRewardUsd, undefined);
+  assertEquals(eligibilityEvidence.payoutSplitCount, 4);
+  assertEquals(eligibilityEvidence.rewardIsSharedPool, true);
 });
 
 Deno.test("Superteam fixture respects explicit agentAccess but records human payout claim requirement", () => {
