@@ -1,6 +1,6 @@
 import { assertEquals, assert } from "jsr:@std/assert@1";
 
-import { qualifyRevenueCandidate } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, shouldReconcileExpiredOpportunity } from "./revenue_qualification_gates.ts";
 
 const eligible = {
   region_eligible: true,
@@ -95,4 +95,66 @@ Deno.test("blocks when submission fee schedule has not been verified", () => {
   const result = qualifyRevenueCandidate({ ...eligible, fee_schedule_verified: null });
   assertEquals(result.decision, "BLOCKED");
   assert(result.blockers.includes("submission_fee_unverified"));
+});
+
+
+Deno.test("expired READY_FOR_REVIEW opportunity is eligible for stale reconciliation", () => {
+  assertEquals(
+    shouldReconcileExpiredOpportunity({
+      deadline: "2026-10-22T12:00:00Z",
+      gate_decision: "READY_FOR_REVIEW",
+      status: "QUALIFIED",
+    }, new Date("2026-10-23T12:00:00Z")),
+    true,
+  );
+});
+
+Deno.test("future READY_FOR_REVIEW opportunity is not marked stale", () => {
+  assertEquals(
+    shouldReconcileExpiredOpportunity({
+      deadline: "2026-10-24T12:00:00Z",
+      gate_decision: "READY_FOR_REVIEW",
+      status: "QUALIFIED",
+    }, new Date("2026-10-23T12:00:00Z")),
+    false,
+  );
+});
+
+Deno.test("expired protected delivery/payment states are never rewritten by stale reconciliation", () => {
+  for (const status of ["PAID", "CLAIMED", "IN_PROGRESS", "DELIVERED", "AWAITING_ACCEPTANCE"]) {
+    assertEquals(
+      shouldReconcileExpiredOpportunity({
+        deadline: "2026-10-22T12:00:00Z",
+        gate_decision: "READY_FOR_REVIEW",
+        status,
+      }, new Date("2026-10-23T12:00:00Z")),
+      false,
+    );
+  }
+});
+
+Deno.test("missing or invalid deadline is not sufficient evidence for stale reconciliation", () => {
+  for (const deadline of [null, "", "not-a-date"]) {
+    assertEquals(
+      shouldReconcileExpiredOpportunity({
+        deadline,
+        gate_decision: "READY_FOR_REVIEW",
+        status: "QUALIFIED",
+      }, new Date("2026-10-23T12:00:00Z")),
+      false,
+    );
+  }
+});
+
+Deno.test("already blocked or stale opportunities are not reconciled twice", () => {
+  for (const decision of ["BLOCKED_PAYOUT", "STALE", "BLOCKED_ELIGIBILITY_OR_NET"]) {
+    assertEquals(
+      shouldReconcileExpiredOpportunity({
+        deadline: "2026-10-22T12:00:00Z",
+        gate_decision: decision,
+        status: "BLOCKED",
+      }, new Date("2026-10-23T12:00:00Z")),
+      false,
+    );
+  }
 });
