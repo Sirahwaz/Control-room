@@ -63,7 +63,7 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 - Several relevant functions report `verify_jwt=false`. This alone does not prove they are unauthenticated; some use custom ingress keys, autonomy keys, or hashed `control_room_sessions` tokens. Each must be checked for a required credential before any privileged action.
 - Confirmed custom gate patterns in inspected source include: `midad_human_bridge` checking service-role/ingest credentials for internal paths and hashed session tokens for control-room paths; `midad_agent_fee_wallet` checking hashed active `control_room_sessions`; `midad_browser_agent_gateway` checking a service/ingest credential and calling a restricted evidence RPC; and worker functions using autonomy/ingest-key gates.
 - Do not pass service-role keys, ingress/autonomy keys, session tokens, token hashes, Vault secret IDs, wallet references, payment evidence, or raw worker queue payloads into `ai-room.html`.
-- The current source inspection was targeted to likely table consumers. Complete a remaining sweep of all 98 deployed Edge Functions, including indirect SQL/RPC use, before enabling live connections. The map above records confirmed references only and must not be interpreted as proof that an unlisted table has no consumers.
+- Completed a source retrieval/static scan of all 98 deployed Edge Functions. The scan recorded each function's version and `verify_jwt` setting, literal references to the 30 target tables, literal `.rpc(...)` and `functions.invoke(...)` names, credential/authentication markers, service-role usage, write calls, and outbound `fetch` calls. No function source retrieval failed. The resulting map records confirmed references only; generated table names, dynamic SQL, wrappers, and runtime-dependent dispatch can still create indirect dependencies, so this remains a static source/call-graph review rather than proof of runtime non-use.
 
 ## 5. Recommended access pattern by class
 
@@ -74,8 +74,8 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 
 ## 6. Gates still required
 
-- Finish the full 98-function source/call-graph sweep, including SQL tagged-template queries and RPC indirection.
-- Review each `SECURITY DEFINER` function body and any trigger/job entrypoint, not just ACL/search_path.
+- The all-98 source sweep is complete at the literal-reference/static-analysis layer. Remaining: trace dynamic SQL, imported/shared helper behavior, SQL tagged-template queries and runtime RPC indirection in any path selected for live integration.
+- Review each of the nine SQL/RPC definitions identified by catalog matching plus relevant trigger/job entrypoints at body level, not just ACL/search_path. The nine catalog matches included revenue-ops status/dispatch routines and service-role-only agent-fee, browser evidence/smoke, and store fulfillment routines.
 - Trace all client-facing functions with `verify_jwt=false` to the exact custom auth gate and test missing, expired, revoked, wrong-owner and replayed credentials.
 - In a non-production environment, add negative tests for anonymous access, user A reading/writing user B data, queue/secret redaction, idempotent retries, and allowed service-worker operations.
 - Only after that propose narrow grants/policies in a separate migration with rollback instructions. No changes were made in this audit.
@@ -84,3 +84,11 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 ## 7. Explicitly unchanged
 
 No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, function deployment, data mutation, merge, or production deployment was performed.
+
+## 8. Live connector decision after the source scan
+
+- Fresh catalog results confirm all 30 listed tables have RLS enabled and zero policies. RLS-enabled/no-policy tables deny ordinary client row access, but this is not a suitable design for an AI Room feature; direct client table access remains prohibited.
+- Current `anon`/`authenticated` table grants are broader than needed on `midad_agent_events`, `midad_factory_artifacts`, `midad_factory_learning`, `midad_factory_projects`, `midad_factory_runs`, `midad_human_bridge_pairings`, `midad_human_bridge_sessions`, and `midad_speedbot_fulfillments`. No grant was changed. These grants should be reviewed separately after exact downstream dependencies are reconciled.
+- Relevant `SECURITY DEFINER` routines inspected in the catalog fixed `search_path` and had `EXECUTE` for `service_role`/owner, not `anon` or `authenticated`. No RPC from this class is included in the AI Room contract.
+- The feature branch now contains a proposed `midad_ai_room_status` Edge Function. It accepts only an existing Control Room session token, verifies its SHA-256 hash and age, and returns six aggregate counts from standard dashboard tables. It contains no mutation path and does not query any of the 30 RLS-review target tables. It has not been deployed as part of this report.
+- The UI requests a session only after an explicit click and only when Telegram Mini App init data exists. No session token is persisted. Current production UI and function deployment remain unchanged until the updated workflow and actual mobile Telegram authentication/denial tests pass.
