@@ -27,7 +27,7 @@ In this branch:
 - An unresolved shared pool now persists `estimated_net_usd = NULL` rather than showing the pool-level net as a single worker's net.
 - Added regression tests for explicit split language and for ordinary fixed-prize text, plus the existing gate test for blocking unknown per-recipient shares.
 
-The fix is in source on branch `fix/revenue-mesh-source-and-qualification-gates`, not deployed. GitHub connector commits did not produce a visible current CI status in the available workflow/status queries; this report does not claim the latest revision's tests have passed. Earlier CI results recorded in PR #95 apply only to the earlier code-bearing commit.
+The fix is in source on branch `fix/revenue-mesh-source-and-qualification-gates`, not deployed. After the code commit and this audit report were added, GitHub Actions verified the latest branch head: revenue qualification regression workflow run [#91](https://github.com/Sirahwaz/Control-room/actions/runs/39897317699) passed **44 tests with 0 failures**; `deno check` passed in the same workflow; [MIDAD Control Room Verify #891](https://github.com/Sirahwaz/Control-room/actions/runs/39897317892) and [MIDAD FIX Contract #479](https://github.com/Sirahwaz/Control-room/actions/runs/39897317696) also passed. These results validate the current branch revision, not a production deployment.
 
 ## Current Taskmarket candidates reviewed
 
