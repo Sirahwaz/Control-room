@@ -156,15 +156,10 @@ Deno.test("an explicitly disclosed claim fee is mapped, but does not verify the 
   );
 });
 
-Deno.test("Taskmarket bounty submission fee is mapped from its official fee policy", () => {
-  assertEquals(
-    taskmarketOfficialFeeEvidence({ mode: "bounty" }),
-    {
-      submissionFee: 0,
-      feeScheduleVerified: true,
-      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
-    },
-  );
+Deno.test("Taskmarket bounty submission fee remains unverified without worker-specific allowance data", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty" }), {});
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 1 }).submissionFee, 0);
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 5 }).submissionFee, 0.001);
 });
 
 Deno.test("Taskmarket pitch and auction modes account for the official 0.001 USDC action fee", () => {
