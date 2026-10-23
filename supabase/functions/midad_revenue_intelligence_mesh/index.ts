@@ -31,7 +31,7 @@ async function fetchJson(url:string,extraHeaders:Record<string,string>={}){
  return last;
 }
 function dt(v:any):Date|null{if(v===null||v===undefined||v===""||v===0||v==="0")return null;const n=(typeof v==="number"||(typeof v==="string"&&/^\d+$/.test(v)))?Number(v):NaN;const d=Number.isFinite(n)?new Date(n>1e12?n:n*1000):new Date(String(v));return Number.isFinite(d.getTime())?d:null;}
-function fit(c:any){const s=(String(c.title||"")+" "+String(c.description||"")+" "+(c.tags||[]).join(" ")+" "+(c.caps||[]).join(" ")).toLowerCase();const words=[["python",12],["typescript",12],["javascript",9],["api",12],["automation",13],["test",8],["qa",8],["research",8],["data",8],["payment",10],["webhook",8],["json",7],["documentation",5],["technical",5],["mobile",5],["docker",5],["crypto",6],["latency",7],["uptime",7],["csv",6],["svg",5]];let n=22;for(const [w,v] of words)if(s.includes(w))n+=v as number;return Math.min(100,n);}
+function fit(c:any){const s=(String(c.title||"")+" "+String(c.description||"")+" "+(c.tags||[]).join(" ")+" "+(c.caps||[]).join(" ")).toLowerCase();const words: Array<[string, number]>=[["python",12],["typescript",12],["javascript",9],["api",12],["automation",13],["test",8],["qa",8],["research",8],["data",8],["payment",10],["webhook",8],["json",7],["documentation",5],["technical",5],["mobile",5],["docker",5],["crypto",6],["latency",7],["uptime",7],["csv",6],["svg",5]];let n=22;for(const [w,v] of words)if(s.includes(w))n+=v;return Math.min(100,n);}
 function fresh(d:Date|null){if(!d)return 45;const h=(d.getTime()-Date.now())/3600000;if(h<=0)return 0;if(h<6)return 20;if(h<24)return 45;if(h<72)return 70;if(h<168)return 88;return 100;}
 function classify(c:any){
  const reasons:string[]=[];
