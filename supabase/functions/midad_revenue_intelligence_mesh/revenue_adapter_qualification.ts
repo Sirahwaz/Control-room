@@ -15,6 +15,10 @@ type QualificationEvidence = {
   submissionFee?: number;
   feeScheduleVerified?: boolean;
   feeScheduleEvidenceUrl?: string;
+  escrowFunded?: boolean;
+  payoutIsSettled?: boolean;
+  agentSubmissionEligible?: boolean;
+  humanClaimRequired?: boolean;
 };
 
 const GROUPS = ["eligibility", "requirements", "payout", "reward", "fees", "terms"] as const;
@@ -165,7 +169,11 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
   if (!record) return {};
   const mode = typeof record.mode === "string" ? record.mode.trim().toLowerCase() : "";
   let submissionFeeUsd: number | undefined;
-  if (["bounty", "benchmark", "claim"].includes(mode)) submissionFeeUsd = 0;
+  if (["bounty", "benchmark"].includes(mode)) {
+    const count = explicitNumber(record, ["submissionCount", "submission_count"]);
+    if (count === undefined) return extractQualificationEvidence(record, "taskmarket_api");
+    submissionFeeUsd = count < 5 ? 0 : 0.001;
+  } else if (mode === "claim") submissionFeeUsd = 0;
   else if (["pitch", "auction"].includes(mode)) submissionFeeUsd = 0.001;
   if (submissionFeeUsd === undefined) return extractQualificationEvidence(record, "taskmarket_api");
   return extractQualificationEvidence({
@@ -174,4 +182,53 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
     feeScheduleVerified: true,
     feeScheduleEvidenceUrl: TASKMARKET_FEE_SCHEDULE_URL,
   }, "taskmarket_api");
+}
+
+
+/** BasedAgents task-level funding evidence only; never infer user eligibility from task metadata. */
+export function basedAgentsQualificationEvidence(raw: unknown): QualificationEvidence {
+  const record = asRecord(raw);
+  if (!record) return {};
+  const escrow = asRecord(record.escrow);
+  if (!escrow) return {};
+  if (escrow.funded === true || String(escrow.status ?? "").toLowerCase() === "funded") {
+    return { escrowFunded: true };
+  }
+  if (escrow.funded === false || ["unfunded", "failed", "refunded"].includes(String(escrow.status ?? "").toLowerCase())) {
+    return { escrowFunded: false };
+  }
+  return {};
+}
+
+/** Map only explicit BountyBook amounts/statuses; do not infer a flat percentage fee. */
+export function bountyBookQualificationEvidence(raw: unknown): QualificationEvidence {
+  const record = asRecord(raw);
+  if (!record) return {};
+  const out: QualificationEvidence = {};
+  const platformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
+  if (platformFee !== undefined) out.platformFee = platformFee;
+  const individualReward = explicitNumber(record, ["agent_receives_usdc", "individualRewardUsd", "individual_reward_usd"]);
+  if (individualReward !== undefined) out.individualRewardUsd = individualReward;
+  const payoutStatus = String(record.payout_status ?? "").trim().toLowerCase();
+  const payoutTx = record.payout_tx_hash;
+  if (payoutStatus === "paid" && typeof payoutTx === "string" && /^0x[a-f0-9]{64}$/i.test(payoutTx)) {
+    out.payoutIsSettled = true;
+  } else if (["none", "pending", "refunded", "unpaid"].includes(payoutStatus)) {
+    out.payoutIsSettled = false;
+  }
+  return out;
+}
+
+/** Superteam's listing-level agentAccess is not KYC, identity verification or regional eligibility. */
+export function superteamQualificationEvidence(raw: unknown): QualificationEvidence {
+  const record = asRecord(raw);
+  if (!record || typeof record.agentAccess !== "string") return {};
+  const access = record.agentAccess.trim().toUpperCase();
+  if (["AGENT_ALLOWED", "AGENT_ONLY"].includes(access)) {
+    return { agentSubmissionEligible: true, humanClaimRequired: true };
+  }
+  if (["HUMAN_ONLY", "HUMAN_ALLOWED"].includes(access)) {
+    return { agentSubmissionEligible: false, humanClaimRequired: false };
+  }
+  return {};
 }
