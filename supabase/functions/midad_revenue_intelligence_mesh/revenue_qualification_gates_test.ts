@@ -1,6 +1,6 @@
 import { assertEquals, assert } from "jsr:@std/assert@1";
 
-import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, resolvePayoutProofStatus, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
 
 const eligible = {
   region_eligible: true,
@@ -18,6 +18,27 @@ const eligible = {
   acceptance_probability: 0.5,
   payout_confidence: 0.8,
 };
+
+
+Deno.test("independent Taskmarket escrow proof stays verified when separate eligibility gates block review", () => {
+  assertEquals(resolvePayoutProofStatus({
+    source_slug: "taskmarket_api",
+    candidate_status: "verified_task_escrow",
+    independent_confirmation: true,
+  }), "verified_task_escrow");
+
+  assertEquals(resolvePayoutProofStatus({
+    source_slug: "taskmarket_api",
+    candidate_status: "verified_task_escrow",
+    independent_confirmation: false,
+  }), "unverified");
+
+  assertEquals(resolvePayoutProofStatus({
+    source_slug: "another_source",
+    candidate_status: "verified_task_escrow",
+    independent_confirmation: true,
+  }), "verified_task_escrow");
+});
 
 Deno.test("unknown region eligibility blocks review", () => {
   const result = qualifyRevenueCandidate({ ...eligible, region_eligible: null });
