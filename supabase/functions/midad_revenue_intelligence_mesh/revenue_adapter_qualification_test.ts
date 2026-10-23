@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { extractQualificationEvidence } from "./revenue_adapter_qualification.ts";
+import { extractQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
 
 Deno.test("maps explicit region, KYC, identity and individual payout fields without guessing", () => {
   assertEquals(
@@ -25,6 +25,7 @@ Deno.test("maps explicit region, KYC, identity and individual payout fields with
       rewardIsSharedPool: true,
       submissionFee: 1.5,
       feeScheduleVerified: true,
+      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
     },
   );
 });
@@ -58,7 +59,7 @@ Deno.test("requires explicit fee-schedule assertion and official provider-domain
       feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
       submissionFeeUsd: 2,
     }, "taskmarket_api"),
-    { submissionFee: 2, feeScheduleVerified: true },
+    { submissionFee: 2, feeScheduleVerified: true, feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments" },
   );
 });
 
@@ -152,5 +153,36 @@ Deno.test("an explicitly disclosed claim fee is mapped, but does not verify the 
       region: "EU",
     }, "official_airdrop_json"),
     { claimFee: 1.25 },
+  );
+});
+
+Deno.test("Taskmarket bounty submission fee is mapped from its official fee policy", () => {
+  assertEquals(
+    taskmarketOfficialFeeEvidence({ mode: "bounty" }),
+    {
+      submissionFee: 0,
+      feeScheduleVerified: true,
+      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
+    },
+  );
+});
+
+Deno.test("Taskmarket pitch and auction modes account for the official 0.001 USDC action fee", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "pitch" }).submissionFee, 0.001);
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "auction" }).submissionFee, 0.001);
+});
+
+Deno.test("unknown Taskmarket mode does not inherit a free-submission fee", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "future_mode" }), {});
+});
+
+Deno.test("Taskmarket award metadata identifies a split payout without inventing a per-worker share", () => {
+  assertEquals(
+    extractQualificationEvidence({ awardCount: 3, netReward: "10000000" }, "taskmarket_api"),
+    { payoutSplitCount: 3 },
+  );
+  assertEquals(
+    extractQualificationEvidence({ awards: [{ workerPayment: "7000000" }, { workerPayment: "3000000" }] }, "taskmarket_api"),
+    { payoutSplitCount: 2 },
   );
 });
