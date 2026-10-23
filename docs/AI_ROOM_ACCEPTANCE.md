@@ -34,4 +34,4 @@
 - No merge or production UI deployment until updated CI passes and manual mobile Telegram acceptance is recorded.
 
 ## Current state
-The new live connector implementation is staged in the feature branch only. Its CI contract tests must pass, the backend function must be deployed and anonymously tested, and mobile Telegram end-to-end auth still requires validation in the user's actual Telegram session before the UI is merged.
+The live connector UI is staged in the feature branch only; the read-only backend function is deployed as ACTIVE version 1. CI contract tests and Agentation E2E have passed for the connector code. Direct unauthenticated HTTP rejection could not be verified from this environment because its outbound DNS lookup for the Supabase hostname failed. Mobile Telegram end-to-end authorization and denial still require a real device/session test before the UI is merged or deployed.
