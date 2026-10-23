@@ -25,7 +25,7 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check qualification gates and adapter mapping
-        run: deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_fixtures.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
-      - name: Run revenue qualification and adapter regression tests
-        run: deno test --no-check supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts
+      - name: Type-check restored mesh and provider qualification modules
+        run: deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_fixtures.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
+      - name: Run qualification and provider adapter integration tests
+        run: deno test --no-check supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
