@@ -16,7 +16,7 @@ type QualificationEvidence = {
   feeScheduleVerified?: boolean;
   feeScheduleEvidenceUrl?: string;
   escrowFunded?: boolean;
-  payoutIsSettled?: boolean;
+  providerReportsPaid?: boolean;
   agentSubmissionEligible?: boolean;
   humanClaimRequired?: boolean;
 };
@@ -213,9 +213,9 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   const payoutStatus = String(record.payout_status ?? "").trim().toLowerCase();
   const payoutTx = record.payout_tx_hash;
   if (payoutStatus === "paid" && typeof payoutTx === "string" && /^0x[a-f0-9]{64}$/i.test(payoutTx)) {
-    out.payoutIsSettled = true;
+    out.providerReportsPaid = true;
   } else if (["none", "pending", "refunded", "unpaid"].includes(payoutStatus)) {
-    out.payoutIsSettled = false;
+    out.providerReportsPaid = false;
   }
   return out;
 }
