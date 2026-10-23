@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { extractQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
+import { bountyBookQualificationEvidence, extractQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
 
 Deno.test("maps explicit region, KYC, identity and individual payout fields without guessing", () => {
   assertEquals(
@@ -183,8 +183,7 @@ Deno.test("Taskmarket award metadata identifies a split payout without inventing
 });
 
 
-Deno.test("BountyBook derives the documented four-percent platform fee and zero claim/submission fees from gross budget", async () => {
-  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+Deno.test("BountyBook derives the documented four-percent platform fee and zero claim/submission fees from gross budget", () => {
   assertEquals(
     bountyBookQualificationEvidence({ budget_usdc: "25", chain_id: 8453 }),
     {
@@ -198,8 +197,7 @@ Deno.test("BountyBook derives the documented four-percent platform fee and zero 
   );
 });
 
-Deno.test("BountyBook only verifies the four-percent policy when explicit fee and provider net agree with gross", async () => {
-  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+Deno.test("BountyBook only verifies the four-percent policy when explicit fee and provider net agree with gross", () => {
   assertEquals(
     bountyBookQualificationEvidence({
       budget_usdc: "100",
@@ -214,14 +212,13 @@ Deno.test("BountyBook only verifies the four-percent policy when explicit fee an
       platform_fee_usdc: "4",
       agent_receives_usdc: "90",
     }).feeScheduleVerified,
-    undefined,
+    false,
   );
 });
 
-Deno.test("BountyBook does not invent a fee amount or mark its schedule verified without a gross reward", async () => {
-  const { bountyBookQualificationEvidence } = await import("./revenue_adapter_qualification.ts");
+Deno.test("BountyBook does not invent a fee amount or mark its schedule verified without a gross reward", () => {
   assertEquals(
     bountyBookQualificationEvidence({ platform_fee_usdc: "4", agent_receives_usdc: "96" }).feeScheduleVerified,
-    undefined,
+    false,
   );
 });
