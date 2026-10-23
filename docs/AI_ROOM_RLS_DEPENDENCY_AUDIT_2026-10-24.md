@@ -1,0 +1,86 @@
+# MIDAD AI Room — RLS dependency audit (read-only)
+
+**Date:** 2026-10-24  
+**Project:** `midad-ai` / `froegigfmpmvtecztfbf`  
+**Branch:** `feat/midad-ai-room-neuralpp-20261024`  
+**Policy:** No RLS policies, table grants, function grants, schema, data, or production services were changed.
+
+## 1. Confirmed platform state
+
+- Supabase security advisor continues to report 30 public tables with RLS enabled and no policies (latest observed 2026-10-23 23:36:10 UTC).
+- For the ordinary `anon` and `authenticated` roles, RLS with no policies is fail-closed for row access. This is not evidence of an observed data leak.
+- Catalog review found broad table grants to `anon` and/or `authenticated` on: `midad_agent_events`, `midad_factory_artifacts`, `midad_factory_learning`, `midad_factory_projects`, `midad_factory_runs`, `midad_human_bridge_pairings`, `midad_human_bridge_sessions`, and `midad_speedbot_fulfillments`. These grants are avoidable exposure surface even while RLS denies rows. Do not change them without a full call-site/role-impact check.
+- The edge-function inventory lists 98 functions. Targeted source inspection was performed for the relevant control-room, browser, human-bridge, agent-fee, account-factory, meme/research, revenue-intelligence, fulfillment and payment handlers. This is not yet a proof that every one of the 98 functions has been exhaustively scanned; items marked “no caller found” below mean not found in the inspected source set, not unused.
+- The AI Room HTML remains demo-only and does not query Supabase. No connector was enabled.
+
+## 2. Table-to-dependency map from inspected source
+
+| RLS table | Confirmed database / Edge Function references | Integration disposition |
+|---|---|---|
+| `midad_account_factory_runs` | Edge Functions `midad_account_factory`, `midad_autonomy_loop` | Internal run history. Check owner/tenant scoping before any UI read. |
+| `midad_agent_events` | Edge Functions `midad_browser_agent_gateway`, `midad_mining_provider_scout`; SQL routine `midad_browser_smoke_cleanup_job_v1` | Internal audit/event stream. No direct browser reads. |
+| `midad_agent_fee_allowlist` | SQL routines `midad_agent_fee_reserve_request`, `midad_claim_agent_fee_payment` | Financial destination control; service/RPC only. |
+| `midad_agent_fee_ledger` | SQL routine `midad_claim_agent_fee_payment`; Edge Function `midad_agent_fee_wallet` | Financial ledger; no client writes or direct reads. |
+| `midad_agent_fee_policies` | SQL routines `midad_agent_fee_reserve_request`, `midad_claim_agent_fee_payment`; Edge Function `midad_agent_fee_wallet` | Privileged policy/configuration; keep internal. |
+| `midad_agent_fee_requests` | SQL routines `midad_agent_fee_reserve_request`, `midad_claim_agent_fee_payment`; Edge Function `midad_agent_fee_wallet` | Financial workflow; human approval and server-side controls required. |
+| `midad_agent_fee_wallets` | SQL routines `midad_agent_fee_reserve_request`, `midad_claim_agent_fee_payment`; Edge Function `midad_agent_fee_wallet` | Wallet references; internal only. |
+| `midad_browser_evidence_ledger` | SQL routines `midad_browser_record_evidence_v1`, `midad_browser_smoke_cleanup_job_v1`; Edge Function `midad_browser_agent_gateway` calls the evidence RPC | Append-only evidence. RPC is the intended write boundary; test actor/job ownership and idempotency. |
+| `midad_browser_smoke_tokens` | SQL routines `midad_browser_smoke_authorize_v1`, `midad_browser_smoke_cleanup_token_v1` | One-shot token digests and Vault references; internal only. |
+| `midad_factory_artifacts` | No direct caller found in the inspected Edge Function set | Treat as internal until full code/call-graph search identifies its consumers and ownership model. |
+| `midad_factory_learning` | Edge Functions `midad_meme_scout`, `midad_neural_evolution` | Internal learning/reward data; no global client reads. |
+| `midad_factory_projects` | Edge Function `midad_meme_scout`; schema contains owner/tenant fields | Candidate for owner-scoped UI only after confirming tenant checks and all write paths. |
+| `midad_factory_runs` | No direct caller found in the inspected Edge Function set | Treat as internal; not evidence of unused table. |
+| `midad_human_bridge_pairings` | Edge Function `midad_human_bridge` | Pairing flow uses hashed code, expiry and owner field. Keep code/hash server-side; validate single-use, owner binding and expiry in all paths. |
+| `midad_human_bridge_sessions` | Edge Functions `midad_human_bridge`, `midad_omni_agent_gateway` | Session token hash and owner scope. Keep direct table access internal; use server-mediated lifecycle and revocation. |
+| `midad_income_sources_audit_20261016` | No direct caller found in the inspected Edge Function set | Historical audit/archive; read-only internal by default. |
+| `midad_meme_assets` | Edge Function `midad_meme_scout` | Market data; only consider a narrow read-only view/API after field review. |
+| `midad_meme_paper_trades` | Edge Function `midad_meme_scout` | Paper-trading state; internal; no live trading or client mutation. |
+| `midad_meme_price_snapshots` | Edge Function `midad_meme_scout` | Market data; filtered read-only view/API only if required. |
+| `midad_meme_scan_runs` | Edge Function `midad_meme_scout` | Internal scanner run state and diagnostics. |
+| `midad_meme_signals` | Edge Function `midad_meme_scout` | Candidate for filtered read-only signals, not direct writes or raw internal evidence. |
+| `midad_platform_account_events` | Edge Function `midad_account_factory` | Audit trail for external account onboarding; internal. |
+| `midad_platform_accounts` | Edge Functions `midad_account_factory`, `midad_autonomy_loop`, `midad_revenue_autopilot`, `midad_money_hunter`, `midad_first_mover_engine` | Highly sensitive external-account/verification/secret-reference data. Never expose directly. |
+| `midad_revenue_intel_evidence` | Edge Function `midad_revenue_intelligence_mesh` | Research evidence/excerpts; server-side and filtered before any UI presentation. |
+| `midad_revenue_intel_opportunities` | Edge Functions `midad_revenue_intelligence_mesh`, `midad_revenue_intel_work_queue_worker`, `midad_paid_revenue_feed` | Potential user-facing feed, but expose only a minimal eligibility-filtered DTO/view; no direct client writes. |
+| `midad_revenue_intel_runs` | Edge Function `midad_revenue_intelligence_mesh` | Internal research run records. |
+| `midad_revenue_intel_work_queue` | Edge Functions `midad_revenue_intelligence_mesh`, `midad_revenue_intel_work_queue_worker` | Internal worker queue; never expose queue instructions or result payloads directly. |
+| `midad_speedbot_fulfillments` | Edge Functions `midad_speedbot_fulfillment`, `midad_speedbot_target_executor`, `midad_speedbot_poller` | Fulfillment/payment-related state; service-only. |
+| `midad_store_fulfillment_evidence` | Edge Function `midad_store_fulfillment`; SQL routines `midad_complete_store_fulfillment`, `midad_enqueue_store_fulfillment_after_verified_payment` | Integrity-sensitive order evidence; RPC/worker path only. |
+| `midad_store_fulfillment_jobs` | Edge Functions `midad_store_fulfillment`, `midad_public_checkout`; SQL routines `midad_complete_store_fulfillment`, `midad_enqueue_store_fulfillment_after_verified_payment` | Payment-intent/order-linked worker jobs; internal only. |
+
+## 3. SQL/RPC execution boundary
+
+Catalog inspection found these relevant `SECURITY DEFINER` routines referencing the 30 tables:
+
+- Agent-fee: `midad_agent_fee_reserve_request`, `midad_claim_agent_fee_payment`
+- Browser: `midad_browser_record_evidence_v1`, `midad_browser_smoke_authorize_v1`, `midad_browser_smoke_cleanup_token_v1`, `midad_browser_smoke_cleanup_job_v1`
+- Store fulfillment: `midad_complete_store_fulfillment`, `midad_enqueue_store_fulfillment_after_verified_payment`
+
+For these inspected routines, catalog ACLs showed execution granted to `postgres` and `service_role`, not `anon` or `authenticated`. Each inspected function has a fixed `search_path` in `proconfig`. This reduces risk from untrusted client invocation and search-path substitution, but is not a substitute for reviewing function body authorization, input validation, side effects, and least-privilege grants. The fee and fulfillment routines can affect payment/fulfillment state, so they remain out of the AI Room client contract.
+
+## 4. Edge Function authentication findings
+
+- Several relevant functions report `verify_jwt=false`. This alone does not prove they are unauthenticated; some use custom ingress keys, autonomy keys, or hashed `control_room_sessions` tokens. Each must be checked for a required credential before any privileged action.
+- Confirmed custom gate patterns in inspected source include: `midad_human_bridge` checking service-role/ingest credentials for internal paths and hashed session tokens for control-room paths; `midad_agent_fee_wallet` checking hashed active `control_room_sessions`; `midad_browser_agent_gateway` checking a service/ingest credential and calling a restricted evidence RPC; and worker functions using autonomy/ingest-key gates.
+- Do not pass service-role keys, ingress/autonomy keys, session tokens, token hashes, Vault secret IDs, wallet references, payment evidence, or raw worker queue payloads into `ai-room.html`.
+- The current source inspection was targeted to likely table consumers. Complete a remaining sweep of all 98 deployed Edge Functions, including indirect SQL/RPC use, before enabling live connections. The map above records confirmed references only and must not be interpreted as proof that an unlisted table has no consumers.
+
+## 5. Recommended access pattern by class
+
+1. **Internal/service-only:** financial controls and ledgers, browser evidence/tokens, factory execution internals, external platform accounts/events, research runs/evidence/work queue, speedbot and store fulfillment state. Use server-side workers or tightly scoped RPCs.
+2. **Owner-scoped candidate:** `midad_factory_projects`, selected `midad_account_factory_runs`, and human-bridge lifecycle records only if a product feature requires them. Prove `auth.uid()`/tenant membership and test cross-user denial first; do not expose token hashes.
+3. **Read-only data candidates:** `midad_meme_assets`, `midad_meme_price_snapshots`, `midad_meme_signals`, and a minimal view over `midad_revenue_intel_opportunities`. Apply column minimization, eligibility filters, data licensing review, and server-generated DTOs.
+4. **Archive:** `midad_income_sources_audit_20261016` remains internal and read-only unless a specific audit UI is approved.
+
+## 6. Gates still required
+
+- Finish the full 98-function source/call-graph sweep, including SQL tagged-template queries and RPC indirection.
+- Review each `SECURITY DEFINER` function body and any trigger/job entrypoint, not just ACL/search_path.
+- Trace all client-facing functions with `verify_jwt=false` to the exact custom auth gate and test missing, expired, revoked, wrong-owner and replayed credentials.
+- In a non-production environment, add negative tests for anonymous access, user A reading/writing user B data, queue/secret redaction, idempotent retries, and allowed service-worker operations.
+- Only after that propose narrow grants/policies in a separate migration with rollback instructions. No changes were made in this audit.
+- Keep model providers, browser automation connectors, signing, withdrawals and live financial actions disabled until every gate passes.
+
+## 7. Explicitly unchanged
+
+No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, function deployment, data mutation, merge, or production deployment was performed.
