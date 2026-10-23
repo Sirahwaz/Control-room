@@ -1,6 +1,6 @@
 import { assertEquals, assert } from "jsr:@std/assert@1";
 
-import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
 
 const eligible = {
   region_eligible: true,
@@ -190,4 +190,14 @@ Deno.test("stale reconciliation accepts case-insensitive QUALIFIED status only",
 
 Deno.test("revenue mesh runtime version advances from deployed v14", () => {
   assertEquals(REVENUE_MESH_VERSION, 15);
+});
+
+
+Deno.test("maps qualification/net blockers to the database-supported gate decision", () => {
+  assertEquals(toPersistedRevenueGateDecision("BLOCKED_ELIGIBILITY_OR_NET"), "BLOCKED_KYC_OR_REGION");
+});
+
+Deno.test("preserves already-supported persisted gate decisions", () => {
+  assertEquals(toPersistedRevenueGateDecision("READY_FOR_REVIEW"), "READY_FOR_REVIEW");
+  assertEquals(toPersistedRevenueGateDecision("BLOCKED_PAYOUT"), "BLOCKED_PAYOUT");
 });

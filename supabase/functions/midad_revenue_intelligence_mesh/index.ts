@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
-import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
 import { basedAgentsQualificationEvidence, bountyBookQualificationEvidence, explicitSharedRewardEvidence, extractQualificationEvidence, superteamQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
 const DB_URL=Deno.env.get("SUPABASE_DB_URL")||"";
 const sql=DB_URL?postgres(DB_URL,{max:2,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}):null;
@@ -67,7 +67,7 @@ function classify(c:any){
    acceptance_probability:c.acceptanceProbability,
    payout_confidence:c.payoutConfidence
   });
-  if(gate.blockers.length){decision="BLOCKED_ELIGIBILITY_OR_NET";status="BLOCKED";next="verify_eligibility_and_individual_net";reasons.push(...gate.blockers);payoutState="unverified";}
+  if(gate.blockers.length){decision=toPersistedRevenueGateDecision("BLOCKED_ELIGIBILITY_OR_NET");status="BLOCKED";next="verify_eligibility_and_individual_net";reasons.push(...gate.blockers);payoutState="unverified";}
   else {decision="READY_FOR_REVIEW";status="QUALIFIED";next="prepare_execution_plan_operator_review";reasons.push(c.sourceSlug==="taskmarket_api"&&hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification)?"task_specific_usdc_escrow_independently_verified_with_12_confirmations":"crypto_asset_and_task_level_payment_evidence_present_but_external_chain_confirmation_is_separate");}
  }
  const unresolvedSharedPool=(c.rewardIsSharedPool===true||num(c.payoutSplitCount,0)>1)&&!(typeof c.individualRewardUsd==="number"&&Number.isFinite(c.individualRewardUsd)&&c.individualRewardUsd>=0);const net=unresolvedSharedPool?null:Math.round((amount-num(c.platformFee,0)-num(c.networkFee,0)-num(c.claimFee,0)-num(c.submissionFee,0)-cost-bond)*1e6)/1e6;
