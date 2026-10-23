@@ -13,6 +13,7 @@ export type RevenueCandidate = {
   claim_fee_usd?: number | null;
   submission_fee_usd?: number | null;
   upfront_cost_usd?: number | null;
+  fee_schedule_verified?: boolean | null;
   acceptance_probability?: number | null;
   payout_confidence?: number | null;
 };
@@ -70,6 +71,8 @@ export function qualifyRevenueCandidate(candidate: RevenueCandidate): RevenueQua
   } else {
     blockers.push("individual_payout_share_unverified");
   }
+
+  if (candidate.fee_schedule_verified !== true) blockers.push("submission_fee_unverified");
 
   const fees = nonNegative(candidate.platform_fee_usd)
     + nonNegative(candidate.network_fee_usd)
