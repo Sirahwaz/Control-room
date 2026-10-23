@@ -62,6 +62,7 @@ function classify(c:any){
    claim_fee_usd:num(c.claimFee,0),
    submission_fee_usd:num(c.submissionFee,0),
    upfront_cost_usd:cost+bond,
+   fee_schedule_verified:c.feeScheduleVerified===true,
    acceptance_probability:c.acceptanceProbability,
    payout_confidence:c.payoutConfidence
   });
