@@ -31,21 +31,21 @@ export const basedAgentsFixture = {
   escrow: { status: "funded", deposit_tx_hash: null },
 };
 
+/**
+ * Public-page observation only, NOT a claimed live API response/schema fixture.
+ * The official listing page exposes the job title, $5.00 reward, Base (8453),
+ * an "secured in escrow" label, and says claim/submission are free. The API
+ * GET response could not be retrieved for this audit, so no undocumented
+ * JSON field names (fee, net, split, or escrow object) are fabricated here.
+ */
 export const bountyBookFixture = {
-  id: "job-fixture-bb-01",
-  title: "Fixture job",
-  description: "Public job record",
-  budget_usdc: "25",
+  id: "a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d",
+  title: "Build TypedEmitter class with typed event handling in event_emitter.ts",
+  displayed_reward_usd: 5,
+  displayed_chain: "Base",
   chain_id: 8453,
-  status: "open",
-  flagged: false,
-  job_type: "code",
-  estimated_minutes: 60,
-  platform_fee_usdc: "1.00",
-  agent_receives_usdc: "24.00",
-  escrow: { chain: "Base", chain_id: 8453, asset: "USDC", tx_hash: null },
-  payout_status: "none",
-  payout_tx_hash: null,
+  displayed_escrow_label: "secured in escrow",
+  displayed_claim_submission_fee: "free",
 };
 
 export const superteamFixture = {
