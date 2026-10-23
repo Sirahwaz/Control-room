@@ -98,3 +98,44 @@ export function qualifyRevenueCandidate(candidate: RevenueCandidate): RevenueQua
     action_authorized: false,
   };
 }
+
+
+const RECONCILIATION_PROTECTED_STATUSES = new Set([
+  "PAID",
+  "CLAIMED",
+  "IN_PROGRESS",
+  "DELIVERED",
+  "AWAITING_ACCEPTANCE",
+]);
+
+/**
+ * Decide whether a previously READY opportunity should be changed to STALE.
+ * Invalid/missing deadlines and protected operational states are deliberately
+ * left untouched. This is a classification helper; callers still use a
+ * conditional UPDATE so concurrent state changes cannot be overwritten.
+ */
+export function shouldReconcileExpiredOpportunity(
+  candidate: {
+    deadline?: Date | string | null;
+    gate_decision?: string | null;
+    status?: string | null;
+  },
+  now: Date = new Date(),
+): boolean {
+  if (String(candidate.gate_decision ?? "").trim().toUpperCase() !== "READY_FOR_REVIEW") {
+    return false;
+  }
+
+  if (RECONCILIATION_PROTECTED_STATUSES.has(String(candidate.status ?? "").trim().toUpperCase())) {
+    return false;
+  }
+
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) return false;
+
+  const rawDeadline = candidate.deadline;
+  if (rawDeadline === null || rawDeadline === undefined || rawDeadline === "") return false;
+  const deadline = rawDeadline instanceof Date ? rawDeadline : new Date(rawDeadline);
+  if (!Number.isFinite(deadline.getTime())) return false;
+
+  return deadline.getTime() <= now.getTime();
+}
