@@ -144,3 +144,22 @@ export function shouldReconcileExpiredOpportunity(
 
   return deadline.getTime() <= now.getTime();
 }
+
+
+export type PersistedRevenueGateDecision =
+  | "READY_FOR_REVIEW"
+  | "DISCOVERY_ONLY"
+  | "BLOCKED_UPFRONT_COST"
+  | "BLOCKED_PAYOUT"
+  | "BLOCKED_KYC_OR_REGION"
+  | "STALE"
+  | "DUPLICATE_OR_TEST";
+
+export type InternalRevenueGateDecision = PersistedRevenueGateDecision | "BLOCKED_ELIGIBILITY_OR_NET";
+
+/** Map internal qualification failures to the existing database CHECK constraint vocabulary. */
+export function toPersistedRevenueGateDecision(
+  decision: InternalRevenueGateDecision,
+): PersistedRevenueGateDecision {
+  return decision === "BLOCKED_ELIGIBILITY_OR_NET" ? "BLOCKED_KYC_OR_REGION" : decision;
+}
