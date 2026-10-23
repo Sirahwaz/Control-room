@@ -24,13 +24,11 @@ export const basedAgentsFixture = {
   task_id: "task_fixture_based_01",
   title: "Fixture task",
   description: "Public task record",
-  bounty_amount: 10000000,
-  bounty_token: "USDC",
-  bounty_network: "eip155:8453",
+  bounty: { amount_atomic: "10000000", amount_display: "10.00", token: "USDC", network: "eip155:8453" },
   status: "open",
   required_capabilities: ["api"],
   claimed_by_agent_id: null,
-  escrow: { funded: true, status: "funded" },
+  escrow: { status: "funded", deposit_tx_hash: null },
 };
 
 export const bountyBookFixture = {
