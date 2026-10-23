@@ -102,7 +102,7 @@ class SessionCoreContractTests(unittest.IsolatedAsyncioTestCase):
             calls.append(kwargs)
             return {
                 "status": "CAPTURED",
-                "url": "https://taskmarket.dev/tasks",
+                "url": "https://taskmarket.dev/tasks?token=one-time-secret#fragment",
                 "title": "Public task list",
                 "text": "Evidence only",
                 "cookies": STATE["cookies"],
@@ -119,6 +119,8 @@ class SessionCoreContractTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result["status"], "OK")
         self.assertEqual(result["result"]["text"], "Evidence only")
+        self.assertEqual(result["result"]["url"], "https://taskmarket.dev/tasks")
+        self.assertNotIn("one-time-secret", json.dumps(result["result"]))
         self.assertNotIn("cookies", result["result"])
         self.assertNotIn("storage_state", result["result"])
         self.assertNotIn("authorization", result["result"])
