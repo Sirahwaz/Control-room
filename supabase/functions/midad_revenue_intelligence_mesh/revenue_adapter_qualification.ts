@@ -14,6 +14,7 @@ type QualificationEvidence = {
   claimFee?: number;
   submissionFee?: number;
   feeScheduleVerified?: boolean;
+  feeScheduleEvidenceUrl?: string;
 };
 
 const GROUPS = ["eligibility", "requirements", "payout", "reward", "fees", "terms"] as const;
@@ -122,7 +123,8 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
   const individualRewardUsd = explicitNumber(record, ["individualRewardUsd", "individual_reward_usd", "perRecipientRewardUsd", "per_recipient_reward_usd"]);
   if (individualRewardUsd !== undefined) out.individualRewardUsd = individualRewardUsd;
 
-  const payoutSplitCount = explicitNumber(record, ["payoutSplitCount", "payout_split_count", "splitCount", "split_count"]);
+  let payoutSplitCount = explicitNumber(record, ["payoutSplitCount", "payout_split_count", "splitCount", "split_count", "awardCount", "award_count"]);
+  if (payoutSplitCount === undefined && Array.isArray(record.awards)) payoutSplitCount = record.awards.length;
   if (payoutSplitCount !== undefined) out.payoutSplitCount = payoutSplitCount;
 
   const sharedPool = explicitBoolean(record, ["rewardIsSharedPool", "reward_is_shared_pool"]);
@@ -144,7 +146,32 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
   const feeScheduleUrl = findField(record, ["feeScheduleEvidenceUrl", "fee_schedule_evidence_url"]);
   if (feeScheduleVerified === true && isOfficialProviderUrl(feeScheduleUrl, sourceSlug)) {
     out.feeScheduleVerified = true;
+    out.feeScheduleEvidenceUrl = String(feeScheduleUrl).trim();
   }
 
   return out;
+}
+
+const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/concepts/fees-payments";
+
+/**
+ * Taskmarket's official fee schedule was checked on 2026-10-23.
+ * Listing submissions are free for bounty/benchmark, claims are free before
+ * any task-specific deposit, and pitches/auction bids cost 0.001 USDC each.
+ * Unknown modes are not assigned a fee or a verified schedule.
+ */
+export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEvidence {
+  const record = asRecord(raw);
+  if (!record) return {};
+  const mode = typeof record.mode === "string" ? record.mode.trim().toLowerCase() : "";
+  let submissionFeeUsd: number | undefined;
+  if (["bounty", "benchmark", "claim"].includes(mode)) submissionFeeUsd = 0;
+  else if (["pitch", "auction"].includes(mode)) submissionFeeUsd = 0.001;
+  if (submissionFeeUsd === undefined) return extractQualificationEvidence(record, "taskmarket_api");
+  return extractQualificationEvidence({
+    ...record,
+    submissionFeeUsd,
+    feeScheduleVerified: true,
+    feeScheduleEvidenceUrl: TASKMARKET_FEE_SCHEDULE_URL,
+  }, "taskmarket_api");
 }
