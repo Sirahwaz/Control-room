@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { bountyBookQualificationEvidence, extractQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
+import { bountyBookQualificationEvidence, explicitSharedRewardEvidence, extractQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
 
 Deno.test("maps explicit region, KYC, identity and individual payout fields without guessing", () => {
   assertEquals(
@@ -222,5 +222,25 @@ Deno.test("BountyBook does not invent a fee amount or mark its schedule verified
   assertEquals(
     bountyBookQualificationEvidence({ platform_fee_usdc: "4", agent_receives_usdc: "96" }).feeScheduleVerified,
     false,
+  );
+});
+
+Deno.test("explicit Taskmarket split-prize language is carried as shared-pool evidence", () => {
+  assertEquals(
+    explicitSharedRewardEvidence(
+      "Receipt Relay Q41: $1 USDC split across 2 answers",
+      "Up to 2 answers accepted, sharing the $1 USDC escrow equally.",
+    ),
+    { payoutSplitCount: 2, rewardIsSharedPool: true },
+  );
+});
+
+Deno.test("ordinary fixed-prize text does not invent a split or per-recipient reward", () => {
+  assertEquals(
+    explicitSharedRewardEvidence(
+      "Generative Art Card — 10 USDC, one winner",
+      "Reward: 10 USDC, one winner.",
+    ),
+    {},
   );
 });
