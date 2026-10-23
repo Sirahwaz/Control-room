@@ -14,6 +14,7 @@ const eligible = {
   claim_fee_usd: 0,
   submission_fee_usd: 2,
   upfront_cost_usd: 0,
+  fee_schedule_verified: true,
   acceptance_probability: 0.5,
   payout_confidence: 0.8,
 };
@@ -88,4 +89,10 @@ Deno.test("unknown or missing split count cannot inflate the expected individual
   const result = qualifyRevenueCandidate({ ...eligible, payout_split_count: null, reward_is_shared_pool: true });
   assertEquals(result.decision, "BLOCKED");
   assert(result.blockers.includes("individual_payout_share_unverified"));
+});
+
+Deno.test("blocks when submission fee schedule has not been verified", () => {
+  const result = qualifyRevenueCandidate({ ...eligible, fee_schedule_verified: null });
+  assertEquals(result.decision, "BLOCKED");
+  assert(result.blockers.includes("submission_fee_unverified"));
 });
