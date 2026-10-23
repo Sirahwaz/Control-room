@@ -183,16 +183,13 @@ Deno.test("Taskmarket award metadata identifies a split payout without inventing
 });
 
 
-Deno.test("BountyBook derives the documented four-percent platform fee and zero claim/submission fees from gross budget", () => {
+Deno.test("BountyBook gross budget alone yields no asserted fee/net fields and remains unverified without live API schema evidence", () => {
   assertEquals(
     bountyBookQualificationEvidence({ budget_usdc: "25", chain_id: 8453 }),
     {
-      platformFee: 1,
-      providerNetRewardUsd: 24,
       claimFee: 0,
       submissionFee: 0,
-      feeScheduleVerified: true,
-      feeScheduleEvidenceUrl: "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d",
+      feeScheduleVerified: false,
     },
   );
 });
