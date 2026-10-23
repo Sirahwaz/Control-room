@@ -1,6 +1,6 @@
 import { assertEquals, assert } from "jsr:@std/assert@1";
 
-import { qualifyRevenueCandidate, shouldReconcileExpiredOpportunity } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity } from "./revenue_qualification_gates.ts";
 
 const eligible = {
   region_eligible: true,
@@ -185,4 +185,9 @@ Deno.test("stale reconciliation accepts case-insensitive QUALIFIED status only",
       true,
     );
   }
+});
+
+
+Deno.test("revenue mesh runtime version advances from deployed v14", () => {
+  assertEquals(REVENUE_MESH_VERSION, 15);
 });
