@@ -47,7 +47,7 @@ Deno.test("BountyBook fixture maps explicit fee and payout fields without assumi
   assertEquals(bountyBookQualificationEvidence(bountyBookFixture), {
     platformFee: 1,
     individualRewardUsd: 24,
-    payoutIsSettled: false,
+    providerReportsPaid: false,
   });
 });
 
