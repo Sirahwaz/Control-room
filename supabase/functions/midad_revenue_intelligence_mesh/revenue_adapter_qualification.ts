@@ -301,3 +301,28 @@ export function superteamQualificationEvidence(raw: unknown): QualificationEvide
   }
   return {};
 }
+
+
+/**
+ * Detect only explicit, human-readable statements that a listed prize is shared
+ * among multiple answers. Do not infer a per-person award from a pool amount.
+ */
+export function explicitSharedRewardEvidence(
+  title: unknown,
+  description: unknown,
+): { payoutSplitCount: number; rewardIsSharedPool: true } | Record<string, never> {
+  const text = [title, description]
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
+  const explicitSplit = text.match(
+    /\bsplit\s+across\s+(\d+)\s+(?:answers?|winners?|recipients?|submissions?|entries)\b/i,
+  );
+  const explicitEqualShare = text.match(
+    /\b(?:up to\s+)?(\d+)\s+(?:answers?|winners?|recipients?|submissions?|entries)\b[^\n.]{0,160}\bsharing\b[^\n.]{0,100}\b(?:USDC|USDT|USDG)\b[^\n.]{0,40}\bequally\b/i,
+  );
+  const match = explicitSplit ?? explicitEqualShare;
+  const count = match ? Number(match[1]) : 0;
+  return Number.isSafeInteger(count) && count > 1
+    ? { payoutSplitCount: count, rewardIsSharedPool: true }
+    : {};
+}
