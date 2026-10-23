@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
+import { qualifyRevenueCandidate } from "./revenue_qualification_gates.ts";
 const DB_URL=Deno.env.get("SUPABASE_DB_URL")||"";
 const sql=DB_URL?postgres(DB_URL,{max:2,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}):null;
 const AGENT="midad_revenue_intelligence_mesh_v1";
@@ -31,7 +32,48 @@ async function fetchJson(url:string,extraHeaders:Record<string,string>={}){
 function dt(v:any):Date|null{if(v===null||v===undefined||v===""||v===0||v==="0")return null;const n=(typeof v==="number"||(typeof v==="string"&&/^\d+$/.test(v)))?Number(v):NaN;const d=Number.isFinite(n)?new Date(n>1e12?n:n*1000):new Date(String(v));return Number.isFinite(d.getTime())?d:null;}
 function fit(c:any){const s=(String(c.title||"")+" "+String(c.description||"")+" "+(c.tags||[]).join(" ")+" "+(c.caps||[]).join(" ")).toLowerCase();const words=[["python",12],["typescript",12],["javascript",9],["api",12],["automation",13],["test",8],["qa",8],["research",8],["data",8],["payment",10],["webhook",8],["json",7],["documentation",5],["technical",5],["mobile",5],["docker",5],["crypto",6],["latency",7],["uptime",7],["csv",6],["svg",5]];let n=22;for(const [w,v] of words)if(s.includes(w))n+=v as number;return Math.min(100,n);}
 function fresh(d:Date|null){if(!d)return 45;const h=(d.getTime()-Date.now())/3600000;if(h<=0)return 0;if(h<6)return 20;if(h<24)return 45;if(h<72)return 70;if(h<168)return 88;return 100;}
-function classify(c:any){const reasons:string[]=[];const exp=c.deadline as Date|null;const asset=String(c.asset||"").toUpperCase();const amount=num(c.amount,0);const cost=num(c.cost,0);const bond=num(c.bond,0);const fitScore=fit(c);const competition=Math.min(100,Math.round(10+Math.log2(Math.max(1,num(c.competition,0))+1)*15));const freshness=fresh(exp);const payout=Math.max(0,Math.min(100,Math.round(num(c.payoutConfidence,0)*100)));let decision="DISCOVERY_ONLY",status="DISCOVERED",next="verify_payout_and_terms",payoutState=c.payoutProofStatus||"unverified";if(c.test){decision="DUPLICATE_OR_TEST";status="BLOCKED";next="none";reasons.push("test_or_nonclaimable_listing");}else if(exp&&exp.getTime()<=Date.now()){decision="STALE";status="STALE";next="none";reasons.push("deadline_expired");}else if(cost>0||bond>0){decision="BLOCKED_UPFRONT_COST";status="BLOCKED";next="no_spend_policy_block";reasons.push(cost>0?"upfront_cost_required":"claim_bond_required");if(bond>0)reasons.push("bond_can_be_slashed_or_lost");}else if(!["USDC","USDT","BTC","ETH","SOL","DAI","EURC"].includes(asset)){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_listing_specific_crypto_payout";reasons.push("listing_specific_crypto_asset_not_proven");}else if(!c.paymentProof){decision="BLOCKED_PAYOUT";status="BLOCKED";next="verify_task_funding_and_settlement";reasons.push("task_specific_funding_or_payment_path_not_proven");}else{decision="READY_FOR_REVIEW";status="QUALIFIED";next="prepare_execution_plan_operator_review";reasons.push(c.sourceSlug==="taskmarket_api"&&hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification)?"task_specific_usdc_escrow_independently_verified_with_12_confirmations":"crypto_asset_and_task_level_payment_evidence_present_but_external_chain_confirmation_is_separate");}let net=amount-num(c.fee,0)-cost-bond;let priority=Math.round(fitScore*.42+payout*.31+freshness*.17+(100-competition)*.10);if(decision.startsWith("BLOCKED"))priority=Math.min(priority,35);if(decision==="STALE"||decision==="DUPLICATE_OR_TEST")priority=0;return{decision,status,next,payoutState,reasons,fitScore,competition,freshness,payout,priority,net:Math.round(net*1e6)/1e6};}
+function classify(c:any){
+ const reasons:string[]=[];
+ const exp=c.deadline as Date|null;
+ const asset=String(c.asset||"").toUpperCase();
+ const amount=num(c.amount,0),cost=num(c.cost,0),bond=num(c.bond,0);
+ const fitScore=fit(c);
+ const competition=Math.min(100,Math.round(10+Math.log2(Math.max(1,num(c.competition,0))+1)*15));
+ const freshness=fresh(exp);
+ const payout=Math.max(0,Math.min(100,Math.round(num(c.payoutConfidence,0)*100)));
+ let decision="DISCOVERY_ONLY",status="DISCOVERED",next="verify_payout_and_terms",payoutState=c.payoutProofStatus||"unverified";
+ if(c.test){decision="DUPLICATE_OR_TEST";status="BLOCKED";next="none";reasons.push("test_or_nonclaimable_listing");}
+ else if(exp&&exp.getTime()<=Date.now()){decision="STALE";status="STALE";next="none";reasons.push("deadline_expired");}
+ else if(cost>0||bond>0){decision="BLOCKED_UPFRONT_COST";status="BLOCKED";next="no_spend_policy_block";reasons.push(cost>0?"upfront_cost_required":"claim_bond_required");if(bond>0)reasons.push("bond_can_be_slashed_or_lost");}
+ else if(!["USDC","USDT","BTC","ETH","SOL","DAI","EURC"].includes(asset)){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_listing_specific_crypto_payout";reasons.push("listing_specific_crypto_asset_not_proven");}
+ else if(!c.paymentProof){decision="BLOCKED_PAYOUT";status="BLOCKED";next="verify_task_funding_and_settlement";reasons.push("task_specific_funding_or_payment_path_not_proven");}
+ else {
+  const gate=qualifyRevenueCandidate({
+   region_eligible:c.regionEligible===true,
+   kyc_status:c.kyc,
+   identity_eligible:c.identityEligible===true,
+   asset:c.asset,network:c.network,
+   gross_usd:amount,
+   individual_reward_usd:c.individualRewardUsd,
+   payout_split_count:c.payoutSplitCount,
+   reward_is_shared_pool:c.rewardIsSharedPool===true,
+   platform_fee_usd:num(c.platformFee,0),
+   network_fee_usd:num(c.networkFee,0),
+   claim_fee_usd:num(c.claimFee,0),
+   submission_fee_usd:num(c.submissionFee,0),
+   upfront_cost_usd:cost+bond,
+   acceptance_probability:c.acceptanceProbability,
+   payout_confidence:c.payoutConfidence
+  });
+  if(gate.blockers.length){decision="BLOCKED_ELIGIBILITY_OR_NET";status="BLOCKED";next="verify_eligibility_and_individual_net";reasons.push(...gate.blockers);payoutState="unverified";}
+  else {decision="READY_FOR_REVIEW";status="QUALIFIED";next="prepare_execution_plan_operator_review";reasons.push(c.sourceSlug==="taskmarket_api"&&hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification)?"task_specific_usdc_escrow_independently_verified_with_12_confirmations":"crypto_asset_and_task_level_payment_evidence_present_but_external_chain_confirmation_is_separate");}
+ }
+ const net=Math.round((amount-num(c.platformFee,0)-num(c.networkFee,0)-num(c.claimFee,0)-num(c.submissionFee,0)-cost-bond)*1e6)/1e6;
+ let priority=Math.round(fitScore*.42+payout*.31+freshness*.17+(100-competition)*.10);
+ if(decision.startsWith("BLOCKED"))priority=Math.min(priority,35);
+ if(decision==="STALE"||decision==="DUPLICATE_OR_TEST")priority=0;
+ return{decision,status,next,payoutState,reasons,fitScore,competition,freshness,payout,priority,net};
+}
 async function evidence(runId:string,oppId:string|null,c:any,claim:string,excerpt:string,confidence:number,http:number|null,hash:string|null,kind="public_task_record"){await db()`INSERT INTO public.midad_revenue_intel_evidence(run_id,opportunity_id,source_slug,external_id,evidence_kind,evidence_url,claim,excerpt,confidence,http_status,content_sha256,metadata) VALUES(${runId}::uuid,${oppId}::uuid,${c.sourceSlug},${c.externalId},${kind},${c.sourceUrl||c.url||""},${clip(claim,900)},${clip(excerpt,2300)},${confidence},${http},${hash},${db().json(c.evidenceMeta||{})}::jsonb)`;}
 async function save(runId:string,c:any){const d=db(),g=classify(c),ev={extractor:AGENT,raw:c.raw||{},retrieved_at:new Date().toISOString(),payout:{asset:c.asset||null,network:c.network||null,amount:c.amount??null,proof_url:c.payoutProofUrl||null,task_specific_payment_signal:Boolean(c.paymentProof),proof_status:g.payoutState,confidence:num(c.payoutConfidence,0),reported_tx_hash:c.tx||null,independent_chain_confirmation:hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification),confirmations:c.evidenceMeta?.onchain_verification?.confirmations??null,onchain_verification:c.evidenceMeta?.onchain_verification??null},costs:{upfront_usd:num(c.cost,0),claim_bond_usd:num(c.bond,0),estimated_fee_usd:num(c.fee,0)},gates:g.reasons,source_notes:c.notes||[]};const rows=await d`INSERT INTO public.midad_revenue_intel_opportunities(source_slug,external_id,title,description,url,external_status,compensation_amount,compensation_asset,payout_network,payout_class,payout_proof_status,payout_confidence,escrow_funded,payment_tx_hash,payout_proof_url,payout_proof_checked_at,upfront_cost_usd,claim_bond_usd,estimated_fee_usd,estimated_net_usd,estimated_effort_hours,deadline,region_gate,kyc_gate,identity_gate,fit_score,payout_score,freshness_score,competition_score,priority_score,gate_decision,gate_reasons,status,next_action,required_capabilities,evidence,last_seen_at,updated_at)
 VALUES(${c.sourceSlug},${c.externalId},${clip(c.title,500)},${clip(c.description,6000)},${c.url||null},${c.externalStatus||null},${c.amount===null?null:num(c.amount)},${c.asset||null},${c.network||null},${c.payoutClass||"UNKNOWN"},${g.payoutState},${num(c.payoutConfidence,0)},${c.escrowFunded??null},${c.tx||null},${c.payoutProofUrl||null},${c.evidenceMeta?.onchain_verification?.checked_at?new Date(c.evidenceMeta.onchain_verification.checked_at):(c.paymentProof?new Date():null)},${num(c.cost,0)},${num(c.bond,0)},${num(c.fee,0)},${c.amount===null?null:g.net},${c.effortHours??null},${c.deadline},${c.region||"unknown"},${c.kyc||"unknown"},${c.identity||"unknown"},${g.fitScore},${g.payout},${g.freshness},${g.competition},${g.priority},${g.decision},string_to_array(${g.reasons.join(String.fromCharCode(31))}, chr(31)),${g.status},${g.next},string_to_array(${(c.caps||[]).join(String.fromCharCode(31))}, chr(31)),${d.json(ev)}::jsonb,now(),now())
