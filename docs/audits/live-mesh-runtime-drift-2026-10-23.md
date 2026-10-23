@@ -27,7 +27,7 @@ The live database still contained `READY_FOR_REVIEW` rows with unknown region/KY
 
 These are production observations, not guesses from feed cards. The exact rows were retrieved read-only. No production data was modified in this audit.
 
-## Branch fixes prepared
+## Branch fixes prepared and tested
 
 Branch: `fix/revenue-mesh-source-and-qualification-gates`  
 PR: https://github.com/Sirahwaz/Control-room/pull/95
@@ -37,6 +37,16 @@ PR: https://github.com/Sirahwaz/Control-room/pull/95
 3. Added a pure stale-reconciliation decision helper and regression tests. The discovery cycle will mark previously READY rows as `STALE` when a valid deadline is in the past, clear the current estimated net, set priority to zero, and add `deadline_expired` to the gate reasons.
 4. The reconciliation helper explicitly protects `PAID`, `CLAIMED`, `IN_PROGRESS`, `DELIVERED`, and `AWAITING_ACCEPTANCE` statuses. The database update is conditional on the row still being READY and expired, so a concurrent state change is not overwritten.
 5. The stale reconciliation is bounded to 500 expired rows per discovery cycle and contributes its count to the run summary.
+
+### Verification on the code-bearing commit
+
+Code commit: `c4b3d558e884287c653b0276a56c36f54d0c716e`
+
+- [Revenue Qualification Regression Tests #98](https://github.com/Sirahwaz/Control-room/actions/runs/39897875851): **49 passed, 0 failed**; `deno check` passed.
+- [MIDAD Control Room Verify #895](https://github.com/Sirahwaz/Control-room/actions/runs/39897876036): passed.
+- [MIDAD FIX Contract #483](https://github.com/Sirahwaz/Control-room/actions/runs/39897875854): passed.
+
+These results verify the branch code only. They do not mean production has been repaired, merged or deployed.
 
 ## Why production was not altered
 
