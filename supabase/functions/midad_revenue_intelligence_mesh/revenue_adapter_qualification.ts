@@ -227,18 +227,20 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   const explicitPlatformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
   const explicitNet = explicitNumber(record, ["agent_receives_usdc", "netRewardUsd", "net_reward_usd"]);
   const expectedFee = gross === undefined ? undefined : roundUsd(gross * BOUNTYBOOK_PLATFORM_FEE_RATE);
-  const platformFee = explicitPlatformFee ?? expectedFee;
-  const expectedNet = gross !== undefined && platformFee !== undefined
-    ? roundUsd(gross - platformFee)
+  const expectedNet = gross !== undefined && explicitPlatformFee !== undefined
+    ? roundUsd(gross - explicitPlatformFee)
     : undefined;
 
-  if (platformFee !== undefined) out.platformFee = platformFee;
+  // Keep provider-reported values separate from arithmetic estimates. The
+  // public page documents the 4% policy, but the API response schema was not
+  // retrievable in this audit; a gross budget alone must not masquerade as an
+  // observed platform_fee_usdc or agent_receives_usdc field.
+  if (explicitPlatformFee !== undefined) out.platformFee = explicitPlatformFee;
 
   const individualReward = explicitNumber(record, ["individualRewardUsd", "individual_reward_usd", "perRecipientRewardUsd", "per_recipient_reward_usd"]);
   if (individualReward !== undefined) out.individualRewardUsd = individualReward;
 
   if (explicitNet !== undefined) out.providerNetRewardUsd = explicitNet;
-  else if (expectedNet !== undefined) out.providerNetRewardUsd = expectedNet;
 
   // Official BountyBook job pages state both actions are free. Keep these
   // separate from the platform fee deducted from the reward.
@@ -246,13 +248,16 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   out.submissionFee = 0;
 
   const platformFeeMatches = expectedFee !== undefined
-    && platformFee !== undefined
-    && closeUsd(platformFee, expectedFee);
-  const netMatches = explicitNet === undefined
-    || (expectedNet !== undefined && closeUsd(explicitNet, expectedNet));
+    && explicitPlatformFee !== undefined
+    && closeUsd(explicitPlatformFee, expectedFee);
+  const netMatches = expectedNet !== undefined
+    && explicitNet !== undefined
+    && closeUsd(explicitNet, expectedNet);
 
-  // Explicit false is deliberate: a raw listing's own self-assertion must not
-  // override a mismatch or missing gross amount via the generic extractor.
+  // Explicit false is deliberate: do not let the general evidence extractor
+  // or a page-derived gross budget turn an unverified API mapping into a pass.
+  // The schedule is only marked verified when gross, fee and net are all
+  // present as provider fields and mutually consistent with the official 4%.
   out.feeScheduleVerified = gross !== undefined && platformFeeMatches && netMatches;
   if (out.feeScheduleVerified) out.feeScheduleEvidenceUrl = BOUNTYBOOK_FEE_EVIDENCE_URL;
 
