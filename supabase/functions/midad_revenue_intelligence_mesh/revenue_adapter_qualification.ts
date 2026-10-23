@@ -2,8 +2,10 @@ type JsonRecord = Record<string, unknown>;
 
 type QualificationEvidence = {
   regionEligible?: boolean;
+  region?: string;
   kyc?: string;
   identityEligible?: boolean;
+  identity?: string;
   individualRewardUsd?: number;
   payoutSplitCount?: number;
   rewardIsSharedPool?: boolean;
@@ -103,10 +105,16 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
   const out: QualificationEvidence = {};
 
   const regionEligible = explicitBoolean(record, ["regionEligible", "region_eligible"]);
-  if (regionEligible !== undefined) out.regionEligible = regionEligible;
+  if (regionEligible !== undefined) {
+    out.regionEligible = regionEligible;
+    out.region = regionEligible ? "eligible" : "ineligible";
+  }
 
   const identityEligible = explicitBoolean(record, ["identityEligible", "identity_eligible"]);
-  if (identityEligible !== undefined) out.identityEligible = identityEligible;
+  if (identityEligible !== undefined) {
+    out.identityEligible = identityEligible;
+    out.identity = identityEligible ? "eligible" : "ineligible";
+  }
 
   const kyc = normalizedKycStatus(record);
   if (kyc !== undefined) out.kyc = kyc;
