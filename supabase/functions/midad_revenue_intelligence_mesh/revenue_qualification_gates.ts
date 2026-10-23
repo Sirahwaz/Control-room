@@ -38,6 +38,23 @@ const nonNegative = (value: unknown): number => {
   return n === null ? 0 : Math.max(0, n);
 };
 
+/**
+ * Keep evidence of funded task escrow separate from whether this worker is
+ * eligible to participate. Eligibility blockers must not downgrade confirmed
+ * settlement evidence. Taskmarket proof is current only when its direct chain
+ * receipt check passed; missing or failed checks remain unverified.
+ */
+export function resolvePayoutProofStatus(input: {
+  source_slug: string;
+  candidate_status?: string | null;
+  independent_confirmation: boolean;
+}): string {
+  if (input.source_slug === "taskmarket_api") {
+    return input.independent_confirmation ? "verified_task_escrow" : "unverified";
+  }
+  return String(input.candidate_status || "unverified");
+}
+
 export function qualifyRevenueCandidate(candidate: RevenueCandidate): RevenueQualification {
   const blockers: string[] = [];
 

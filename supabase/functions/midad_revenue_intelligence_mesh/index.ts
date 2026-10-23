@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
-import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
+import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, resolvePayoutProofStatus, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
 import { basedAgentsQualificationEvidence, bountyBookQualificationEvidence, explicitSharedRewardEvidence, extractQualificationEvidence, superteamQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
 const DB_URL=Deno.env.get("SUPABASE_DB_URL")||"";
 const sql=DB_URL?postgres(DB_URL,{max:2,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}):null;
@@ -42,7 +42,7 @@ function classify(c:any){
  const competition=Math.min(100,Math.round(10+Math.log2(Math.max(1,num(c.competition,0))+1)*15));
  const freshness=fresh(exp);
  const payout=Math.max(0,Math.min(100,Math.round(num(c.payoutConfidence,0)*100)));
- let decision="DISCOVERY_ONLY",status="DISCOVERED",next="verify_payout_and_terms",payoutState=c.payoutProofStatus||"unverified";
+ let decision="DISCOVERY_ONLY",status="DISCOVERED",next="verify_payout_and_terms",payoutState=resolvePayoutProofStatus({source_slug:String(c.sourceSlug||""),candidate_status:c.payoutProofStatus,independent_confirmation:hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification)});
  if(c.test){decision="DUPLICATE_OR_TEST";status="BLOCKED";next="none";reasons.push("test_or_nonclaimable_listing");}
  else if(exp&&exp.getTime()<=Date.now()){decision="STALE";status="STALE";next="none";reasons.push("deadline_expired");}
  else if(cost>0||bond>0){decision="BLOCKED_UPFRONT_COST";status="BLOCKED";next="no_spend_policy_block";reasons.push(cost>0?"upfront_cost_required":"claim_bond_required");if(bond>0)reasons.push("bond_can_be_slashed_or_lost");}
@@ -67,7 +67,7 @@ function classify(c:any){
    acceptance_probability:c.acceptanceProbability,
    payout_confidence:c.payoutConfidence
   });
-  if(gate.blockers.length){decision=toPersistedRevenueGateDecision("BLOCKED_ELIGIBILITY_OR_NET");status="BLOCKED";next="verify_eligibility_and_individual_net";reasons.push(...gate.blockers);payoutState="unverified";}
+  if(gate.blockers.length){decision=toPersistedRevenueGateDecision("BLOCKED_ELIGIBILITY_OR_NET");status="BLOCKED";next="verify_eligibility_and_individual_net";reasons.push(...gate.blockers);}
   else {decision="READY_FOR_REVIEW";status="QUALIFIED";next="prepare_execution_plan_operator_review";reasons.push(c.sourceSlug==="taskmarket_api"&&hasConfirmedTaskmarketProof(c.evidenceMeta?.onchain_verification)?"task_specific_usdc_escrow_independently_verified_with_12_confirmations":"crypto_asset_and_task_level_payment_evidence_present_but_external_chain_confirmation_is_separate");}
  }
  const unresolvedSharedPool=(c.rewardIsSharedPool===true||num(c.payoutSplitCount,0)>1)&&!(typeof c.individualRewardUsd==="number"&&Number.isFinite(c.individualRewardUsd)&&c.individualRewardUsd>=0);const net=unresolvedSharedPool?null:Math.round((amount-num(c.platformFee,0)-num(c.networkFee,0)-num(c.claimFee,0)-num(c.submissionFee,0)-cost-bond)*1e6)/1e6;
