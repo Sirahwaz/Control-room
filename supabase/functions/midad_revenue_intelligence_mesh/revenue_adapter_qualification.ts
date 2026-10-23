@@ -7,6 +7,7 @@ type QualificationEvidence = {
   identityEligible?: boolean;
   identity?: string;
   individualRewardUsd?: number;
+  providerNetRewardUsd?: number;
   payoutSplitCount?: number;
   rewardIsSharedPool?: boolean;
   platformFee?: number;
@@ -208,8 +209,10 @@ export function bountyBookQualificationEvidence(raw: unknown): QualificationEvid
   const out: QualificationEvidence = {};
   const platformFee = explicitNumber(record, ["platform_fee_usdc", "platformFeeUsd", "platform_fee_usd"]);
   if (platformFee !== undefined) out.platformFee = platformFee;
-  const individualReward = explicitNumber(record, ["agent_receives_usdc", "individualRewardUsd", "individual_reward_usd"]);
+  const individualReward = explicitNumber(record, ["individualRewardUsd", "individual_reward_usd", "perRecipientRewardUsd", "per_recipient_reward_usd"]);
   if (individualReward !== undefined) out.individualRewardUsd = individualReward;
+  const providerNetReward = explicitNumber(record, ["agent_receives_usdc", "netRewardUsd", "net_reward_usd"]);
+  if (providerNetReward !== undefined) out.providerNetRewardUsd = providerNetReward;
   const payoutStatus = String(record.payout_status ?? "").trim().toLowerCase();
   const payoutTx = record.payout_tx_hash;
   if (payoutStatus === "paid" && typeof payoutTx === "string" && /^0x[a-f0-9]{64}$/i.test(payoutTx)) {
