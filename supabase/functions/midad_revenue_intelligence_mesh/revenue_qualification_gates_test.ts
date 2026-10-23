@@ -158,3 +158,31 @@ Deno.test("already blocked or stale opportunities are not reconciled twice", () 
     );
   }
 });
+
+
+Deno.test("stale reconciliation requires the exact eligible QUALIFIED state", () => {
+  for (const status of ["DISCOVERED", "BLOCKED", "STALE", "CANCELLED", "READY_FOR_REVIEW", "UNKNOWN_NEW_STATE"]) {
+    assertEquals(
+      shouldReconcileExpiredOpportunity({
+        deadline: "2026-10-22T12:00:00Z",
+        gate_decision: "READY_FOR_REVIEW",
+        status,
+      }, new Date("2026-10-23T12:00:00Z")),
+      false,
+      `status ${status} must not be reconciled`,
+    );
+  }
+});
+
+Deno.test("stale reconciliation accepts case-insensitive QUALIFIED status only", () => {
+  for (const status of ["QUALIFIED", "qualified", "Qualified"]) {
+    assertEquals(
+      shouldReconcileExpiredOpportunity({
+        deadline: "2026-10-22T12:00:00Z",
+        gate_decision: "READY_FOR_REVIEW",
+        status,
+      }, new Date("2026-10-23T12:00:00Z")),
+      true,
+    );
+  }
+});
