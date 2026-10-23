@@ -44,27 +44,26 @@ Deno.test("BasedAgents missing task-specific escrow evidence stays unknown", () 
   }), {});
 });
 
-Deno.test("BountyBook fixture maps the official 4% platform fee, free claim/submission, and provider payout fields", () => {
+Deno.test("BountyBook public-page fixture is not misrepresented as a live API response", () => {
+  assertEquals(bountyBookFixture.displayed_reward_usd, 5);
+  assertEquals(bountyBookFixture.chain_id, 8453);
+  assertEquals(bountyBookFixture.displayed_escrow_label, "secured in escrow");
   assertEquals(bountyBookQualificationEvidence(bountyBookFixture), {
-    platformFee: 1,
-    providerNetRewardUsd: 24,
     claimFee: 0,
     submissionFee: 0,
-    feeScheduleVerified: true,
-    feeScheduleEvidenceUrl: "https://www.bountybook.ai/job/a55bd7d2-b6a0-4bfc-80b5-f788d0ff312d",
-    providerReportsPaid: false,
+    feeScheduleVerified: false,
   });
 });
 
-Deno.test("BountyBook gross budget derives fee estimate but does not prove escrow funding or payout", () => {
+Deno.test("BountyBook budget alone gives no provider-reported fee/net and does not prove API schema or escrow funding", () => {
   const evidence = bountyBookQualificationEvidence({
     id: "job-budget-only",
     budget_usdc: "25",
     chain_id: 8453,
   });
-  assertEquals(evidence.platformFee, 1);
-  assertEquals(evidence.providerNetRewardUsd, 24);
-  assertEquals(evidence.feeScheduleVerified, true);
+  assertEquals(evidence.platformFee, undefined);
+  assertEquals(evidence.providerNetRewardUsd, undefined);
+  assertEquals(evidence.feeScheduleVerified, false);
   assertEquals(evidence.escrowFunded, undefined);
   assertEquals(evidence.providerReportsPaid, undefined);
 });
