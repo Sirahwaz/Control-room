@@ -1,0 +1,79 @@
+name: MIDAD AI Room live endpoint denial tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_ai_room_status/**"
+      - ".github/workflows/ai-room-live-endpoint.yml"
+  push:
+    branches:
+      - "feat/midad-ai-room-neuralpp-20261024"
+    paths:
+      - "supabase/functions/midad_ai_room_status/**"
+      - ".github/workflows/ai-room-live-endpoint.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-room-live-denial-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deny-anonymous-and-invalid-session:
+    name: Live HTTP denial + CORS allowlist
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test deployed status endpoint without credentials
+        env:
+          ENDPOINT: https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_status
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint = process.env.ENDPOINT;
+          const allowedOrigin = 'https://sirahwaz.github.io';
+          const request = (body, origin = allowedOrigin) => fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              ...(origin ? { origin } : {})
+            },
+            body: JSON.stringify(body)
+          });
+
+          const noSession = await request({});
+          const noSessionBody = await noSession.json().catch(() => ({}));
+          if (noSession.status !== 401 || noSessionBody.error !== 'missing_session') {
+            throw new Error(`Missing-session denial failed: status=${noSession.status}, error=${noSessionBody.error ?? 'none'}`);
+          }
+          if (noSession.headers.get('access-control-allow-origin') !== allowedOrigin) {
+            throw new Error('Allowlisted Origin header was not returned for the approved web origin');
+          }
+          console.log('PASS: request without session denied with 401; approved Origin returned.');
+
+          const invalidSession = await request({ token: 'ci-invalid-session-not-a-real-credential' });
+          const invalidBody = await invalidSession.json().catch(() => ({}));
+          if (invalidSession.status !== 401 || invalidBody.error !== 'session_expired') {
+            throw new Error(`Invalid-session denial failed: status=${invalidSession.status}, error=${invalidBody.error ?? 'none'}`);
+          }
+          console.log('PASS: invalid fake session denied with 401.');
+
+          const badOrigin = 'https://attacker.example';
+          const preflight = await fetch(endpoint, {
+            method: 'OPTIONS',
+            headers: {
+              origin: badOrigin,
+              'access-control-request-method': 'POST',
+              'access-control-request-headers': 'content-type'
+            }
+          });
+          if (preflight.status !== 403) {
+            throw new Error(`Unapproved Origin preflight was not denied: status=${preflight.status}`);
+          }
+          if (preflight.headers.get('access-control-allow-origin')) {
+            throw new Error('Unapproved Origin unexpectedly received an Access-Control-Allow-Origin header');
+          }
+          console.log('PASS: unapproved Origin preflight denied with 403.');
+          NODE
