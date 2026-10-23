@@ -129,7 +129,7 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
 
   let payoutSplitCount = explicitNumber(record, ["payoutSplitCount", "payout_split_count", "splitCount", "split_count", "awardCount", "award_count"]);
   if (payoutSplitCount === undefined && Array.isArray(record.awards)) payoutSplitCount = record.awards.length;
-  if (payoutSplitCount !== undefined) out.payoutSplitCount = payoutSplitCount;
+  if (payoutSplitCount !== undefined && payoutSplitCount > 0) out.payoutSplitCount = payoutSplitCount;
 
   const sharedPool = explicitBoolean(record, ["rewardIsSharedPool", "reward_is_shared_pool"]);
   if (sharedPool !== undefined) out.rewardIsSharedPool = sharedPool;
