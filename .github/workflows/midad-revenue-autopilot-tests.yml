@@ -1,0 +1,25 @@
+name: Revenue Autopilot Finality Guard
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_revenue_autopilot/**"
+      - ".github/workflows/midad-revenue-autopilot-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_revenue_autopilot/**"
+      - ".github/workflows/midad-revenue-autopilot-tests.yml"
+permissions:
+  contents: read
+jobs:
+  deno-check-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check deployed entrypoint
+        run: deno check supabase/functions/midad_revenue_autopilot/index.ts
+      - name: Test fail-closed finality guard
+        run: deno test supabase/functions/midad_revenue_autopilot/finality_test.ts
