@@ -46,7 +46,7 @@ Deno.test("BasedAgents missing task-specific escrow evidence stays unknown", () 
 Deno.test("BountyBook fixture maps explicit fee and payout fields without assuming the platform fee percentage", () => {
   assertEquals(bountyBookQualificationEvidence(bountyBookFixture), {
     platformFee: 1,
-    individualRewardUsd: 24,
+    providerNetRewardUsd: 24,
     providerReportsPaid: false,
   });
 });
