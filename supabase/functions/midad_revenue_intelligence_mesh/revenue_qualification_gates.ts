@@ -1,3 +1,5 @@
+export const REVENUE_MESH_VERSION = 15;
+
 export type RevenueCandidate = {
   region_eligible?: boolean | null;
   kyc_status?: string | null;
@@ -126,7 +128,10 @@ export function shouldReconcileExpiredOpportunity(
     return false;
   }
 
-  if (RECONCILIATION_PROTECTED_STATUSES.has(String(candidate.status ?? "").trim().toUpperCase())) {
+  const status = String(candidate.status ?? "").trim().toUpperCase();
+  // Only the known, UI-qualified candidate state may be reconciled. Fail closed
+  // for unknown/future states, rather than relying on an ever-growing denylist.
+  if (status !== "QUALIFIED" || RECONCILIATION_PROTECTED_STATUSES.has(status)) {
     return false;
   }
 
