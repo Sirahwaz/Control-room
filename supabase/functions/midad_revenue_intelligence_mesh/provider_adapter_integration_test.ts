@@ -68,7 +68,7 @@ Deno.test("BountyBook budget alone gives no provider-reported fee/net and does n
   assertEquals(evidence.providerReportsPaid, undefined);
 });
 
-Deno.test("BountyBook shared reward pool is not converted into an individual payout", () => {
+Deno.test("BountyBook candidate-shaped shared-pool fields stay untrusted without an observed API schema", () => {
   const raw = {
     id: "job-split",
     budget_usdc: "100",
@@ -78,10 +78,13 @@ Deno.test("BountyBook shared reward pool is not converted into an individual pay
     reward_is_shared_pool: true,
   };
   const feeEvidence = bountyBookQualificationEvidence(raw);
-  const eligibilityEvidence = extractQualificationEvidence(raw, "bountybook_api");
-  assertEquals(feeEvidence.individualRewardUsd, undefined);
-  assertEquals(eligibilityEvidence.payoutSplitCount, 4);
-  assertEquals(eligibilityEvidence.rewardIsSharedPool, true);
+  const genericEvidence = extractQualificationEvidence(raw, "bountybook_api");
+  assertEquals(feeEvidence, {
+    claimFee: 0,
+    submissionFee: 0,
+    feeScheduleVerified: false,
+  });
+  assertEquals(genericEvidence, {});
 });
 
 Deno.test("Superteam fixture respects explicit agentAccess but records human payout claim requirement", () => {
