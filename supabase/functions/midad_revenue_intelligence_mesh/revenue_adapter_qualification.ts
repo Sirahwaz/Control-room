@@ -160,9 +160,10 @@ const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/concepts/fees-p
 
 /**
  * Taskmarket's official fee schedule was checked on 2026-10-23.
- * Listing submissions are free for bounty/benchmark, claims are free before
- * any task-specific deposit, and pitches/auction bids cost 0.001 USDC each.
- * Unknown modes are not assigned a fee or a verified schedule.
+ * Bounty/benchmark submissions are free for a worker's first five submissions
+ * to a task, then 0.001 USDC each. The public task's submissionCount is a
+ * task-wide total, not the current worker's count; do not use it as a proxy.
+ * Unknown modes or missing worker-specific counts remain unverified.
  */
 export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEvidence {
   const record = asRecord(raw);
@@ -170,7 +171,7 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
   const mode = typeof record.mode === "string" ? record.mode.trim().toLowerCase() : "";
   let submissionFeeUsd: number | undefined;
   if (["bounty", "benchmark"].includes(mode)) {
-    const count = explicitNumber(record, ["submissionCount", "submission_count"]);
+    const count = explicitNumber(record, ["workerSubmissionCount", "worker_submission_count", "mySubmissionCount", "my_submission_count"]);
     if (count === undefined) return extractQualificationEvidence(record, "taskmarket_api");
     submissionFeeUsd = count < 5 ? 0 : 0.001;
   } else if (mode === "claim") submissionFeeUsd = 0;
