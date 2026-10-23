@@ -68,3 +68,24 @@ Accordingly, this report does **not** claim the live issue has been remediated. 
 - No production DB mutation, source disablement, deployment or merge was performed.
 - No account registration, claim, external submission, wallet connection/signature, purchase or financial transaction was performed.
 - PR #95 remains open and Draft.
+
+
+## Parallel triage refresh — 2026-10-23 04:04 UTC
+
+This section supersedes the 03:45 UTC run snapshot above and records a read-only refresh across the production database, Edge Function inventory, logs, queue, and GitHub Actions.
+
+### Current run and state (production)
+
+- The 04:00:06–04:00:25 UTC discovery run completed successfully: **8/8 feeds**, **90 candidates seen/upserted**, **3 payout-gate passes**, **10 upfront-cost blocks**, **0 stale/invalid counted by the live v14 runtime**.
+- The live bundle remains **ACTIVE v14**, SHA-256 `f4bc30701188564ef5b5b6b0c0a07c85a59c3cd6be3df5cdd3fb9621b8ab8bb6`; the 15-minute discovery cron remains active.
+- Important schema detail: readiness is held in `gate_decision`; rows considered ready have `status='QUALIFIED'` and `gate_decision='READY_FOR_REVIEW'`. Filtering only `status='READY_FOR_REVIEW'` produces a false zero.
+- The current read-only snapshot found **7** Taskmarket rows with `gate_decision='READY_FOR_REVIEW'`, of which **4 had expired deadlines**. The three top candidates in the 04:00 run still had unknown region, KYC and identity gates. Q41 and the repost task still must not be treated as verified individual-net opportunities.
+- The three latest GitHub Actions runs associated with the branch all completed successfully. The revenue qualification job's log confirms **49 passed, 0 failed**, with `deno check` completed.
+
+### Work-queue bottleneck
+
+The current work queue has **120 BLOCKED** `independent_payment_proof` tasks with blocker `task_specific_independent_payout_proof_missing`; **4 BLOCKED** official program eligibility reviews; **2 BLOCKED** airdrop activity reviews; and **2 FAILED** independent-payment checks after retries with `base_receipt_not_available_yet`. These are not proof of income; they are the main unresolved evidence pipeline. The queue worker is active, but missing primary evidence remains the blocker and should not be bypassed by relaxing gates.
+
+### Immediate decision
+
+The branch's stale reconciliation queries by `gate_decision='READY_FOR_REVIEW'`, not by the UI-facing `status`, and protects paid/in-progress/delivery states. Its expected effect is **not yet live**. The safe next step is a review of PR #95 followed, only after the existing deployment gate is explicitly changed, by a controlled deployment and post-deploy checks listed above. No production writes, cron edits, merges, deployments, claims, submissions, signatures or transfers were performed for this refresh.
