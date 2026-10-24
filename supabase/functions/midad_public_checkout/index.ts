@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { normalizePublicOrderKey, PUBLIC_ORDER_KEY_RE } from "./order_key_contract.ts";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
@@ -134,7 +135,7 @@ function validEmail(v:string){
 }
 
 
-const PUBLIC_ORDER_KEY_RE=/^store-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 
 async function handlePublicOrderAction(body:any,req:Request,action:string){
   const orderKey=clean(body.order_key||req.headers.get("x-order-key"),160);
@@ -264,7 +265,7 @@ async function main(req:Request){
     const oid=await ownerId();
     if(!oid) return json({ok:false,error:"system_profile_missing"},503);
 
-    const key=clean(body.order_key||req.headers.get("x-order-key"),160);
+    const key=normalizePublicOrderKey(clean(body.order_key||req.headers.get("x-order-key"),160));if(!key)return json({ok:false,error:"invalid_order_key"},400);
     if(key){
       const {data:existing}=await db.from("midad_payment_intents")
         .select("id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata")
@@ -304,7 +305,7 @@ async function main(req:Request){
       pricing:settlementAsset==="USDC"?"fixed_usdc_price":"fixed_usdt_usd_par",
       fee_profile:target.route.metadata?.fee_profile||null,
       verification:target.route.metadata?.verification||null,
-      public_order_key:key||null,
+      public_order_key:key,
       route_id:target.route.id,
       wallet_id:target.wallet.id,
       customer_name:customerName||null,
@@ -337,7 +338,7 @@ async function main(req:Request){
     const orderPayload={
       product_id:productId,
       product_name:p.name,
-      public_order_key:key||null,
+      public_order_key:key,
       customer_name:customerName||null,
       customer_email:customerEmail||null,
       customer_requirements:customerRequirements||null,
@@ -368,7 +369,7 @@ async function main(req:Request){
     const checkoutNetwork=String(target.route.network||"").toLowerCase();
     const mint=checkoutNetwork==="solana"?(target.route.metadata?.verification?.token_mint||null):null;
     const paymentUri=checkoutNetwork==="solana"&&mint
-      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8))
+      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intentId.slice(0,8))
       : null;
 
     return json({

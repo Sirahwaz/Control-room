@@ -171,6 +171,7 @@ h1{max-width:740px;margin:18px 0 18px;font-size:clamp(40px,6.1vw,70px);line-heig
 <footer class="footer"><p><strong>MIDAD+ · Technical Services</strong><br><span data-i18n="footerText">Evidence-led technical work, fixed scope and transparent status. No public claim of income or successful delivery is made without verification.</span></p><a class="footer-action" href="#top" data-i18n="backToTop">Back to top ↑</a></footer>
 </div>
 <div id="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="mTitle" onclick="if(event.target.id==='modal')closeModal()"><div class="dialog"><button type="button" class="close" onclick="closeModal()" data-i18n-aria="close" aria-label="Close">×</button><div class="modal-kicker" data-i18n="modalKicker">MIDAD+ · SECURELY SCOPED</div><h2 id="mTitle">Checkout</h2><div class="modal-intro" id="mIntro"></div><div id="mBody"></div></div></div>
+<script src="./checkout-order-key.js"></script>
 <script>
 const API='https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout';
 const LANG_KEY='midad_store_language_v1';
@@ -336,17 +337,23 @@ function paymentErrorMessage(data){
 }
 async function startPayment(productId){
  const p=products.find(function(x){return x.id===productId});if(!p)return;
- const orderKey='store-'+crypto.randomUUID();currentOrderKey=orderKey;
- try{localStorage.setItem('midad_last_order_key',orderKey)}catch{}
- const body={product_id:productId,order_key:orderKey,expires_in_minutes:60,customer_name:document.getElementById('customerName')?.value.trim()||'',customer_email:document.getElementById('customerEmail')?.value.trim()||'',requirements:document.getElementById('requirements')?.value.trim()||'',attribution:attribution};
  const btn=document.getElementById('continuePay');if(btn)btn.disabled=true;
  document.getElementById('mBody').innerHTML='<div class="status" role="status">'+esc(tr('creatingCheckout'))+'</div>';
+ let pendingOrderKey=null;
  try{
+  const customerName=document.getElementById('customerName')?.value.trim()||'';
+  const customerEmail=document.getElementById('customerEmail')?.value.trim()||'';
+  const requirements=document.getElementById('requirements')?.value.trim()||'';
+  pendingOrderKey=await window.MIDADOrderKeys.getPendingKey({productId:productId,customerName:customerName,customerEmail:customerEmail,requirements:requirements});
+  const orderKey=pendingOrderKey.key;currentOrderKey=orderKey;
+  try{localStorage.setItem('midad_last_order_key',orderKey)}catch{}
+  const body={product_id:productId,order_key:orderKey,expires_in_minutes:60,customer_name:customerName,customer_email:customerEmail,requirements:requirements,attribution:attribution};
   const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','x-order-key':orderKey},body:JSON.stringify(body)});
   const data=await res.json();if(!res.ok||!data.ok)throw new Error(paymentErrorMessage(data));
   currentScreen={type:'payment',productId:productId,data:data};
   showPayment(data,productId);
- }catch(e){document.getElementById('mBody').innerHTML='<div class="status error" role="alert">'+esc(tr('errorPrefix'))+': '+esc(e.message||tr('genericError'))+'</div><button class="btn-secondary full" onclick="showCheckout(\''+productId+'\')">'+esc(tr('continuePayment'))+'</button>'}
+  window.MIDADOrderKeys.clearPendingKey(pendingOrderKey.slot);
+ }catch(e){document.getElementById('mBody').innerHTML='<div class="status error" role="alert">'+esc(tr('errorPrefix'))+': '+esc(e.message||tr('genericError'))+'</div><button class="btn-secondary full" onclick="showCheckout(\\''+productId+'\\')">'+esc(tr('continuePayment'))+'</button>'}
 }
 function statusLabel(status){const st=I18N[currentLang].statuses||{};return st[status]||I18N.en.statuses[status]||status||tr('orderUnknown')}
 function showPayment(data,productId){

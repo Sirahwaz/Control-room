@@ -1,0 +1,39 @@
+name: MIDAD Public Checkout Order-Key Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_public_checkout/**"
+      - "revenue/checkout-order-key.js"
+      - "revenue/index.html"
+      - "revenue-forge.html"
+      - "tests/revenue-order-key-contract.test.cjs"
+      - ".github/workflows/midad-public-checkout-tests.yml"
+  push:
+    branches: [main, audit/midad-checkout-idempotency-r4-20261024]
+    paths:
+      - "supabase/functions/midad_public_checkout/**"
+      - "revenue/checkout-order-key.js"
+      - "revenue/index.html"
+      - "revenue-forge.html"
+      - "tests/revenue-order-key-contract.test.cjs"
+      - ".github/workflows/midad-public-checkout-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-checkout-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check public checkout Edge Function
+        run: deno check supabase/functions/midad_public_checkout/index.ts
+      - name: Test server-side order-key contract
+        run: deno test supabase/functions/midad_public_checkout/order_key_contract_test.ts
+      - name: Test browser retry and duplicate-order contract
+        run: node --test tests/revenue-order-key-contract.test.cjs
