@@ -34,6 +34,7 @@ jobs:
           node --input-type=module <<'NODE'
           const endpoint = process.env.ENDPOINT;
           const allowedOrigin = 'https://sirahwaz.github.io';
+          const previewOrigin = 'https://froegigfmpmvtecztfbf.supabase.co';
           const request = (body, origin = allowedOrigin) => fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -59,6 +60,29 @@ jobs:
             throw new Error(`Invalid-session denial failed: status=${invalidSession.status}, error=${invalidBody.error ?? 'none'}`);
           }
           console.log('PASS: invalid fake session denied with 401.');
+          const previewNoSession = await request({}, previewOrigin);
+          const previewBody = await previewNoSession.json().catch(() => ({}));
+          if (previewNoSession.status !== 401 || previewBody.error !== 'missing_session') {
+            throw new Error(`Preview origin request without session failed: status=${previewNoSession.status}, error=${previewBody.error ?? 'none'}`);
+          }
+          if (previewNoSession.headers.get('access-control-allow-origin') !== previewOrigin) {
+            throw new Error('Preview origin was not allowlisted by the live endpoint');
+          }
+          console.log('PASS: preview origin is allowed but anonymous requests still receive 401.');
+
+          const previewPreflight = await fetch(endpoint, {
+            method: 'OPTIONS',
+            headers: {
+              origin: previewOrigin,
+              'access-control-request-method': 'POST',
+              'access-control-request-headers': 'content-type'
+            }
+          });
+          if (previewPreflight.status !== 204 || previewPreflight.headers.get('access-control-allow-origin') !== previewOrigin) {
+            throw new Error(`Preview origin preflight failed: status=${previewPreflight.status}`);
+          }
+          console.log('PASS: preview origin preflight returned 204 with matching ACAO.');
+
 
           const badOrigin = 'https://attacker.example';
           const preflight = await fetch(endpoint, {
