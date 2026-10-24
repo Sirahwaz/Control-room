@@ -34,7 +34,7 @@ test('browser networking is limited to fixed MIDAD endpoints and Telegram bootst
 });
 
 test('status endpoint requires an active hashed Control Room session', () => {
-  assert.match(connector, /ALLOWED_ORIGINS\s*=\s*new Set\(\["https:\/\/sirahwaz\.github\.io"\]\)/);
+  assert.match(connector, /ALLOWED_ORIGINS\s*=\s*new Set\(\["https:\/\/sirahwaz\.github\.io",\s*"https:\/\/froegigfmpmvtecztfbf\.supabase\.co"\]\)/);
   assert.match(connector, /control_room_sessions/);
   assert.match(connector, /token_hash/);
   assert.match(connector, /eq\("active", true\)/);
