@@ -3,13 +3,13 @@
 **Review date:** 2026-10-24  
 **Project:** `midad-ai` (`froegigfmpmvtecztfbf`)  
 **Scope:** 30 tables reported by the Supabase security advisor as `rls_enabled_no_policy`.  
-**Status:** Read-only RLS/table review. No policies, GRANT/REVOKE, schema, or table data were changed. The separate AI Room task deployed the additive read-only `midad_ai_room_status` Edge Function; no existing function was replaced.
+**Status:** Read-only table/RLS review. No policies, GRANT/REVOKE, schema, or table data were changed. AI Room has a standalone Pages preview path and three targeted function deployments: `midad_ai_room_preview` v2 fixed redirect, `midad_ai_room_status` v3 read-only aggregate endpoint, and `telegram_bot` v97 additive `/airoom` command. No finance/wallet automation was added.
 
 ## Executive finding
 
 All 30 tables have RLS enabled and no policies. For ordinary `anon`/`authenticated` API roles, that normally means row access is denied by RLS even where table grants exist. This is a **fail-closed access state**, not evidence of an observed data leak. However, several tables grant broad table privileges to `anon` and/or `authenticated`; those grants are unnecessary exposure surface and would become consequential if a permissive policy were added later. `service_role` bypasses RLS and must remain server-side only.
 
-The AI Room UI does not query these 30 tables. Its separate `midad_ai_room_status` endpoint reads only six aggregate counts from other dashboard tables, verifies an active Control Room session, and contains no write path. Broader direct table/agent/financial connectors remain disabled until their own contracts, policy tests, and rollback plans pass.
+The AI Room UI does not query these 30 tables. Its separate `midad_ai_room_status` v3 endpoint reads only six aggregate counts from other dashboard tables, verifies an active Control Room session, allows only the GitHub Pages origin, and contains no write path. A standalone `ai-room.html` preview is present on Pages; the homepage/PWA entry point is untouched. Broader direct table/agent/financial connectors remain disabled until their own contracts, policy tests, and rollback plans pass.
 
 ## Evidence inspected
 
@@ -113,3 +113,9 @@ The body of `public.midad_agent_fee_reserve_request(jsonb)` contains a confirmed
 - The agent fee claim path requires the precise pending approval/request match and has caps/guard checks, but it still creates an `EXECUTING` request and `PENDING` fee ledger item. It remains outside AI Room.
 - The browser evidence routine restricts state transitions, disallows `PAID`, validates event keys/evidence shape/URLs, and is service-role-only. One-shot smoke tokens are digest/expiry/consumption checked.
 - The store fulfillment trigger is on `public.midad_store_orders`, outside the 30 target set. It checks paid/reconciled payment intent and a unique matching receipt before enqueueing, and does not expose a client endpoint.
+
+
+## Current deployment and release gate
+- Preview URL: `https://sirahwaz.github.io/Control-room/ai-room.html` (isolated static route, not linked from the homepage).
+- Active targeted deployments: `midad_ai_room_preview` v2, `midad_ai_room_status` v3, `telegram_bot` v97. The Telegram addition leaves the original menu URL unchanged and has a source rollback snapshot for v96.
+- Live CI proves the preview route, POST denial, missing/fake session denial and CORS allowlist. It does not prove a valid Telegram session; keep PR #100 Draft until device-based positive login is observed.
