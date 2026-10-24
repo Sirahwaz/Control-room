@@ -75,7 +75,9 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 ## 6. Gates still required
 
 - The all-98 source sweep is complete at the literal-reference/static-analysis layer. Remaining: trace dynamic SQL, imported/shared helper behavior, SQL tagged-template queries and runtime RPC indirection in any path selected for live integration.
-- Review each of the nine SQL/RPC definitions identified by catalog matching plus relevant trigger/job entrypoints at body level, not just ACL/search_path. The nine catalog matches included revenue-ops status/dispatch routines and service-role-only agent-fee, browser evidence/smoke, and store fulfillment routines.
+- Body-level review completed for all 10 matching SQL routines, including revenue-ops status/dispatch, agent-fee reservation/claim, browser evidence/smoke token routines, and store fulfillment completion/enqueue. All inspected routines have a fixed `search_path`; service-role financial/browser/fulfillment routines are not executable by `anon` or `authenticated`.
+- A separate approval-routing concern was found in `midad_agent_fee_reserve_request`: it selects `user_id` with `SELECT id FROM public.profiles LIMIT 1` when creating a pending destination approval. This does not bind the approval to the requesting owner and is nondeterministic if multiple profiles exist. Keep the fee flow out of AI Room; repair requires a reviewed owner identity contract and targeted tests.
+- No user triggers are attached directly to the 30 target tables. One indirect trigger was found on `public.midad_store_orders`: `trg_midad_enqueue_store_fulfillment` runs after status/paid_at changes, verifies a paid/reconciled intent and a unique matching wallet receipt, and uses `ON CONFLICT (order_id) DO NOTHING` before writing fulfillment jobs/evidence. The trigger and fulfillment RPCs remain outside the AI Room contract.
 - Trace all client-facing functions with `verify_jwt=false` to the exact custom auth gate and test missing, expired, revoked, wrong-owner and replayed credentials.
 - In a non-production environment, add negative tests for anonymous access, user A reading/writing user B data, queue/secret redaction, idempotent retries, and allowed service-worker operations.
 - Only after that propose narrow grants/policies in a separate migration with rollback instructions. No changes were made in this audit.
@@ -83,7 +85,7 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 
 ## 7. Explicitly unchanged
 
-No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, function deployment, data mutation, merge, or production deployment was performed.
+No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, data mutation, merge, or frontend production deployment was performed. The additive `midad_ai_room_status` read-only Edge Function was deployed separately as ACTIVE version 1 and is recorded in Section 8.
 
 ## 8. Live connector decision after the source scan
 
@@ -99,3 +101,13 @@ No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`
 - The CI job sent three non-mutating test cases to the deployed function: POST with no token (expected `401 missing_session`), POST with an intentionally invalid fake token (expected `401 session_expired`), and OPTIONS preflight from `https://attacker.example` (expected `403` and no allow-origin header).
 - Supabase `function_edge_logs` recorded HTTP outcomes for function ID `ea3035a7-0d5e-4f97-a214-a8d6728fbe6f`: POST 401 and OPTIONS 403. The entries align with the CI timestamps.
 - These are negative authorization tests only; they do not prove a valid Telegram session succeeds and do not authorize UI release.
+
+## 10. SQL body and trigger review — follow-up before broader integrations
+
+- The database review covered 10 matching SQL routine definitions and their catalog ACLs/search paths. No routine in this set is called by `ai-room.html` or the new aggregate status endpoint.
+- `midad_agent_fee_reserve_request` creates a pending approval using `SELECT id INTO v_user_id FROM public.profiles LIMIT 1`. This does not establish that the approval is assigned to the requesting or intended owner. Treat as a separate approval-routing defect; do not use this financial workflow from AI Room and do not patch it without defining the owner identity source first.
+- `midad_claim_agent_fee_payment` checks the exact approval/request link, pending owner approval, Base/USDC restrictions, fee-wallet guard, disabled automatic execution policy, all-in caps and daily/weekly/per-job caps; it then moves the request to `EXECUTING` and records a `PENDING` ledger entry. It remains excluded from the room and live financial actions remain disabled.
+- `midad_browser_record_evidence_v1` validates event/state transitions, enforces a bounded retry count, disallows `PAID` state, restricts evidence keys/size/URLs, uses row locking and an event key, and is service-role-only. Smoke token authorization uses SHA-256, expiry and one-shot consumption; cleanup routines are service-role-only, with job cleanup additionally requiring a marked test identity.
+- `midad_complete_store_fulfillment` verifies output hash, paid order/payment reconciliation and one unique matching wallet receipt; it is idempotent for an identical already-delivered output hash. `midad_enqueue_store_fulfillment_after_verified_payment` is attached to `midad_store_orders` (outside the 30-table list) and independently verifies paid/reconciled intent + matching receipt before enqueueing; duplicate order enqueue is idempotent.
+- `midad_ops.dispatch_revenue_operation` restricts target/action combinations and retrieves its autonomy key server-side from Vault. Catalog ACLs do not grant `anon`, `authenticated`, or `service_role` direct EXECUTE; `midad_ops.revenue_scheduler_status` similarly has no direct EXECUTE grants to these roles. Do not infer they are callable from the frontend.
+- Trigger inventory: zero non-internal triggers are attached directly to the 30 target tables. The one indirect trigger found from the reviewed functions is `public.trg_midad_enqueue_store_fulfillment` after updates to `public.midad_store_orders`.
