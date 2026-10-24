@@ -96,7 +96,7 @@ test("failed refresh marks retained metrics as stale instead of showing a fresh 
   assert.equal(elements.connectorCount.textContent, "1");
 });
 
-const refreshLiveSource = html.match(/async function refreshLive\(\)\{[\s\S]*?\n\}\n\$\("#connectLive"\)/)?.[0]?.replace(/\n\}\n\$\("#connectLive"\)$/, "\n}");
+const refreshLiveSource = html.match(/async function refreshLive\(\)\{[^\n]*\}/)?.[0];
 const requestJsonSource = html.match(/async function requestJson\(url,body\)\{[^\n]*\}/)?.[0];
 const readableAuthErrorSource = html.match(/function readableAuthError\(error\)\{[^\n]*\}/)?.[0];
 const clearLiveMetricsSource = html.match(/function clearLiveMetrics\(\)\{[^\n]*\}/)?.[0];
