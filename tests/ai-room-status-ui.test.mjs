@@ -1,23 +1,72 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
 const html = readFileSync(new URL("../ai-room.html", import.meta.url), "utf8");
 const setConnection = html.match(/function setConnection\(connected,message\)\{[\s\S]*?\nfunction clearLiveMetrics/);
+const setConnectionSource = html.match(/function setConnection\(connected,message\)\{[^\n]*\}/)?.[0];
 const renderLiveStatus = html.match(/function renderLiveStatus\(data\)\{[\s\S]*?\nfunction renderAgentMesh/);
+
+function createConnectionHarness(liveBusy = false) {
+  assert.ok(setConnectionSource, "setConnection implementation exists");
+  const ids = [
+    "connectionState",
+    "connectionMessage",
+    "liveModeState",
+    "connectLive",
+    "refreshLive",
+    "connectorCount",
+  ];
+  const elements = Object.fromEntries(
+    ids.map((id) => [id, { textContent: "", className: "", disabled: false }]),
+  );
+  const $ = (selector) => {
+    const id = selector.startsWith("#") ? selector.slice(1) : selector;
+    assert.ok(elements[id], `unexpected selector: ${selector}`);
+    return elements[id];
+  };
+  const setConnectionFn = new Function("$", "liveBusy", `${setConnectionSource}; return setConnection;`)($, liveBusy);
+  return { elements, setConnection: setConnectionFn };
+}
 
 test("does not retain a stale local-only event after a live connection", () => {
   assert.doesNotMatch(html, /<p>الاتصالات الحية غير مفعّلة\.<\/p>/);
   assert.match(html, /id="liveModeState"/);
 });
 
-test("connection state drives a truthful mode label", () => {
-  assert.ok(setConnection, "setConnection implementation exists");
-  assert.match(setConnection[0], /liveModeState/);
-  assert.match(setConnection[0], /connected/);
-  assert.match(setConnection[0], /قراءة فقط/);
-  assert.match(setConnection[0], /معاينة محلية/);
+test("connected state updates the live-only label and control availability", () => {
+  const { elements, setConnection } = createConnectionHarness();
+  setConnection(true, "MIDAD live source");
+
+  assert.equal(elements.connectionState.textContent, "متصل — قراءة فقط");
+  assert.equal(elements.connectionState.className, "status ready");
+  assert.equal(elements.connectionMessage.textContent, "MIDAD live source");
+  assert.equal(elements.liveModeState.textContent, "اتصال حي — قراءة فقط");
+  assert.equal(elements.connectLive.disabled, true);
+  assert.equal(elements.refreshLive.disabled, false);
+  assert.equal(elements.connectorCount.textContent, "1");
+});
+
+test("disconnected state restores local preview and blocks live refresh", () => {
+  const { elements, setConnection } = createConnectionHarness();
+  setConnection(false, "connection failed");
+
+  assert.equal(elements.connectionState.textContent, "غير متصل");
+  assert.equal(elements.connectionState.className, "status off");
+  assert.equal(elements.liveModeState.textContent, "معاينة محلية — الاتصال الحي غير مفعّل");
+  assert.equal(elements.connectLive.disabled, false);
+  assert.equal(elements.refreshLive.disabled, true);
+  assert.equal(elements.connectorCount.textContent, "0");
+});
+
+test("pending authentication is not mislabeled as a local-only final state", () => {
+  const { elements, setConnection } = createConnectionHarness(true);
+  setConnection(false, "جارٍ التحقق من جلسة Telegram ثم طلب ملخص آمن...");
+
+  assert.equal(elements.liveModeState.textContent, "جارٍ التحقق من الاتصال");
+  assert.equal(elements.connectLive.disabled, true);
+  assert.equal(elements.refreshLive.disabled, true);
+  assert.equal(elements.connectorCount.textContent, "0");
 });
 
 test("successful live status writes an explicit connected event", () => {
