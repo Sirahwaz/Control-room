@@ -95,3 +95,74 @@ test("failed refresh marks retained metrics as stale instead of showing a fresh 
   assert.equal(elements.refreshLive.disabled, false);
   assert.equal(elements.connectorCount.textContent, "1");
 });
+
+const refreshLiveSource = html.match(/async function refreshLive\(\)\{[\s\S]*?\n\}\n\$\("#connectLive"\)/)?.[0]?.replace(/\n\}\n\$\("#connectLive"\)$/, "\n}");
+const requestJsonSource = html.match(/async function requestJson\(url,body\)\{[^\n]*\}/)?.[0];
+const readableAuthErrorSource = html.match(/function readableAuthError\(error\)\{[^\n]*\}/)?.[0];
+const clearLiveMetricsSource = html.match(/function clearLiveMetrics\(\)\{[^\n]*\}/)?.[0];
+
+function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
+  for (const [name, source] of Object.entries({
+    refreshLiveSource, requestJsonSource, readableAuthErrorSource, clearLiveMetricsSource, setConnectionSource, setRefreshFailureSource,
+  })) assert.ok(source, name + " implementation exists");
+
+  const ids = ["connectionState", "connectionMessage", "liveModeState", "connectLive", "refreshLive", "connectorCount",
+    "liveSignals", "liveOpportunities", "liveRuns", "liveAlerts", "liveApprovals", "liveTasks", "refreshAgents"];
+  const elements = Object.fromEntries(ids.map(id => [id, { textContent: id.startsWith("live") ? "stale-value" : "", className: "", disabled: false }]));
+  const $ = selector => {
+    const id = selector.startsWith("#") ? selector.slice(1) : selector;
+    assert.ok(elements[id], "unexpected selector: " + selector);
+    return elements[id];
+  };
+  const factory = new Function("$", "fetch", "initialToken", `
+    let liveBusy = false;
+    let liveSessionToken = initialToken;
+    let lastLiveSuccessAt = "12:34:56";
+    const requestJson = ${requestJsonSource};
+    const readableAuthError = ${readableAuthErrorSource};
+    const clearLiveMetrics = ${clearLiveMetricsSource};
+    const setConnection = ${setConnectionSource};
+    const setRefreshFailure = ${setRefreshFailureSource};
+    const renderLiveStatus = () => {};
+    const renderAgentMesh = () => {};
+    const log = () => {};
+    const refreshLive = ${refreshLiveSource};
+    return { refreshLive, elements: null, token: () => liveSessionToken, lastSuccess: () => lastLiveSuccessAt };
+  `);
+  const app = factory($, fetchImpl, sessionToken);
+  app.elements = elements;
+  return app;
+}
+
+test("real refreshLive path marks network failures stale and preserves last successful time", async () => {
+  const app = createRefreshHarness({ fetchImpl: async () => { throw new TypeError("Failed to fetch"); } });
+  await app.refreshLive();
+
+  assert.equal(app.elements.connectionState.textContent, "فشل التحديث — بيانات قديمة");
+  assert.equal(app.elements.connectionState.className, "status review");
+  assert.equal(app.elements.liveModeState.textContent, "فشل التحديث — آخر بيانات ناجحة قديمة");
+  assert.match(app.elements.connectionMessage.textContent, /12:34:56/);
+  assert.equal(app.elements.connectorCount.textContent, "1");
+  assert.equal(app.elements.liveSignals.textContent, "stale-value", "last known metrics remain visible but explicitly stale");
+  assert.equal(app.elements.connectLive.disabled, true);
+  assert.equal(app.elements.refreshLive.disabled, false);
+  assert.equal(app.token(), "valid-session", "transient network errors do not discard the session");
+});
+
+test("real refreshLive path clears live metrics and session after an expired-session response", async () => {
+  const app = createRefreshHarness({
+    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: "session_expired" }) }),
+  });
+  await app.refreshLive();
+
+  assert.equal(app.token(), "", "expired session token is discarded");
+  assert.equal(app.elements.connectionState.textContent, "غير متصل");
+  assert.equal(app.elements.liveModeState.textContent, "معاينة محلية — الاتصال الحي غير مفعّل");
+  assert.equal(app.elements.connectorCount.textContent, "0");
+  for (const id of ["liveSignals", "liveOpportunities", "liveRuns", "liveAlerts", "liveApprovals", "liveTasks"]) {
+    assert.equal(app.elements[id].textContent, "—", id + " must not display expired-session data");
+  }
+  assert.equal(app.elements.connectLive.disabled, false);
+  assert.equal(app.elements.refreshLive.disabled, true);
+});
+
