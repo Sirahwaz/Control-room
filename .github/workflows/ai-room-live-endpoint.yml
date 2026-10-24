@@ -35,6 +35,29 @@ jobs:
           const endpoint = process.env.ENDPOINT;
           const allowedOrigin = 'https://sirahwaz.github.io';
           const previewOrigin = 'https://froegigfmpmvtecztfbf.supabase.co';
+          const previewUrl = 'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_preview';
+          const previewPage = await fetch(previewUrl);
+          const previewHtml = await previewPage.text();
+          if (previewPage.status !== 200 || !previewPage.headers.get('content-type')?.includes('text/html')) {
+            throw new Error(`Preview GET failed: status=${previewPage.status}, content-type=${previewPage.headers.get('content-type') ?? 'none'}`);
+          }
+          if (!previewHtml.includes('<html lang="ar" dir="rtl">') ||
+              !previewHtml.includes('id="connectLive"') ||
+              !previewHtml.includes('اتصال آمن عبر Telegram')) {
+            throw new Error('Preview GET did not return the reviewed Arabic AI Room HTML');
+          }
+          console.log('PASS: preview GET returns the reviewed Arabic HTML with explicit live-connect control.');
+
+          const previewMutation = await fetch(previewUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ action: 'anything' })
+          });
+          if (previewMutation.status !== 405) {
+            throw new Error(`Preview POST was not rejected: status=${previewMutation.status}`);
+          }
+          console.log('PASS: preview endpoint rejects POST with 405.');
+
           const request = (body, origin = allowedOrigin) => fetch(endpoint, {
             method: 'POST',
             headers: {
