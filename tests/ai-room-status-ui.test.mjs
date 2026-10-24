@@ -74,3 +74,24 @@ test("successful live status writes an explicit connected event", () => {
   assert.match(renderLiveStatus[0], /setConnection\(true,message\)/);
   assert.match(renderLiveStatus[0], /اتصال حي/);
 });
+
+const setRefreshFailureSource = html.match(/function setRefreshFailure\(message\)\{[^\n]*\}/)?.[0];
+
+test("failed refresh marks retained metrics as stale instead of showing a fresh connected state", () => {
+  assert.ok(setRefreshFailureSource, "setRefreshFailure implementation exists");
+  const elements = Object.fromEntries(
+    ["connectionState", "connectionMessage", "liveModeState", "refreshLive", "connectorCount"].map(
+      (id) => [id, { textContent: "", className: "", disabled: false }],
+    ),
+  );
+  const $ = (selector) => elements[selector.slice(1)];
+  const setRefreshFailure = new Function("$", "lastLiveSuccessAt", `${setRefreshFailureSource}; return setRefreshFailure;`)($, "12:34:56");
+  setRefreshFailure("network timeout");
+  assert.equal(elements.connectionState.textContent, "فشل التحديث — بيانات قديمة");
+  assert.equal(elements.connectionState.className, "status review");
+  assert.equal(elements.liveModeState.textContent, "فشل التحديث — آخر بيانات ناجحة قديمة");
+  assert.match(elements.connectionMessage.textContent, /network timeout/);
+  assert.match(elements.connectionMessage.textContent, /12:34:56/);
+  assert.equal(elements.refreshLive.disabled, false);
+  assert.equal(elements.connectorCount.textContent, "1");
+});
