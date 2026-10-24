@@ -39,7 +39,7 @@ export function buildAgentReadiness({ metrics, unavailableMetrics = [], identiti
   const agents = [
     { key: "orchestrator", name: "Orchestrator", state: roleState, connector: "supabase_metrics", mode: "read_only", description: "تنسيق ملخص من المؤشرات الحية دون إنشاء مهام أو توزيع تنفيذ." },
     { key: "reasoner", name: "Reasoner", state: roleState, connector: "supabase_metrics", mode: "deterministic_analysis", description: "تحليل قواعد من البيانات الحية؛ لا يستدعي نموذجاً خارجياً ولا يستهلك رصيداً." },
-    { key: "verifier", name: "Verifier", state: verified ? "connected" : (nonnegative ? "partial" : "blocked"), connector: "supabase_metrics+agent_registry+agent_events", mode: "read_only_verification", description: "فحص اكتمال الأعداد وسلامة سجل الوكلاء والأحداث؛ لا يغيّر حالة أي سجل." },
+    { key: "verifier", name: "Verifier", state: verified ? "connected" : invalidCount ? "blocked" : "partial", connector: "supabase_metrics+agent_registry+agent_events", mode: "read_only_verification", description: "فحص اكتمال الأعداد وسلامة سجل الوكلاء والأحداث؛ لا يغيّر حالة أي سجل." },
   ];
   return {
     ok: true, schema_version: "midad.ai-room.agent-mesh.v1", scope: "read_only_agent_mesh",
