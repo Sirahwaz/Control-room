@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 async function sha256(s:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 const CONTROL_ROOM_URL="https://sirahwaz.github.io/Control-room/?bot=aimidad&view=cockpit&v=20260930emergencypp2";
-const AI_ROOM_PREVIEW_URL="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_preview";
+const AI_ROOM_PREVIEW_URL="https://sirahwaz.github.io/Control-room/ai-room.html";
 const BOT_OPS_URL="https://sirahwaz.github.io/Control-room/?bot=aimidad&view=bots&v=20260930emergencypp2";
 const DATABASE_URL=Deno.env.get("SUPABASE_DB_URL")||"";
 const DB=DATABASE_URL?postgres(DATABASE_URL,{max:1,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}):null;
