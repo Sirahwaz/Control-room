@@ -34,7 +34,7 @@ jobs:
           node --input-type=module <<'NODE'
           const endpoint = process.env.ENDPOINT;
           const allowedOrigin = 'https://sirahwaz.github.io';
-          const previewOrigin = 'https://froegigfmpmvtecztfbf.supabase.co';
+          const previewOrigin = 'https://sirahwaz.github.io';
           const previewUrl = 'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_preview';
           const previewPage = await fetch(previewUrl);
           const previewHtml = await previewPage.text();
