@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAgentReadiness } from "../supabase/functions/midad_ai_room_agents/agent-readiness.mjs";
+import { buildAgentReadiness } from "../supabase/functions/midad_ai_room_status/agent-readiness.mjs";
 
 const metrics = {
   signals: 100,
