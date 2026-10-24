@@ -151,7 +151,7 @@ test("real refreshLive path marks network failures stale and preserves last succ
 
 test("real refreshLive path clears live metrics and session after an expired-session response", async () => {
   const app = createRefreshHarness({
-    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: "session_expired" }) }),
+    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ message: "session expired" }) }),
   });
   await app.refreshLive();
 
