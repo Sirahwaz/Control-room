@@ -15,7 +15,7 @@ function embeddedHtml(source) {
 
 test('preview serves the exact reviewed AI Room HTML and is a static GET-only surface', () => {
   assert.equal(embeddedHtml(preview), html);
-  const runtime = preview.split('const HTML_BASE64 = "')[0];
+  const runtime = preview.replace(/const HTML_BASE64 = "[A-Za-z0-9+/=]+";/, 'const HTML_BASE64 = "<embedded>";');
   assert.match(runtime, /content-type/);
   assert.match(runtime, /req\.method\s*!==\s*"GET"/);
   assert.doesNotMatch(runtime, /createClient|SUPABASE_SERVICE_ROLE_KEY|\.from\(|\.rpc\(|\.insert\(|\.update\(|\.delete\(|fetch\s*\(/);
