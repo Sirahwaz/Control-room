@@ -34,4 +34,10 @@
 - No merge or production UI deployment until updated CI passes and manual mobile Telegram acceptance is recorded.
 
 ## Current state
-The live connector UI is staged in the feature branch only; the read-only backend function is deployed as ACTIVE version 1. CI contract tests and Agentation E2E have passed for the connector code. Direct unauthenticated HTTP rejection could not be verified from this environment because its outbound DNS lookup for the Supabase hostname failed. Mobile Telegram end-to-end authorization and denial still require a real device/session test before the UI is merged or deployed.
+The live connector UI is staged in the feature branch only; the read-only backend function is deployed as ACTIVE version 1. CI contract tests and Agentation E2E have passed for the connector code. GitHub Actions live HTTP denial tests passed against the deployed endpoint: no session → `401 missing_session`; fake session → `401 session_expired`; unapproved Origin preflight → `403`. Supabase `function_edge_logs` confirms the responses. The valid Telegram session success path and real expired/revoked session path still require a device/session test before the UI is merged or deployed.
+
+
+## Live HTTP denial test evidence
+- CI run `40042661289` passed against the deployed endpoint.
+- No session was rejected with `401 missing_session`; a fake session was rejected with `401 session_expired`; preflight from an unapproved Origin was rejected with `403`.
+- These tests use no valid token and do not mutate data. A valid Telegram session test is still required before release.
