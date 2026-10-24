@@ -41,3 +41,8 @@ The live connector UI is staged in the feature branch only; the read-only backen
 - CI run `40042661289` passed against the deployed endpoint.
 - No session was rejected with `401 missing_session`; a fake session was rejected with `401 session_expired`; preflight from an unapproved Origin was rejected with `403`.
 - These tests use no valid token and do not mutate data. A valid Telegram session test is still required before release.
+
+
+## Additional SQL dependency gate
+- A body-level SQL audit found that `midad_agent_fee_reserve_request` assigns a destination approval via an arbitrary `SELECT id FROM public.profiles LIMIT 1`. This privileged finance workflow is not connected to AI Room and must remain excluded until its owner-routing contract is repaired and tested.
+- No triggers were found directly on the 30 RLS-review tables. The related store-fulfillment trigger is on `midad_store_orders` and is still excluded from AI Room.
