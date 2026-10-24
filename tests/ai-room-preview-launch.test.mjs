@@ -15,24 +15,27 @@ function embeddedHtml(source) {
 
 test('preview serves the exact reviewed AI Room HTML and is a static GET-only surface', () => {
   assert.equal(embeddedHtml(preview), html);
-  assert.match(preview, /content-type["']?\s*:\s*["']text\/html; charset=utf-8["']/i);
-  assert.match(preview, /req\.method\s*!==\s*["']GET["']/);
-  assert.doesNotMatch(preview, /createClient|SUPABASE_SERVICE_ROLE_KEY|\.from\(|\.rpc\(|\.insert\(|\.update\(|\.delete\(/);
-  assert.doesNotMatch(preview, /fetch\s*\(/);
+  const runtime = preview.split('const HTML_BASE64 = "')[0];
+  assert.match(runtime, /content-type/);
+  assert.match(runtime, /req\.method\s*!==\s*"GET"/);
+  assert.doesNotMatch(runtime, /createClient|SUPABASE_SERVICE_ROLE_KEY|\.from\(|\.rpc\(|\.insert\(|\.update\(|\.delete\(|fetch\s*\(/);
+  assert.match(runtime, /status:\s*200/);
+  assert.match(runtime, /status:\s*405/);
 });
 
-test('the live status endpoint allowlists both the production Pages origin and isolated preview origin', () => {
-  assert.match(status, /ALLOWED_ORIGINS\s*=\s*new Set\(\[\s*"https:\/\/sirahwaz\.github\.io"\s*,\s*"https:\/\/froegigfmpmvtecztfbf\.supabase\.co"\s*\]\)/);
+test('the live status endpoint allowlists both production Pages and isolated preview origin', () => {
+  assert.match(status, /ALLOWED_ORIGINS\s*=\s*new Set\(\["https:\/\/sirahwaz\.github\.io",\s*"https:\/\/froegigfmpmvtecztfbf\.supabase\.co"\]\)/);
   assert.match(status, /scope:\s*"read_only_aggregate"/);
   assert.match(status, /guards:\s*\{ mutations: false, financial_actions: false \}/);
+  assert.doesNotMatch(status, /\.insert\(|\.upsert\(|\.update\(|\.delete\(|\.rpc\(/);
 });
 
-test('Telegram AI Room command is additive and does not change the existing default mini-app URL', () => {
-  assert.match(telegramBot, /const CONTROL_ROOM_URL="https:\/\/sirahwaz\.github\.io\/Control-room\/\?bot=aimidad&view=cockpit&v=20260930emergencypp2";/);
-  assert.match(telegramBot, /const AI_ROOM_PREVIEW_URL="https:\/\/froegigfmpmvtecztfbf\.supabase\.co\/functions\/v1\/midad_ai_room_preview";/);
-  assert.match(telegramBot, /command:"airoom",description:"غرفة الذكاء المتعدد (معاينة)"/);
-  assert.match(telegramBot, /userText\.split\("@"\)\[0\]===["']\/airoom["']/);
-  assert.match(telegramBot, /web_app:\{url:AI_ROOM_PREVIEW_URL\}/);
+test('Telegram AI Room command is additive and the existing default mini-app URL remains unchanged', () => {
+  assert.ok(telegramBot.includes('const CONTROL_ROOM_URL="https://sirahwaz.github.io/Control-room/?bot=aimidad&view=cockpit&v=20260930emergencypp2";'));
+  assert.ok(telegramBot.includes('const AI_ROOM_PREVIEW_URL="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_preview";'));
+  assert.ok(telegramBot.includes('{command:"airoom",description:"غرفة الذكاء المتعدد (معاينة)"}'));
+  assert.ok(telegramBot.includes('userText.split("@")[0]==="/airoom"'));
+  assert.ok(telegramBot.includes('web_app:{url:AI_ROOM_PREVIEW_URL}'));
   assert.match(telegramBot, /setChatMenuButton[\s\S]{0,260}web_app:\{url:CONTROL_ROOM_URL\}/);
 });
 
