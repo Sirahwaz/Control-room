@@ -1,0 +1,126 @@
+name: MIDAD AI Room live endpoint denial tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_ai_room_status/**"
+      - ".github/workflows/ai-room-live-endpoint.yml"
+  push:
+    branches:
+      - "feat/midad-ai-room-neuralpp-20261024"
+    paths:
+      - "supabase/functions/midad_ai_room_status/**"
+      - ".github/workflows/ai-room-live-endpoint.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-room-live-denial-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deny-anonymous-and-invalid-session:
+    name: Live HTTP denial + CORS allowlist
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Test deployed status endpoint without credentials
+        env:
+          ENDPOINT: https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_status
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint = process.env.ENDPOINT;
+          const allowedOrigin = 'https://sirahwaz.github.io';
+          const previewOrigin = 'https://sirahwaz.github.io';
+          const previewUrl = 'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_ai_room_preview';
+          const previewPage = await fetch(previewUrl);
+          const previewHtml = await previewPage.text();
+          if (previewPage.status !== 200 || !previewPage.headers.get('content-type')?.includes('text/html')) {
+            throw new Error(`Preview GET failed: status=${previewPage.status}, url=${previewPage.url}, headers=${JSON.stringify(Array.from(previewPage.headers.entries()))}, body=${JSON.stringify(previewHtml.slice(0,180))}`);
+          }
+          if (!previewHtml.includes('<html lang="ar" dir="rtl">') ||
+              !previewHtml.includes('id="connectLive"') ||
+              !previewHtml.includes('اتصال آمن عبر Telegram')) {
+            throw new Error('Preview GET did not return the reviewed Arabic AI Room HTML');
+          }
+          console.log('PASS: preview GET returns the reviewed Arabic HTML with explicit live-connect control.');
+
+          const previewMutation = await fetch(previewUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ action: 'anything' })
+          });
+          if (previewMutation.status !== 405) {
+            throw new Error(`Preview POST was not rejected: status=${previewMutation.status}`);
+          }
+          console.log('PASS: preview endpoint rejects POST with 405.');
+
+          const request = (body, origin = allowedOrigin) => fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              ...(origin ? { origin } : {})
+            },
+            body: JSON.stringify(body)
+          });
+
+          const noSession = await request({});
+          const noSessionBody = await noSession.json().catch(() => ({}));
+          if (noSession.status !== 401 || noSessionBody.error !== 'missing_session') {
+            throw new Error(`Missing-session denial failed: status=${noSession.status}, error=${noSessionBody.error ?? 'none'}`);
+          }
+          if (noSession.headers.get('access-control-allow-origin') !== allowedOrigin) {
+            throw new Error('Allowlisted Origin header was not returned for the approved web origin');
+          }
+          console.log('PASS: request without session denied with 401; approved Origin returned.');
+
+          const invalidSession = await request({ token: 'ci-invalid-session-not-a-real-credential' });
+          const invalidBody = await invalidSession.json().catch(() => ({}));
+          if (invalidSession.status !== 401 || invalidBody.error !== 'session_expired') {
+            throw new Error(`Invalid-session denial failed: status=${invalidSession.status}, error=${invalidBody.error ?? 'none'}`);
+          }
+          console.log('PASS: invalid fake session denied with 401.');
+          const previewNoSession = await request({}, previewOrigin);
+          const previewBody = await previewNoSession.json().catch(() => ({}));
+          if (previewNoSession.status !== 401 || previewBody.error !== 'missing_session') {
+            throw new Error(`Preview origin request without session failed: status=${previewNoSession.status}, error=${previewBody.error ?? 'none'}`);
+          }
+          if (previewNoSession.headers.get('access-control-allow-origin') !== previewOrigin) {
+            throw new Error('Preview origin was not allowlisted by the live endpoint');
+          }
+          console.log('PASS: preview origin is allowed but anonymous requests still receive 401.');
+
+          const previewPreflight = await fetch(endpoint, {
+            method: 'OPTIONS',
+            headers: {
+              origin: previewOrigin,
+              'access-control-request-method': 'POST',
+              'access-control-request-headers': 'content-type'
+            }
+          });
+          if (previewPreflight.status !== 204 || previewPreflight.headers.get('access-control-allow-origin') !== previewOrigin) {
+            throw new Error(`Preview origin preflight failed: status=${previewPreflight.status}`);
+          }
+          console.log('PASS: preview origin preflight returned 204 with matching ACAO.');
+
+
+          const badOrigin = 'https://attacker.example';
+          const preflight = await fetch(endpoint, {
+            method: 'OPTIONS',
+            headers: {
+              origin: badOrigin,
+              'access-control-request-method': 'POST',
+              'access-control-request-headers': 'content-type'
+            }
+          });
+          if (preflight.status !== 403) {
+            throw new Error(`Unapproved Origin preflight was not denied: status=${preflight.status}`);
+          }
+          if (preflight.headers.get('access-control-allow-origin')) {
+            throw new Error('Unapproved Origin unexpectedly received an Access-Control-Allow-Origin header');
+          }
+          console.log('PASS: unapproved Origin preflight denied with 403.');
+          NODE
