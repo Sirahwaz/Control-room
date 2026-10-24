@@ -369,7 +369,7 @@ async function main(req:Request){
     const checkoutNetwork=String(target.route.network||"").toLowerCase();
     const mint=checkoutNetwork==="solana"?(target.route.metadata?.verification?.token_mint||null):null;
     const paymentUri=checkoutNetwork==="solana"&&mint
-      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8))
+      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intentId.slice(0,8))
       : null;
 
     return json({
