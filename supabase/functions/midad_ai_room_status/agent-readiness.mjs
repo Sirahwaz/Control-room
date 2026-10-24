@@ -3,10 +3,11 @@ export function buildAgentReadiness({ metrics, unavailableMetrics = [], identiti
   const unavailable = [...new Set(unavailableMetrics)];
   const complete = metricNames.every((key) => typeof metrics?.[key] === "number" && Number.isFinite(metrics[key])) && unavailable.length === 0;
   const nonnegative = metricNames.every((key) => typeof metrics?.[key] === "number" && Number.isFinite(metrics[key]) && metrics[key] >= 0);
+  const invalidCount = metricNames.some((key) => metrics?.[key] !== null && metrics?.[key] !== undefined && (typeof metrics[key] !== "number" || !Number.isFinite(metrics[key]) || metrics[key] < 0));
   const registryAvailable = Array.isArray(identities);
   const eventsAvailable = Array.isArray(events);
   const verified = complete && nonnegative && registryAvailable && eventsAvailable;
-  const roleState = verified ? "connected" : complete && !nonnegative ? "blocked" : "partial";
+  const roleState = verified ? "connected" : invalidCount ? "blocked" : "partial";
   const safeIdentities = registryAvailable ? identities.filter((x) => x && typeof x.agent_key === "string") : [];
   const safeEvents = eventsAvailable ? events.filter((x) => x && typeof x.agent_key === "string") : [];
   const latestEventAt = safeEvents.reduce((latest, event) => {
@@ -45,7 +46,7 @@ export function buildAgentReadiness({ metrics, unavailableMetrics = [], identiti
     mode: "deterministic_read_only", generated_at: generatedAt, partial: !verified,
     guards: { mutations: false, financial_actions: false, model_calls: false },
     connectors: [
-      { id: "supabase_metrics", label: "Supabase live metrics", state: complete && nonnegative ? "connected" : "partial", mode: "read_only" },
+      { id: "supabase_metrics", label: "Supabase live metrics", state: invalidCount ? "blocked" : complete && nonnegative ? "connected" : "partial", mode: "read_only" },
       { id: "agent_registry", label: "MIDAD agent registry", state: registryAvailable ? "connected" : "unavailable", mode: "read_only" },
       { id: "agent_events", label: "MIDAD agent events", state: eventsAvailable ? "connected" : "unavailable", mode: "read_only" },
     ],
