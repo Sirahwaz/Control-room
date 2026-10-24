@@ -147,18 +147,9 @@ async function copyOffer(s, button){
 }
 </script>
 <script src="./revenue/checkout-attribution.js"></script>
+<script src="./revenue/checkout-order-key.js"></script>
 <script>
 const MIDAD_CHECKOUT="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout";
-function checkoutKey(product){
-  const name=document.getElementById("checkout-name")?.value.trim()||"";
-  const email=document.getElementById("checkout-email")?.value.trim().toLowerCase()||"";
-  const brief=document.getElementById("checkout-requirements")?.value.trim()||"";
-  const base=localStorage.getItem("midadRevenueOrderKey")||Math.random().toString(36).slice(2)+Date.now().toString(36);
-  localStorage.setItem("midadRevenueOrderKey",base);
-  let hash=2166136261;
-  for(const ch of product+"|"+name+"|"+email+"|"+brief){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619);}
-  return base+"-"+product+"-"+(hash>>>0).toString(36);
-}
 function addCheckoutText(parent,tag,text){
   const node=document.createElement(tag);
   node.textContent=String(text??"");
@@ -188,8 +179,11 @@ async function makeCheckout(product){
   status.textContent="";
   const buttons=Array.from(document.querySelectorAll('button[onclick^="makeCheckout"]'));
   buttons.forEach(b=>b.disabled=true);
+  let pendingOrder=null;
   try{
-    const orderKey=checkoutKey(product);
+    pendingOrder=await window.MIDADOrderKeys.getPendingKey({productId:product,customerName:name,customerEmail:email,requirements:requirements});
+    const orderKey=pendingOrder.key;
+    try{localStorage.setItem("midad_last_order_key",orderKey)}catch{}
     const r=await fetch(MIDAD_CHECKOUT,{
       method:"POST",
       headers:{"content-type":"application/json","x-order-key":orderKey},
@@ -256,6 +250,7 @@ async function makeCheckout(product){
     addCheckoutText(box,"p",d.instructions||"تحقق من المبلغ والشبكة قبل الإرسال.");
     addCheckoutText(box,"p","رقم الطلب: "+String(d.payment.id||"غير متاح"));
     addCheckoutText(box,"p","الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
+    window.MIDADOrderKeys.clearPendingKey(pendingOrder.slot);
   }catch(e){
     box.replaceChildren();
     addCheckoutText(box,"strong","تعذر إنشاء الفاتورة");
