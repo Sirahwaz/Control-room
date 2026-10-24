@@ -6,6 +6,10 @@ on:
     paths:
       - "ai-room.html"
       - "tests/ai-room-static.test.mjs"
+      - "tests/ai-room-preview-launch.test.mjs"
+      - "supabase/functions/midad_ai_room_preview/**"
+      - "supabase/functions/midad_ai_room_status/**"
+      - "supabase/functions/telegram_bot/**"
       - ".github/workflows/ai-room-tests.yml"
   push:
     branches:
@@ -36,4 +40,4 @@ jobs:
         with:
           node-version: 24
       - name: Run built-in Node.js tests
-        run: node --test tests/ai-room-static.test.mjs
+        run: node --test tests/ai-room-static.test.mjs tests/ai-room-preview-launch.test.mjs
