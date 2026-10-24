@@ -86,5 +86,8 @@ jobs:
       - name: AI Room read-only agent mesh tests
         run: node --test tests/ai-room-agents.test.mjs
 
+      - name: AI Room connection state regression tests
+        run: node --test tests/ai-room-status-ui.test.mjs
+
       - name: Revenue checkout attribution tests
         run: node --test tests/checkout-attribution.test.cjs
