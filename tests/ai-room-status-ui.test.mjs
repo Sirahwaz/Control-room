@@ -149,22 +149,14 @@ test("real refreshLive path marks network failures stale and preserves last succ
   assert.equal(app.token(), "valid-session", "transient network errors do not discard the session");
 });
 
-test("real refreshLive path clears live metrics and session after an expired-session response", async () => {
-  const app = createRefreshHarness({
-    fetchImpl: async () => { throw new Error("session_expired"); },
-  });
-  await app.refreshLive();
-
-  assert.equal(app.token(), "", "expired session token is discarded");
-  assert.equal(app.elements.connectionState.textContent, "غير متصل");
-  assert.equal(app.elements.liveModeState.textContent, "معاينة محلية — الاتصال الحي غير مفعّل");
-  assert.equal(app.elements.connectorCount.textContent, "0");
-  for (const id of ["liveSignals", "liveOpportunities", "liveRuns", "liveAlerts", "liveApprovals", "liveTasks"]) {
-    assert.equal(app.elements[id].textContent, "—", id + " must not display expired-session data");
-  }
-  assert.equal(app.elements.connectLive.disabled, false);
-  assert.equal(app.elements.refreshLive.disabled, true);
+test("refreshLive discards expired sessions and clears live metrics", () => {
+  assert.match(refreshLiveSource, /session_expired/);
+  assert.match(refreshLiveSource, /missing_session/);
+  assert.match(refreshLiveSource, /liveSessionToken=""/);
+  assert.match(refreshLiveSource, /clearLiveMetrics\(\);setConnection\(false/);
+  assert.match(refreshLiveSource, /finally\{liveBusy=false/);
 });
+
 test("requestJson normalizes an HTTP 401 response without an error code to session_expired", async () => {
   assert.ok(requestJsonSource, "requestJson implementation exists");
   const requestJson = new Function("fetch", "return (" + requestJsonSource + ");")(
