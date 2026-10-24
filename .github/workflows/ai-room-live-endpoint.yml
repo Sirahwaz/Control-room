@@ -39,7 +39,7 @@ jobs:
           const previewPage = await fetch(previewUrl);
           const previewHtml = await previewPage.text();
           if (previewPage.status !== 200 || !previewPage.headers.get('content-type')?.includes('text/html')) {
-            throw new Error(`Preview GET failed: status=${previewPage.status}, content-type=${previewPage.headers.get('content-type') ?? 'none'}`);
+            throw new Error(`Preview GET failed: status=${previewPage.status}, url=${previewPage.url}, headers=${JSON.stringify(Array.from(previewPage.headers.entries()))}, body=${JSON.stringify(previewHtml.slice(0,180))}`);
           }
           if (!previewHtml.includes('<html lang="ar" dir="rtl">') ||
               !previewHtml.includes('id="connectLive"') ||
