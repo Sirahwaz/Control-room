@@ -53,6 +53,7 @@ test("negative or non-numeric counts fail verification and are never normalized 
     generatedAt: "2026-10-24T12:00:00Z",
   });
   assert.equal(result.checks.find((x) => x.id === "counts_nonnegative").passed, false);
+  assert.equal(result.agents.find((x) => x.key === "verifier").state, "blocked");
   assert.equal(result.guards.mutations, false);
   assert.equal(result.guards.financial_actions, false);
   assert.equal(result.guards.model_calls, false);
