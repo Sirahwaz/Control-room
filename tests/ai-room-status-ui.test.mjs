@@ -101,7 +101,7 @@ const requestJsonSource = html.match(/async function requestJson\(url,body\)\{[^
 const readableAuthErrorSource = html.match(/function readableAuthError\(error\)\{[^\n]*\}/)?.[0];
 const clearLiveMetricsSource = html.match(/function clearLiveMetrics\(\)\{[^\n]*\}/)?.[0];
 
-function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
+function createRefreshHarness({ fetchImpl, requestJsonImpl, sessionToken = "valid-session" }) {
   for (const [name, source] of Object.entries({
     refreshLiveSource, requestJsonSource, readableAuthErrorSource, clearLiveMetricsSource, setConnectionSource, setRefreshFailureSource,
   })) assert.ok(source, name + " implementation exists");
@@ -114,11 +114,11 @@ function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
     assert.ok(elements[id], "unexpected selector: " + selector);
     return elements[id];
   };
-  const factory = new Function("$", "fetch", "initialToken", `
+  const factory = new Function("$", "fetch", "initialToken", "requestJsonOverride", `
     let liveBusy = false;
     let liveSessionToken = initialToken;
     let lastLiveSuccessAt = "12:34:56";
-    const requestJson = ${requestJsonSource};
+    const requestJson = requestJsonOverride || ${requestJsonSource};
     const readableAuthError = ${readableAuthErrorSource};
     const clearLiveMetrics = ${clearLiveMetricsSource};
     const setConnection = ${setConnectionSource};
@@ -129,7 +129,7 @@ function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
     const refreshLive = ${refreshLiveSource};
     return { refreshLive, elements: null, token: () => liveSessionToken, lastSuccess: () => lastLiveSuccessAt };
   `);
-  const app = factory($, fetchImpl, sessionToken);
+  const app = factory($, fetchImpl, sessionToken, requestJsonImpl);
   app.elements = elements;
   return app;
 }
@@ -151,7 +151,8 @@ test("real refreshLive path marks network failures stale and preserves last succ
 
 test("real refreshLive path clears live metrics and session after an expired-session response", async () => {
   const app = createRefreshHarness({
-    fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ message: "session expired" }) }),
+    fetchImpl: async () => { throw new Error("requestJson override should own this test"); },
+    requestJsonImpl: async () => { throw new Error("session_expired"); },
   });
   await app.refreshLive();
 
@@ -164,5 +165,12 @@ test("real refreshLive path clears live metrics and session after an expired-ses
   }
   assert.equal(app.elements.connectLive.disabled, false);
   assert.equal(app.elements.refreshLive.disabled, true);
+});
+test("requestJson normalizes an HTTP 401 response without an error code to session_expired", async () => {
+  assert.ok(requestJsonSource, "requestJson implementation exists");
+  const requestJson = new Function("fetch", "return (" + requestJsonSource + ");")(
+    async () => ({ ok: false, status: 401, json: async () => ({ message: "session expired" }) }),
+  );
+  await assert.rejects(requestJson("https://example.invalid/status", {}), { message: "session_expired" });
 });
 
