@@ -85,22 +85,22 @@ For these inspected routines, catalog ACLs showed execution granted to `postgres
 
 ## 7. Explicitly unchanged
 
-No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, data mutation, merge, or frontend production deployment was performed. The additive `midad_ai_room_status` read-only Edge Function was deployed separately as ACTIVE version 1 and is recorded in Section 8.
+No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`, `REVOKE`, schema change, or table-data mutation was performed. PR #100 is still Draft and unmerged. An isolated `ai-room.html` preview file was added to `main` as a direct Pages route; `index.html` SHA `5c2413d82408dd1e4a64693f197efd81727edcb4`, manifest, service worker, and main navigation were not changed. The targeted AI Room deployment consists of new `midad_ai_room_preview` v2 (GET-only 302 to Pages), `midad_ai_room_status` v3 (the original read-only endpoint with a Pages-only CORS allowlist), and `telegram_bot` v97 (additive `/airoom` command; existing menu URL unchanged).
 
 ## 8. Live connector decision after the source scan
 
 - Fresh catalog results confirm all 30 listed tables have RLS enabled and zero policies. RLS-enabled/no-policy tables deny ordinary client row access, but this is not a suitable design for an AI Room feature; direct client table access remains prohibited.
 - Current `anon`/`authenticated` table grants are broader than needed on `midad_agent_events`, `midad_factory_artifacts`, `midad_factory_learning`, `midad_factory_projects`, `midad_factory_runs`, `midad_human_bridge_pairings`, `midad_human_bridge_sessions`, and `midad_speedbot_fulfillments`. No grant was changed. These grants should be reviewed separately after exact downstream dependencies are reconciled.
 - Relevant `SECURITY DEFINER` routines inspected in the catalog fixed `search_path` and had `EXECUTE` for `service_role`/owner, not `anon` or `authenticated`. No RPC from this class is included in the AI Room contract.
-- `midad_ai_room_status` is deployed in Supabase as ACTIVE version 1 (`verify_jwt=false`, custom Control Room session authentication). It checks the SHA-256 hash and age of an active Control Room session, and returns six aggregate counts from standard dashboard tables. Its source contains no mutation path and does not query any of the 30 RLS-review target tables. GitHub Actions live HTTP denial tests passed against the deployed endpoint: POST without a session returned `401 missing_session`; POST with a fake session returned `401 session_expired`; an unapproved Origin preflight returned `403`. Supabase `function_edge_logs` independently recorded those 401/403 responses for the deployed function ID. This tests denial paths only; no valid user session was used. The public frontend is still not merged or deployed.
-- The feature-branch UI requests a session only after an explicit click and only when Telegram Mini App init data exists. No session token is persisted. The backend read-only function is deployed; the UI change remains in the Draft PR and is not production-visible. Do not merge/deploy the UI until an actual mobile Telegram success/denial test and direct unauthenticated HTTP rejection test are recorded.
+- `midad_ai_room_status` is ACTIVE v3 (`verify_jwt=false`, custom Control Room session authentication). It checks the SHA-256 hash and age of an active Control Room session and returns six aggregate counts from standard dashboard tables. Its source has no mutation path and does not query any of the 30 RLS-review target tables. CORS is restricted to `https://sirahwaz.github.io` only. The endpoint does not accept requests without a valid session.
+- The published static preview at `https://sirahwaz.github.io/Control-room/ai-room.html` requests a session only after explicit click and only when Telegram Mini App init data exists. No session token is persisted. This direct preview URL was added on its own; `index.html`, PWA manifest and service worker remain unchanged. PR #100 stays Draft because the valid Telegram success path still requires the user's device/session acceptance.
 
 ## 9. Live endpoint denial evidence
 
-- Workflow `MIDAD AI Room live endpoint denial tests`, run `40042661289`, completed successfully.
-- The CI job sent three non-mutating test cases to the deployed function: POST with no token (expected `401 missing_session`), POST with an intentionally invalid fake token (expected `401 session_expired`), and OPTIONS preflight from `https://attacker.example` (expected `403` and no allow-origin header).
-- Supabase `function_edge_logs` recorded HTTP outcomes for function ID `ea3035a7-0d5e-4f97-a214-a8d6728fbe6f`: POST 401 and OPTIONS 403. The entries align with the CI timestamps.
-- These are negative authorization tests only; they do not prove a valid Telegram session succeeds and do not authorize UI release.
+- Latest workflow `MIDAD AI Room live endpoint denial tests`, run `40052607679`, completed successfully after preview routing was corrected.
+- The workflow verified: preview GET → fixed 302 redirect and final `text/html` body containing the Arabic RTL page and connect button; preview POST → `405`; POST to the status endpoint with no token → `401 missing_session`; POST with a fake token → `401 session_expired`; allowed Pages Origin preflight → `204`; unapproved Origin preflight → `403` and no allow-origin header.
+- Supabase `function_edge_logs` independently recorded the HTTP results, including preview GET `302`, preview POST `405`, status POST `401`, allowed preflight `204`, and unapproved preflight `403` for status function ID `ea3035a7-0d5e-4f97-a214-a8d6728fbe6f`.
+- These tests prove the denial paths and preview route, not a valid Telegram login. The real authorized session success test is still open.
 
 ## 10. SQL body and trigger review — follow-up before broader integrations
 
@@ -111,3 +111,11 @@ No `CREATE POLICY`, `ALTER TABLE ... ENABLE/DISABLE ROW LEVEL SECURITY`, `GRANT`
 - `midad_complete_store_fulfillment` verifies output hash, paid order/payment reconciliation and one unique matching wallet receipt; it is idempotent for an identical already-delivered output hash. `midad_enqueue_store_fulfillment_after_verified_payment` is attached to `midad_store_orders` (outside the 30-table list) and independently verifies paid/reconciled intent + matching receipt before enqueueing; duplicate order enqueue is idempotent.
 - `midad_ops.dispatch_revenue_operation` restricts target/action combinations and retrieves its autonomy key server-side from Vault. Catalog ACLs do not grant `anon`, `authenticated`, or `service_role` direct EXECUTE; `midad_ops.revenue_scheduler_status` similarly has no direct EXECUTE grants to these roles. Do not infer they are callable from the frontend.
 - Trigger inventory: zero non-internal triggers are attached directly to the 30 target tables. The one indirect trigger found from the reviewed functions is `public.trg_midad_enqueue_store_fulfillment` after updates to `public.midad_store_orders`.
+
+
+## 11. Isolated preview deployment verification
+
+- GitHub Pages now has the standalone `ai-room.html` file at `/Control-room/ai-room.html`, with exactly the same HTML bytes as the reviewed feature branch. This is an isolated preview path; the main `index.html`, manifest and service worker were verified unchanged.
+- Supabase default host does not serve this HTML directly as HTML; its function response was verified to become `text/plain`. The preview function v2 has therefore been reduced to a fixed GET-only 302 redirect with no database client, secret access, or write path.
+- Telegram bot v97 adds the `/airoom` command and a web-app button to that Pages URL. Its existing main-menu button still points to the established Control Room URL. Source v96 rollback copy is stored in the branch recovery folder.
+- All five CI gates on branch head `ed316c3e4814fe1df7a9c0a11cc43392bff1e9bf` passed. This is not the final release gate: test `/airoom` with an actual Telegram user account and record whether `midad_control_room` issues an authorized session and `midad_ai_room_status` returns the six aggregate counts.
