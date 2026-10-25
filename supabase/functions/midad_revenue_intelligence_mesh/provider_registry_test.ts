@@ -3,6 +3,7 @@ import {
   isSafeMappedJsonSource,
   normalizeMappedJsonFeed,
   resolveRevenueParser,
+  runBounded,
 } from "./provider_registry.ts";
 
 Deno.test("provider registry supports existing adapters and extensible mapped-json sources", () => {
@@ -163,4 +164,28 @@ Deno.test("unknown mapped payout evidence remains discovery-only even with provi
   assertEquals(rows.length, 1);
   assertEquals(rows[0].paymentProof, false);
   assertEquals(rows[0].payoutProofStatus, "unverified");
+});
+
+Deno.test("provider feed processing is parallel but bounded and ordered", async () => {
+  let active = 0;
+  let peak = 0;
+  const results = await runBounded([1, 2, 3, 4, 5, 6], 3, async (value) => {
+    active += 1;
+    peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    active -= 1;
+    return value * 10;
+  });
+  assertEquals(peak, 3);
+  assertEquals(results, [10, 20, 30, 40, 50, 60]);
+});
+
+Deno.test("provider processing rejects invalid concurrency limits", async () => {
+  let failed = false;
+  try {
+    await runBounded([1], 0, async (value) => value);
+  } catch (error) {
+    failed = error instanceof RangeError;
+  }
+  assertEquals(failed, true);
 });
