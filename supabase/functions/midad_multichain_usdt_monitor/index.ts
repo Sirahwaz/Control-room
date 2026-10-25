@@ -82,7 +82,7 @@ async function scanRoute(route:any){
 }
 async function run(){
  const d=needDb();
- const routes=(await d.unsafe("select r.id,r.label,r.asset,r.network,r.metadata,r.wallet_id,r.active,r.route_kind,jsonb_build_object('id',w.id,'address',w.address,'chain',w.chain,'watch_only',w.watch_only) as wallet from public.midad_revenue_routes r join public.midad_wallets w on w.id=r.wallet_id where r.active=true and r.route_kind='receive' and upper(r.asset)='USDT' and lower(r.network) in ('ethereum','avalanche') and w.active=true and w.metadata->>'provider'='trust_wallet' order by r.created_at asc")).filter(isReceiptMonitorRouteEligible);
+ const routes=(await d.unsafe("select r.id,r.label,r.asset,r.network,r.metadata,r.wallet_id,r.active,r.route_kind,jsonb_build_object('id',w.id,'address',w.address,'chain',w.chain,'watch_only',w.watch_only) as wallet from public.midad_revenue_routes r join public.midad_wallets w on w.id=r.wallet_id where r.active=true and r.route_kind='receive' and upper(r.asset)='USDT' and lower(r.network) in ('ethereum','avalanche') and w.active=true and w.metadata->>'provider'='trust_wallet' order by r.created_at asc")).filter((route:any)=>isReceiptMonitorRouteEligible(route));
  const results:any[]=[];
  for(const route of routes){
   try{results.push({ok:true,status:"VERIFIED",...(await scanRoute(route))});}
