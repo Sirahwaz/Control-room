@@ -100,9 +100,11 @@ function hostIsUnsafe(hostname: string): boolean {
   if (!host || host === "localhost" || host.endsWith(".localhost") ||
       host.endsWith(".local") || host.endsWith(".internal") ||
       host.endsWith(".test") || host.endsWith(".invalid") ||
-      host.endsWith(".example") === false && host.length < 4) return true;
+      host.endsWith(".example") || !host.includes(".")) return true;
   if (host.startsWith("[") || host.includes(":")) return true;
   if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return true;
+  if (!/^[a-z0-9.-]+$/.test(host) || host.includes("..") ||
+      host.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) return true;
   return false;
 }
 
@@ -325,9 +327,12 @@ export function normalizeMappedJsonFeed(
     if (!id || !title) continue;
 
     const mappedUrl = mappedValue(item, fieldMap, "url");
-    const listingUrl = mappedUrl === undefined || mappedUrl === null || mappedUrl === ""
+    const rawListingUrl = mappedUrl === undefined || mappedUrl === null || mappedUrl === ""
       ? candidateHttps(source.official_program_url) || apiUrl
       : candidateHttps(mappedUrl);
+    const listingUrl = isSafeOfficialProviderUrl(rawListingUrl, source.official_domain)
+      ? candidateHttps(rawListingUrl)
+      : null;
     if (!listingUrl) continue;
 
     const status = textValue(mappedValue(item, fieldMap, "status"), 100) || "unknown";
