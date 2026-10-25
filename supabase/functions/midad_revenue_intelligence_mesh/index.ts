@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import { qualifyRevenueCandidate, REVENUE_MESH_VERSION, resolvePayoutProofStatus, shouldReconcileExpiredOpportunity, toPersistedRevenueGateDecision } from "./revenue_qualification_gates.ts";
 import { basedAgentsQualificationEvidence, bountyBookQualificationEvidence, explicitSharedRewardEvidence, extractQualificationEvidence, superteamQualificationEvidence, taskmarketOfficialFeeEvidence } from "./revenue_adapter_qualification.ts";
-import { isSafeMappedJsonSource, normalizeMappedJsonFeed, resolveRevenueParser, runBounded } from "./provider_registry.ts";
+import { evaluateAffiliateDiscovery, isSafeMappedJsonSource, normalizeMappedJsonFeed, resolveRevenueParser, runBounded } from "./provider_registry.ts";
 const DB_URL=Deno.env.get("SUPABASE_DB_URL")||"";
 const sql=DB_URL?postgres(DB_URL,{max:2,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}):null;
 const AGENT="midad_revenue_intelligence_mesh_v1";
@@ -48,15 +48,8 @@ function classify(c:any){
  else if(exp&&exp.getTime()<=Date.now()){decision="STALE";status="STALE";next="none";reasons.push("deadline_expired");}
  else if(cost>0||bond>0){decision="BLOCKED_UPFRONT_COST";status="BLOCKED";next="no_spend_policy_block";reasons.push(cost>0?"upfront_cost_required":"claim_bond_required");if(bond>0)reasons.push("bond_can_be_slashed_or_lost");}
  else if(String(c.revenueLane||c.evidenceMeta?.revenue_lane||"").toLowerCase()==="affiliate"){
-  const a=c.evidenceMeta?.affiliate||{};
-  const payoutAsset=String(a.payout_asset||asset||"").toUpperCase();
-  const payoutNetwork=String(a.payout_network||c.network||"").trim();
-  const hasCommission=Boolean(String(a.commission_model||"").trim())||(Number.isFinite(Number(a.commission_rate_percent))&&Number(a.commission_rate_percent)>0);
-  if(a.official_terms_verified!==true){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_affiliate_official_terms";reasons.push("affiliate_official_terms_not_verified");}
-  else if(a.crypto_payout_confirmed!==true||!["USDC","USDT","BTC","ETH","SOL","DAI","EURC","LTC","XLM","XRP","AVAX","POL","POLYX","XMR"].includes(payoutAsset)||!payoutNetwork||payoutNetwork.toLowerCase()==="unknown"){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_affiliate_crypto_payout";reasons.push("affiliate_crypto_payout_not_verified");}
-  else if(a.upfront_cost_verified!==true||a.claim_bond_verified!==true){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_affiliate_zero_cost_terms";reasons.push("affiliate_upfront_cost_or_bond_not_verified");}
-  else if(!hasCommission||!String(a.payout_schedule||"").trim()){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_affiliate_commission_terms";reasons.push("affiliate_commission_or_payout_schedule_not_verified");}
-  else{decision="DISCOVERY_ONLY";status="DISCOVERED";payoutState="official_program_terms";next="affiliate_preapplication_review";reasons.push("official_affiliate_terms_verified_for_preapplication_only","acceptance_tracking_payable_commission_and_receipt_not_proven");}
+  const affiliateGate=evaluateAffiliateDiscovery(c);
+  decision=affiliateGate.decision;status=affiliateGate.status;payoutState=affiliateGate.payoutState;next=affiliateGate.next;reasons.push(...affiliateGate.reasons);
  }
  else if(!["USDC","USDT","BTC","ETH","SOL","DAI","EURC"].includes(asset)){decision="BLOCKED_PAYOUT";status="BLOCKED";payoutState="blocked";next="verify_listing_specific_crypto_payout";reasons.push("listing_specific_crypto_asset_not_proven");}
  else if(!c.paymentProof){decision="BLOCKED_PAYOUT";status="BLOCKED";next="verify_task_funding_and_settlement";reasons.push("task_specific_funding_or_payment_path_not_proven");}
