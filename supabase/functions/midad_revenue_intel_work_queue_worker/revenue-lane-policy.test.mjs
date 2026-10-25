@@ -123,3 +123,25 @@ test("missing or fiat payout asset cannot pass the crypto-only affiliate gate", 
   assert.equal(result.ready, false);
   assert.ok(result.blockers.includes("affiliate_crypto_asset_unverified"));
 });
+
+test("affiliate qualification is provider-agnostic and accepts a different official trust boundary", () => {
+  const task = verifiedAffiliate({
+    source_slug: "vendorx_partner_program",
+    url: "https://vendorx.dev/partners",
+    evidence: {
+      ...verifiedAffiliate().evidence,
+      official_program_url: "https://vendorx.dev/partners",
+      official_terms_url: "https://partners.vendorx.dev/affiliate-terms",
+      payout_asset: "USDC",
+      payout_network: "base",
+      verified_at: "2026-10-25T12:00:00.000Z",
+    },
+    compensation_asset: "USDC",
+    payout_network: "base",
+  });
+  const result = evaluateAffiliateProgramEvidence(task, new Date("2026-10-25T13:00:00.000Z"));
+  assert.equal(classifyRevenueLane(task), "affiliate");
+  assert.equal(result.ready, true);
+  assert.equal(result.payout_asset, "USDC");
+  assert.equal(result.payout_network, "base");
+});
