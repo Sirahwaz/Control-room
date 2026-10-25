@@ -29,5 +29,7 @@ jobs:
         run: git diff --check
       - name: Type-check the Edge Function source
         run: deno check supabase/functions/midad_revenue_intel_work_queue_worker/index.ts
+      - name: Test extensible provider registry contract
+        run: deno test supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts
       - name: Revenue mesh unit and integration contract tests
         run: node --test supabase/functions/midad_revenue_intel_work_queue_worker/*.test.mjs
