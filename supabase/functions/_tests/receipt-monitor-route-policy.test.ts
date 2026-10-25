@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { isReceiptMonitorRouteEligible as isSolanaMonitorRouteEligible } from "../midad_wallet_receipt_monitor/route-policy.ts";
 import { isReceiptMonitorRouteEligible as isEvmMonitorRouteEligible } from "../midad_multichain_usdt_monitor/route-policy.ts";
+import { ETHEREUM_RPC_PUBLIC_FALLBACK } from "../midad_multichain_usdt_monitor/rpc-config.ts";
 
 Deno.test("monitors active receive routes when automatic routing is disabled", () => {
   const manualRoute = {
@@ -41,4 +42,11 @@ Deno.test("rejects inactive and non-receive routes", () => {
   assertEquals(isEvmMonitorRouteEligible(inactive), false);
   assertEquals(isSolanaMonitorRouteEligible(reinvest), false);
   assertEquals(isEvmMonitorRouteEligible(reinvest), false);
+});
+
+Deno.test("Ethereum fallback uses the documented free public RPC endpoint", () => {
+  assertEquals(
+    ETHEREUM_RPC_PUBLIC_FALLBACK,
+    "https://rpcfree.com/ethereum-rpc",
+  );
 });
