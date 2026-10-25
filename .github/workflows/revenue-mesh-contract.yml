@@ -1,0 +1,27 @@
+name: MIDAD Revenue Mesh Contract
+
+on:
+  push:
+    branches:
+      - main
+      - feat/revenue-mesh-bounded-parallel-20261025
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  revenue-mesh-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Whitespace and patch hygiene
+        run: git diff --check
+      - name: Revenue mesh unit and integration contract tests
+        run: node --test supabase/functions/midad_revenue_intel_work_queue_worker/*.test.mjs
