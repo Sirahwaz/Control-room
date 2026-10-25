@@ -33,7 +33,7 @@ jobs:
         run: deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts
       - name: Run revenue discovery and qualification tests
         run: |
-          deno test \
+          deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh/ \
             supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts \
             supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts \
             supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts \
