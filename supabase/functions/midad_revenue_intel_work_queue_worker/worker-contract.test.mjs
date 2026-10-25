@@ -27,3 +27,8 @@ test("worker keeps external execution disabled in its worker result contract", (
   assert.match(source, /external_action_allowed:\s*false/);
   assert.match(source, /external_actions:\s*\[\s*["']none["']\s*\]/);
 });
+
+test("affiliate official-source inspection is generic and constrained to the official trust boundary", () => {
+  assert.match(source, /fetchAffiliateOfficialTerms/);
+  assert.match(source, /isSafeOfficialHttpsUrl/);
+});
