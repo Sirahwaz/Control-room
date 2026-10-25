@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
+  evaluateAffiliateDiscovery,
   isSafeMappedJsonSource,
   normalizeMappedJsonFeed,
   resolveRevenueParser,
@@ -188,4 +189,125 @@ Deno.test("provider processing rejects invalid concurrency limits", async () => 
     failed = error instanceof RangeError;
   }
   assertEquals(failed, true);
+});
+
+Deno.test("affiliate terms qualify only for pre-application discovery, never for bounty escrow or realized revenue", () => {
+  const affiliate = {
+    revenueLane: "affiliate",
+    asset: "BTC",
+    network: "Bitcoin",
+    cost: 0,
+    bond: 0,
+    paymentProof: false,
+    evidenceMeta: {
+      revenue_lane: "affiliate",
+      official_domain: "trezor.io",
+      affiliate: {
+        official_program_url: "https://trezor.io/affiliate",
+        official_terms_url: "https://trezor.io/affiliate",
+        official_terms_verified: true,
+        crypto_payout_confirmed: true,
+        payout_asset: "BTC",
+        payout_network: "bitcoin",
+        commission_model: "commission per qualified sale",
+        commission_rate_percent: 15,
+        payout_schedule: "monthly",
+        upfront_cost_verified: true,
+        claim_bond_verified: true,
+      },
+    },
+  };
+  const result = evaluateAffiliateDiscovery(affiliate);
+  assertEquals(result.decision, "DISCOVERY_ONLY");
+  assertEquals(result.status, "DISCOVERED");
+  assertEquals(result.payoutState, "official_program_terms");
+  assertEquals(result.next, "affiliate_preapplication_review");
+  assertEquals(result.reasons.includes("acceptance_tracking_payable_commission_and_receipt_not_proven"), true);
+});
+
+Deno.test("affiliate lane blocks missing terms or payout evidence without requiring task escrow transaction proof", () => {
+  const candidate = {
+    revenueLane: "affiliate",
+    asset: "USDC",
+    network: "Base",
+    paymentProof: false,
+    cost: 0,
+    bond: 0,
+    evidenceMeta: {
+      revenue_lane: "affiliate",
+      official_domain: "vendor.example",
+      affiliate: {
+        official_program_url: "https://vendor.example/partners",
+        official_terms_url: "https://vendor.example/terms",
+        official_terms_verified: false,
+        crypto_payout_confirmed: false,
+        payout_asset: "USDC",
+        payout_network: "base",
+        upfront_cost_verified: true,
+        claim_bond_verified: true,
+        commission_model: "share",
+        payout_schedule: "monthly",
+      },
+    },
+  };
+  const result = evaluateAffiliateDiscovery(candidate);
+  assertEquals(result.decision, "BLOCKED_PAYOUT");
+  assertEquals(result.reasons.includes("affiliate_official_terms_not_verified"), true);
+});
+
+Deno.test("affiliate lane blocks positive upfront cost and claim bonds before review", () => {
+  const candidate = {
+    revenueLane: "affiliate",
+    asset: "BTC",
+    network: "bitcoin",
+    cost: 5,
+    bond: 0,
+    evidenceMeta: {
+      revenue_lane: "affiliate",
+      official_domain: "trezor.io",
+      affiliate: {
+        official_program_url: "https://trezor.io/affiliate",
+        official_terms_url: "https://trezor.io/affiliate",
+        official_terms_verified: true,
+        crypto_payout_confirmed: true,
+        payout_asset: "BTC",
+        payout_network: "bitcoin",
+        commission_model: "sale",
+        payout_schedule: "monthly",
+        upfront_cost_verified: true,
+        claim_bond_verified: true,
+      },
+    },
+  };
+  const result = evaluateAffiliateDiscovery(candidate);
+  assertEquals(result.decision, "BLOCKED_UPFRONT_COST");
+  assertEquals(result.next, "no_spend_policy_block");
+});
+
+Deno.test("affiliate discovery rejects official terms URLs outside the recorded provider domain", () => {
+  const candidate = {
+    revenueLane: "affiliate",
+    asset: "BTC",
+    network: "bitcoin",
+    cost: 0,
+    bond: 0,
+    evidenceMeta: {
+      official_domain: "trezor.io",
+      affiliate: {
+        official_program_url: "https://trezor.io/affiliate",
+        official_terms_url: "https://trezor.io.attacker.example/terms",
+        official_terms_verified: true,
+        crypto_payout_confirmed: true,
+        payout_asset: "BTC",
+        payout_network: "bitcoin",
+        commission_model: "sale",
+        payout_schedule: "monthly",
+        upfront_cost_verified: true,
+        claim_bond_verified: true,
+      },
+    },
+  };
+  const result = evaluateAffiliateDiscovery(candidate);
+  assertEquals(result.decision, "BLOCKED_PAYOUT");
+  assertEquals(result.reasons.includes("affiliate_official_terms_not_verified"), true);
 });
