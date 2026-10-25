@@ -311,3 +311,51 @@ Deno.test("affiliate discovery rejects official terms URLs outside the recorded 
   assertEquals(result.decision, "BLOCKED_PAYOUT");
   assertEquals(result.reasons.includes("affiliate_official_terms_not_verified"), true);
 });
+
+Deno.test("a new affiliate source can be added through registry metadata without a provider-specific parser", () => {
+  const source = {
+    slug: "trezor_affiliate",
+    api_url: "https://api.trezor.io/public-affiliate-feed",
+    official_domain: "trezor.io",
+    parser_key: "mapped_json",
+    revenue_lane: "affiliate",
+    official_program_url: "https://trezor.io/affiliate",
+    official_terms_url: "https://trezor.io/affiliate",
+    official_terms_verified: "true",
+    crypto_payout_confirmed: "true",
+    payout_asset: "BTC",
+    payout_network: "bitcoin",
+    commission_model: "commission per qualified sale",
+    commission_rate_percent: "15",
+    payout_schedule: "monthly",
+    upfront_cost_verified: "true",
+    claim_bond_verified: "true",
+    verified_at: "2026-10-25T12:00:00.000Z",
+    max_items: 10,
+    field_map: {
+      items: "programs",
+      id: "id",
+      title: "name",
+      url: "url",
+      description: "description",
+    },
+  };
+  const rows = normalizeMappedJsonFeed({
+    programs: [{
+      id: "trezor-program",
+      name: "Hardware wallet affiliate program",
+      url: "https://trezor.io/affiliate",
+      description: "Official affiliate program listing",
+    }],
+  }, source, new Date("2026-10-25T13:00:00.000Z"));
+  assertEquals(rows.length, 1);
+  assertEquals(rows[0].revenueLane, "affiliate");
+  assertEquals(rows[0].asset, "BTC");
+  assertEquals(rows[0].network, "bitcoin");
+  assertEquals(rows[0].paymentProof, false);
+  assertEquals(rows[0].evidenceMeta.affiliate.official_terms_verified, true);
+  assertEquals(rows[0].evidenceMeta.affiliate.crypto_payout_confirmed, true);
+  const qualification = evaluateAffiliateDiscovery(rows[0]);
+  assertEquals(qualification.decision, "DISCOVERY_ONLY");
+  assertEquals(qualification.status, "DISCOVERED");
+});
