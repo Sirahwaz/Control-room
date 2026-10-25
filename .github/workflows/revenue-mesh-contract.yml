@@ -27,9 +27,16 @@ jobs:
           deno-version: v2.x
       - name: Whitespace and patch hygiene
         run: git diff --check
-      - name: Type-check the Edge Function source
+      - name: Type-check the queue worker
         run: deno check supabase/functions/midad_revenue_intel_work_queue_worker/index.ts
-      - name: Test extensible provider registry contract
-        run: deno test supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts
+      - name: Type-check revenue intelligence mesh
+        run: deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts
+      - name: Run revenue discovery and qualification tests
+        run: |
+          deno test \
+            supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts \
+            supabase/functions/midad_revenue_intelligence_mesh/revenue_qualification_gates_test.ts \
+            supabase/functions/midad_revenue_intelligence_mesh/revenue_adapter_qualification_test.ts \
+            supabase/functions/midad_revenue_intelligence_mesh/provider_adapter_integration_test.ts
       - name: Revenue mesh unit and integration contract tests
         run: node --test supabase/functions/midad_revenue_intel_work_queue_worker/*.test.mjs
