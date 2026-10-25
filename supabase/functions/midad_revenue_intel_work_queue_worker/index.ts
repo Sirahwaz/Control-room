@@ -105,13 +105,13 @@ async function markStale(opportunityId: string) {
 async function markPayoutContradicted(opportunityId: string, evidence: unknown) {
   await db().unsafe(
     "update public.midad_revenue_intel_opportunities set payout_proof_status='blocked',escrow_funded=false,payout_confidence=least(payout_confidence,0.15),gate_decision='BLOCKED_PAYOUT',status='BLOCKED',gate_reasons=case when 'independent_payout_check_failed'=any(gate_reasons) then gate_reasons else array_append(gate_reasons,'independent_payout_check_failed') end,next_action='verify_listing_specific_crypto_payout',last_verified_at=now(),payout_proof_checked_at=now(),evidence=evidence || $2::jsonb,updated_at=now() where id=$1 and status not in ('PAID','CLAIMED','IN_PROGRESS','DELIVERED','AWAITING_ACCEPTANCE')",
-    [opportunityId, db().json({ independent_payout_check: evidence })]
+    [opportunityId, db().json({ independent_payout_check: JSON.parse(JSON.stringify(evidence ?? null)) })]
   );
 }
 async function markPayoutVerified(opportunityId: string, txHash: string, evidence: unknown) {
   await db().unsafe(
     "update public.midad_revenue_intel_opportunities set payout_proof_status='verified_task_escrow',escrow_funded=true,payout_confidence=1,payment_tx_hash=$2,payout_proof_url=$3,payout_proof_checked_at=now(),last_verified_at=now(),evidence=evidence || $4::jsonb,updated_at=now() where id=$1 and status not in ('PAID','CLAIMED','IN_PROGRESS','DELIVERED','AWAITING_ACCEPTANCE')",
-    [opportunityId, txHash, "https://basescan.org/tx/" + txHash, db().json({ independent_payout_check: evidence })]
+    [opportunityId, txHash, "https://basescan.org/tx/" + txHash, db().json({ independent_payout_check: JSON.parse(JSON.stringify(evidence ?? null)) })]
   );
 }
 async function verifyTaskmarketBase(t: any) {
@@ -206,7 +206,7 @@ async function verifyTaskmarketBase(t: any) {
 }
 function capabilityMatch(t: any) {
   const textValue = (String(t.title || "") + " " + String(t.description || "") + " " + (Array.isArray(t.required_capabilities) ? t.required_capabilities.join(" ") : "")).toLowerCase();
-  const profile = [
+  const profile: Array<[string, string[]]> = [
     ["python", ["python", "fastapi", "backend", "script"]],
     ["typescript/javascript", ["typescript", "javascript", "node", "frontend", "web"]],
     ["api and integrations", ["api", "webhook", "integration", "json", "rest"]],
@@ -267,7 +267,7 @@ function executionPlan(t: any) {
     external_action_allowed: false
   };
 }
-async function currentSourceCheck(t: any) {
+async function currentSourceCheck(t: any): Promise<{ ok: boolean; status: number; url?: string | null; hash?: string | null; error?: string | null; redirect_not_followed?: boolean }> {
   const url = String(t.url || t.payout_proof_url || "");
   if (!url) return { ok: false, status: 0, error: "no_official_source_url" };
   return await fetchPublic(String(t.source_slug || ""), url);
@@ -408,7 +408,7 @@ async function processTask(t: any) {
     }
   };
 }
-async function claimOne(skipIds: string[]) {
+async function claimOne(skipIds: string[]): Promise<any> {
   const d = db();
   return await d.begin(async (tx) => {
     const rows = await tx.unsafe(
