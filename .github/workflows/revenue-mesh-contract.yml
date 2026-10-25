@@ -21,7 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       - name: Whitespace and patch hygiene
         run: git diff --check
+      - name: Type-check the Edge Function source
+        run: deno check supabase/functions/midad_revenue_intel_work_queue_worker/index.ts
       - name: Revenue mesh unit and integration contract tests
         run: node --test supabase/functions/midad_revenue_intel_work_queue_worker/*.test.mjs
