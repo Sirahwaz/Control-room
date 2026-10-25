@@ -21,6 +21,8 @@ function verifiedAffiliate(overrides = {}) {
       official_terms_url: "https://trezor.io/affiliate",
       official_terms_verified: true,
       crypto_payout_confirmed: true,
+      upfront_cost_verified: true,
+      claim_bond_verified: true,
       commission_model: "commission per qualified sale",
       commission_rate_percent: 15,
       payout_asset: "BTC",
@@ -148,4 +150,18 @@ test("affiliate qualification is provider-agnostic and accepts a different offic
   assert.equal(result.ready, true);
   assert.equal(result.payout_asset, "USDC");
   assert.equal(result.payout_network, "base");
+});
+
+test("zero amounts are insufficient unless official terms explicitly verify no cost or bond", () => {
+  const task = verifiedAffiliate({
+    evidence: {
+      ...verifiedAffiliate().evidence,
+      upfront_cost_verified: false,
+      claim_bond_verified: false,
+    },
+  });
+  const result = evaluateAffiliateProgramEvidence(task, new Date("2026-10-25T13:00:00.000Z"));
+  assert.equal(result.ready, false);
+  assert.ok(result.blockers.includes("affiliate_upfront_cost_unverified"));
+  assert.ok(result.blockers.includes("affiliate_claim_bond_unverified"));
 });
