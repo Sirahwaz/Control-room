@@ -277,9 +277,19 @@ export function normalizeMappedJsonFeed(
     const status = textValue(mappedValue(item, fieldMap, "status"), 100) || "unknown";
     if (TERMINAL_STATES.has(status.toLowerCase())) continue;
 
+    const revenueLane = String(source.revenue_lane ?? "").trim().toLowerCase() === "affiliate"
+      ? "affiliate"
+      : "crypto_task";
     const reportedAsset = textValue(mappedValue(item, fieldMap, "asset"), 24).toUpperCase();
-    const asset = CRYPTO_ASSETS.has(reportedAsset) ? reportedAsset : null;
-    const network = textValue(mappedValue(item, fieldMap, "network"), 48) || "unknown";
+    const registryAsset = revenueLane === "affiliate"
+      ? textValue(source.payout_asset, 24).toUpperCase()
+      : "";
+    const payoutAssetValue = registryAsset || reportedAsset;
+    const asset = CRYPTO_ASSETS.has(payoutAssetValue) ? payoutAssetValue : null;
+    const registryNetwork = revenueLane === "affiliate"
+      ? textValue(source.payout_network, 48)
+      : "";
+    const network = registryNetwork || textValue(mappedValue(item, fieldMap, "network"), 48) || "unknown";
     const amount = numberValue(mappedValue(item, fieldMap, "amount"));
     const cost = numberValue(mappedValue(item, fieldMap, "upfront_cost_usd"));
     const bond = numberValue(mappedValue(item, fieldMap, "claim_bond_usd"));
@@ -297,10 +307,6 @@ export function normalizeMappedJsonFeed(
     const description = textValue(mappedValue(item, fieldMap, "description"), 6000);
     const test = /\b(?:do not claim|selfaudit|compatibility probe|test task|synthetic test)\b/i
       .test(title + " " + description);
-    const revenueLane = String(source.revenue_lane ?? "").trim().toLowerCase() === "affiliate"
-      ? "affiliate"
-      : "crypto_task";
-
     const officialProgramUrl = candidateHttps(source.official_program_url);
     const officialTermsUrl = candidateHttps(source.official_terms_url);
     const officialTermsVerified = String(source.official_terms_verified).toLowerCase() === "true" &&
