@@ -359,3 +359,17 @@ Deno.test("a new affiliate source can be added through registry metadata without
   assertEquals(qualification.decision, "DISCOVERY_ONLY");
   assertEquals(qualification.status, "DISCOVERED");
 });
+
+Deno.test("mesh discovery uses a data-driven registry without a fixed source-count cap", async () => {
+  const engine = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  assert(engine.includes("resolveRevenueParser(f.parser_key)!==null"));
+  assert(engine.includes('parser==="mapped_json"?normalizeMappedJsonFeed'));
+  assert(engine.includes("await runBounded(feeds,3,async (f:any)=>{try{"));
+  assert(engine.includes('fetchJson(f.url,authHeaders,parser==="mapped_json")'));
+  const discoverStart = engine.indexOf("async function discover()");
+  const healthStart = engine.indexOf("async function health()", discoverStart);
+  assert(discoverStart >= 0 && healthStart > discoverStart);
+  const discoverSource = engine.slice(discoverStart, healthStart);
+  assert(!discoverSource.includes("LIMIT 20"));
+  assert(discoverSource.includes("sources_skipped:unsupportedFeeds.length"));
+});
