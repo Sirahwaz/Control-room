@@ -279,7 +279,7 @@ async function scanRoute(route:any){
 }
 async function run(){
  const d=needDb();
- const routes=(await d.unsafe("select r.id,r.label,r.asset,r.network,r.metadata,r.wallet_id,r.active,r.route_kind,jsonb_build_object('id',w.id,'address',w.address,'chain',w.chain,'watch_only',w.watch_only) as wallet from public.midad_revenue_routes r left join public.midad_wallets w on w.id=r.wallet_id where r.active=true and r.route_kind='receive' and upper(r.asset) in ('USDC','USDT','EURC') and lower(r.network)='solana' and w.active=true order by r.created_at asc")).filter(isReceiptMonitorRouteEligible);
+ const routes=(await d.unsafe("select r.id,r.label,r.asset,r.network,r.metadata,r.wallet_id,r.active,r.route_kind,jsonb_build_object('id',w.id,'address',w.address,'chain',w.chain,'watch_only',w.watch_only) as wallet from public.midad_revenue_routes r left join public.midad_wallets w on w.id=r.wallet_id where r.active=true and r.route_kind='receive' and upper(r.asset) in ('USDC','USDT','EURC') and lower(r.network)='solana' and w.active=true order by r.created_at asc")).filter((route:any)=>isReceiptMonitorRouteEligible(route));
  const results:any[]=[];
  for(const route of routes){
    try{results.push(await scanRoute(route));}
