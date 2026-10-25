@@ -1,0 +1,30 @@
+name: Revenue checkout guard
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_public_checkout/**"
+      - ".github/workflows/revenue-checkout-guard.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_public_checkout/**"
+      - ".github/workflows/revenue-checkout-guard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  checkout-route-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Format policy and tests
+        run: deno fmt --check supabase/functions/midad_public_checkout/route-policy.ts supabase/functions/midad_public_checkout/route-policy.test.ts
+      - name: Focused route-policy tests
+        run: deno test supabase/functions/midad_public_checkout/route-policy.test.ts
+      - name: Type-check public checkout
+        run: deno check supabase/functions/midad_public_checkout/index.ts
