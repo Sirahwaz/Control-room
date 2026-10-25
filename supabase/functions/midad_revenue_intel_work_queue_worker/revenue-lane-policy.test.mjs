@@ -91,6 +91,10 @@ test("stale official terms are blocked instead of silently treated as eligible",
 test("affiliate official URLs must use HTTPS and the same official trust boundary", () => {
   const insecure = verifiedAffiliate({
     url: "http://trezor.io/affiliate",
+    evidence: {
+      ...verifiedAffiliate().evidence,
+      official_program_url: "http://trezor.io/affiliate",
+    },
   });
   assert.ok(evaluateAffiliateProgramEvidence(insecure, new Date("2026-10-25T13:00:00.000Z")).blockers.includes("affiliate_official_url_missing_or_insecure"));
 
