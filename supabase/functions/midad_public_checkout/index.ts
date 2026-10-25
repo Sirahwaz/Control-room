@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { isAutoRouteEligible } from "./route-policy.ts";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
@@ -67,11 +68,11 @@ async function chooseWallet(settlementAsset:string,requestedNetwork:string){
   if(requestedNetwork&&!allowedNetworks.includes(requestedNetwork))return null;
   const {data:routes,error}=await db.from("midad_revenue_routes")
     .select("id,asset,network,wallet_id,address_ref,active,auto_route,requires_approval,metadata")
-    .eq("active",true).eq("auto_route",true).eq("route_kind","receive")
+    .eq("active",true).eq("auto_route",true).eq("requires_approval",false).eq("route_kind","receive")
     .eq("asset",settlementAsset).in("network",requestedNetwork?[requestedNetwork]:allowedNetworks)
     .order("updated_at",{ascending:false});
   if(error)throw error;
-  const sorted=(routes||[]).sort((a:any,b:any)=>Number(a?.metadata?.priority??100)-Number(b?.metadata?.priority??100));
+  const sorted=(routes||[]).filter((route:any)=>isAutoRouteEligible(route)).sort((a:any,b:any)=>Number(a?.metadata?.priority??100)-Number(b?.metadata?.priority??100));
   const SOLANA_TOKEN_MINTS:Record<string,string>={
     USDC:"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     USDT:"Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
@@ -368,7 +369,7 @@ async function main(req:Request){
     const checkoutNetwork=String(target.route.network||"").toLowerCase();
     const mint=checkoutNetwork==="solana"?(target.route.metadata?.verification?.token_mint||null):null;
     const paymentUri=checkoutNetwork==="solana"&&mint
-      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+intent.id.slice(0,8))
+      ? "solana:"+encodeURIComponent(target.wallet.address)+"?amount="+encodeURIComponent(String(updatedIntent.quoted_crypto_amount))+"&spl-token="+encodeURIComponent(mint)+"&label="+encodeURIComponent("MIDAD "+p.name)+"&message="+encodeURIComponent("MIDAD payment "+updatedIntent.id.slice(0,8))
       : null;
 
     return json({
