@@ -121,6 +121,16 @@ export function resolveRevenueParser(value: unknown): RevenueParserKey | null {
   return REGISTERED_PARSERS.has(parser) ? parser : null;
 }
 
+export function isSafeOfficialProviderUrl(value: unknown, officialDomainValue: unknown): boolean {
+  const url = parseHttps(value);
+  const officialDomain = String(officialDomainValue ?? "").trim().toLowerCase().replace(/\\.$/, "");
+  if (!url || !officialDomain || officialDomain.includes("/") ||
+      officialDomain.includes(":") || officialDomain.includes("@") ||
+      hostIsUnsafe(officialDomain)) return false;
+  const host = url.hostname.toLowerCase().replace(/\\.$/, "");
+  return host === officialDomain || host.endsWith("." + officialDomain);
+}
+
 /**
  * Validate a mapped JSON adapter's source boundary before network access.
  * The configured official domain is the trust anchor; a fixed provider name
@@ -291,10 +301,15 @@ export function normalizeMappedJsonFeed(
       ? "affiliate"
       : "crypto_task";
 
+    const officialProgramUrl = candidateHttps(source.official_program_url);
+    const officialTermsUrl = candidateHttps(source.official_terms_url);
+    const officialTermsVerified = String(source.official_terms_verified).toLowerCase() === "true" &&
+      isSafeOfficialProviderUrl(officialProgramUrl, source.official_domain) &&
+      isSafeOfficialProviderUrl(officialTermsUrl, source.official_domain);
     const affiliateEvidence = revenueLane === "affiliate" ? {
-      official_program_url: candidateHttps(source.official_program_url),
-      official_terms_url: candidateHttps(source.official_terms_url),
-      official_terms_verified: String(source.official_terms_verified).toLowerCase() === "true",
+      official_program_url: officialProgramUrl,
+      official_terms_url: officialTermsUrl,
+      official_terms_verified: officialTermsVerified,
       crypto_payout_confirmed: String(source.crypto_payout_confirmed).toLowerCase() === "true",
       payout_asset: textValue(source.payout_asset, 24).toUpperCase() || asset,
       payout_network: textValue(source.payout_network, 48) || network,
