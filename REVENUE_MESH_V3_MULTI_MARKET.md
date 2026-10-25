@@ -59,6 +59,17 @@ VERIFIED_RECEIPT is the only realized-revenue state. Wallet receipt monitoring r
 Each discovered provider should carry: current official URL; current verification timestamp; market/region; payout asset/currency; access mode; automation mode; capability tags; account/authentication prerequisites; platform terms/rate limits; confidence and freshness.
 New providers should be tested in read-only mode before automated submission. Existing API-enabled sources remain useful, but they are not privileged.
 
+## Data-driven provider discovery contract
+
+- The runtime reads active discovery sources from `midad_income_sources`; provider identity is not hard-coded into the discovery loop.
+- Registered parser types remain explicit and reviewable. New compatible public JSON feeds may use `mapped_json` with `official_domain` and `revenue_intel_field_map` metadata, rather than requiring a provider-specific parser implementation.
+- The generic adapter requires HTTPS, rejects credential-bearing/private-host URLs, requires the feed host to sit under the declared official domain, and does not follow redirects for generic feeds.
+- Candidate links must remain within the declared provider trust boundary. A source row must be independently reviewed before activation.
+- Generic feeds can discover listings but cannot self-certify escrow, successful payment, region/KYC/identity eligibility, or payout reliability. Provider fields such as `paymentProof` and `payoutVerified` are retained only as raw source material and never promoted into proof.
+- Affiliate programs have a distinct pre-application decision: independently reviewed official terms, crypto asset/network, commission model, payout schedule, and explicit zero-cost/zero-bond evidence can reach `DISCOVERY_ONLY` for human review. They do not count as income and do not require the unrelated Taskmarket/Base task-escrow transaction hash.
+- Feed discovery runs with a bounded concurrency of three sources per invocation; each provider failure is isolated so one failed feed does not stop other lanes. Per-source item counts are bounded, but the source registry is not capped at a fixed number of platforms.
+- Current source registry contents are not changed by this code change. A new source row must be reviewed and configured before it becomes active; no new provider is considered live solely because the adapter supports it.
+
 ## Immediate priority
 Revenue velocity is ranked by expected_net_value × acceptance_probability × payment_confidence ÷ estimated_minutes.
 Priority goes to routes that can convert an existing MIDAD capability into money with the fewest external dependencies.

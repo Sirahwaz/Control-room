@@ -209,8 +209,8 @@ Deno.test("stale reconciliation accepts case-insensitive QUALIFIED status only",
 });
 
 
-Deno.test("revenue mesh runtime version advances from deployed v14", () => {
-  assertEquals(REVENUE_MESH_VERSION, 15);
+Deno.test("revenue mesh contract version advances for the provider-registry change", () => {
+  assertEquals(REVENUE_MESH_VERSION, 16);
 });
 
 

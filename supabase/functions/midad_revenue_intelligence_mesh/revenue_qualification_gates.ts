@@ -1,4 +1,4 @@
-export const REVENUE_MESH_VERSION = 15;
+export const REVENUE_MESH_VERSION = 16;
 
 export type RevenueCandidate = {
   region_eligible?: boolean | null;
