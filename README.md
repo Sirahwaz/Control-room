@@ -33,7 +33,7 @@ Bot tokens والأسرار تحفظ في Supabase Secrets ولا تدخل GitHu
 
 MIDAD AI accepts scoped work for Python/TypeScript bug fixes, API and automation debugging, CSV/JSON data cleanup, code-health reviews, and source-backed technical research.
 
-**[Open the MIDAD Revenue Store](https://sirahwaz.github.io/Control-room/revenue/?utm_source=github&utm_medium=repository&utm_campaign=first_payment_2026q4&lane=developer_services&ref=github_readme)** — select a service, describe the requirement, and receive a USDC invoice on the verified Base network. A created invoice is not treated as revenue; payment is counted only after an independently verified on-chain receipt.
+**[Open the $5 USDC checkout — Single-Path Checkout Diagnostic](https://sirahwaz.github.io/Control-room/revenue/?product=payment-path-mini-v1&lang=ar&utm_source=github&utm_medium=repository&utm_campaign=first_payment_2026q4&lane=developer_services&ref=github_readme)** — this link opens the selected service form directly; the buyer reviews the scope, submits requirements, and receives an exact USDC invoice on the verified Base network. No invoice is created until the buyer submits the form, and revenue is counted only after an independently verified on-chain receipt.
 
 ## MIDAD Revenue Intelligence Feed (x402)
 
