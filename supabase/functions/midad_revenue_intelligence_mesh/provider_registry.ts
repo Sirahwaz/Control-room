@@ -121,6 +121,58 @@ export function resolveRevenueParser(value: unknown): RevenueParserKey | null {
   return REGISTERED_PARSERS.has(parser) ? parser : null;
 }
 
+/**
+ * Affiliate discovery has different proof semantics from a task-escrow bounty.
+ * Official terms can qualify a program for discovery/pre-application review,
+ * but never prove account acceptance, payable commissions, or realized revenue.
+ */
+export function evaluateAffiliateDiscovery(candidateValue: unknown): {
+  decision: string;
+  status: string;
+  payoutState: string;
+  next: string;
+  reasons: string[];
+} {
+  const candidate = asRecord(candidateValue) || {};
+  const evidenceMeta = asRecord(candidate.evidenceMeta) || {};
+  const affiliate = asRecord(evidenceMeta.affiliate) || {};
+  const asset = String(affiliate.payout_asset || candidate.asset || "").trim().toUpperCase();
+  const network = String(affiliate.payout_network || candidate.network || "").trim().toLowerCase();
+  const cost = numberValue(candidate.cost) ?? 0;
+  const bond = numberValue(candidate.bond) ?? 0;
+  const hasCommission = Boolean(String(affiliate.commission_model || "").trim()) ||
+    (Number.isFinite(Number(affiliate.commission_rate_percent)) && Number(affiliate.commission_rate_percent) > 0);
+
+  if (cost > 0 || bond > 0) {
+    return {
+      decision: "BLOCKED_UPFRONT_COST",
+      status: "BLOCKED",
+      payoutState: "blocked",
+      next: "no_spend_policy_block",
+      reasons: [cost > 0 ? "upfront_cost_required" : "claim_bond_required"],
+    };
+  }
+  if (affiliate.official_terms_verified !== true) {
+    return { decision: "BLOCKED_PAYOUT", status: "BLOCKED", payoutState: "blocked", next: "verify_affiliate_official_terms", reasons: ["affiliate_official_terms_not_verified"] };
+  }
+  if (affiliate.crypto_payout_confirmed !== true || !CRYPTO_ASSETS.has(asset) || !network || network === "unknown") {
+    return { decision: "BLOCKED_PAYOUT", status: "BLOCKED", payoutState: "blocked", next: "verify_affiliate_crypto_payout", reasons: ["affiliate_crypto_payout_not_verified"] };
+  }
+  if (affiliate.upfront_cost_verified !== true || affiliate.claim_bond_verified !== true) {
+    return { decision: "BLOCKED_PAYOUT", status: "BLOCKED", payoutState: "blocked", next: "verify_affiliate_zero_cost_terms", reasons: ["affiliate_upfront_cost_or_bond_not_verified"] };
+  }
+  if (!hasCommission || !String(affiliate.payout_schedule || "").trim()) {
+    return { decision: "BLOCKED_PAYOUT", status: "BLOCKED", payoutState: "blocked", next: "verify_affiliate_commission_terms", reasons: ["affiliate_commission_or_payout_schedule_not_verified"] };
+  }
+  return {
+    decision: "DISCOVERY_ONLY",
+    status: "DISCOVERED",
+    payoutState: "official_program_terms",
+    next: "affiliate_preapplication_review",
+    reasons: ["official_affiliate_terms_verified_for_preapplication_only", "acceptance_tracking_payable_commission_and_receipt_not_proven"],
+  };
+}
+
 export function isSafeOfficialProviderUrl(value: unknown, officialDomainValue: unknown): boolean {
   const url = parseHttps(value);
   const officialDomain = String(officialDomainValue ?? "").trim().toLowerCase().replace(/\\.$/, "");
