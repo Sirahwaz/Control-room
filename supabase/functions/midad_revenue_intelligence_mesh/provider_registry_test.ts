@@ -17,8 +17,8 @@ Deno.test("provider registry supports existing adapters and extensible mapped-js
 Deno.test("mapped-json parser reads nested configured fields without trusting payout claims", () => {
   const source = {
     slug: "vendor_alpha",
-    api_url: "https://api.vendor-alpha.example/v1/opportunities",
-    official_domain: "vendor-alpha.example",
+    api_url: "https://api.vendor-alpha.example.com/v1/opportunities",
+    official_domain: "vendor-alpha.example.com",
     parser_key: "mapped_json",
     max_items: 20,
     field_map: {
@@ -46,7 +46,7 @@ Deno.test("mapped-json parser reads nested configured fields without trusting pa
             id: "alpha-1",
             title: "Build a verified parser",
             summary: "Small API task",
-            url: "https://vendor-alpha.example/tasks/alpha-1",
+            url: "https://vendor-alpha.example.com/tasks/alpha-1",
             status: "open",
             deadline: "2030-01-01T00:00:00.000Z",
             paymentProof: true,
@@ -92,13 +92,13 @@ Deno.test("mapped-json parser rejects unsafe or mismatched official feed URLs", 
 
   assertEquals(isSafeMappedJsonSource({
     ...base,
-    api_url: "http://api.vendor-alpha.example/feed",
-    official_domain: "vendor-alpha.example",
+    api_url: "http://api.vendor-alpha.example.com/feed",
+    official_domain: "vendor-alpha.example.com",
   }), false);
   assertEquals(isSafeMappedJsonSource({
     ...base,
-    api_url: "https://api.vendor-alpha.example/feed",
-    official_domain: "vendor-alpha.example.attacker.test",
+    api_url: "https://api.vendor-alpha.example.com/feed",
+    official_domain: "vendor-alpha.example.com.attacker.test",
   }), false);
   assertEquals(isSafeMappedJsonSource({
     ...base,
@@ -107,25 +107,25 @@ Deno.test("mapped-json parser rejects unsafe or mismatched official feed URLs", 
   }), false);
   assertEquals(isSafeMappedJsonSource({
     ...base,
-    api_url: "https://api.vendor-alpha.example/feed",
-    official_domain: "vendor-alpha.example",
+    api_url: "https://api.vendor-alpha.example.com/feed",
+    official_domain: "vendor-alpha.example.com",
   }), true);
 });
 
 Deno.test("mapped-json parser drops incomplete and non-HTTPS candidate URLs", () => {
   const source = {
     slug: "vendor_beta",
-    api_url: "https://api.vendor-beta.example/jobs",
-    official_domain: "vendor-beta.example",
+    api_url: "https://api.vendor-beta.example.com/jobs",
+    official_domain: "vendor-beta.example.com",
     parser_key: "mapped_json",
     max_items: 20,
     field_map: { items: "jobs", id: "id", title: "title", url: "url" },
   };
   const rows = normalizeMappedJsonFeed({
     jobs: [
-      { id: "no-title", url: "https://vendor-beta.example/jobs/no-title" },
+      { id: "no-title", url: "https://vendor-beta.example.com/jobs/no-title" },
       { id: "bad-url", title: "Javascript URL", url: "javascript:alert(1)" },
-      { id: "good", title: "Good listing", url: "https://vendor-beta.example/jobs/good" },
+      { id: "good", title: "Good listing", url: "https://vendor-beta.example.com/jobs/good" },
     ],
   }, source, new Date("2026-10-25T00:00:00.000Z"));
   assertEquals(rows.map((r: any) => r.externalId), ["good"]);
@@ -134,17 +134,17 @@ Deno.test("mapped-json parser drops incomplete and non-HTTPS candidate URLs", ()
 Deno.test("mapped-json parser bounds item count and rejects unsafe field paths", () => {
   const source = {
     slug: "vendor_gamma",
-    api_url: "https://api.vendor-gamma.example/jobs",
-    official_domain: "vendor-gamma.example",
+    api_url: "https://api.vendor-gamma.example.com/jobs",
+    official_domain: "vendor-gamma.example.com",
     parser_key: "mapped_json",
     max_items: 2,
     field_map: { items: "items", id: "__proto__.id", title: "constructor.prototype.title", url: "url" },
   };
   const rows = normalizeMappedJsonFeed({
     items: [
-      { id: "one", title: "One", url: "https://vendor-gamma.example/one" },
-      { id: "two", title: "Two", url: "https://vendor-gamma.example/two" },
-      { id: "three", title: "Three", url: "https://vendor-gamma.example/three" },
+      { id: "one", title: "One", url: "https://vendor-gamma.example.com/one" },
+      { id: "two", title: "Two", url: "https://vendor-gamma.example.com/two" },
+      { id: "three", title: "Three", url: "https://vendor-gamma.example.com/three" },
     ],
   }, source, new Date("2026-10-25T00:00:00.000Z"));
   assertEquals(rows.length, 0);
@@ -153,14 +153,14 @@ Deno.test("mapped-json parser bounds item count and rejects unsafe field paths",
 Deno.test("unknown mapped payout evidence remains discovery-only even with provider self-asserted payment flags", () => {
   const source = {
     slug: "vendor_delta",
-    api_url: "https://api.vendor-delta.example/jobs",
-    official_domain: "vendor-delta.example",
+    api_url: "https://api.vendor-delta.example.com/jobs",
+    official_domain: "vendor-delta.example.com",
     parser_key: "mapped_json",
     max_items: 10,
     field_map: { items: "jobs", id: "id", title: "title", url: "url", payment_proof: "paymentProof" },
   };
   const rows = normalizeMappedJsonFeed({
-    jobs: [{ id: "delta-1", title: "Listing", url: "https://vendor-delta.example/jobs/delta-1", paymentProof: true }],
+    jobs: [{ id: "delta-1", title: "Listing", url: "https://vendor-delta.example.com/jobs/delta-1", paymentProof: true }],
   }, source, new Date("2026-10-25T00:00:00.000Z"));
   assertEquals(rows.length, 1);
   assertEquals(rows[0].paymentProof, false);
@@ -235,10 +235,10 @@ Deno.test("affiliate lane blocks missing terms or payout evidence without requir
     bond: 0,
     evidenceMeta: {
       revenue_lane: "affiliate",
-      official_domain: "vendor.example",
+      official_domain: "vendor.example.com",
       affiliate: {
-        official_program_url: "https://vendor.example/partners",
-        official_terms_url: "https://vendor.example/terms",
+        official_program_url: "https://vendor.example.com/partners",
+        official_terms_url: "https://vendor.example.com/terms",
         official_terms_verified: false,
         crypto_payout_confirmed: false,
         payout_asset: "USDC",
