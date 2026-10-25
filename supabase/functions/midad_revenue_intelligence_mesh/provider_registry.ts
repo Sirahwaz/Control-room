@@ -152,7 +152,11 @@ export function evaluateAffiliateDiscovery(candidateValue: unknown): {
       reasons: [cost > 0 ? "upfront_cost_required" : "claim_bond_required"],
     };
   }
-  if (affiliate.official_terms_verified !== true) {
+  const officialDomain = evidenceMeta.official_domain;
+  const officialUrlsVerified =
+    isSafeOfficialProviderUrl(affiliate.official_program_url, officialDomain) &&
+    isSafeOfficialProviderUrl(affiliate.official_terms_url, officialDomain);
+  if (affiliate.official_terms_verified !== true || !officialUrlsVerified) {
     return { decision: "BLOCKED_PAYOUT", status: "BLOCKED", payoutState: "blocked", next: "verify_affiliate_official_terms", reasons: ["affiliate_official_terms_not_verified"] };
   }
   if (affiliate.crypto_payout_confirmed !== true || !CRYPTO_ASSETS.has(asset) || !network || network === "unknown") {
