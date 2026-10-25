@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import { isReceiptMonitorRouteEligible } from "./route-policy.ts";
+import { ETHEREUM_RPC_PUBLIC_FALLBACK } from "./rpc-config.ts";
 
 const DATABASE_URL = Deno.env.get("SUPABASE_DB_URL") || "";
 const db = DATABASE_URL ? postgres(DATABASE_URL, { max: 1, idle_timeout: 5, connect_timeout: 10, ssl: "require", prepare: false }) : null;
@@ -9,7 +10,7 @@ const json=(v:unknown,s=200)=>new Response(JSON.stringify(v),{status:s,headers:H
 const clip=(v:unknown,n=500)=>String(v??"").slice(0,n);
 const TRANSFER="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const TOKENS:Record<string,{chainId:number;contract:string;confirmations:number;rpcs:string[];label:string}> = {
-  ethereum:{chainId:1,contract:"0xdAC17F958D2ee523a2206206994597C13D831ec7",confirmations:12,rpcs:["https://ethereum-rpc.publicnode.com","https://eth.llamarpc.com","https://cloudflare-eth.com"],label:"Ethereum Mainnet"},
+  ethereum:{chainId:1,contract:"0xdAC17F958D2ee523a2206206994597C13D831ec7",confirmations:12,rpcs:["https://ethereum-rpc.publicnode.com","https://eth.llamarpc.com","https://cloudflare-eth.com",ETHEREUM_RPC_PUBLIC_FALLBACK],label:"Ethereum Mainnet"},
   avalanche:{chainId:43114,contract:"0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7",confirmations:3,rpcs:["https://api.avax.network/ext/bc/C/rpc","https://avalanche-c-chain-rpc.publicnode.com"],label:"Avalanche C-Chain"}
 };
 function needDb(){if(!db)throw new Error("supabase_db_url_missing");return db;}
