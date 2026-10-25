@@ -101,9 +101,9 @@ export function evaluateAffiliateProgramEvidence(task = {}, now = Date.now()) {
     blockers.push("affiliate_crypto_payout_not_confirmed");
   }
 
-  const asset = String(evidence.payout_asset || task.compensation_asset || "")
+  const asset = String(evidence.payout_asset || "")
     .trim().toUpperCase().replace(/\s+/g, "");
-  const network = String(evidence.payout_network || task.payout_network || "")
+  const network = String(evidence.payout_network || "")
     .trim().toLowerCase().replace("eip155:8453", "base");
   if (!CRYPTO_ASSETS.has(asset) || !network || /^(unknown|tbd|n\/a)$/i.test(network)) {
     blockers.push("affiliate_crypto_asset_unverified");
@@ -129,6 +129,13 @@ export function evaluateAffiliateProgramEvidence(task = {}, now = Date.now()) {
   if (!Number.isFinite(verifiedAt) || !Number.isFinite(nowMs) ||
       verifiedAt > nowMs + 5 * 60 * 1000 || nowMs - verifiedAt > freshnessMs) {
     blockers.push("affiliate_terms_stale_or_unverifiable");
+  }
+
+  if (evidence.upfront_cost_verified !== true) {
+    blockers.push("affiliate_upfront_cost_unverified");
+  }
+  if (evidence.claim_bond_verified !== true) {
+    blockers.push("affiliate_claim_bond_unverified");
   }
 
   for (const [field, unverifiedCode, disallowedCode] of [
