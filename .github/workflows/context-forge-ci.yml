@@ -1,0 +1,37 @@
+name: Context Forge CI
+
+on:
+  push:
+    branches: [context-forge-mvp]
+    paths:
+      - "products/context-forge/**"
+      - ".github/workflows/context-forge-ci.yml"
+  pull_request:
+    paths:
+      - "products/context-forge/**"
+      - ".github/workflows/context-forge-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Deterministic engine and source checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test context compiler
+        run: npm test --prefix products/context-forge
+      - name: Check JavaScript syntax
+        run: npm run check --prefix products/context-forge
+      - name: Verify standalone entry files
+        run: |
+          test -s products/context-forge/index.html
+          test -s products/context-forge/styles.css
+          test -s products/context-forge/app.js
