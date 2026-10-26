@@ -84,4 +84,10 @@ test('checkout page uses the shared key helper and can read the existing order-s
   assert.match(html, /action\s*:\s*['"]order_status['"]/);
   assert.match(html, /MIDADCheckoutKey\.clearCheckoutKey/);
   assert.doesNotMatch(html, /return\s+base\s*\+\s*["']-["']\s*\+\s*product/);
+  const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+    .map((match) => match[1]).filter(Boolean);
+  assert.ok(inlineScripts.length > 0, 'checkout page should retain inline app scripts');
+  inlineScripts.forEach((script, index) => {
+    assert.doesNotThrow(() => new Function(script), `checkout inline script syntax #${index + 1}`);
+  });
 });
