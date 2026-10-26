@@ -162,6 +162,29 @@ Deno.test("Taskmarket bounty submission fee remains unverified without worker-sp
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 5 }).submissionFee, 0.001);
 });
 
+Deno.test("Taskmarket explicit worker submit action with requiresPayment=false proves the submission fee is zero", () => {
+  const evidence = taskmarketOfficialFeeEvidence({
+    mode: "bounty",
+    platformFeeBps: 0,
+    netReward: "5000000",
+    pendingActions: [
+      { role: "worker", action: "submit", eligibleAddress: null, requiresPayment: false, paymentAmount: null }
+    ],
+  });
+  assertEquals(evidence.submissionFee, 0);
+  assertEquals(evidence.feeScheduleVerified, true);
+  assertEquals(evidence.feeScheduleEvidenceUrl, "https://docs.taskmarket.dev/concepts/fees-payments");
+});
+
+Deno.test("Taskmarket submit action that requires payment is not incorrectly treated as free", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({
+    mode: "bounty",
+    pendingActions: [
+      { role: "worker", action: "submit", requiresPayment: true, paymentAmount: "1000" }
+    ],
+  }), {});
+});
+
 Deno.test("Taskmarket pitch and auction modes account for the official 0.001 USDC action fee", () => {
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "pitch" }).submissionFee, 0.001);
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "auction" }).submissionFee, 0.001);
