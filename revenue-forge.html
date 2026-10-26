@@ -147,17 +147,64 @@ async function copyOffer(s, button){
 }
 </script>
 <script src="./revenue/checkout-attribution.js"></script>
+<script src="./revenue/checkout-key.js"></script>
 <script>
 const MIDAD_CHECKOUT="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout";
-function checkoutKey(product){
-  const name=document.getElementById("checkout-name")?.value.trim()||"";
-  const email=document.getElementById("checkout-email")?.value.trim().toLowerCase()||"";
-  const brief=document.getElementById("checkout-requirements")?.value.trim()||"";
-  const base=localStorage.getItem("midadRevenueOrderKey")||Math.random().toString(36).slice(2)+Date.now().toString(36);
-  localStorage.setItem("midadRevenueOrderKey",base);
-  let hash=2166136261;
-  for(const ch of product+"|"+name+"|"+email+"|"+brief){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619);}
-  return base+"-"+product+"-"+(hash>>>0).toString(36);
+async function checkoutKey(product){
+  return window.MIDADCheckoutKey.createCheckoutKey({
+    product,
+    customerName:document.getElementById("checkout-name")?.value.trim()||"",
+    customerEmail:document.getElementById("checkout-email")?.value.trim().toLowerCase()||"",
+    customerRequirements:document.getElementById("checkout-requirements")?.value.trim()||"",
+    storage:window.localStorage,
+    cryptoApi:window.crypto
+  });
+}
+let currentMidadCheckoutKey=null;
+
+async function checkCheckoutStatus(button){
+  const statusNode=document.getElementById("checkout-live-status");
+  if(!currentMidadCheckoutKey||!statusNode){
+    if(statusNode)statusNode.textContent="لا توجد فاتورة مفتوحة في هذه الجلسة. أعد إنشاء الفاتورة بنفس تفاصيل الطلب لاسترجاعها.";
+    return;
+  }
+  button.disabled=true;
+  const previousLabel=button.textContent;
+  button.textContent="جاري التحقق من الحالة…";
+  try{
+    const r=await fetch(MIDAD_CHECKOUT,{
+      method:"POST",
+      headers:{"content-type":"application/json","x-order-key":currentMidadCheckoutKey.orderKey},
+      body:JSON.stringify({action:"order_status",order_key:currentMidadCheckoutKey.orderKey})
+    });
+    const d=await r.json().catch(()=>({ok:false,error:"invalid_status_response"}));
+    if(!r.ok||!d.ok)throw new Error(d.error||"order_status_failed");
+    const order=d.order||{};
+    const payment=String(order.payment_status||"unknown").toLowerCase();
+    const reconciliation=String(order.payment_reconciliation_status||"unknown").toLowerCase();
+    const orderStatus=String(order.status||"unknown");
+    const deliveryStatus=String(order.delivery?.status||orderStatus);
+    if(payment==="paid"&&reconciliation==="matched"){
+      statusNode.textContent="✓ تم التحقق من الدفع. حالة الطلب: "+orderStatus+"؛ حالة التسليم: "+deliveryStatus+".";
+    }else if(["expired","cancelled","failed"].includes(payment)||orderStatus==="CANCELLED"){
+      statusNode.textContent="هذه الفاتورة منتهية أو ملغاة؛ لا ترسل إليها أموالاً. اضغط إنشاء فاتورة مجدداً بعد التأكد من تفاصيل الطلب.";
+      window.MIDADCheckoutKey.clearCheckoutKey({storage:window.localStorage,storageKey:currentMidadCheckoutKey.storageKey});
+    }else{
+      statusNode.textContent="لم يُثبت الدفع بعد (الدفع: "+payment+"؛ المطابقة: "+reconciliation+"). لا ترسل دفعة ثانية. إذا أرسلتها، انتظر تحديث مراقب الشبكة ثم افحص الحالة مجدداً.";
+    }
+    const existingReport=document.getElementById("checkout-delivery-report");
+    if(existingReport)existingReport.remove();
+    if(String(order.delivery?.report||"").trim()){
+      const report=addCheckoutText(document.getElementById("checkout-result"),"pre",order.delivery.report);
+      report.id="checkout-delivery-report";
+      report.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border:1px solid #253044;border-radius:10px;background:#070b11;color:#edf3fb";
+    }
+  }catch(e){
+    statusNode.textContent="تعذر قراءة حالة الطلب: "+String(e.message||e)+". احتفظ بتفاصيل الطلب ولا ترسل دفعة ثانية بسبب خطأ الاستعلام وحده.";
+  }finally{
+    button.disabled=false;
+    button.textContent=previousLabel;
+  }
 }
 function addCheckoutText(parent,tag,text){
   const node=document.createElement(tag);
@@ -189,7 +236,9 @@ async function makeCheckout(product){
   const buttons=Array.from(document.querySelectorAll('button[onclick^="makeCheckout"]'));
   buttons.forEach(b=>b.disabled=true);
   try{
-    const orderKey=checkoutKey(product);
+    const keyState=await checkoutKey(product);
+    const orderKey=keyState.orderKey;
+    currentMidadCheckoutKey=keyState;
     const r=await fetch(MIDAD_CHECKOUT,{
       method:"POST",
       headers:{"content-type":"application/json","x-order-key":orderKey},
@@ -256,6 +305,14 @@ async function makeCheckout(product){
     addCheckoutText(box,"p",d.instructions||"تحقق من المبلغ والشبكة قبل الإرسال.");
     addCheckoutText(box,"p","رقم الطلب: "+String(d.payment.id||"غير متاح"));
     addCheckoutText(box,"p","الحالة: بانتظار الدفع؛ لن يُعلن التسليم أو الإيراد قبل تأكيد المعاملة.");
+    const statusButton=document.createElement("button");
+    statusButton.className="btn secondary";
+    statusButton.type="button";
+    statusButton.textContent="تحقق من حالة الدفع والتسليم / Check status";
+    statusButton.addEventListener("click",()=>checkCheckoutStatus(statusButton));
+    box.appendChild(statusButton);
+    const liveStatus=addCheckoutText(box,"p","افحص الحالة بعد الإرسال؛ سيظهر هنا التأكيد على السلسلة وحالة التسليم.");
+    liveStatus.id="checkout-live-status";
   }catch(e){
     box.replaceChildren();
     addCheckoutText(box,"strong","تعذر إنشاء الفاتورة");
