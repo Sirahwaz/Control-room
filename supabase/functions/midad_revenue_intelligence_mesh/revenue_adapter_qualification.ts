@@ -174,7 +174,19 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
   if (!record) return {};
   const mode = typeof record.mode === "string" ? record.mode.trim().toLowerCase() : "";
   let submissionFeeUsd: number | undefined;
-  if (["bounty", "benchmark"].includes(mode)) {
+  // Prefer the task-specific worker action published by Taskmarket itself.
+  // A task-wide submission count must never be treated as this worker's count.
+  const pendingActions = Array.isArray(record.pendingActions)
+    ? record.pendingActions.map(asRecord).filter((x): x is Record<string, unknown> => x !== null)
+    : [];
+  const workerSubmitAction = pendingActions.find((action) =>
+    String(action.role ?? "").trim().toLowerCase() === "worker"
+      && String(action.action ?? "").trim().toLowerCase() === "submit"
+  );
+  if (workerSubmitAction?.requiresPayment === false) submissionFeeUsd = 0;
+  else if (workerSubmitAction?.requiresPayment === true) {
+    return extractQualificationEvidence(record, "taskmarket_api");
+  } else if (["bounty", "benchmark"].includes(mode)) {
     const count = explicitNumber(record, ["workerSubmissionCount", "worker_submission_count", "mySubmissionCount", "my_submission_count"]);
     if (count === undefined) return extractQualificationEvidence(record, "taskmarket_api");
     submissionFeeUsd = count < 5 ? 0 : 0.001;
