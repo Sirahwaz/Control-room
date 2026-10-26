@@ -5,7 +5,7 @@ Read-only comparison against Supabase project `midad-ai` (ref `froegigfmpmvteczt
 | Function | Live version | Last deployed (UTC) | Repository state before this branch | Action |
 |---|---:|---|---|---|
 | `midad_base_usdc_monitor` | 17 | 2026-10-19 23:15:54 | Existing snapshot was shorter and not byte-identical | Replace repository snapshot with exact live `index.ts` |
-| `midad_speedbot_target_executor` | 8 | 2026-10-20 11:02:43 | `index.ts` absent; helper was present but differed | Restore live `index.ts` and reconcile `matching.ts` |
+| `midad_speedbot_target_executor` | 8 | 2026-10-20 11:02:43 | `index.ts` absent; existing `matching.ts` was already byte-identical | Restore live `index.ts`; preserve the already-matching `matching.ts` |
 | `midad_revenue_intel_work_queue_worker` | 3 | 2026-10-19 21:42:27 | `index.ts` absent | Restore live `index.ts` |
 
 Other checked critical functions matched their live source byte-for-byte: `midad_public_checkout` v25, `midad_revenue_autopilot` v23, `midad_wallet_receipt_monitor` v13, and `midad_payment_verifier` v41.
