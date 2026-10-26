@@ -1,0 +1,36 @@
+name: MIDAD Live Source Parity Checks
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/functions/midad_speedbot_target_executor/**"
+      - "supabase/functions/midad_revenue_intel_work_queue_worker/**"
+      - ".github/workflows/midad-live-source-parity.yml"
+  push:
+    branches:
+      - "fix/midad-live-source-parity-20261026-run6"
+    paths:
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/functions/midad_speedbot_target_executor/**"
+      - "supabase/functions/midad_revenue_intel_work_queue_worker/**"
+      - ".github/workflows/midad-live-source-parity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check reconciled live function sources
+        run: |
+          deno check supabase/functions/midad_base_usdc_monitor/index.ts
+          deno check supabase/functions/midad_speedbot_target_executor/index.ts
+          deno check supabase/functions/midad_revenue_intel_work_queue_worker/index.ts
