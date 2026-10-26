@@ -88,3 +88,6 @@ jobs:
 
       - name: Revenue checkout attribution tests
         run: node --test tests/checkout-attribution.test.cjs
+
+      - name: Revenue checkout order-key and status tests
+        run: node --test tests/checkout-key.test.cjs
