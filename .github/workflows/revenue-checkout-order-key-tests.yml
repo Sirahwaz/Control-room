@@ -1,0 +1,33 @@
+name: Revenue Checkout Order Key Contract Tests
+
+on:
+  pull_request:
+    paths:
+      - "revenue-forge.html"
+      - "revenue/checkout-order-key.js"
+      - "tests/checkout-order-key.test.cjs"
+      - ".github/workflows/revenue-checkout-order-key-tests.yml"
+  push:
+    branches:
+      - "fix/revenue-forge-order-key-contract-20261026-run6"
+    paths:
+      - "revenue-forge.html"
+      - "revenue/checkout-order-key.js"
+      - "tests/checkout-order-key.test.cjs"
+      - ".github/workflows/revenue-checkout-order-key-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  checkout-order-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run checkout key contract and idempotency tests
+        run: node --test tests/checkout-order-key.test.cjs
