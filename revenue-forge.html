@@ -147,17 +147,17 @@ async function copyOffer(s, button){
 }
 </script>
 <script src="./revenue/checkout-attribution.js"></script>
+<script src="./revenue/checkout-order-key.js"></script>
 <script>
 const MIDAD_CHECKOUT="https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout";
-function checkoutKey(product){
-  const name=document.getElementById("checkout-name")?.value.trim()||"";
-  const email=document.getElementById("checkout-email")?.value.trim().toLowerCase()||"";
-  const brief=document.getElementById("checkout-requirements")?.value.trim()||"";
-  const base=localStorage.getItem("midadRevenueOrderKey")||Math.random().toString(36).slice(2)+Date.now().toString(36);
-  localStorage.setItem("midadRevenueOrderKey",base);
-  let hash=2166136261;
-  for(const ch of product+"|"+name+"|"+email+"|"+brief){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619);}
-  return base+"-"+product+"-"+(hash>>>0).toString(36);
+const checkoutOrderKeyManager = window.MIDADCheckoutOrderKey.createManager();
+function checkoutKeyInput(product,name,email,requirements){
+  return {
+    product:String(product||""),
+    name:String(name||"").trim(),
+    email:String(email||"").trim().toLowerCase(),
+    requirements:String(requirements||"").trim()
+  };
 }
 function addCheckoutText(parent,tag,text){
   const node=document.createElement(tag);
@@ -189,7 +189,8 @@ async function makeCheckout(product){
   const buttons=Array.from(document.querySelectorAll('button[onclick^="makeCheckout"]'));
   buttons.forEach(b=>b.disabled=true);
   try{
-    const orderKey=checkoutKey(product);
+    const orderKeyInput=checkoutKeyInput(product,name,email,requirements);
+    const orderKey=await checkoutOrderKeyManager.getKey(orderKeyInput);
     const r=await fetch(MIDAD_CHECKOUT,{
       method:"POST",
       headers:{"content-type":"application/json","x-order-key":orderKey},
@@ -201,6 +202,11 @@ async function makeCheckout(product){
     });
     const d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
     if(!r.ok||!d.ok) throw new Error(d.error||"checkout_failed");
+    await checkoutOrderKeyManager.rememberExpiry(
+      orderKeyInput,
+      orderKey,
+      d.payment?.expires_at || new Date(Date.now()+60*60*1000).toISOString()
+    );
     box.replaceChildren();
     addCheckoutText(box,"strong",d.product.name);
     addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
