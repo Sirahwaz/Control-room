@@ -56,3 +56,33 @@ export function parseAgentEligibleSuperteamListings(
       && isFutureOrUndated(deadline, now);
   });
 }
+
+
+export function normalizeSuperteamPublicListing(
+  listing: SuperteamPublicListing,
+): SuperteamPublicListing {
+  const slug = String(listing.slug ?? listing.id ?? "").trim();
+  const tokenRecord = asRecord(listing.token);
+  const compensationRecord = asRecord(listing.compensation) ?? asRecord(listing.payout) ?? {};
+  const token = typeof listing.token === "string"
+    ? listing.token
+    : String(tokenRecord?.symbol ?? tokenRecord?.ticker ?? tokenRecord?.name ?? "");
+  const asset = String(
+    compensationRecord.asset ?? compensationRecord.token ??
+    listing.payoutAsset ?? listing.rewardAsset ?? token
+  ).trim().toUpperCase();
+  const amount = compensationRecord.amount ?? null;
+  const url = String(
+    listing.url ?? listing.official_listing_url ??
+    (slug ? `https://superteam.fun/earn/listing/${encodeURIComponent(slug)}` : "")
+  );
+
+  // rewardAmount may represent a shared prize pool; never reinterpret it as
+  // an individual reward. Only preserve an explicit individual amount.
+  return {
+    ...listing,
+    id: slug || listing.id,
+    url,
+    compensation: { ...compensationRecord, asset, amount },
+  };
+}
