@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { parseAgentEligibleSuperteamListings } from "./superteam_listing_parser.ts";
+import { normalizeSuperteamPublicListing, parseAgentEligibleSuperteamListings } from "./superteam_listing_parser.ts";
 
 const now = new Date("2026-10-26T18:00:00.000Z");
 
@@ -26,4 +26,18 @@ Deno.test("public Superteam fallback supports the provider's array and wrapped r
 Deno.test("public Superteam fallback rejects API error objects instead of inventing listings", () => {
   assertEquals(parseAgentEligibleSuperteamListings({ error: "Unauthorized" }, now), []);
   assertEquals(parseAgentEligibleSuperteamListings({ listings: "unexpected" }, now), []);
+});
+
+Deno.test("public Superteam reward pool is not misrepresented as an individual payout", () => {
+  const normalized = normalizeSuperteamPublicListing({
+    slug: "pool-bounty",
+    title: "Pool bounty",
+    status: "OPEN",
+    agentAccess: "AGENT_ALLOWED",
+    token: "USDC",
+    rewardAmount: 500,
+  });
+  assertEquals(normalized.id, "pool-bounty");
+  assertEquals(normalized.compensation, { asset: "USDC", amount: null });
+  assertEquals(normalized.url, "https://superteam.fun/earn/listing/pool-bounty");
 });
