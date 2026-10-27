@@ -3,7 +3,7 @@ import postgres from "npm:postgres@3.4.7";
 import { normalizeTaskmarketRail, isSupportedBaseUsdcRail, isSupportedTempoOusdRail, evaluateTaskmarketTempoReceipt, resolveOfficialProofUrl } from "./taskmarket_rail.mjs";
 
 const VERSION = 5;
-type PublicFetchResult = { ok: boolean; status: number; url: string | null; hash: string | null; excerpt: string; error?: string; content_type?: string; redirect_not_followed?: boolean; };
+type PublicFetchResult = { ok: boolean; status: number; url?: string | null; hash?: string | null; excerpt?: string; error?: string; content_type?: string; redirect_not_followed?: boolean; };
 type ClaimedQueueTask = Record<string, any> & { id: string; attempts: number; result: Record<string, any>; };
 const DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
 const sql = DB_URL ? postgres(DB_URL, { max: 4, idle_timeout: 5, connect_timeout: 10, ssl: "require", prepare: false }) : null;
@@ -117,13 +117,13 @@ async function markStale(opportunityId: string) {
 async function markPayoutContradicted(opportunityId: string, evidence: unknown) {
   await db().unsafe(
     "update public.midad_revenue_intel_opportunities set payout_proof_status='blocked',escrow_funded=false,payout_confidence=least(payout_confidence,0.15),gate_decision='BLOCKED_PAYOUT',status='BLOCKED',gate_reasons=case when 'independent_payout_check_failed'=any(gate_reasons) then gate_reasons else array_append(gate_reasons,'independent_payout_check_failed') end,next_action='verify_listing_specific_crypto_payout',last_verified_at=now(),payout_proof_checked_at=now(),evidence=evidence || $2::jsonb,updated_at=now() where id=$1 and status not in ('PAID','CLAIMED','IN_PROGRESS','DELIVERED','AWAITING_ACCEPTANCE')",
-    [opportunityId, db().json({ independent_payout_check: JSON.parse(JSON.stringify(evidence ?? null)) })]
+    [opportunityId, db().json({ independent_payout_check: evidence as any })]
   );
 }
 async function markPayoutVerified(opportunityId: string, txHash: string, evidence: unknown, explorerBase: string) {
   await db().unsafe(
     "update public.midad_revenue_intel_opportunities set payout_proof_status='verified_task_escrow',escrow_funded=true,payout_confidence=1,payment_tx_hash=$2,payout_proof_url=$3,payout_proof_checked_at=now(),last_verified_at=now(),evidence=evidence || $4::jsonb,updated_at=now() where id=$1 and status not in ('PAID','CLAIMED','IN_PROGRESS','DELIVERED','AWAITING_ACCEPTANCE')",
-    [opportunityId, txHash, explorerBase + txHash, db().json({ independent_payout_check: JSON.parse(JSON.stringify(evidence ?? null)) })]
+    [opportunityId, txHash, explorerBase + txHash, db().json({ independent_payout_check: evidence as any })]
   );
 }
 function officialTaskSubmissionFeeEvidence(current: any) {
@@ -417,7 +417,7 @@ function executionPlan(t: any) {
 }
 async function currentSourceCheck(t: any) {
   const url = resolveOfficialProofUrl(t);
-  if (!url) return { ok: false, status: 0, error: "no_official_source_url", url: null, hash: null, excerpt: "" };
+  if (!url) return { ok: false, status: 0, error: "no_official_source_url" };
   return await fetchPublic(String(t.source_slug || ""), url);
 }
 async function processTask(t: any) {
