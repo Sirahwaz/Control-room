@@ -168,6 +168,57 @@ Deno.serve(async req=>{
    return json({ok:false,state:"FAILED",error,latency_ms:Date.now()-started},502);
   }
  }
+ if(action==="gemini_smoke"){
+  const key=Deno.env.get("GEMINI_API_KEY")||"";
+  if(!key)return json({ok:false,state:"PENDING",error:"gemini_secret_missing",inference_tested:false},503);
+  const started=Date.now();
+  try{
+   const r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{
+    method:"POST",
+    headers:{"content-type":"application/json","x-goog-api-key":key},
+    body:JSON.stringify({
+     model:GEMINI_ADVISOR_MODEL,
+     input:"Reply with exactly MIDAD_GEMINI_OK and no other text.",
+     generation_config:{max_output_tokens:16,thinking_level:"minimal"},
+     store:false
+    }),
+    signal:AbortSignal.timeout(15000)
+   });
+   const raw=await r.text();
+   let d:any={};
+   try{d=JSON.parse(raw)}catch{d={}};
+   const usage=d?.usage&&typeof d.usage==="object"?d.usage:{};
+   const safeUsage={
+    input_tokens:Number.isFinite(Number(usage.total_input_tokens))?Number(usage.total_input_tokens):null,
+    output_tokens:Number.isFinite(Number(usage.total_output_tokens))?Number(usage.total_output_tokens):null,
+    total_tokens:Number.isFinite(Number(usage.total_tokens))?Number(usage.total_tokens):null
+   };
+   const providerCode=String(d?.error?.status||d?.error?.code||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,64)||null;
+   if(!r.ok)return json({
+    ok:false,state:"FAILED",error:"gemini_smoke_http_error",
+    provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,
+    provider_http_status:r.status,provider_error_code:providerCode,
+    inference_tested:true,store:false,usage:safeUsage,latency_ms:Date.now()-started
+   },502);
+   const output=redactSecrets(geminiOutputText(d)).trim();
+   const matches=output==="MIDAD_GEMINI_OK";
+   if(!matches)return json({
+    ok:false,state:"FAILED",error:"gemini_smoke_output_mismatch",
+    provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,
+    provider_http_status:r.status,output_matches:false,output_chars:output.length,
+    inference_tested:true,store:false,usage:safeUsage,latency_ms:Date.now()-started
+   },502);
+   return json({
+    ok:true,state:"VERIFIED",provider:"google_gemini",
+    model:GEMINI_ADVISOR_MODEL,output_matches:true,result:"MIDAD_GEMINI_OK",
+    inference_tested:true,store:false,usage:safeUsage,latency_ms:Date.now()-started
+   });
+  }catch(e){
+   const name=String((e as any)?.name||"");
+   const error=name==="TimeoutError"||name==="AbortError"?"gemini_smoke_timeout":"gemini_smoke_network_error";
+   return json({ok:false,state:"FAILED",error,provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,inference_tested:false,store:false,latency_ms:Date.now()-started},502);
+  }
+ }
  const tc=taskClass(body);
  const configured=Boolean(Deno.env.get("MIDAD_APMIX_API_KEY"));
  const consultGemini=body?.consult_gemini===true||/^(coding|engineering_execution|code_review)$/i.test(tc);
