@@ -60,7 +60,22 @@ Deno.serve(async(req)=>{
    return json({ok:true,state:"VERIFIED",provider:"apmix",models:catalog.models,catalog_shape:catalog.shape,model_count:catalog.models.length});
   }catch(e){return json({ok:false,state:"FAILED",error:"apmix_models_exception",detail:clip((e as any)?.message||e,200)},502)}
  }
- if(action!=="chat")return json({ok:false,error:"unsupported_action",allowed:["status","models","chat"]},400);
+ if(action==="usage"){
+  const started=Date.now();
+  try{
+   const r=await fetch(BASE_URL+"/usage",{headers:{"authorization":"Bearer "+APIMIX_KEY,"accept":"application/json"},signal:AbortSignal.timeout(25000)});
+   const t=await r.text();
+   let j:any={};
+   try{j=JSON.parse(t)}catch{j={raw:t}};
+   const keys=j&&typeof j==="object"?Object.keys(j).sort().slice(0,24):[];
+   const providerRequestId=r.headers.get("x-apmix-request-id")||null;
+   const usageOk=Boolean(r.ok&&!(j&&typeof j==="object"&&"error" in j));
+   await logRun({p_request_ref:ref,p_task_class:"usage",p_provider_slug:"apmix",p_model:"usage",p_status:usageOk?"ok":"error",p_latency_ms:Date.now()-started,p_prompt_tokens:null,p_completion_tokens:null,p_weighted_tokens:null,p_http_status:r.status,p_error_code:usageOk?null:String(j?.error?.code||"APMIX_USAGE_ERROR"),p_error_message:usageOk?null:clip(j?.error?.message||j?.message||("usage_request_failed:"+r.status),500),p_metadata:{source:"midad_model_gateway_v3_usage_preflight",provider_request_id:providerRequestId,top_level_keys:keys}});
+   if(!usageOk)return json({ok:false,state:"FAILED",error:"apmix_usage_failed",http_status:r.status,provider_error_code:j?.error?.code||null,provider_request_id:providerRequestId,top_level_keys:keys},502);
+   return json({ok:true,state:"VERIFIED",provider:"apmix",usage:j,provider_request_id:providerRequestId});
+  }catch(e){return json({ok:false,state:"FAILED",error:"apmix_usage_exception",detail:clip((e as any)?.message||e,200)},502)}
+ }
+ if(action!=="chat")return json({ok:false,error:"unsupported_action",allowed:["status","models","usage","chat"]},400);
  const messages=Array.isArray(body.messages)?body.messages.slice(-24):[{role:"user",content:clip(body.prompt,14000)}];
  if(!messages.length||!messages.some((m:any)=>String(m?.content||"").trim()))return json({ok:false,error:"prompt_or_messages_required"},400);
  const maxTokens=Math.max(64,Math.min(4000,Number(body.max_output_tokens||route.max_output_tokens||1200)));const temperature=typeof body.temperature==="number"?Math.max(0,Math.min(1,body.temperature)):0.2;const started=Date.now();
