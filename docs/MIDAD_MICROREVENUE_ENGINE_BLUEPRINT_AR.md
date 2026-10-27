@@ -1,6 +1,6 @@
 # MIDAD MicroRevenue Engine — Execution Blueprint (AR)
 
-**الحالة:** DESIGN / REVIEW — وثيقة تصميم فقط، لا تغييرات تشغيلية.
+**الحالة:** DESIGN + TARGETED REPAIR DEPLOYED — إصلاح محمي محدود منشور؛ لا ادعاء بتحقق دخل أو اكتمال دورة الإيراد.
 **تاريخ التدقيق:** 2026-10-27
 **المستودع:** Sirahwaz/Control-room
 **Supabase:** midad-ai / froegigfmpmvtecztfbf
@@ -20,7 +20,7 @@
 - التسليم: midad_store_orders، midad_store_fulfillment_jobs، midad_store_fulfillment_evidence.
 - الدفع: midad_payment_intents، midad_payment_events، midad_wallet_receipts، midad_audit_log، midad_learning_events.
 
-دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v20، midad_revenue_intel_work_queue_worker v3، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
+دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v21، midad_revenue_intel_work_queue_worker v5، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
 
 لقطة قراءة فقط:
 - فرص Revenue Intelligence: 194؛ أدلة مرتبطة: 78,673.
@@ -31,6 +31,21 @@
 - سياسة الإيراد: حد الإنفاق الخارجي والتكلفة غير القابلة للاسترداد صفر؛ السحب والتداول الآليان معطلان. بعض أعلام التسليم والإرسال التلقائي مفعّلة، لذا يجب أن يفرض المحرك بوابات أدق لكل إجراء.
 
 الأعداد لقطة وقتية وليست دليلاً على دخل. يجب إعادة الفحص قبل أي تغيير أو قرار تشغيلي.
+
+## 1A. إصلاح تشغيلي موجّه — 2026-10-27
+
+**المشكلة المعاد إنتاجها:** عامل إثبات الدفع كان يمرّر كل مهام Taskmarket الموسومة في الـadapter على أنها USDC/Base إلى Base RPC، من دون مطابقة `chainId` في سجل المهمة الرسمي. قراءة مباشرة للـAPI الرسمي أظهرت أمثلة حديثة على `chainId=4217` وعملة `OUSD` وشبكة `Tempo`؛ لذلك لا يصلح فاحص Base لتلك المهام. ليس فشل Base في العثور على المعاملة دليلاً على أن المكافأة مزيفة، بل إشارة إلى أن مسار التحقق لا يطابق شبكة المهمة.
+
+**الإصلاح المنشور والمتحقق من metadata بعد النشر:**
+- `midad_revenue_intel_work_queue_worker` — version 5، `ACTIVE`: يرفض استخدام Base-USDC verifier على شبكة/عملة مختلفة، ويفصل `UNSUPPORTED_PAYMENT_RAIL` عن فشل دليل الدفع؛ لا يضع علامة تناقض على فرصة بسبب عدم دعم الشبكة.
+- `midad_revenue_intelligence_mesh` — version 21، `ACTIVE`: يطبّع `chainId=8453 → USDC/Base` و`chainId=4217 → OUSD/Tempo`، ويُبقي الشبكات المجهولة غير مدعومة افتراضياً. لا يعلن الدليل المستقل لمجرد أن الـAPI أعاد hash.
+- عامل قائمة العمل يتجنب إعادة فحص بعض العوائق الدائمة عندما لا تتغير بيانات الشبكة/العملة/معاملة الضمان، ويسمح بإعادة التقييم عند تغير الحقول ذات الصلة.
+- اختبار وحدة محلي لمساعد تطبيع الشبكة: **4/4 ناجحة** (Base صحيح، Tempo لا يمر إلى فاحص Base، شبكة مجهولة مغلقة، حقول ناقصة/سيئة الإدخال مغلقة).
+- فحوص metadata بعد النشر أكدت أن الإصدارين نشطان وأن المساعد وقواعد الشبكة موجودة في المصدر المنشور. **لم يتم استدعاء اختبار Runtime المحمي للدوال** لأن مفتاح المشغّل لم يُقرأ أو يُكشف؛ لذلك لا أدّعي أن اختبارات الدالة الحية نجحت.
+
+**الحالة المالية بعد التدقيق اللاحق للرمز:** بقيت إيصالات `midad_wallet_receipts` = 0، والفرص المؤهلة حالياً ضمن الاستعلام الصارم لصافي موجب/تكلفة وضمان صفر = 0. صفوف `independent_payment_proof` البالغ عددها 101 ما زالت BLOCKED بسبب غياب دليل دفع خاص بالمهمة، ولم تُعدّل هذه الصفوف أو تُفتح قسراً. الإصلاح يقلل أخطاء الشبكة وإعادة المحاولات العبثية؛ لكنه لا يخلق دليلاً أو إيراداً بذاته.
+
+**حدود التنفيذ:** لا تغييرات schema/RLS/policy، ولا تسجيل أو claim أو submission أو شراء، ولا توقيع أو تحويل أو سحب أو دفع ضمان. يجب تشغيل discovery المحمي ثم مراجعة النتائج، وإجراء فحص القراءة فقط على المرشحين الجدد قبل السماح بأي إرسال خارجي بموافقة مستقلة.
 
 ## 2. المعمارية المستهدفة — إعادة استخدام أولاً
 
