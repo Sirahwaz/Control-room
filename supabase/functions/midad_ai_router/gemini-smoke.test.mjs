@@ -51,8 +51,8 @@ test("Gemini HTTP errors are sanitized and never counted as successful inference
   const end = branch.indexOf("const output=", start);
   assert.ok(start >= 0 && end > start, "HTTP error branch must be distinct from output verification");
   const errorBranch = branch.slice(start, end);
-  assert.match(errorBranch, /provider_error_message/);
-  assert.match(errorBranch, /redactSecrets/);
+  assert.match(branch, /providerMessage=clip\(redactSecrets\(/);
+  assert.match(errorBranch, /provider_error_message:providerMessage/);
   assert.match(errorBranch, /inference_attempted:true/);
   assert.match(errorBranch, /inference_tested:false/);
 });
