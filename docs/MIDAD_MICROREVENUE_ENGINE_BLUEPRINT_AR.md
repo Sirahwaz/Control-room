@@ -20,7 +20,7 @@
 - التسليم: midad_store_orders، midad_store_fulfillment_jobs، midad_store_fulfillment_evidence.
 - الدفع: midad_payment_intents، midad_payment_events، midad_wallet_receipts، midad_audit_log، midad_learning_events.
 
-دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v21، midad_revenue_intel_work_queue_worker v6، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
+دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v25، midad_revenue_intel_work_queue_worker v8، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
 
 لقطة قراءة فقط:
 - فرص Revenue Intelligence: 194؛ أدلة مرتبطة: 78,673.
@@ -32,20 +32,37 @@
 
 الأعداد لقطة وقتية وليست دليلاً على دخل. يجب إعادة الفحص قبل أي تغيير أو قرار تشغيلي.
 
-## 1A. إصلاح تشغيلي موجّه — 2026-10-27
+## 1A. إصلاحات التوجيه والإثبات — 2026-10-27
 
-**المشكلة المعاد إنتاجها:** عامل إثبات الدفع كان يمرّر كل مهام Taskmarket الموسومة في الـadapter على أنها USDC/Base إلى Base RPC، من دون مطابقة `chainId` في سجل المهمة الرسمي. قراءة مباشرة للـAPI الرسمي أظهرت أمثلة حديثة على `chainId=4217` وعملة `OUSD` وشبكة `Tempo`؛ لذلك لا يصلح فاحص Base لتلك المهام. ليس فشل Base في العثور على المعاملة دليلاً على أن المكافأة مزيفة، بل إشارة إلى أن مسار التحقق لا يطابق شبكة المهمة.
+**الخلل الأول:** كان عامل إثبات الدفع يستخدم Base RPC ومطابقة USDC على مهام Taskmarket، من دون التحقق من chainId في المهمة الرسمية. أصبح المسار الآن chain-aware: Base/USDC وTempo/OUSD منفصلان؛ الشبكة أو العملة غير المدعومة لا تُعامل كدليل تناقض.
 
-**الإصلاح المنشور والمتحقق من metadata بعد النشر:**
-- `midad_revenue_intel_work_queue_worker` — version 6، `ACTIVE`: يرفض استخدام Base-USDC verifier على شبكة/عملة مختلفة، ويفصل `UNSUPPORTED_PAYMENT_RAIL` عن فشل دليل الدفع؛ لا يضع علامة تناقض على فرصة بسبب عدم دعم الشبكة.
-- `midad_revenue_intelligence_mesh` — version 21، `ACTIVE`: يطبّع `chainId=8453 → USDC/Base` و`chainId=4217 → OUSD/Tempo`، ويُبقي الشبكات المجهولة غير مدعومة افتراضياً. لا يعلن الدليل المستقل لمجرد أن الـAPI أعاد hash.
-- عامل قائمة العمل يتجنب إعادة فحص بعض العوائق الدائمة عندما لا تتغير بيانات الشبكة/العملة/معاملة الضمان، ويسمح بإعادة التقييم عند تغير الحقول ذات الصلة. كما أصبح يفضّل رابط إثبات الدفع الرسمي `payout_proof_url` على صفحة المهمة العامة عند فحص المصدر، مع بقاء التحقق الخاص بالمهمة إلزامياً.
-- اختبارات وحدة محلية للمساعد: **6/6 ناجحة** (تطبيع Base وTempo، حجب الشبكات المجهولة والمدخلات الناقصة، وأولوية رابط إثبات الدفع الرسمي مع fallback مضبوط).
-- فحوص metadata بعد النشر أكدت أن الإصدارين نشطان وأن المساعد وقواعد الشبكة موجودة في المصدر المنشور. **لم يتم استدعاء اختبار Runtime المحمي للدوال** لأن مفتاح المشغّل لم يُقرأ أو يُكشف؛ لذلك لا أدّعي أن اختبارات الدالة الحية نجحت.
+**الإصدارات المنشورة والنشطة:**
+- midad_revenue_intel_work_queue_worker — deploy version 8 (internal VERSION=5): فاحصان منفصلان لـBase/USDC وTempo/OUSD؛ مطابقة معاملة الإسكرو، والعملة/العقد، والمستلم، وحدث المهمة، والمكافأة، وحالة النجاح و12 تأكيداً؛ يلتقط أيضاً دليل إجراء worker.submit من بيانات المهمة الرسمية قبل تقييم رسوم الإرسال.
+- midad_revenue_intelligence_mesh — deploy version 25: يدعم تطبيع OUSD/Tempo، ينشئ مهام التحقق الخاصة بالسلسلة حتى عندما توجد بوابات أهلية أخرى، ولا يضع تاريخ إثبات عند مجرد وجود TX hash في الإعلان. يعيد استخدام إثبات مستقل حديث (24 ساعة) فقط عندما يطابق **المهمة نفسها والمعاملة نفسها والشبكة/العملة نفسها**.
+- self_test محمي فعلي: **26/26 ناجحة**، HTTP 200، لا حالات فشل، بلا عمليات كتابة خارجية من الاختبار.
+- لم تتغير schema أو RLS أو السياسات المالية أو أذونات المحافظ. لم يتم إيداع أو توقيع أو تحويل أو سحب أو دفع ضمان أو إرسال مهمة.
 
-**الحالة المالية بعد التدقيق اللاحق للرمز:** بقيت إيصالات `midad_wallet_receipts` = 0، والفرص المؤهلة حالياً ضمن الاستعلام الصارم لصافي موجب/تكلفة وضمان صفر = 0. صفوف `independent_payment_proof` البالغ عددها 101 ما زالت BLOCKED بسبب غياب دليل دفع خاص بالمهمة، ولم تُعدّل هذه الصفوف أو تُفتح قسراً. الإصلاح يقلل أخطاء الشبكة وإعادة المحاولات العبثية؛ لكنه لا يخلق دليلاً أو إيراداً بذاته.
+## 1B. تجربة إثبات Tempo/OUSD — نتيجة حية
 
-**حدود التنفيذ:** لا تغييرات schema/RLS/policy، ولا تسجيل أو claim أو submission أو شراء، ولا توقيع أو تحويل أو سحب أو دفع ضمان. يجب تشغيل discovery المحمي ثم مراجعة النتائج، وإجراء فحص القراءة فقط على المرشحين الجدد قبل السماح بأي إرسال خارجي بموافقة مستقلة.
+شُغّلت دورة discover للقراءة العامة بعد الإصلاح: run fda389e7-b630-4f56-91db-4f664deedfd3؛ **8 مصادر مطلوبة، 7 ناجحة، 40 فرصة upserted، 0 جاهزة للمراجعة**. المصدر المتعثر الوحيد bountybook_api بسبب DNS في https://api.bountybook.ai/jobs?status=open&limit=50؛ لم يتم تبديل عنوانه إلى endpoint تخميني.
+
+نجح الفاحص المستقل على Tempo mainnet (chainId=4217, RPC https://rpc.tempo.xyz) للمهمتين التاليتين. قُرئت بيانات المهمة الرسمية، وتطابقت TX hash وحالة المعاملة الناجحة، وعقد OUSD، والتحويل إلى TaskMarket Diamond، وحدث المهمة المحدد، والمبلغ الذري، ونافذة الإرسال، وعدم الحاجة إلى stake. كما أظهر إجراء الإرسال الحالي في pendingActions أن worker.submit لا يتطلب دفعة حالية.
+
+| المهمة | مكافأة معلنة | معاملة الإسكرو | التأكيدات عند آخر فحص | الحالة |
+|---|---:|---|---:|---|
+| [TaskMarket Smart Contract Bug Bounty](https://taskmarket.dev/tasks/0x7965f9086b6c79342d6f5afb303dd44b97e2608f60a7e8c291d8f0645e647079) | 100 OUSD | [استكشاف المعاملة](https://explore.tempo.xyz/tx/0x66eaff73e133327c6d432140c90673730ee9af348476e7297e94dff7f647be2f) | 166,577 | verified_task_escrow |
+| [Design a logo system for Holler](https://taskmarket.dev/tasks/0xefb7396abee6966ea4f73564185396936fbc7b5f7d44e1419292c3c80987d849) | 50 OUSD | [استكشاف المعاملة](https://explore.tempo.xyz/tx/0x85ee453db2f28509d5909e5de9ccd45916dbb4f4741ffcc508378698710b47c3) | 92,790 | verified_task_escrow |
+
+المعلمات المشتركة التي تحقق منها الفاحص: OUSD contract 0x20c0000000000000000000006a37da5c996874be، وTaskMarket Diamond 0xf4f4a00011b080ebc1e599a765d8bce7557b97e7، مع stake_required=false وsubmission_window_open=true وsubmission_fee_verified=true وsubmission_fee_usd=0 للإجراء الحالي. هذا دليل تمويل على منصة المهمة؛ **ليس دليلاً على دخل للمشغل أو ضماناً للفوز**.
+
+بعد إعادة الاكتشاف، احتُفظ بإثباتي المعاملتين ولم تُمحَ بياناتهما. الحالة الحالية للمهمتين هي BLOCKED_KYC_OR_REGION، مع الأسباب:
+- identity_eligibility_unverified_or_denied
+- kyc_status_unverified_or_ineligible
+- region_eligibility_unverified_or_denied
+
+الإيصال المستلم في محفظة المستخدم ما زال **0**، وعدد المرشحين الذين اجتازوا شروط الجاهزية الصارمة ما زال **0**. لم تحدث مطالبة أو مشاركة أو تقديم أو تواصل خارجي، ولم يُنفّذ أي إجراء مالي حي.
+
+**الخطوة المتبقية:** تحقق حسابي منفصل ومصرح به من أهلية هوية/منطقة المشغّل قبل تحضير التسليم النهائي أو أي إرسال. لا يجوز تغيير هذه القيم إلى مؤهّل اعتماداً على التخمين أو على إثبات الإسكرو وحده.
 
 ## 2. المعمارية المستهدفة — إعادة استخدام أولاً
 
