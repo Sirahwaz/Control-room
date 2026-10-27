@@ -1,0 +1,27 @@
+name: Speedbot Fulfillment Service Version Guard
+on:
+  push:
+    branches: ["fix/speedbot-fulfillment-service-v3-20261028"]
+    paths:
+      - "supabase/functions/midad_speedbot_fulfillment/**"
+      - "tests/speedbot-fulfillment-version/**"
+      - ".github/workflows/speedbot-fulfillment-version-check.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/midad_speedbot_fulfillment/**"
+      - "tests/speedbot-fulfillment-version/**"
+      - ".github/workflows/speedbot-fulfillment-version-check.yml"
+permissions:
+  contents: read
+jobs:
+  deno-check-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check current deployed fulfillment source
+        run: deno check supabase/functions/midad_speedbot_fulfillment/index.ts
+      - name: Test service-version fail-closed contract
+        run: deno test --allow-read=./supabase/functions/midad_speedbot_fulfillment/index.ts tests/speedbot-fulfillment-version/service-version.test.ts
