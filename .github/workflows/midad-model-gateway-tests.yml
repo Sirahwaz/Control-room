@@ -29,6 +29,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Model catalog response-shape tests
-        run: node --test supabase/functions/midad_model_gateway_v3/model-catalog.test.mjs
+        run: node --test supabase/functions/midad_model_gateway_v3/model-catalog.test.mjs supabase/functions/midad_model_gateway_v3/usage-preflight.test.mjs
       - name: Model gateway type-check
         run: deno check supabase/functions/midad_model_gateway_v3/index.ts
