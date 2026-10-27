@@ -1,0 +1,34 @@
+name: MIDAD Model Gateway Catalog Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_model_gateway_v3/**"
+      - ".github/workflows/midad-model-gateway-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/midad_model_gateway_v3/**"
+      - ".github/workflows/midad-model-gateway-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Model catalog response-shape tests
+        run: node --test supabase/functions/midad_model_gateway_v3/model-catalog.test.mjs
+      - name: Model gateway type-check
+        run: deno check supabase/functions/midad_model_gateway_v3/index.ts
