@@ -217,7 +217,12 @@ function capabilityMatch(t: any) {
   ];
   const scores = profile.map(([label, terms]) => ({ capability: label, matched_terms: (terms as string[]).filter((word) => textValue.includes(word)) })).map((x) => ({ ...x, matched: x.matched_terms.length > 0 }));
   const matched = scores.filter((x) => x.matched).map((x) => x.capability);
-  const missing = (Array.isArray(t.required_capabilities) ? t.required_capabilities.map(String) : []).filter((req: string) => !matched.some((m) => m.toLowerCase().includes(req.toLowerCase()) || req.toLowerCase().includes(m.toLowerCase())));
+  const rawRequired = Array.isArray(t.required_capabilities)
+    ? t.required_capabilities.map(String)
+    : typeof t.required_capabilities === "string"
+      ? t.required_capabilities.split(/[,;\n]/).map((x: string) => x.trim()).filter(Boolean)
+      : [];
+  const missing = rawRequired.filter((req: string) => !matched.some((m) => m.toLowerCase().includes(req.toLowerCase()) || req.toLowerCase().includes(m.toLowerCase())));
   const score = Math.min(100, Math.round(matched.length / Math.max(1, scores.length) * 100));
   return {
     decision: score >= 35 ? "POTENTIAL_FIT_OPERATOR_REVIEW" : "LOW_OR_UNCLEAR_FIT",
@@ -266,7 +271,7 @@ function executionPlan(t: any) {
     external_action_allowed: false
   };
 }
-async function currentSourceCheck(t: any) {
+async function currentSourceCheck(t: any): Promise<PublicFetchResult> {
   const url = String(t.url || t.payout_proof_url || "");
   if (!url) return { ok: false, status: 0, error: "no_official_source_url", url: null, hash: null, excerpt: "" };
   return await fetchPublic(String(t.source_slug || ""), url);
@@ -395,7 +400,7 @@ async function processBatch(limit: number) {
   const visited: string[] = [];
   const items: any[] = [];
   for (let i = 0; i < max; i++) {
-    const t = await claimOne(visited);
+    const t: any = await claimOne(visited);
     if (!t) break;
     visited.push(String(t.id));
     try {
