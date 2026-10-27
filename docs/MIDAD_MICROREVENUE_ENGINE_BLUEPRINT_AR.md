@@ -20,7 +20,7 @@
 - التسليم: midad_store_orders، midad_store_fulfillment_jobs، midad_store_fulfillment_evidence.
 - الدفع: midad_payment_intents، midad_payment_events، midad_wallet_receipts، midad_audit_log، midad_learning_events.
 
-دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v21، midad_revenue_intel_work_queue_worker v5، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
+دوال موجودة ونشطة في metadata: midad_revenue_intelligence_mesh v21، midad_revenue_intel_work_queue_worker v6، midad_opportunity_engine v41، midad_payment_verifier v41، midad_wallet_receipt_monitor v13. الحالة النشطة والإصدار لا يثبتان اختبار runtime ناجحاً.
 
 لقطة قراءة فقط:
 - فرص Revenue Intelligence: 194؛ أدلة مرتبطة: 78,673.
@@ -37,10 +37,10 @@
 **المشكلة المعاد إنتاجها:** عامل إثبات الدفع كان يمرّر كل مهام Taskmarket الموسومة في الـadapter على أنها USDC/Base إلى Base RPC، من دون مطابقة `chainId` في سجل المهمة الرسمي. قراءة مباشرة للـAPI الرسمي أظهرت أمثلة حديثة على `chainId=4217` وعملة `OUSD` وشبكة `Tempo`؛ لذلك لا يصلح فاحص Base لتلك المهام. ليس فشل Base في العثور على المعاملة دليلاً على أن المكافأة مزيفة، بل إشارة إلى أن مسار التحقق لا يطابق شبكة المهمة.
 
 **الإصلاح المنشور والمتحقق من metadata بعد النشر:**
-- `midad_revenue_intel_work_queue_worker` — version 5، `ACTIVE`: يرفض استخدام Base-USDC verifier على شبكة/عملة مختلفة، ويفصل `UNSUPPORTED_PAYMENT_RAIL` عن فشل دليل الدفع؛ لا يضع علامة تناقض على فرصة بسبب عدم دعم الشبكة.
+- `midad_revenue_intel_work_queue_worker` — version 6، `ACTIVE`: يرفض استخدام Base-USDC verifier على شبكة/عملة مختلفة، ويفصل `UNSUPPORTED_PAYMENT_RAIL` عن فشل دليل الدفع؛ لا يضع علامة تناقض على فرصة بسبب عدم دعم الشبكة.
 - `midad_revenue_intelligence_mesh` — version 21، `ACTIVE`: يطبّع `chainId=8453 → USDC/Base` و`chainId=4217 → OUSD/Tempo`، ويُبقي الشبكات المجهولة غير مدعومة افتراضياً. لا يعلن الدليل المستقل لمجرد أن الـAPI أعاد hash.
-- عامل قائمة العمل يتجنب إعادة فحص بعض العوائق الدائمة عندما لا تتغير بيانات الشبكة/العملة/معاملة الضمان، ويسمح بإعادة التقييم عند تغير الحقول ذات الصلة.
-- اختبار وحدة محلي لمساعد تطبيع الشبكة: **4/4 ناجحة** (Base صحيح، Tempo لا يمر إلى فاحص Base، شبكة مجهولة مغلقة، حقول ناقصة/سيئة الإدخال مغلقة).
+- عامل قائمة العمل يتجنب إعادة فحص بعض العوائق الدائمة عندما لا تتغير بيانات الشبكة/العملة/معاملة الضمان، ويسمح بإعادة التقييم عند تغير الحقول ذات الصلة. كما أصبح يفضّل رابط إثبات الدفع الرسمي `payout_proof_url` على صفحة المهمة العامة عند فحص المصدر، مع بقاء التحقق الخاص بالمهمة إلزامياً.
+- اختبارات وحدة محلية للمساعد: **6/6 ناجحة** (تطبيع Base وTempo، حجب الشبكات المجهولة والمدخلات الناقصة، وأولوية رابط إثبات الدفع الرسمي مع fallback مضبوط).
 - فحوص metadata بعد النشر أكدت أن الإصدارين نشطان وأن المساعد وقواعد الشبكة موجودة في المصدر المنشور. **لم يتم استدعاء اختبار Runtime المحمي للدوال** لأن مفتاح المشغّل لم يُقرأ أو يُكشف؛ لذلك لا أدّعي أن اختبارات الدالة الحية نجحت.
 
 **الحالة المالية بعد التدقيق اللاحق للرمز:** بقيت إيصالات `midad_wallet_receipts` = 0، والفرص المؤهلة حالياً ضمن الاستعلام الصارم لصافي موجب/تكلفة وضمان صفر = 0. صفوف `independent_payment_proof` البالغ عددها 101 ما زالت BLOCKED بسبب غياب دليل دفع خاص بالمهمة، ولم تُعدّل هذه الصفوف أو تُفتح قسراً. الإصلاح يقلل أخطاء الشبكة وإعادة المحاولات العبثية؛ لكنه لا يخلق دليلاً أو إيراداً بذاته.
