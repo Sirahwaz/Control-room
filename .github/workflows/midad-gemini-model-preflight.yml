@@ -29,6 +29,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Gemini catalog parser contract tests
-        run: node --test supabase/functions/midad_ai_router/gemini-catalog.test.mjs
+        run: node --test supabase/functions/midad_ai_router/gemini-catalog.test.mjs supabase/functions/midad_ai_router/gemini-smoke.test.mjs
       - name: AI router type-check
         run: deno check supabase/functions/midad_ai_router/index.ts
