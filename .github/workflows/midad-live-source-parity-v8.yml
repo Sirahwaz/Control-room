@@ -1,0 +1,41 @@
+name: MIDAD Live Source Parity v8
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/functions/midad_speedbot_target_executor/**"
+      - "supabase/functions/midad_revenue_intel_work_queue_worker/**"
+      - ".github/workflows/midad-live-source-parity-v8.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/functions/midad_speedbot_target_executor/**"
+      - "supabase/functions/midad_revenue_intel_work_queue_worker/**"
+      - ".github/workflows/midad-live-source-parity-v8.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run revenue worker source contracts
+        run: node --test supabase/functions/midad_revenue_intel_work_queue_worker/source-contract.test.mjs
+      - name: Type-check reconciled deployed source snapshots
+        run: |
+          deno check supabase/functions/midad_base_usdc_monitor/index.ts
+          deno check supabase/functions/midad_speedbot_target_executor/index.ts
+          deno check supabase/functions/midad_revenue_intel_work_queue_worker/index.ts
