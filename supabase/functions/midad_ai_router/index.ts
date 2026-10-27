@@ -194,11 +194,12 @@ Deno.serve(async req=>{
     total_tokens:Number.isFinite(Number(usage.total_tokens))?Number(usage.total_tokens):null
    };
    const providerCode=String(d?.error?.status||d?.error?.code||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,64)||null;
+   const providerMessage=clip(redactSecrets(String(d?.error?.message||d?.error?.details||"")),300)||null;
    if(!r.ok)return json({
     ok:false,state:"FAILED",error:"gemini_smoke_http_error",
     provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,
-    provider_http_status:r.status,provider_error_code:providerCode,
-    inference_tested:true,store:false,usage:safeUsage,latency_ms:Date.now()-started
+    provider_http_status:r.status,provider_error_code:providerCode,provider_error_message:providerMessage,
+    inference_attempted:true,inference_tested:false,store:false,usage:safeUsage,latency_ms:Date.now()-started
    },502);
    const output=redactSecrets(geminiOutputText(d)).trim();
    const matches=output==="MIDAD_GEMINI_OK";
@@ -216,7 +217,7 @@ Deno.serve(async req=>{
   }catch(e){
    const name=String((e as any)?.name||"");
    const error=name==="TimeoutError"||name==="AbortError"?"gemini_smoke_timeout":"gemini_smoke_network_error";
-   return json({ok:false,state:"FAILED",error,provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,inference_tested:false,store:false,latency_ms:Date.now()-started},502);
+   return json({ok:false,state:"FAILED",error,provider:"google_gemini",model:GEMINI_ADVISOR_MODEL,inference_attempted:true,inference_tested:false,store:false,latency_ms:Date.now()-started},502);
   }
  }
  const tc=taskClass(body);

@@ -44,3 +44,15 @@ test("Gemini smoke success requires the exact synthetic response, not HTTP 200 a
   assert.match(branch, /if\(!matches\)/);
   assert.match(branch, /inference_tested:true/);
 });
+
+test("Gemini HTTP errors are sanitized and never counted as successful inference", () => {
+  const branch = smokeBranch();
+  const start = branch.indexOf("if(!r.ok)");
+  const end = branch.indexOf("const output=", start);
+  assert.ok(start >= 0 && end > start, "HTTP error branch must be distinct from output verification");
+  const errorBranch = branch.slice(start, end);
+  assert.match(branch, /providerMessage=clip\(redactSecrets\(/);
+  assert.match(errorBranch, /provider_error_message:providerMessage/);
+  assert.match(errorBranch, /inference_attempted:true/);
+  assert.match(errorBranch, /inference_tested:false/);
+});
