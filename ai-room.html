@@ -61,18 +61,75 @@ async function connectLive(){if(liveBusy)return;const tg=window.Telegram&&window
 async function refreshLive(){if(liveBusy)return;if(!liveSessionToken){await connectLive();return}liveBusy=true;$("#refreshLive").disabled=true;try{const data=await requestJson(AI_ROOM_STATUS_URL,{token:liveSessionToken});if(data.scope!=="read_only_aggregate"||data.guards?.financial_actions!==false||data.guards?.mutations!==false)throw new Error("unsafe_contract");renderLiveStatus(data);if(data.agent_mesh)renderAgentMesh(data.agent_mesh);else throw new Error("agent_mesh_missing")}catch(error){if(String(error&&error.message||"")==="session_expired"||String(error&&error.message||"")==="missing_session"){liveSessionToken="";closePipelineSmokeModal()}if(!liveSessionToken){clearLiveMetrics();setConnection(false,readableAuthError(error))}else $("#connectionMessage").textContent=readableAuthError(error)}finally{liveBusy=false;$("#connectLive").disabled=!!liveSessionToken;$("#refreshLive").disabled=!liveSessionToken;syncPipelineSmokeButton()}}
 
 function renderPipelineSmokeResult(data,httpOk){
- const raw=data&&data.pipeline||{};
- const advisorOk=raw.advisor?.provider==="gemini"&&raw.advisor?.state==="VERIFIED"&&raw.advisor?.advice_injected===true;
- const executorOk=raw.executor?.provider==="apmix"&&raw.executor?.state==="VERIFIED";
+ const raw=data&&data.pipeline&&typeof data.pipeline==="object"?data.pipeline:{};
+ const advisor=raw.advisor&&typeof raw.advisor==="object"?raw.advisor:{};
+ const executor=raw.executor&&typeof raw.executor==="object"?raw.executor:{};
+ const advisorOk=advisor.provider==="gemini"&&advisor.state==="VERIFIED"&&advisor.advice_injected===true;
+ const executorOk=executor.provider==="apmix"&&executor.state==="VERIFIED";
  const verified=Boolean(httpOk&&data?.ok===true&&data?.state==="VERIFIED"&&data?.test==="gemini_to_claude_synthetic_smoke"&&raw.requested===true&&advisorOk&&executorOk&&data?.expected_markers_present===true);
- const state=verified?"VERIFIED":data?.state==="PENDING"?"PENDING":data?.state==="BLOCKED"?"BLOCKED":"FAILED";
- const label={VERIFIED:"نجاح مؤكّد",PENDING:"قيد الانتظار",BLOCKED:"محجوب",FAILED:"فشل التحقق"}[state];
- const el=$("#pipelineSmokeState");el.textContent=label;el.className="status "+(verified?"ready":state==="PENDING"?"review":"off");
- const latency=Number.isFinite(data?.latency_ms)?data.latency_ms+" ms":"غير متاح";
- const ref=String(data?.request_ref||"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,80)||"غير متاح";
- const result=$("#pipelineSmokeResult");result.replaceChildren();
- const p=document.createElement("p");p.className="sub";p.textContent="الحالة: "+state+" · Gemini: "+(advisorOk?"VERIFIED":"FAILED")+" · Claude/APMIX: "+(executorOk?"VERIFIED":"FAILED")+" · الزمن: "+latency+" · المرجع: "+ref;result.appendChild(p);
- $("#pipelineSmokeStatus").textContent=verified?"اجتاز النموذجان الاختبار الاصطناعي بعلامات النتيجة المتوقعة.":"لم يثبت نجاح المرحلتين؛ راجع الحالة أعلاه. لا يُحتسب HTTP 200 وحده نجاحاً.";
+ const state=verified?"VERIFIED":["PENDING","BLOCKED","PARTIAL"].includes(data?.state)?data.state:"FAILED";
+ const labels={VERIFIED:"نجاح مؤكّد",PENDING:"قيد الانتظار",BLOCKED:"محجوب",PARTIAL:"نجاح جزئي — لم يكتمل",FAILED:"فشل التحقق"};
+ const safeCode=value=>{
+  if(typeof value!=="string")return "غير متاح";
+  const code=value.trim();
+  return /^[A-Za-z0-9_.:-]{1,64}$/.test(code)?code:"غير متاح";
+ };
+ const safeHttpStatus=(...values)=>{
+  const value=values.find(candidate=>Number.isInteger(candidate)&&candidate>=100&&candidate<=599);
+  return value===undefined?"غير متاح":String(value);
+ };
+ const safeStageState=value=>{
+  const allowed=new Set(["VERIFIED","FAILED","BLOCKED","PENDING","NOT_CALLED","SKIPPED"]);
+  return typeof value==="string"&&allowed.has(value)?value:"UNKNOWN";
+ };
+ const advisorReportedState=safeStageState(advisor.state);
+ const executorReportedState=safeStageState(executor.state);
+ const advisorState=advisorOk?"VERIFIED":advisorReportedState==="VERIFIED"?"FAILED":advisorReportedState;
+ let executorCalled=typeof data?.executor_called==="boolean"?data.executor_called:
+  typeof raw.executor_called==="boolean"?raw.executor_called:
+  typeof executor.called==="boolean"?executor.called:null;
+ if(executorCalled===null&&executorReportedState==="NOT_CALLED")executorCalled=false;
+ const executorState=executorOk?"VERIFIED":
+  executorCalled===false||executorReportedState==="NOT_CALLED"?"NOT_CALLED":
+  executorReportedState==="VERIFIED"?"FAILED":executorReportedState;
+ const failureStage=verified?"لا يوجد":safeCode(data?.failure_stage??raw.failure_stage);
+ const providerHttpStatus=safeHttpStatus(
+  data?.provider_http_status,
+  raw.provider_http_status,
+  failureStage==="gemini_advisor"?advisor.http_status:undefined,
+  failureStage==="apmix_executor"?executor.http_status:undefined
+ );
+ const providerErrorCode=safeCode(
+  data?.provider_error_code??raw.provider_error_code??
+  advisor.error_code??advisor.error??executor.error_code??executor.error??data?.error
+ );
+ const routerError=safeCode(data?.router_error??raw.router_error);
+ const latency=Number.isFinite(data?.latency_ms)&&data.latency_ms>=0?data.latency_ms+" ms":"غير متاح";
+ const requestRef=typeof data?.request_ref==="string"?data.request_ref.replace(/[^A-Za-z0-9_-]/g,"").slice(0,80):"";
+ const stateEl=$("#pipelineSmokeState");
+ stateEl.textContent=labels[state];
+ stateEl.className="status "+(verified?"ready":state==="PENDING"||state==="PARTIAL"?"review":"off");
+ const result=$("#pipelineSmokeResult");
+ result.replaceChildren();
+ const addLine=(label,value)=>{
+  const line=document.createElement("p");
+  line.className="sub";
+  line.textContent=label+": "+value;
+  result.appendChild(line);
+ };
+ addLine("الحالة",state);
+ addLine("المرحلة الفاشلة",failureStage);
+ addLine("Gemini",advisorState);
+ addLine("Claude/APMIX",executorState);
+ addLine("هل استُدعي المنفّذ",executorCalled===true?"YES":executorCalled===false?"NO":"UNKNOWN");
+ addLine("HTTP للمزوّد",providerHttpStatus);
+ addLine("رمز خطأ المزوّد",providerErrorCode);
+ addLine("خطأ الموجّه",routerError);
+ addLine("زمن الطلب",latency);
+ addLine("مرجع الطلب",requestRef||"غير متاح");
+ $("#pipelineSmokeStatus").textContent=verified?
+  "اجتاز الاختبار الاصطناعي المرحلتين مع علامات النتيجة المطلوبة.":
+  "لم يثبت نجاح المرحلتين. راجع التشخيص؛ HTTP 200 وحده لا يثبت النجاح.";
  return verified;
 }
 async function runPipelineSmokeTest(){
