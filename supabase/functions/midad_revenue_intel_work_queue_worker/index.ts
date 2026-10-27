@@ -268,7 +268,7 @@ function executionPlan(t: any) {
 }
 async function currentSourceCheck(t: any) {
   const url = String(t.url || t.payout_proof_url || "");
-  if (!url) return { ok: false, status: 0, error: "no_official_source_url" };
+  if (!url) return { ok: false, status: 0, error: "no_official_source_url", url: null, hash: null, excerpt: "" };
   return await fetchPublic(String(t.source_slug || ""), url);
 }
 async function processTask(t: any) {
