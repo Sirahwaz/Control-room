@@ -27,7 +27,7 @@ test("Gemini smoke issues one stateless, bounded interactions request", () => {
   assert.match(branch, /method:"POST"/);
   assert.match(branch, /store:false/);
   assert.match(branch, /max_output_tokens:16/);
-  assert.match(branch, /thinking_level:"minimal"/);
+  assert.doesNotMatch(branch, /thinking_level:/, "avoid unsupported thinking configuration for this model");
   assert.doesNotMatch(branch, /for\s*\(|while\s*\(|attempt\s*</);
 });
 
