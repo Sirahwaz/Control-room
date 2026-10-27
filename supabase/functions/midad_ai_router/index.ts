@@ -179,7 +179,7 @@ Deno.serve(async req=>{
     body:JSON.stringify({
      model:GEMINI_ADVISOR_MODEL,
      input:"Reply with exactly MIDAD_GEMINI_OK and no other text.",
-     generation_config:{max_output_tokens:16,thinking_level:"minimal"},
+     generation_config:{max_output_tokens:16},
      store:false
     }),
     signal:AbortSignal.timeout(15000)
