@@ -175,6 +175,41 @@
         "release-apk-exclusion"
       ],
       "policy": "Use only in isolated development/CI previews; never bundle the toolbar or MCP server into Android release artifacts."
+    },
+    {
+      "id": "leanrea-cli-router",
+      "version": "upstream-main-2026-10-28",
+      "type": "skill",
+      "capabilities": [
+        "application-reverse-engineering",
+        "developer-research"
+      ],
+      "reuse": "preferred",
+      "tests": [
+        "tool_preflight",
+        "authorization_scope",
+        "seen_inferred_unknown_evidence"
+      ],
+      "policy": "Instruction-only router. It does not install or execute JADX, Apktool, Frida, Ghidra or a shell tool. Each runtime/tool must be independently verified."
+    },
+    {
+      "id": "midad-intelligence-force-super",
+      "version": "1",
+      "type": "orchestration_skill",
+      "capabilities": [
+        "application-reverse-engineering",
+        "agent-orchestration",
+        "quality-audit"
+      ],
+      "reuse": "always",
+      "tests": [
+        "skill_routing",
+        "authorization_gate",
+        "bounded_retry",
+        "evidence_integrity",
+        "factory_handoff"
+      ],
+      "policy": "Coordinates LeanREA, Replica and isolated analysis while keeping Lab and Mobile Factory as separate execution tracks."
     }
   ]
 }
