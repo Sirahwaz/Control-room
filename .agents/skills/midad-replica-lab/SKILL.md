@@ -20,6 +20,8 @@ Do not merge those responsibilities into one worker. Reuse existing Factory modu
 
 ## Route
 
+Use midad-intelligence-force-super as the top-level router. For authorized technical internals (APK/native/Electron/minified bundles), use leanrea after a cheap CLI/tool preflight; for public UX/screens/flows and clean-room rebuild, use replica-recon. Do not mix a private-binary analysis task into the public-source recon route.
+
 1. Web/app behavior from public materials or the operator's own account: use replica-recon, then replica-architect and replica-design.
 2. APK/web security analysis of an asset owned by the operator or expressly authorized: use midad-authorized-app-analysis. Do not use replica-recon to bypass its clean-room constraints.
 3. Build an independent implementation with replica-build, then replica-backend if needed.
