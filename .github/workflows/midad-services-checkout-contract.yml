@@ -1,0 +1,25 @@
+name: MIDAD Services Checkout Contract
+on:
+  pull_request:
+    paths:
+      - 'services.html'
+      - 'services.catalog.mjs'
+      - 'tests/services-checkout.contract.test.mjs'
+      - 'supabase/functions/midad_public_checkout/index.ts'
+      - '.github/workflows/midad-services-checkout-contract.yml'
+  push:
+    paths:
+      - 'services.html'
+      - 'services.catalog.mjs'
+      - 'tests/services-checkout.contract.test.mjs'
+      - 'supabase/functions/midad_public_checkout/index.ts'
+      - '.github/workflows/midad-services-checkout-contract.yml'
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/services-checkout.contract.test.mjs
