@@ -24,6 +24,7 @@ _GATE_TEXT = re.compile(
     r"(?i)(captcha|verify you are human|prove you are human|two[- ]factor|two[- ]step|"
     r"verification code|authenticator|robot check|رمز التحقق|تحقق أنك إنسان|تحقق انك انسان)"
 )
+_HIGH_RISK_PATH = re.compile(r"(?i)(?:^|/)(?:payment|payments|checkout|withdraw|withdrawal|transfer|wallet|sign|delete|purchase|billing|payout|transaction|publish|apply|submit|claim|logout|send)(?:/|$)")
 _HIGH_RISK_LABEL = re.compile(
     r"(?i)(pay(?:ment)?|purchase|buy now|withdraw|transfer|wallet|sign|delete|"
     r"submit|publish|send|apply|checkout|دفع|شراء|سحب|تحويل|توقيع|حذف|إرسال|ارسال|نشر|تقديم)"
@@ -144,7 +145,11 @@ class PlatformBrowserSession:
         request = route.request
         try:
             normalized = _host_allowed(request.url, self.allowed_hosts)
+            parts = urlsplit(normalized)
+            path = parts.path.rstrip("/") or "/"
             method = request.method.upper()
+            if _HIGH_RISK_PATH.search(path):
+                raise BrowserSessionError("HIGH_IMPACT_PATH_BLOCKED")
             if method in {"GET", "HEAD"}:
                 await route.continue_()
                 return
@@ -273,10 +278,21 @@ class PlatformBrowserSession:
         current_host = (urlsplit(self.page.url).hostname or "").lower().rstrip(".")
         if current_host not in self.allowed_hosts:
             raise BrowserSessionError("CURRENT_PAGE_HOST_NOT_ALLOWED")
+        target = validated.get("target_url")
         if action == "navigate":
             target = _host_allowed(validated["target_url"], self.allowed_hosts)
+            path = urlsplit(target).path
+            if _HIGH_RISK_PATH.search(path):
+                raise BrowserSessionError("HIGH_IMPACT_PATH_BLOCKED")
             await self.page.goto(target, wait_until="domcontentloaded", timeout=self.timeout_ms)
             return await self.inspect()
+        if target:
+            target = _host_allowed(target, self.allowed_hosts)
+            path = urlsplit(target).path
+            if _HIGH_RISK_PATH.search(path):
+                raise BrowserSessionError("HIGH_IMPACT_PATH_BLOCKED")
+            if self.page.url != target:
+                await self.page.goto(target, wait_until="domcontentloaded", timeout=self.timeout_ms)
         if action == "inspect":
             return await self.inspect()
         selector = validated.get("selector")
@@ -298,16 +314,23 @@ class PlatformBrowserSession:
             raise BrowserSessionError("HIGH_IMPACT_CONTROL_REQUIRES_EXPLICIT_SUBMIT_COMMAND")
         if action == "submit_form" and re.search(r"(?i)(pay|payment|purchase|buy|withdraw|transfer|wallet|sign|delete|checkout|دفع|شراء|سحب|تحويل|توقيع|حذف)", label):
             raise BrowserSessionError("FINANCIAL_OR_DESTRUCTIVE_CONTROL_BLOCKED")
-        if action == "click":
-            await locator.click(timeout=self.timeout_ms)
-            return await self.inspect()
-        if action == "fill":
-            await locator.fill(validated["value"], timeout=self.timeout_ms)
-            return {"status": "FILLED", "selector": selector, "value_length": len(validated["value"])}
-        if action == "submit_form":
-            await locator.click(timeout=self.timeout_ms)
-            await self.page.wait_for_timeout(300)
-            return await self.inspect()
+        if action in {"click", "fill", "submit_form"}:
+            self._interaction_post_used = False
+            self._interaction_post_active = True
+            try:
+                if action == "click":
+                    await locator.click(timeout=self.timeout_ms)
+                    return await self.inspect()
+                if action == "fill":
+                    await locator.fill(validated["value"], timeout=self.timeout_ms)
+                    return {"status": "FILLED", "selector": selector, "value_length": len(validated["value"])}
+                if action == "submit_form":
+                    await locator.click(timeout=self.timeout_ms)
+                    await self.page.wait_for_timeout(300)
+                    return await self.inspect()
+            finally:
+                self._interaction_post_active = False
+                self._interaction_post_used = False
         raise BrowserSessionError("ACTION_NOT_IMPLEMENTED")
 
     async def inspect(self) -> dict:
