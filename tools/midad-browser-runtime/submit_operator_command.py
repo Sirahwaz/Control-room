@@ -1,4 +1,4 @@
-"""Submit a typed operator hint to the existing MIDAD Browser Agent Gateway."""
+"""Queue a conversational platform hint for the persistent MIDAD operator worker."""
 from __future__ import annotations
 import argparse
 import asyncio
@@ -6,39 +6,37 @@ import json
 import os
 import uuid
 
-from account_registry import AccountRegistry
-from operator_command_router import build_operator_request
 from runner import BrowserConfig, GatewayClient
 
 async def submit_hint(hint: str, config=None, registry=None, gateway=None, owner_user_id=None):
+    # Registry is accepted for backwards-compatible callers; resolution is deliberately
+    # performed by the trusted worker using its private account registry.
+    del registry
     config = config or BrowserConfig.from_env()
     owner_user_id = str(owner_user_id or os.environ.get("MIDAD_OPERATOR_OWNER_USER_ID", "")).strip()
     if not owner_user_id:
         raise ValueError("MIDAD_OPERATOR_OWNER_USER_ID_REQUIRED")
-    if registry is None:
-        path = os.environ.get("MIDAD_BROWSER_ACCOUNT_REGISTRY", "/var/lib/midad-browser/accounts.json")
-        registry = AccountRegistry(path, set(config.allowed_hosts))
-    command = build_operator_request(hint, registry.list_profiles())
-    objective = "Operator command: " + command["action"] + " on " + command["platform_key"]
+    hint = str(hint or "").strip()
+    if not hint:
+        raise ValueError("OPERATOR_HINT_REQUIRED")
+    if len(hint) > 500:
+        raise ValueError("OPERATOR_HINT_TOO_LONG")
     response = await (gateway or GatewayClient(config)).call(
-        "create_job",
+        "queue_operator_hint",
         owner_user_id=owner_user_id,
         agent_key="midad_operator_command_router",
-        platform_key=command["platform_key"],
-        objective=objective[:3000],
-        current_url=command.get("target_url"),
-        input_data={"operator_command": command},
-        idempotency_key="operator:" + str(uuid.uuid4()),
+        operator_hint=hint,
+        idempotency_key="operator-hint:" + str(uuid.uuid4()),
     )
-    job = response.get("job") if isinstance(response, dict) else None
-    if not isinstance(job, dict) or not job.get("id"):
+    job_id = response.get("job_id") if isinstance(response, dict) else None
+    if response.get("ok") is not True or not job_id:
         raise RuntimeError("OPERATOR_JOB_NOT_CREATED")
     return {
         "ok": True,
-        "job_id": str(job["id"]),
-        "state": str(job.get("state") or "PREPARING"),
-        "platform_key": command["platform_key"],
-        "action": command["action"],
+        "job_id": str(job_id),
+        "state": str(response.get("state") or "PREPARING"),
+        "dispatch": "queued",
+        "hint_length": len(hint),
     }
 
 async def _main(hint: str):
@@ -47,7 +45,7 @@ async def _main(hint: str):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("hint", help='Example: "Taskmarket" starts its approved session')
+    parser.add_argument("hint", help='Example: "Taskmarket" queues session startup for the approved profile')
     args = parser.parse_args()
     try:
         asyncio.run(_main(args.hint))
