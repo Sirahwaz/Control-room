@@ -1,6 +1,6 @@
 """Long-running single-consumer worker for queued operator browser commands.
 
-Only jobs with input_data.operator_command are processed. The worker keeps browser
+Jobs with input_data.operator_command or input_data.operator_hint are processed. The worker keeps browser
 contexts in memory and polls the existing authenticated MIDAD Browser Agent Gateway.
 """
 from __future__ import annotations
