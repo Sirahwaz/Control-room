@@ -94,7 +94,17 @@ def build_operator_request(hint: str, profiles: list[dict]) -> dict:
     """Build a secret-free queue payload from a platform hint."""
     profile = resolve_platform_hint(hint, profiles)
     action = infer_hint_action(hint)
-    target_url = profile.get("login_url") if action == "start_session" else None
+    urls = re.findall(r"https://[^\\s,;]+", str(hint or ""))
+    target_url = urls[0].rstrip(").]}") if urls else None
+    if action == "navigate" and not target_url:
+        # A platform-only hint should establish a session, not fail on a missing URL.
+        action = "start_session"
+    if action == "start_session":
+        target_url = profile.get("login_url")
+        required = ("username", "username_selector", "password_selector", "submit_selector",
+                    "success_selector", "login_post_paths")
+        if not isinstance(target_url, str) or any(not profile.get(key) for key in required):
+            raise CommandRoutingError("PROFILE_NOT_READY_FOR_LOGIN")
     if target_url:
         _validate_profile_url(target_url, profile)
     return {
