@@ -428,7 +428,7 @@ async function recentProviderNetworkFailure(sourceSlug: string) {
     [sourceSlug]
   );
   for (const row of rows) {
-    const retryAfter = providerCooldownUntil({ sourceSlug, lastFailure: row, nowMs: Date.now() });
+    const retryAfter = providerCooldownUntil({ sourceSlug, lastFailure: { blocker: String(row.blocker || ''), failed_at: String(row.failed_at || '') }, nowMs: Date.now() });
     if (retryAfter) return { retryAfter, blocker: clip(row.blocker, 180), failedAt: row.failed_at };
   }
   return null;
