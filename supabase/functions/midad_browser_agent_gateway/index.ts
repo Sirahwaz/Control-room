@@ -399,6 +399,67 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, job: inserted.data, profile_snapshot: snap });
     }
 
+    if (action === "queue_operator_hint") {
+      const ownerUserId = clip(body.owner_user_id, 80);
+      const hint = clip(body.operator_hint ?? body.platform_hint, 500);
+      if (!ownerUserId || !hint) {
+        return json({ ok: false, error: "owner_user_id_and_operator_hint_required" }, 400);
+      }
+      // This endpoint is authenticated with the private ingest/service key only.
+      // A platform hint is data, not executable code; the worker resolves it against
+      // its private exact-host account registry and applies the action policy.
+      const idempotencyKey = clip(body.idempotency_key, 240) || ("operator-hint:" + crypto.randomUUID());
+      const old = await sb.from("midad_browser_jobs").select("*")
+        .eq("owner_user_id", ownerUserId).eq("session_ref", idempotencyKey).maybeSingle();
+      if (old.error) return json({ ok: false, error: "operator_job_lookup_failed" }, 500);
+      if (old.data) return json({ ok: true, idempotent: true, job_id: old.data.id, state: old.data.state });
+
+      const snap = await profileSnapshot(sb, ownerUserId);
+      const inserted = await sb.from("midad_browser_jobs").insert({
+        owner_user_id: ownerUserId,
+        agent_key: normalizeActorKey(body.agent_key || "midad_operator_command_router"),
+        platform_key: "operator_router",
+        objective: "Resolve approved platform hint and start or route the requested operator action",
+        state: "PREPARING",
+        session_ref: idempotencyKey,
+        current_url: null,
+        input_data: { operator_hint: hint },
+        profile_snapshot: snap,
+        human_gate: { required: false, status: "none" },
+        blocker: {},
+        evidence: {},
+        next_action: "resolve_platform_hint_and_execute",
+        attempt_count: 0,
+      }).select("*").single();
+      if (inserted.error) return json({ ok: false, error: "operator_job_insert_failed" }, 500);
+
+      const ledger = await recordLedger(sb, {
+        jobId: inserted.data.id,
+        eventKey: "job-created:" + inserted.data.id,
+        eventType: "job_created",
+        actorKey: "midad_operator_command_router",
+        targetState: "PREPARING",
+        sourceUrl: null,
+        evidence: { source_kind: "operator_hint_queue" },
+        nextAction: "resolve_platform_hint_and_execute",
+        attemptCount: 0,
+      });
+      if (!ledger.ok) return ledgerFailure(ledger.error);
+      await sb.from("midad_agent_events").insert({
+        job_id: inserted.data.id,
+        agent_key: "midad_operator_command_router",
+        event_type: "operator_hint_queued",
+        state: "PREPARING",
+        payload: { hint_length: hint.length, hint_preview: safeOperatorPreview(hint, 120) },
+      });
+      return json({
+        ok: true,
+        job_id: inserted.data.id,
+        state: "PREPARING",
+        next_action: "resolve_platform_hint_and_execute",
+      }, 202);
+    }
+
     if (action === "record_command_result") {
       const id = clip(body.job_id, 80);
       if (!id || !body.result || typeof body.result !== "object" || Array.isArray(body.result)) {
