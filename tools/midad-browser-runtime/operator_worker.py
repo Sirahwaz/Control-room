@@ -106,6 +106,7 @@ class OperatorWorker:
                     "platform_key": validated["platform_key"],
                     "account_id": account_id,
                     "host": profile["host"],
+                    "authenticated": bool(session.authenticated),
                     "session_storage": "memory_only",
                 }
             elif validated["action"] == "stop_session":
