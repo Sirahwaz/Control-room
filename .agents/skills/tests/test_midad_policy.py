@@ -22,6 +22,7 @@ class MidadReplicaPolicyTests(unittest.TestCase):
         self.assertIn("leanrea", router)
         self.assertIn("replica-recon", router)
         self.assertIn("Mobile Factory", router)
+        self.assertIn("midad-nanobot-runtime", router)
         self.assertIn("seen", router.lower())
         self.assertIn("three attempts", router.lower())
 
@@ -36,6 +37,31 @@ class MidadReplicaPolicyTests(unittest.TestCase):
         self.assertIn("Authorization", router)
         self.assertIn("3 attempts per incident", router)
         self.assertIn("BLOCKED", router)
+
+    def test_nanobot_runtime_is_registered_and_not_claimed_live(self):
+        skill = (SKILLS / "midad-nanobot-runtime" / "SKILL.md").read_text(encoding="utf-8")
+        guide = (SKILLS / "midad-replica-lab" / "NANOBOT_MIDAD_INTEGRATION.md").read_text(encoding="utf-8")
+        router = (SKILLS / "midad-intelligence-force-super" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Python 3.11 or newer", skill)
+        self.assertIn("NOT installed, hosted, deployed or connected", skill)
+        self.assertIn("session_id is not user authentication", skill)
+        self.assertIn("midad-nanobot-runtime", router)
+        self.assertIn("OnDev Hermes", guide)
+        self.assertIn("old Hermes checklist is retired", guide)
+        self.assertIn("api.apiKey", guide)
+        self.assertIn("read-only", guide.lower())
+
+        with open(REPO_ROOT / "mobile" / "factory" / "x" / "plugins.registry.json", encoding="utf-8") as fh:
+            plugins = json.load(fh)["plugins"]
+        plugin = next((item for item in plugins if item["id"] == "nanobot-agent-runtime"), None)
+        self.assertIsNotNone(plugin)
+        self.assertIn("runtime_preflight", plugin["tests"])
+        self.assertIn("not installed", plugin["policy"].lower())
+
+        with open(REPO_ROOT / "mobile" / "factory" / "x" / "capabilities.registry.json", encoding="utf-8") as fh:
+            capabilities = json.load(fh)["capabilities"]
+        self.assertIn("self-hosted-agent-runtime", [item["id"] for item in capabilities])
+        self.assertFalse((SKILLS / "midad-replica-lab" / "ONDEV_HERMES_NEXT_STEPS.md").exists())
 
     def test_deployment_skill_blocks_live_financial_actions(self):
         deploy = (SKILLS / "replica-deploy" / "SKILL.md").read_text(encoding="utf-8").lower()

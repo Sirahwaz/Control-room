@@ -14,7 +14,7 @@ description: >-
 Keep two coordinated tracks:
 
 - Lab: authorized discovery, screen/flow inventory, requirements, clean-room design and implementation, static/dynamic findings, test matrix and evidence.
-- Mobile Factory / Factory X: product manifest, reuse/provider planning, build pipeline, APK integrity, emulator/device smoke tests and release packaging.
+- Mobile Factory / Factory X: product manifest, reuse/provider plans, build pipeline, APK integrity, emulator/device smoke tests and release packaging.
 
 Do not merge those responsibilities into one worker. Reuse existing Factory modules and hand off a normalized job with evidence.
 
@@ -41,7 +41,10 @@ Before dynamic analysis, record the exact target, URL or asset hash, ownership/a
 - Verify each tool with its exact version/help output and a harmless fixture. Record available_and_tested, missing or failed_preflight.
 - Store evidence, hashes, tool versions, commands, scope and limitations. Redact secrets and personal data.
 - Never modify the original APK or run it outside the allowed environment. Do not turn findings into credential theft, auth bypass, persistence, exfiltration or attacks on unrelated systems.
-- Tool prompts and documentation do not prove that an analyzer is operational.
+
+## Runtime route
+
+Use midad-nanobot-runtime only when a persistent agent process, WebUI, chat channel or authenticated API surface is required. Nanobot does not replace this Lab, LeanREA or Replica. Keep it behind a MIDAD-owned server-side adapter and verify isolation/auth before connecting it. See NANOBOT_MIDAD_INTEGRATION.md. The guide does not establish that a host or runtime exists.
 
 ## Factory handoff
 

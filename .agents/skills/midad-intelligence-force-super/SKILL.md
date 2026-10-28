@@ -1,9 +1,9 @@
 ---
 name: midad-intelligence-force-super
 description: >-
-  Orchestrates MIDAD's strongest authorized software-intelligence workflow:
-  LeanREA technical reverse engineering, Replica clean-room product mapping,
-  isolated APK/web analysis, evidence verification and Mobile Factory handoff.
+  Orchestrates MIDAD's authorized software-intelligence workflow: LeanREA
+  technical reverse engineering, Replica clean-room product mapping, Nanobot
+  runtime planning, isolated analysis, evidence verification and Factory handoff.
 ---
 
 # MIDAD Intelligence Force Super
@@ -21,6 +21,7 @@ This is the top-level router, not a new model or a claim that tools are installe
    - Public product behavior, screens, components, user flows, competitor UX or clean-room rebuilding: use replica-recon, then replica-architect / replica-design / replica-build.
    - Authorized security/runtime analysis that requires isolation, a target hash, tool readiness report or strict exclusions: use midad-authorized-app-analysis.
    - Tests and parity: replica-test then replica-diff.
+   - Long-running agent UI, private chat channels or API runtime: route through midad-nanobot-runtime. Nanobot is a self-hosted runtime, not an Android-native app or a model provider; it must remain disconnected until host, access controls and smoke tests are verified.
    - Android package production and emulator smoke tests: hand off to Mobile Factory / Factory X using mobile/factory/REPLICA_SKILL_INTEGRATION.md.
 4. Do not confuse the tools' roles. LeanREA gives an agent command-selection instructions; it is not itself JADX, Apktool, Frida, Ghidra, a browser, an emulator or a running analysis service. Replica skills generate a workflow; they do not prove a worker ran.
 5. Preserve boundaries. Keep the Lab and Mobile Factory separate execution tracks with one shared job contract. Never rebuild a working subsystem just to make a cleaner diagram.
@@ -51,7 +52,13 @@ If evidence conflicts, preserve the conflict and lower confidence instead of ave
 - Maximum three attempts per incident. After the third failure, open the incident circuit breaker, preserve error evidence and choose a structurally different fallback or report BLOCKED.
 - Cache results only by exact target hash + tool version + scope; do not reuse evidence for changed files.
 
-### E. Build handoff
+### E. Nanobot runtime handoff
+- Use Nanobot only when a persistent agent runtime, private WebUI/chat channel or authenticated API surface is required.
+- Keep the runtime behind a MIDAD-owned server-side adapter. Do not expose its general tool API directly to a mobile client.
+- Verify host, pinned release, API authentication, workspace confinement, sandbox and negative authorization behavior before the first MIDAD connection.
+- Registry presence is planning metadata only; it is not proof Nanobot is installed, deployed, connected or safe.
+
+### F. Build handoff
 A Factory handoff includes job_id, scope, authorization evidence reference, target hash, selected skill, required capability, inputs, expected outputs, tests run, attempt count, blocker state, and artifact/report hashes.
 The Factory independently performs product preflight, build, tests, artifact-integrity verification and available runtime smoke checks. Never label a handoff as executed unless an execution result came back from a verified adapter.
 
@@ -62,7 +69,7 @@ The Factory independently performs product preflight, build, tests, artifact-int
 - Redact secrets and personal data. Never reuse discovered credentials or bypass authentication.
 - No unauthorized exploitation, persistence, credential theft, exfiltration or unrelated-target testing.
 - No live payments, purchases/refunds, wallet signing, transfers or withdrawals. No production publication or irreversible external action without a separate verified gate.
-- No merge of unverified changes. A green skill test does not prove APK tooling or direct OnDev Hermes connectivity.
+- No merge of unverified changes. A green skill test does not prove APK tooling, Nanobot installation or runtime/API connectivity.
 
 ## Required output
 Return a compact report:

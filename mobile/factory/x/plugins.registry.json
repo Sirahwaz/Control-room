@@ -210,6 +210,25 @@
         "factory_handoff"
       ],
       "policy": "Coordinates LeanREA, Replica and isolated analysis while keeping Lab and Mobile Factory as separate execution tracks."
+    },
+    {
+      "id": "nanobot-agent-runtime",
+      "version": "v0.3.5-reviewed-upstream",
+      "type": "module",
+      "capabilities": [
+        "self-hosted-agent-runtime",
+        "agent-orchestration",
+        "model-routing"
+      ],
+      "reuse": "preferred",
+      "tests": [
+        "runtime_preflight",
+        "api_auth",
+        "workspace_isolation",
+        "tool_sandbox",
+        "provider_smoke"
+      ],
+      "policy": "Integration descriptor only. Nanobot is not installed, hosted or connected by this entry. Requires a pinned release, Python 3.11 or newer, a private host, server-side adapter, access allowlists and proven sandbox/auth tests. Not an Android app or model provider. No live financial actions."
     }
   ]
 }

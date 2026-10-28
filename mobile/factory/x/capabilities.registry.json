@@ -1,6 +1,6 @@
 {
   "registry_version": 1,
-  "updated": "2026-10-17",
+  "updated": "2026-10-28",
   "capabilities": [
     {
       "id": "mobile-shell",
@@ -466,6 +466,21 @@
         "evidence"
       ],
       "default_reuse": true
+    },
+    {
+      "id": "self-hosted-agent-runtime",
+      "category": "ai",
+      "criticality": "high",
+      "tags": [
+        "nanobot",
+        "python",
+        "webui",
+        "telegram",
+        "openai-compatible-api",
+        "sandbox",
+        "server-side-auth"
+      ],
+      "default_reuse": false
     }
   ]
 }
