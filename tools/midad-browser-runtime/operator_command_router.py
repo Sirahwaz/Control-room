@@ -141,7 +141,11 @@ def validate_operator_command(command: dict, profile: dict, allowed_hosts: set[s
     allow = {str(item).strip().lower().rstrip(".") for item in allowed_hosts}
     if not host or host not in allow or "*" in host:
         raise CommandRoutingError("PROFILE_HOST_NOT_ALLOWLISTED")
-    target = command.get("target_url") or profile.get("login_url")
+    target = command.get("target_url")
+    if action == "start_session" and not target:
+        target = profile.get("login_url")
+    if action == "navigate" and not target:
+        raise CommandRoutingError("NAVIGATION_URL_REQUIRED")
     if target:
         target = _validate_profile_url(str(target), profile)
     approval = command.get("action_approved") is True
