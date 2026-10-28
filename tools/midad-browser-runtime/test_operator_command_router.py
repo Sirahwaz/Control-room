@@ -21,6 +21,7 @@ class OperatorCommandRouterTests(unittest.TestCase):
                 "password_selector": "input[name='password']",
                 "submit_selector": "button[type='submit']",
                 "success_selector": "[data-testid='account-home']",
+                "login_post_paths": ["/login"],
             },
             {
                 "account_id": "bounties-main",
@@ -31,6 +32,7 @@ class OperatorCommandRouterTests(unittest.TestCase):
                 "login_url": "https://bounties.sh/login",
                 "password_secret_ref": "MIDAD_BOUNTIES_PASSWORD",
                 "username": "operator@example.invalid",
+                "login_post_paths": ["/login"],
             },
         ]
 
