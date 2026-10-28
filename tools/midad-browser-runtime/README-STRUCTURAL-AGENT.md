@@ -24,3 +24,22 @@ Inspection, navigation and reading are permitted only on exact allowlisted hosts
 cd tools/midad-browser-runtime
 python -m unittest -v test_runner.py test_public_target_probe.py test_agent_policy.py
 ```
+
+
+## Host-scoped secret provider
+
+`secret_provider.EnvironmentSecretProvider` maps the tuple `(account_id, exact_host)` to a named environment-secret alias. It returns a secret only when both account and host match; unknown bindings, duplicate mappings, invalid aliases, and missing values fail closed. The provider stores no secret values and has no disk/database persistence.
+
+Example wiring (use a protected CI environment secret or deployment secret manager; never commit the value):
+
+```python
+from secret_provider import EnvironmentSecretProvider, SecretBinding
+
+provider = EnvironmentSecretProvider([
+    SecretBinding("work-account", "example.com", "MIDAD_WORK_ACCOUNT_SECRET")
+])
+# Keep returned values in memory only; never log or serialize them.
+secret_value = provider.resolve("work-account", "example.com")
+```
+
+The profile JSON stores only the alias. Configure real values in repository/environment Secrets with branch/environment restrictions. Do not put credentials in workflow inputs. This provider is a local adapter for secrets injected by the host environment; it is not itself a remote vault or encrypted persistent database.
