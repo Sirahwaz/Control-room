@@ -1,7 +1,7 @@
 /** Pure provider cooldown decision. No network, database, or external side effects. */
 export const PROVIDER_COOLDOWN_MS = 30 * 60 * 1000;
 
-const TRANSIENT_NETWORK_FAILURE = /(?:dns error|failed to lookup address information|name or service not known|\\benotfound\\b|\\beai_again\\b|\\beconnreset\\b|\\beconnrefused\\b|network is unreachable|connect timeout|connection refused|connection reset)/i;
+const TRANSIENT_NETWORK_FAILURE = /(?:dns error|failed to lookup address information|name or service not known|enotfound|eai_again|econnreset|econnrefused|network is unreachable|connect timeout|connection refused|connection reset)/i;
 
 /**
  * Return the UTC time when a provider can be retried after a recent network failure.
