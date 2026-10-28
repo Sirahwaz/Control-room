@@ -1,14 +1,17 @@
-FROM mcr.microsoft.com/playwright/python:v1.55.0-noble
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     MIDAD_BROWSER_ACCOUNT_REGISTRY=/var/lib/midad-browser/accounts.json \
     MIDAD_OPERATOR_POLL_SECONDS=3
 
 WORKDIR /app
 
 COPY requirements.txt ./requirements.txt
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt \
+    && python -m playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright
 
 COPY runner.py agent_policy.py account_registry.py secret_provider.py operator_command_router.py persistent_session.py operator_worker.py submit_operator_command.py ./
 
