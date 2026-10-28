@@ -82,10 +82,20 @@ def _validate_login_profile(profile: dict, global_hosts: set[str]) -> dict:
     }
     if any(item not in allowed_content_types for item in post_content_types):
         raise BrowserSessionError("LOGIN_POST_CONTENT_TYPE_NOT_ALLOWED")
+    action_post_paths = profile.get("action_post_paths", [])
+    if not isinstance(action_post_paths, list) or any(
+        not isinstance(path, str) or not path.startswith("/") or "?" in path or "#" in path
+        for path in action_post_paths
+    ):
+        raise BrowserSessionError("INVALID_ACTION_POST_PATHS")
+    risky_path = re.compile(r"(?i)(payment|checkout|withdraw|transfer|wallet|sign|delete|payout|billing)")
+    if any(risky_path.search(path) for path in action_post_paths):
+        raise BrowserSessionError("FINANCIAL_OR_DESTRUCTIVE_POST_PATH_FORBIDDEN")
     if not isinstance(profile.get("success_selector"), str) or not profile["success_selector"].strip():
         raise BrowserSessionError("LOGIN_SUCCESS_SELECTOR_REQUIRED")
     return {**profile, **safe, "login_url": login_url,
             "login_post_content_types": post_content_types,
+            "action_post_paths": action_post_paths,
             "_session_hosts": hosts}
 
 class PlatformBrowserSession:
@@ -105,6 +115,9 @@ class PlatformBrowserSession:
         self._login_submit_active = False
         self._login_post_used = False
         self._login_post_paths = {p.rstrip("/") or "/" for p in self.profile["login_post_paths"]}
+        self._interaction_post_active = False
+        self._interaction_post_used = False
+        self._action_post_paths = {p.rstrip("/") or "/" for p in self.profile["action_post_paths"]}
 
     async def _open(self):
         if self.browser is not None and self.context is not None and self.page is not None:
@@ -135,19 +148,28 @@ class PlatformBrowserSession:
             if method in {"GET", "HEAD"}:
                 await route.continue_()
                 return
-            if method == "POST" and self._login_submit_active and not self._login_post_used:
+            if method == "POST":
                 parts = urlsplit(normalized)
                 content_type = request.headers.get("content-type", "").lower()
                 allowed_content = any(content_type.startswith(kind)
                                        for kind in self.profile["login_post_content_types"])
+                path = parts.path.rstrip("/") or "/"
                 if (
-                    parts.hostname == self.profile["host"]
-                    and (parts.path.rstrip("/") or "/") in self._login_post_paths
-                    and allowed_content
+                    self._login_submit_active and not self._login_post_used
+                    and parts.hostname == self.profile["host"]
+                    and path in self._login_post_paths and allowed_content
                 ):
-                    # One explicitly configured login POST only. Works for form navigation
-                    # and a platform's documented same-origin JSON auth endpoint.
+                    # One explicitly configured login POST only.
                     self._login_post_used = True
+                    await route.continue_()
+                    return
+                if (
+                    self._interaction_post_active and not self._interaction_post_used
+                    and parts.hostname == self.profile["host"]
+                    and path in self._action_post_paths and allowed_content
+                ):
+                    # One explicitly configured low-risk action POST per directly approved action.
+                    self._interaction_post_used = True
                     await route.continue_()
                     return
         except Exception:
