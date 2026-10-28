@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { SERVICES } from '../services.catalog.mjs';
+import { SERVICES, isServiceInputReady } from '../services.catalog.mjs';
 
 const html = await readFile(new URL('../services.html', import.meta.url), 'utf8');
 const checkoutSource = await readFile(new URL('../supabase/functions/midad_public_checkout/index.ts', import.meta.url), 'utf8');
@@ -46,4 +46,23 @@ test('standalone page has no third-party runtime dependencies or hardcoded crede
   assert.doesNotMatch(html, /<(?:script|link)[^>]+(?:https?:\/\/|cdn\.)/i);
   assert.doesNotMatch(html, /(?:service_role|SUPABASE_SERVICE_ROLE_KEY|midad_autonomy_key|sk-[A-Za-z0-9]{12,})/i);
   assert.match(html, /textContent/);
+});
+
+test('source-material services reject empty or shallow input before invoice creation', () => {
+  const sourceRequired = SERVICES.filter((service) => service.requiresSourceMaterial);
+  assert.equal(sourceRequired.length, 4);
+  for (const service of sourceRequired) {
+    assert.equal(isServiceInputReady(service, ''), false, service.id + ' must reject empty input');
+    assert.equal(isServiceInputReady(service, 'just a short note'), false, service.id + ' must reject short input');
+    assert.equal(isServiceInputReady(service, 'Relevant error log: ' + 'x'.repeat(80)), true, service.id + ' should accept adequate source evidence');
+  }
+  for (const service of SERVICES.filter((entry) => !entry.requiresSourceMaterial)) {
+    assert.equal(isServiceInputReady(service, ''), true, service.id + ' should allow a requirements-free brief');
+  }
+});
+
+test('page connects service-specific input readiness to invoice submission', () => {
+  assert.match(html, /isServiceInputReady/);
+  assert.match(html, /requiresSourceMaterial/);
+  assert.match(html, /لا تنشأ الفاتورة قبل استيفاء المادة المصدرية المطلوبة/);
 });
