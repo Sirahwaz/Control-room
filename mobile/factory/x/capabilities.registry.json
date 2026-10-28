@@ -449,6 +449,23 @@
         "react-preview"
       ],
       "default_reuse": true
+    },
+    {
+      "id": "application-reverse-engineering",
+      "category": "software_intelligence",
+      "criticality": "high",
+      "tags": [
+        "reverse-engineering",
+        "apk",
+        "android",
+        "electron",
+        "native-binary",
+        "web-bundle",
+        "wasm",
+        "static-analysis",
+        "evidence"
+      ],
+      "default_reuse": true
     }
   ]
 }
