@@ -64,7 +64,7 @@ async def probe(url: str, allowed_hosts: set[str], timeout_ms: int = 10000) -> d
                     "secrets_required": False,
                     "supabase_writes": False,
                     "external_actions": False,
-                    "browser_cleanup": "PENDING",
+                    "browser_cleanup": "closed_in_finally",
                 }
             finally:
                 await context.close()
