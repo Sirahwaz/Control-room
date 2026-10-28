@@ -193,7 +193,9 @@ def validate_operator_command(command: dict, profile: dict, allowed_hosts: set[s
         if not isinstance(value, str) or len(value) > 2000:
             raise CommandRoutingError("FILL_VALUE_INVALID")
         selector = str(command.get("selector", ""))
-        if (str(profile.get("password_selector", "")) and selector == profile.get("password_selector")) or re.search(r"(?i)(password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)", selector):
+        if str(profile.get("password_selector", "")) and selector == profile.get("password_selector"):
+            raise CommandRoutingError("PASSWORD_FIELD_NOT_AVAILABLE_TO_GENERIC_FILL")
+        if re.search(r"(?i)(password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)", selector):
             raise CommandRoutingError("SENSITIVE_FIELD_NOT_AVAILABLE_TO_GENERIC_FILL")
         if re.search(r"(?i)(password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)\s*[:=]", value):
             raise CommandRoutingError("SENSITIVE_VALUE_NOT_AVAILABLE_TO_GENERIC_FILL")
