@@ -17,7 +17,7 @@ ALWAYS_BLOCKED = frozenset({
     "delete", "download", "captcha_bypass", "mfa_bypass", "bot_evasion",
 })
 _FINANCIAL_OR_DESTRUCTIVE = re.compile(
-    r"\b(pay(?:ment)?|transfer|withdraw(?:al)?|sign(?:ature)?(?!\\s+in\\b)|delete|"
+    r"\b(pay(?:ment)?|transfer|withdraw(?:al)?|sign(?:ature)?(?!\s+in\b)|delete|"
     r"send\s+money|buy\s+crypto|wallet\s+sign)\b|"
     r"(سحب|تحويل|دفع|توقيع|حذف|شراء\s+عملات)",
     re.IGNORECASE,
