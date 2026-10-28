@@ -37,24 +37,29 @@ export function evaluateSolanaReceiptReadiness(
   const paymentVerifierReady = input.paymentVerifierReady === true;
   const signatureScanComplete = input.signatureScanComplete === true;
   const tokenAccountCount = Number(input.tokenAccountCount);
-  const hasTokenAccount = Number.isFinite(tokenAccountCount) && tokenAccountCount > 0;
+  const hasTokenAccount = Number.isFinite(tokenAccountCount) &&
+    tokenAccountCount > 0;
   const senderAtaCreationSupported = input.senderAtaCreationSupported === true;
-  const paymentReconciliationReady =
-    paymentVerifierReady && signatureScanComplete && hasTokenAccount;
+  const paymentReconciliationReady = paymentVerifierReady &&
+    signatureScanComplete && hasTokenAccount;
 
-  const stateStatus = !hasTokenAccount
-    ? "NO_TOKEN_ACCOUNT"
-    : paymentReconciliationReady
-    ? "VERIFIED"
-    : "DEGRADED";
+  let stateStatus: SolanaReceiptReadinessResult["stateStatus"];
+  if (!hasTokenAccount) {
+    stateStatus = "NO_TOKEN_ACCOUNT";
+  } else if (paymentReconciliationReady) {
+    stateStatus = "VERIFIED";
+  } else {
+    stateStatus = "DEGRADED";
+  }
 
-  const readinessReason = !paymentVerifierReady
-    ? "strict_payment_verifier_not_ready"
-    : !signatureScanComplete
-    ? "signature_scan_incomplete"
-    : !hasTokenAccount
-    ? "token_account_missing"
-    : null;
+  let readinessReason: string | null = null;
+  if (!paymentVerifierReady) {
+    readinessReason = "strict_payment_verifier_not_ready";
+  } else if (!signatureScanComplete) {
+    readinessReason = "signature_scan_incomplete";
+  } else if (!hasTokenAccount) {
+    readinessReason = "token_account_missing";
+  }
 
   return {
     stateStatus,
