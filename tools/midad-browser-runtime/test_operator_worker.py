@@ -100,6 +100,16 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(event["state"] == "RUNNING" for event in self.gateway.events))
         self.assertTrue(any(event["state"] == "COMPLETED" for event in self.gateway.events))
 
+    async def test_plain_operator_hint_resolves_profile_in_worker(self):
+        job = {
+            "id": "job-hint", "state": "PREPARING", "platform_key": "operator_router",
+            "input_data": {"operator_hint": "Example"},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "AUTHENTICATED_IN_MEMORY")
+        self.assertEqual(result["action"], "start_session")
+        self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
+
     async def test_financial_command_is_blocked_and_not_executed(self):
         job = {
             "id": "job-financial", "state": "PREPARING", "platform_key": "example",
