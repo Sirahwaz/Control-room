@@ -53,7 +53,8 @@ def validate_profile(profile: dict, allowed_hosts: set[str]) -> dict:
     secret_ref = str(profile.get("password_secret_ref", "")).strip()
     if not account_id or not username:
         raise ValueError("PROFILE_IDENTITY_REQUIRED")
-    if not secret_ref or not secret_ref.replace("_", "").isalnum():
+    import re
+    if not re.fullmatch(r"MIDAD_[A-Z0-9_]{2,96}", secret_ref):
         raise ValueError("INVALID_SECRET_REFERENCE")
     return {"host": host, "account_id": account_id, "username": username,
             "password_secret_ref": secret_ref}
