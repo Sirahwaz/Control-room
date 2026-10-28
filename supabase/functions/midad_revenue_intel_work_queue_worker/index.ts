@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import { normalizeTaskmarketRail, isSupportedBaseUsdcRail, isSupportedTempoOusdRail, evaluateTaskmarketTempoReceipt, resolveOfficialProofUrl } from "./taskmarket_rail.mjs";
+import { providerCooldownUntil } from "./provider_circuit_breaker.mjs";
 
 const VERSION = 5;
 type PublicFetchResult = { ok: boolean; status: number; url?: string | null; hash?: string | null; excerpt?: string; error?: string; content_type?: string; redirect_not_followed?: boolean; };
@@ -420,6 +421,18 @@ async function currentSourceCheck(t: any) {
   if (!url) return { ok: false, status: 0, error: "no_official_source_url" };
   return await fetchPublic(String(t.source_slug || ""), url);
 }
+async function recentProviderNetworkFailure(sourceSlug: string) {
+  if (!sourceSlug) return null;
+  const rows = await db().unsafe(
+    "select q.blocker, q.updated_at as failed_at from public.midad_revenue_intel_work_queue q join public.midad_revenue_intel_opportunities o on o.id=q.opportunity_id where o.source_slug=$1 and q.status='FAILED' and q.updated_at>now()-interval '30 minutes' order by q.updated_at desc limit 8",
+    [sourceSlug]
+  );
+  for (const row of rows) {
+    const retryAfter = providerCooldownUntil({ sourceSlug, lastFailure: { blocker: String(row.blocker || ''), failed_at: String(row.failed_at || '') }, nowMs: Date.now() });
+    if (retryAfter) return { retryAfter, blocker: clip(row.blocker, 180), failedAt: row.failed_at };
+  }
+  return null;
+}
 async function processTask(t: any) {
   if (isActiveWorkStatus(t.opportunity_status)) {
     return { queue_status: "COMPLETED", blocker: null, data: { decision: "OPPORTUNITY_ALREADY_IN_PROGRESS", note: "No external action or state transition performed." } };
@@ -506,6 +519,23 @@ async function processTask(t: any) {
     }
     await markPayoutContradicted(String(t.opportunity_id), checked);
     return { queue_status: "BLOCKED", blocker: "independent_payout_check_failed:" + clip(checked.reason, 150), data: { decision: "BLOCKED_PAYOUT", verification: checked, external_action_allowed: false } };
+  }
+  const sourceSlug = String(t.source_slug || "");
+  const recentFailure = await recentProviderNetworkFailure(sourceSlug);
+  if (recentFailure) {
+    return {
+      queue_status: "BLOCKED",
+      blocker: "provider_cooldown:" + sourceSlug,
+      data: {
+        decision: "PROVIDER_COOLDOWN",
+        source_slug: sourceSlug,
+        retry_after: recentFailure.retryAfter,
+        last_network_failure: recentFailure.blocker,
+        last_failure_at: recentFailure.failedAt,
+        external_action_allowed: false,
+        note: "A recent provider DNS/network failure opened a 30-minute cooldown; skip repeated requests instead of retrying each listing."
+      }
+    };
   }
   const live = await currentSourceCheck(t);
   return {
