@@ -17,7 +17,7 @@ ALWAYS_BLOCKED = frozenset({
     "delete", "download", "captcha_bypass", "mfa_bypass", "bot_evasion",
 })
 _FINANCIAL_OR_DESTRUCTIVE = re.compile(
-    r"\b(pay(?:ment)?|transfer|withdraw(?:al)?|sign(?:ature)?|delete|"
+    r"\b(pay(?:ment)?|transfer|withdraw(?:al)?|sign(?:ature)?(?!\\s+in\\b)|delete|"
     r"send\s+money|buy\s+crypto|wallet\s+sign)\b|"
     r"(سحب|تحويل|دفع|توقيع|حذف|شراء\s+عملات)",
     re.IGNORECASE,
@@ -149,7 +149,10 @@ def validate_operator_command(command: dict, profile: dict, allowed_hosts: set[s
     if target:
         target = _validate_profile_url(str(target), profile)
     approval = command.get("action_approved") is True
-    if action in {"click", "fill", "submit_form", "wait_for_selector"} and not approval:
+    request_text = str(command.get("request_text", ""))
+    if _FINANCIAL_OR_DESTRUCTIVE.search(request_text):
+        raise CommandRoutingError("FINANCIAL_OR_DESTRUCTIVE_COMMAND_BLOCKED")
+    if action in {"click", "fill", "submit_form"} and not approval:
         raise CommandRoutingError("ACTION_APPROVAL_REQUIRED")
     if action in {"click", "fill", "submit_form", "wait_for_selector"}:
         selector = str(command.get("selector", "")).strip()
