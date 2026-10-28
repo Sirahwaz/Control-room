@@ -298,6 +298,7 @@ Deno.serve(async (req: Request) => {
           "create_browser_job",
           "queue_operator_hint",
           "record_command_result",
+          "get_operator_result",
           "resume_browser_job",
           "record_navigation_and_evidence",
           "record_evidence_ledger",
@@ -502,6 +503,40 @@ Deno.serve(async (req: Request) => {
         payload: { result },
       });
       return json({ ok: true, job_id: id, state: updated.data.state, result });
+    }
+
+    if (action === "get_operator_result") {
+      const id = clip(body.job_id, 80);
+      const ownerUserId = clip(body.owner_user_id, 80);
+      if (!id || !ownerUserId) {
+        return json({ ok: false, error: "job_id_and_owner_user_id_required" }, 400);
+      }
+      const found = await getJob(sb, id);
+      if (found.error) return json({ ok: false, error: "operator_result_lookup_failed" }, 500);
+      if (!found.data || String(found.data.owner_user_id || "") !== ownerUserId) {
+        return json({ ok: false, error: "not_found" }, 404);
+      }
+      const inputData = found.data.input_data && typeof found.data.input_data === "object" && !Array.isArray(found.data.input_data)
+        ? found.data.input_data
+        : {};
+      if (!(inputData.operator_command && typeof inputData.operator_command === "object") &&
+          !(typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())) {
+        return json({ ok: false, error: "not_an_operator_command_job" }, 409);
+      }
+      const evidence = found.data.evidence && typeof found.data.evidence === "object" && !Array.isArray(found.data.evidence)
+        ? found.data.evidence
+        : {};
+      const rawResult = evidence.operator_result;
+      const ready = !!rawResult && typeof rawResult === "object" && !Array.isArray(rawResult);
+      return json({
+        ok: true,
+        job_id: id,
+        state: safeCode(found.data.state, "UNKNOWN"),
+        platform_key: clip(found.data.platform_key, 100),
+        next_action: safeCode(found.data.next_action, "UNKNOWN"),
+        ready,
+        result: ready ? sanitizeOperatorResult(rawResult) : null,
+      });
     }
 
     if (action === "get_job") {
