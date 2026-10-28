@@ -330,7 +330,10 @@ class PersistentSessionPool:
             )
             self.sessions[account_id] = session
         if not session.authenticated:
-            await session.start()
+            outcome = await session.start()
+            if not session.authenticated:
+                status = str(outcome.get("status") or session.last_status)
+                raise BrowserSessionError(status)
         return session
 
     async def close_all(self):
