@@ -30,6 +30,16 @@ class OperatorGatewayContractTests(unittest.TestCase):
         branch = self.source[start:end]
         self.assertLess(branch.index("unsafeOperatorHint(hint)"), branch.index('from("midad_browser_jobs").insert'))
 
+    def test_safe_result_lookup_is_owner_scoped_and_does_not_return_raw_job(self):
+        self.assertIn('action === "get_operator_result"', self.source)
+        start = self.source.index('if (action === "get_operator_result")')
+        end = self.source.index('if (action === "get_job")', start)
+        branch = self.source[start:end]
+        self.assertIn('String(found.data.owner_user_id || "") !== ownerUserId', branch)
+        self.assertIn('result: ready ? sanitizeOperatorResult(rawResult) : null', branch)
+        self.assertNotIn('job: found.data', branch)
+        self.assertNotIn('input_data:', branch)
+
     def test_result_action_is_restricted_to_operator_jobs(self):
         self.assertIn('action === "record_command_result"', self.source)
         self.assertIn("not_an_operator_command_job", self.source)
