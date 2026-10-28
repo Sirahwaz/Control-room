@@ -410,7 +410,7 @@ Deno.serve(async (req: Request) => {
       const inputData = found.data.input_data && typeof found.data.input_data === "object" && !Array.isArray(found.data.input_data)
         ? found.data.input_data
         : {};
-      if (!inputData.operator_command || typeof inputData.operator_command !== "object") {
+      if (!(inputData.operator_command && typeof inputData.operator_command === "object") && !(typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())) {
         return json({ ok: false, error: "not_an_operator_command_job" }, 409);
       }
       const result = sanitizeOperatorResult(body.result);
