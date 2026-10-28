@@ -1,0 +1,6 @@
+interface:
+  display_name: "MIDAD Intelligence Force Super"
+  short_description: "Route authorized reverse engineering, app reconstruction, evidence verification and Factory handoff."
+  default_prompt: "Select the narrowest authorized MIDAD skill, gather evidence with bounded attempts, and return a verified result or exact blocker."
+policy:
+  allow_implicit_invocation: true
