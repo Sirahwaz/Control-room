@@ -80,6 +80,42 @@ class OperatorCommandRouterTests(unittest.TestCase):
         with self.assertRaisesRegex(CommandRoutingError, "TARGET_HOST_NOT_PROFILE_ALLOWED"):
             validate_operator_command({"action": "navigate", "account_id": "taskmarket-main", "target_url": "https://evil.example/"}, self.profiles[0], {"taskmarket.dev"})
 
+    def test_direct_click_hint_creates_approved_typed_command(self):
+        command = build_operator_request("click Taskmarket selector=button[data-testid=tasks]", self.profiles)
+        self.assertEqual(command["action"], "click")
+        self.assertEqual(command["selector"], "button[data-testid=tasks]")
+        self.assertTrue(command["action_approved"])
+
+    def test_direct_fill_hint_requires_explicit_safe_selector_and_value(self):
+        command = build_operator_request(
+            "fill Taskmarket selector=input[name=email] value=operator@example.invalid",
+            self.profiles,
+        )
+        self.assertEqual(command["action"], "fill")
+        self.assertEqual(command["selector"], "input[name=email]")
+        self.assertEqual(command["value"], "operator@example.invalid")
+        self.assertTrue(command["action_approved"])
+
+    def test_click_hint_without_selector_is_rejected(self):
+        with self.assertRaisesRegex(CommandRoutingError, "SELECTOR_REQUIRED"):
+            build_operator_request("click Taskmarket", self.profiles)
+
+    def test_fill_hint_cannot_target_password_or_token_fields(self):
+        for selector in ("input[name=password]", "input[name=access_token]", "input[name=secret]"):
+            with self.subTest(selector=selector):
+                with self.assertRaisesRegex(CommandRoutingError, "SENSITIVE_FIELD"):
+                    build_operator_request(
+                        f"fill Taskmarket selector={selector} value=example", self.profiles
+                    )
+
+    def test_direct_wait_hint_does_not_need_interaction_approval(self):
+        command = build_operator_request(
+            "wait for Taskmarket selector=[data-testid=account-home]", self.profiles
+        )
+        self.assertEqual(command["action"], "wait_for_selector")
+        self.assertFalse(command["action_approved"])
+        self.assertEqual(command["selector"], "[data-testid=account-home]")
+
     def test_high_impact_action_is_never_routed(self):
         with self.assertRaisesRegex(CommandRoutingError, "ACTION_BLOCKED"):
             validate_operator_command({"action": "withdraw", "account_id": "taskmarket-main", "action_approved": True}, self.profiles[0], {"taskmarket.dev"})
