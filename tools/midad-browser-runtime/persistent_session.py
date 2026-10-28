@@ -18,7 +18,7 @@ class BrowserSessionError(RuntimeError):
     pass
 
 _SECRET_TEXT = re.compile(
-    r"(?i)(bearer\\s+[a-z0-9._~+/=-]{12,}|(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\\s*[:=]\\s*[^\\s,;]+|(?:gh[pousr]_[a-z0-9]{20,}|sk-[a-z0-9_-]{20,}|eyJ[a-zA-Z0-9_-]{20,}\\.[a-zA-Z0-9_-]{10,}\\.[a-zA-Z0-9_-]{10,}))"
+    r"(?i)(bearer\s+[a-z0-9._~+/=-]{12,}|(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\s*[:=]\s*[^\s,;]+|(?:gh[pousr]_[a-z0-9]{20,}|sk-[a-z0-9_-]{20,}|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}))"
 )
 _GATE_TEXT = re.compile(
     r"(?i)(captcha|verify you are human|prove you are human|two[- ]factor|two[- ]step|"
