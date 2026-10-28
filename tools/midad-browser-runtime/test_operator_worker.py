@@ -37,6 +37,8 @@ class FakeGateway:
         self.events = []
     async def call(self, action, **payload):
         self.calls.append((action, payload))
+        if action == "queue_operator_hint":
+            return {"ok": True, "job_id": "job-created", "state": "PREPARING"}
         if action == "create_job":
             return {"ok": True, "job": {"id": "job-created", "state": "PREPARING"}}
         if action == "list_jobs":
@@ -75,14 +77,14 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.worker = OperatorWorker(self.config, "00000000-0000-4000-8000-000000000001",
                                      self.registry, gateway=self.gateway, session_pool=self.pool)
 
-    async def test_submit_hint_enqueues_secret_free_start_session_command(self):
+    async def test_submit_hint_queues_only_hint_for_private_worker_resolution(self):
         result = await submit_hint("Example", config=self.config, registry=self.registry,
                                    gateway=self.gateway, owner_user_id="00000000-0000-4000-8000-000000000001")
         self.assertTrue(result["ok"])
-        self.assertEqual(result["action"], "start_session")
+        self.assertEqual(result["dispatch"], "queued")
         action, payload = self.gateway.calls[-1]
-        self.assertEqual(action, "create_job")
-        self.assertEqual(payload["input_data"]["operator_command"]["account_id"], "example-account")
+        self.assertEqual(action, "queue_operator_hint")
+        self.assertEqual(payload["operator_hint"], "Example")
         self.assertNotIn("password", str(payload).lower().replace("password_secret_ref", ""))
 
     async def test_process_inspect_command_records_result_and_completes(self):
@@ -109,6 +111,17 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "AUTHENTICATED_IN_MEMORY")
         self.assertEqual(result["action"], "start_session")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
+
+    async def test_unknown_platform_hint_is_blocked_and_recorded_once(self):
+        job = {
+            "id": "job-unknown-hint", "state": "PREPARING", "platform_key": "operator_router",
+            "input_data": {"operator_hint": "Some platform that is not configured"},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
+        again = await self.worker.process_job(job)
+        self.assertEqual(again["status"], "DUPLICATE_SKIPPED")
 
     async def test_financial_command_is_blocked_and_not_executed(self):
         job = {
