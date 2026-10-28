@@ -11,7 +11,7 @@ It is a worker and gateway capability under PR #128. It is **not active on a ser
 3. The single persistent `operator_worker.py` process polls the gateway, resolves the hint to one private account profile, and starts or reuses its in-memory Playwright session.
 4. The worker writes a bounded, redacted command result and a state/evidence event. New command hints target the same profile's session until it is stopped, the process exits, or the server restarts.
 
-The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or service-role authorization. **Never expose either credential in a browser, Telegram Mini App, GitHub Actions input, chat message or checked-in configuration.** ChatGPT can submit commands directly only when a trusted server-side bridge is connected and has the correct owner identity and private gateway credential. This repository change alone does not install that bridge into the ChatGPT client.
+The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or service-role authorization. **Never expose either credential in a browser, Telegram Mini App, GitHub Actions input, chat message or checked-in configuration.** A trusted assistant bridge can submit `queue_operator_hint`, then poll `get_operator_result` using the same owner ID and returned job ID; that result endpoint returns only the sanitized result and job state, not the raw queued hint. ChatGPT can submit commands directly only when that trusted server-side bridge is connected and has the correct owner identity and private gateway credential. This repository change alone does not install that bridge into the ChatGPT client.
 
 ## Configure one approved account
 
