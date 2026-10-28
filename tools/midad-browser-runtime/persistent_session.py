@@ -69,9 +69,24 @@ def _validate_login_profile(profile: dict, global_hosts: set[str]) -> dict:
     login_path = urlsplit(login_url).path or "/"
     if not any(path.rstrip("/") == login_path.rstrip("/") for path in post_paths):
         raise BrowserSessionError("LOGIN_POST_PATH_MUST_INCLUDE_LOGIN_PATH")
+    post_content_types = profile.get("login_post_content_types", [
+        "application/x-www-form-urlencoded", "multipart/form-data"
+    ])
+    if not isinstance(post_content_types, list) or not post_content_types or any(
+        not isinstance(item, str) or not item.strip() for item in post_content_types
+    ):
+        raise BrowserSessionError("LOGIN_POST_CONTENT_TYPES_REQUIRED")
+    post_content_types = [item.strip().lower() for item in post_content_types]
+    allowed_content_types = {
+        "application/x-www-form-urlencoded", "multipart/form-data", "application/json"
+    }
+    if any(item not in allowed_content_types for item in post_content_types):
+        raise BrowserSessionError("LOGIN_POST_CONTENT_TYPE_NOT_ALLOWED")
     if not isinstance(profile.get("success_selector"), str) or not profile["success_selector"].strip():
         raise BrowserSessionError("LOGIN_SUCCESS_SELECTOR_REQUIRED")
-    return {**profile, **safe, "login_url": login_url, "_session_hosts": hosts}
+    return {**profile, **safe, "login_url": login_url,
+            "login_post_content_types": post_content_types,
+            "_session_hosts": hosts}
 
 class PlatformBrowserSession:
     def __init__(self, profile: dict, allowed_hosts: set[str], secret_provider=None,
@@ -122,19 +137,16 @@ class PlatformBrowserSession:
                 return
             if method == "POST" and self._login_submit_active and not self._login_post_used:
                 parts = urlsplit(normalized)
-                request_is_navigation = request.is_navigation_request()
-                frame = request.frame
-                is_main_frame = frame.parent_frame is None
                 content_type = request.headers.get("content-type", "").lower()
-                allowed_content = content_type.startswith((
-                    "application/x-www-form-urlencoded", "multipart/form-data"
-                ))
+                allowed_content = any(content_type.startswith(kind)
+                                       for kind in self.profile["login_post_content_types"])
                 if (
-                    request_is_navigation and is_main_frame
-                    and parts.hostname == self.profile["host"]
+                    parts.hostname == self.profile["host"]
                     and (parts.path.rstrip("/") or "/") in self._login_post_paths
                     and allowed_content
                 ):
+                    # One explicitly configured login POST only. Works for form navigation
+                    # and a platform's documented same-origin JSON auth endpoint.
                     self._login_post_used = True
                     await route.continue_()
                     return
