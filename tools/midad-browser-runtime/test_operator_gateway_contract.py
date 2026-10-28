@@ -10,6 +10,17 @@ class OperatorGatewayContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = GATEWAY.read_text(encoding="utf-8")
 
+    def test_private_queue_endpoint_accepts_only_bounded_hint_data(self):
+        self.assertIn('action === "queue_operator_hint"', self.source)
+        start = self.source.index('if (action === "queue_operator_hint")')
+        end = self.source.index('if (action === "record_command_result")', start)
+        branch = self.source[start:end]
+        self.assertIn('clip(body.operator_hint ?? body.platform_hint, 500)', branch)
+        self.assertIn('input_data: { operator_hint: hint }', branch)
+        self.assertIn('platform_key: "operator_router"', branch)
+        self.assertNotIn("hint_preview", branch)
+        self.assertIn('state: "PREPARING"', branch)
+
     def test_result_action_is_restricted_to_operator_jobs(self):
         self.assertIn('action === "record_command_result"', self.source)
         self.assertIn("not_an_operator_command_job", self.source)
