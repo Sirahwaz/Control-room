@@ -58,6 +58,8 @@ jobs:
           path: dist/midad-operator-worker.zip
           if-no-files-found: error
           retention-days: 7
+      - name: Build persistent operator worker image (no push)
+        run: docker build -t midad-operator-worker:test -f tools/midad-browser-runtime/deploy/operator-worker.Dockerfile tools/midad-browser-runtime
       - name: Install Chromium for a manual public-target probe
         if: github.event_name == 'workflow_dispatch'
         run: python -m playwright install --with-deps chromium
