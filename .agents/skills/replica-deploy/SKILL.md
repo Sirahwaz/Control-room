@@ -14,7 +14,7 @@ description: >-
 
 ## MIDAD policy override (takes precedence over this generic template)
 
-- MIDAD's current operating boundary forbids live financial actions. Never switch payment providers or accounts into live mode; never make a real purchase, issue a real refund, transfer or withdraw funds, sign a wallet transaction, or submit a live payment. Use mocks/test/sandbox only.
+- MIDAD's current operating boundary forbids live financial actions. Never switch payment providers or accounts into live mode; never make a real purchase, issue a real refund, transfer or withdraw funds, perform wallet signing, sign a wallet transaction, or submit a live payment. Use mocks/test/sandbox only.
 - Production deployment, store submission and external publication are separate gates. Do not perform them based only on this skill. Require a target-specific, verified release gate and explicit approval.
 - Do not ask for passwords, private keys, recovery phrases, one-time codes or live API key values. Keep server secrets out of client builds and logs.
 
@@ -56,17 +56,10 @@ Any failure stops the deploy. Say which and why.
 
 ## Step 2: production services
 
-- A **separate production project** for the database (never the dev one),
-  backups on, migrations run by the deploy, not by hand.
-- Env vars set in the host for production, matching `.env.example`. Live
-  keys only here.
-- **Stripe**: switch to live mode, recreate products and prices, add the
-  production webhook endpoint and its signing secret, test one real
-  purchase and refund it.
-- **OAuth**: add the production domain to every provider's redirect URIs and
-  authorised origins. Google scopes that need verification must be approved,
-  or only test users can sign in.
-- **Email**: the sending domain verified with the provider.
+- MIDAD override: this generic template does not authorize production financial activation.
+- Keep payment providers and billing integrations in test/sandbox mode. No live purchase, refund, charge, wallet signing, transfer or withdrawal.
+- Configure only the non-financial staging services needed for a verified release, using the user's own accounts and server-side secrets.
+- OAuth and email provider configuration must use least-privilege scopes and test accounts until the relevant release gate is passed.
 
 ## Step 3: host and domain
 
