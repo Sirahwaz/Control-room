@@ -1,1 +1,1 @@
-worker: python operator_worker.py
+worker: sh start_worker.sh
