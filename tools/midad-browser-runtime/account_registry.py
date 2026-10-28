@@ -4,11 +4,22 @@ import json
 import os
 import tempfile
 from pathlib import Path
-
 from agent_policy import validate_profile
 
 class AccountRegistryError(RuntimeError):
     pass
+
+_SENSITIVE_KEYS = {"password", "secret_value", "secret", "cookie", "token",
+                   "access_token", "refresh_token", "api_key", "authorization",
+                   "session", "private_key"}
+
+def _strip_secret_fields(value):
+    if isinstance(value, dict):
+        return {k: _strip_secret_fields(v) for k, v in value.items()
+                if str(k).lower() not in _SENSITIVE_KEYS}
+    if isinstance(value, list):
+        return [_strip_secret_fields(item) for item in value]
+    return value
 
 class AccountRegistry:
     """Store account profiles only; secret material must remain in a secret provider."""
@@ -30,6 +41,9 @@ class AccountRegistry:
         result = []
         seen = set()
         for profile in raw["profiles"]:
+            if not isinstance(profile, dict):
+                raise AccountRegistryError("INVALID_ACCOUNT_PROFILE")
+            profile = _strip_secret_fields(profile)
             try:
                 safe = validate_profile(profile, self.allowed_hosts)
             except (ValueError, TypeError) as exc:
@@ -47,14 +61,13 @@ class AccountRegistry:
         return matches[0]
 
     def save_profile(self, profile: dict) -> None:
+        profile = _strip_secret_fields(profile)
         try:
             safe = validate_profile(profile, self.allowed_hosts)
         except (ValueError, TypeError) as exc:
             raise AccountRegistryError("INVALID_ACCOUNT_PROFILE") from exc
-        profiles = self.list_profiles()
-        profiles = [p for p in profiles if p["account_id"] != safe["account_id"]]
-        # Store only non-secret metadata and the secret alias, never a resolved value.
-        cleaned = {k: v for k, v in profile.items() if k not in {"password", "secret_value", "cookie", "token"}}
+        profiles = [p for p in self.list_profiles() if p["account_id"] != safe["account_id"]]
+        cleaned = _strip_secret_fields(profile)
         cleaned.update(safe)
         profiles.append(cleaned)
         self.path.parent.mkdir(parents=True, exist_ok=True)
