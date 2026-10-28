@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 from account_registry import AccountRegistry
-from operator_command_router import CommandRoutingError, validate_operator_command
+from operator_command_router import CommandRoutingError, build_operator_request, validate_operator_command
 from persistent_session import BrowserSessionError, PersistentSessionPool
 from runner import BrowserConfig, GatewayClient
 
@@ -79,6 +79,8 @@ class OperatorWorker:
             raise ValueError("JOB_ID_REQUIRED")
         data = job.get("input_data")
         command = data.get("operator_command") if isinstance(data, dict) else None
+        if not isinstance(command, dict) and isinstance(data, dict) and isinstance(data.get("operator_hint"), str):
+            command = build_operator_request(data["operator_hint"][:500], self._profiles())
         if not isinstance(command, dict):
             return {"job_id": job_id, "status": "IGNORED", "reason": "NOT_AN_OPERATOR_COMMAND"}
         if job_id in self._processed_ids:
@@ -165,7 +167,8 @@ class OperatorWorker:
         for job in jobs if isinstance(jobs, list) else []:
             data = job.get("input_data")
             command = data.get("operator_command") if isinstance(data, dict) else None
-            if not isinstance(command, dict):
+            hint = data.get("operator_hint") if isinstance(data, dict) else None
+            if not isinstance(command, dict) and not (isinstance(hint, str) and hint.strip()):
                 continue
             if self._stopping.is_set():
                 break
