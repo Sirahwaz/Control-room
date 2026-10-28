@@ -33,6 +33,45 @@ function authorized(req: Request) {
 const clip = (value: unknown, max = 4000) =>
   String(value ?? "").trim().slice(0, max);
 
+function safeOperatorPreview(value: unknown, max = 1400) {
+  return clip(value, max)
+    .replace(/Bearer\\s+[A-Za-z0-9._~+/=-]{12,}/gi, "[REDACTED]")
+    .replace(/(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\\s*[:=]\\s*[^\\s,;]+/gi, "[REDACTED]")
+    .replace(/(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,})/g, "[REDACTED]");
+}
+
+function sanitizeOperatorResult(raw: unknown) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, any>
+    : {};
+  const result: Record<string, unknown> = {
+    status: safeCode(source.status, "UNKNOWN"),
+    action: safeCode(source.action, "UNKNOWN"),
+    page_content_is_untrusted: true,
+  };
+  const platformKey = clip(source.platform_key, 100);
+  const accountId = clip(source.account_id, 100);
+  const host = clip(source.host, 253).toLowerCase().replace(/\\.$/, "");
+  const title = safeOperatorPreview(source.title, 200);
+  const preview = safeOperatorPreview(source.text_preview, 1400);
+  const url = safeSourceUrl(source.url);
+  if (platformKey) result.platform_key = platformKey;
+  if (accountId) result.account_id = accountId;
+  if (host && /^[a-z0-9.-]+$/.test(host) && !host.includes("..") && !host.startsWith(".") && !host.endsWith(".")) result.host = host;
+  if (title) result.title = title;
+  if (preview) result.text_preview = preview;
+  if (url) result.url = url;
+  for (const key of ["text_chars", "value_length", "http_status"] as const) {
+    const n = Number(source[key]);
+    if (Number.isInteger(n) && n >= 0 && n <= (key === "http_status" ? 599 : 30000)) result[key] = n;
+  }
+  if (typeof source.authenticated === "boolean") result.authenticated = source.authenticated;
+  if (source.session_storage === "memory_only") result.session_storage = "memory_only";
+  if (typeof source.reason === "string" && source.reason.trim()) result.reason = safeOperatorPreview(source.reason, 500);
+  if (typeof source.code === "string" && /^[A-Za-z0-9_.:-]+$/.test(source.code)) result.code = clip(source.code, 100);
+  return result;
+}
+
 function safeCode(value: unknown, fallback = "BLOCKED_BY_POLICY") {
   const code = clip(value, 100);
   return code && /^[A-Za-z0-9_.:-]+$/.test(code) ? code : fallback;
@@ -358,6 +397,38 @@ Deno.serve(async (req: Request) => {
       });
 
       return json({ ok: true, job: inserted.data, profile_snapshot: snap });
+    }
+
+    if (action === "record_command_result") {
+      const id = clip(body.job_id, 80);
+      if (!id || !body.result || typeof body.result !== "object" || Array.isArray(body.result)) {
+        return json({ ok: false, error: "job_id_and_result_object_required" }, 400);
+      }
+      const found = await getJob(sb, id);
+      if (found.error) return json({ ok: false, error: "job_lookup_failed" }, 500);
+      if (!found.data) return json({ ok: false, error: "not_found" }, 404);
+      const inputData = found.data.input_data && typeof found.data.input_data === "object" && !Array.isArray(found.data.input_data)
+        ? found.data.input_data
+        : {};
+      if (!inputData.operator_command || typeof inputData.operator_command !== "object") {
+        return json({ ok: false, error: "not_an_operator_command_job" }, 409);
+      }
+      const result = sanitizeOperatorResult(body.result);
+      const currentEvidence = found.data.evidence && typeof found.data.evidence === "object" && !Array.isArray(found.data.evidence)
+        ? found.data.evidence
+        : {};
+      const updated = await sb.from("midad_browser_jobs").update({
+        evidence: { ...currentEvidence, operator_result: result },
+      }).eq("id", id).select("*").single();
+      if (updated.error) return json({ ok: false, error: "operator_result_write_failed" }, 500);
+      await sb.from("midad_agent_events").insert({
+        job_id: id,
+        agent_key: "midad_operator_worker",
+        event_type: "operator_command_result",
+        state: updated.data.state,
+        payload: { result },
+      });
+      return json({ ok: true, job_id: id, state: updated.data.state, result });
     }
 
     if (action === "get_job") {
