@@ -79,15 +79,17 @@ class OperatorWorker:
             raise ValueError("JOB_ID_REQUIRED")
         data = job.get("input_data")
         command = data.get("operator_command") if isinstance(data, dict) else None
-        if not isinstance(command, dict) and isinstance(data, dict) and isinstance(data.get("operator_hint"), str):
-            command = build_operator_request(data["operator_hint"][:500], self._profiles())
-        if not isinstance(command, dict):
+        hint = data.get("operator_hint") if isinstance(data, dict) else None
+        if not isinstance(command, dict) and not (isinstance(hint, str) and hint.strip()):
             return {"job_id": job_id, "status": "IGNORED", "reason": "NOT_AN_OPERATOR_COMMAND"}
         if job_id in self._processed_ids:
             return {"job_id": job_id, "status": "DUPLICATE_SKIPPED"}
         self._processed_ids.add(job_id)
         current_url = job.get("current_url")
+        command = command if isinstance(command, dict) else {}
         try:
+            if not command and isinstance(hint, str):
+                command = build_operator_request(hint[:500], self._profiles())
             profile = self._profile_for(command)
             validated = validate_operator_command(command, profile, set(self.config.allowed_hosts))
             if current_url is None and validated.get("target_url"):
@@ -176,15 +178,21 @@ class OperatorWorker:
         return results
 
     async def run_forever(self):
+        import sys
+        failures = 0
         try:
             while not self._stopping.is_set():
                 try:
                     await self.poll_once()
-                except Exception:
-                    # Never log gateway payloads, secrets, page text, or credentials.
-                    pass
+                    failures = 0
+                    delay = self.poll_interval
+                except Exception as exc:
+                    # Log only the exception class; never expose payloads or configuration.
+                    failures = min(failures + 1, 5)
+                    delay = min(30.0, self.poll_interval * (2 ** failures))
+                    print("operator_worker_poll_failed:" + type(exc).__name__, file=sys.stderr, flush=True)
                 try:
-                    await asyncio.wait_for(self._stopping.wait(), timeout=self.poll_interval)
+                    await asyncio.wait_for(self._stopping.wait(), timeout=delay)
                 except asyncio.TimeoutError:
                     pass
         finally:
