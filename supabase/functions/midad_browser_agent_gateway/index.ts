@@ -35,9 +35,9 @@ const clip = (value: unknown, max = 4000) =>
 
 function safeOperatorPreview(value: unknown, max = 1400) {
   return clip(value, max)
-    .replace(/Bearer\\s+[A-Za-z0-9._~+/=-]{12,}/gi, "[REDACTED]")
-    .replace(/(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\\s*[:=]\\s*[^\\s,;]+/gi, "[REDACTED]")
-    .replace(/(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,})/g, "[REDACTED]");
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]{12,}/gi, "[REDACTED]")
+    .replace(/(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\s*[:=]\s*[^\s,;]+/gi, "[REDACTED]")
+    .replace(/(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})/g, "[REDACTED]");
 }
 
 function sanitizeOperatorResult(raw: unknown) {
@@ -51,7 +51,7 @@ function sanitizeOperatorResult(raw: unknown) {
   };
   const platformKey = clip(source.platform_key, 100);
   const accountId = clip(source.account_id, 100);
-  const host = clip(source.host, 253).toLowerCase().replace(/\\.$/, "");
+  const host = clip(source.host, 253).toLowerCase().replace(/\.$/, "");
   const title = safeOperatorPreview(source.title, 200);
   const preview = safeOperatorPreview(source.text_preview, 1400);
   const url = safeSourceUrl(source.url);
