@@ -288,6 +288,8 @@ Deno.serve(async (req: Request) => {
         capabilities: [
           "prepare_truthful_profile",
           "create_browser_job",
+          "queue_operator_hint",
+          "record_command_result",
           "resume_browser_job",
           "record_navigation_and_evidence",
           "record_evidence_ledger",
@@ -414,7 +416,6 @@ Deno.serve(async (req: Request) => {
       if (old.error) return json({ ok: false, error: "operator_job_lookup_failed" }, 500);
       if (old.data) return json({ ok: true, idempotent: true, job_id: old.data.id, state: old.data.state });
 
-      const snap = await profileSnapshot(sb, ownerUserId);
       const inserted = await sb.from("midad_browser_jobs").insert({
         owner_user_id: ownerUserId,
         agent_key: normalizeActorKey(body.agent_key || "midad_operator_command_router"),
@@ -424,7 +425,7 @@ Deno.serve(async (req: Request) => {
         session_ref: idempotencyKey,
         current_url: null,
         input_data: { operator_hint: hint },
-        profile_snapshot: snap,
+        profile_snapshot: {},
         human_gate: { required: false, status: "none" },
         blocker: {},
         evidence: {},
@@ -450,7 +451,7 @@ Deno.serve(async (req: Request) => {
         agent_key: "midad_operator_command_router",
         event_type: "operator_hint_queued",
         state: "PREPARING",
-        payload: { hint_length: hint.length, hint_preview: safeOperatorPreview(hint, 120) },
+        payload: { hint_length: hint.length },
       });
       return json({
         ok: true,
