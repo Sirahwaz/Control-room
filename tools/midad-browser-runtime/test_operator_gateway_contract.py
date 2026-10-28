@@ -21,6 +21,15 @@ class OperatorGatewayContractTests(unittest.TestCase):
         self.assertNotIn("hint_preview", branch)
         self.assertIn('state: "PREPARING"', branch)
 
+    def test_queue_rejects_secret_like_hints_before_database_insert(self):
+        self.assertIn("function unsafeOperatorHint(hint: string)", self.source)
+        self.assertIn('if (unsafeOperatorHint(hint))', self.source)
+        self.assertIn('sensitive_operator_hint_rejected', self.source)
+        start = self.source.index('if (action === "queue_operator_hint")')
+        end = self.source.index('if (action === "record_command_result")', start)
+        branch = self.source[start:end]
+        self.assertLess(branch.index("unsafeOperatorHint(hint)"), branch.index('from("midad_browser_jobs").insert'))
+
     def test_result_action_is_restricted_to_operator_jobs(self):
         self.assertIn('action === "record_command_result"', self.source)
         self.assertIn("not_an_operator_command_job", self.source)
