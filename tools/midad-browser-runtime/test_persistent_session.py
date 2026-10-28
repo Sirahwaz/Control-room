@@ -58,6 +58,25 @@ class PersistentSessionPolicyTests(unittest.IsolatedAsyncioTestCase):
         await self.session._guard_route(second)
         self.assertTrue(second.aborted)
 
+    async def test_explicit_json_auth_endpoint_is_allowed_once(self):
+        profile = dict(self.profile)
+        profile["login_post_paths"] = ["/login", "/api/auth/login"]
+        profile["login_post_content_types"] = ["application/x-www-form-urlencoded", "application/json"]
+        session = PlatformBrowserSession(profile, {"example.com"}, secret_provider=object())
+        session._login_submit_active = True
+        first = FakeRoute(FakeRequest("https://example.com/api/auth/login", "POST", "application/json"))
+        await session._guard_route(first)
+        self.assertTrue(first.continued)
+        second = FakeRoute(FakeRequest("https://example.com/api/auth/login", "POST", "application/json"))
+        await session._guard_route(second)
+        self.assertTrue(second.aborted)
+
+    async def test_json_post_not_explicitly_configured_is_blocked(self):
+        self.session._login_submit_active = True
+        route = FakeRoute(FakeRequest("https://example.com/login", "POST", "application/json"))
+        await self.session._guard_route(route)
+        self.assertTrue(route.aborted)
+
     async def test_unlisted_post_path_is_blocked_during_login(self):
         self.session._login_submit_active = True
         route = FakeRoute(FakeRequest("https://example.com/admin/delete", "POST"))
