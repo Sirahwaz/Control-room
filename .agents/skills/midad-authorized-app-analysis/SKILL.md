@@ -20,6 +20,8 @@ Do not start testing until the target, ownership/authorization evidence, scope a
 
 ## Static analysis
 
+For technical artifact routing, consult midad-intelligence-force-super and leanrea, but treat LeanREA as command-selection instructions only. Confirm each executable exists and its harmless fixture test passes before assigning it status available-and-tested.
+
 1. Validate input type and size; hash the artifact.
 2. Inventory package, version, manifest, permissions, exported components, URL schemes and bundled dependencies using verified tools.
 3. Review insecure storage, embedded secrets, cleartext transport settings, excessive permissions, unsafe deep links and dependency risks.
