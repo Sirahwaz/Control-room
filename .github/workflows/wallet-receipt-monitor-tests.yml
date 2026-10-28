@@ -1,0 +1,28 @@
+name: Wallet Receipt Monitor Readiness Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_wallet_receipt_monitor/**"
+      - ".github/workflows/wallet-receipt-monitor-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_wallet_receipt_monitor/**"
+      - ".github/workflows/wallet-receipt-monitor-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check receipt monitor
+        run: deno check supabase/functions/midad_wallet_receipt_monitor/index.ts
+      - name: Test fail-closed receipt readiness
+        run: deno test supabase/functions/midad_wallet_receipt_monitor/route-policy.test.ts
