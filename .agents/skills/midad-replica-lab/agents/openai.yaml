@@ -1,0 +1,6 @@
+interface:
+  display_name: "MIDAD Replica Lab"
+  short_description: "Analyze authorized web/mobile assets and hand verified work to Mobile Factory."
+  default_prompt: "Route this authorized app task through MIDAD clean-room analysis, evidence checks, bounded retries and a reviewable Factory handoff."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,29 @@
+name: MIDAD Replica Skill Validation
+
+on:
+  pull_request:
+    paths:
+      - ".agents/skills/**"
+      - "mobile/factory/REPLICA_SKILL_INTEGRATION.md"
+      - ".github/workflows/replica-skill-validation.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - ".agents/skills/**"
+      - "mobile/factory/REPLICA_SKILL_INTEGRATION.md"
+      - ".github/workflows/replica-skill-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  skill-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify Python and run upstream plus MIDAD tests
+        run: |
+          python3 --version
+          python3 -m unittest discover -s .agents/skills/tests -v
