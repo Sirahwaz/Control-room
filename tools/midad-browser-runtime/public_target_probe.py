@@ -9,7 +9,6 @@ import os
 import time
 from urllib.parse import urlsplit
 
-from playwright.async_api import async_playwright
 from runner import BrowserPolicyError, validate_navigation_url
 
 
@@ -17,6 +16,10 @@ async def probe(url: str, allowed_hosts: set[str], timeout_ms: int = 10000) -> d
     """Inspect one explicitly allowlisted public page and return metadata only."""
     if timeout_ms < 1000 or timeout_ms > 20000:
         raise ValueError("timeout must be between 1000 and 20000 ms")
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError as exc:
+        raise RuntimeError("PLAYWRIGHT_DEPENDENCY_MISSING") from exc
     target = validate_navigation_url(url, allowed_hosts)
     blocked: list[str] = []
     started = time.monotonic()
