@@ -43,3 +43,18 @@ secret_value = provider.resolve("work-account", "example.com")
 ```
 
 The profile JSON stores only the alias. Configure real values in repository/environment Secrets with branch/environment restrictions. Do not put credentials in workflow inputs. This provider is a local adapter for secrets injected by the host environment; it is not itself a remote vault or encrypted persistent database.
+
+
+## Persistent account registry
+
+`account_registry.AccountRegistry` stores non-secret account metadata in a JSON file chosen by the deployment. On POSIX systems the file is written atomically and permissioned as `0600`. It strips fields named `password`, `secret_value`, `cookie`, and `token`; profiles are bound to exact allowlisted hosts and secret aliases. Keep the registry file in private runtime storage, not in a public repository. The checked-in `account_profiles.example.json` is a schema example only.
+
+Example:
+
+```python
+from account_registry import AccountRegistry
+registry = AccountRegistry("/var/lib/midad-browser/accounts.json", {"example.com"})
+profile = registry.get_profile("work-account")
+```
+
+The environment secret provider is an adapter for injected secret values, not a hosted vault. For production, inject secrets from the deployment's managed secret store and grant the browser worker access only to the specific aliases it needs.
