@@ -46,7 +46,8 @@ jobs:
           dst=dist/midad-operator-worker
           cp "$src/runner.py" "$src/agent_policy.py" "$src/account_registry.py" "$src/secret_provider.py" "$src/operator_command_router.py" "$src/persistent_session.py" "$src/operator_worker.py" "$src/submit_operator_command.py" "$src/requirements.txt" "$dst/"
           cp "$src/account_profiles.example.json" "$dst/accounts.example.json"
-          cp "$src/README-OPERATOR-MODE.md" "$dst/README.md"
+          cp "$src/deploy/README-WISPBYTE.md" "$dst/README.md"
+          cp "$src/deploy/start_worker.sh" "$dst/start_worker.sh"
           cp "$src/deploy/operator-worker.Dockerfile" "$dst/Dockerfile"
           cp "$src/deploy/Procfile" "$dst/Procfile"
           cp "$src/deploy/.env.example" "$dst/.env.example"
