@@ -260,8 +260,10 @@ class PlatformBrowserSession:
             ])
         except Exception:
             pass
-        if _HIGH_RISK_LABEL.search(label) and action in {"click", "submit_form"}:
-            raise BrowserSessionError("HIGH_IMPACT_CONTROL_REQUIRES_SEPARATE_WORKFLOW")
+        if action == "click" and _HIGH_RISK_LABEL.search(label):
+            raise BrowserSessionError("HIGH_IMPACT_CONTROL_REQUIRES_EXPLICIT_SUBMIT_COMMAND")
+        if action == "submit_form" and re.search(r"(?i)(pay|payment|purchase|buy|withdraw|transfer|wallet|sign|delete|checkout|دفع|شراء|سحب|تحويل|توقيع|حذف)", label):
+            raise BrowserSessionError("FINANCIAL_OR_DESTRUCTIVE_CONTROL_BLOCKED")
         if action == "click":
             await locator.click(timeout=self.timeout_ms)
             return await self.inspect()
