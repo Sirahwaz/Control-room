@@ -40,6 +40,14 @@ function safeOperatorPreview(value: unknown, max = 1400) {
     .replace(/(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})/g, "[REDACTED]");
 }
 
+function unsafeOperatorHint(hint: string) {
+  const value = hint.slice(0, 500);
+  if (/\\b(?:password|passcode|access[_ -]?token|refresh[_ -]?token|secret|api[_ -]?key|private[_ -]?key|recovery phrase|seed phrase)\\s*[:=]\\s*[^\\s,;]+/i.test(value)) return true;
+  if (/\\b(?:selector|css)\\s*[:=][^;]{0,300}(?:password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)\\b/i.test(value)) return true;
+  if (/(?:Bearer\\s+[A-Za-z0-9._~+/=-]{12,}|(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}))/i.test(value)) return true;
+  return false;
+}
+
 function sanitizeOperatorResult(raw: unknown) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw)
     ? raw as Record<string, any>
@@ -406,6 +414,9 @@ Deno.serve(async (req: Request) => {
       const hint = clip(body.operator_hint ?? body.platform_hint, 500);
       if (!ownerUserId || !hint) {
         return json({ ok: false, error: "owner_user_id_and_operator_hint_required" }, 400);
+      }
+      if (unsafeOperatorHint(hint)) {
+        return json({ ok: false, error: "sensitive_operator_hint_rejected" }, 400);
       }
       // This endpoint is authenticated with the private ingest/service key only.
       // A platform hint is data, not executable code; the worker resolves it against
