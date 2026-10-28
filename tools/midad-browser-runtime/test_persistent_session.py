@@ -83,6 +83,38 @@ class PersistentSessionPolicyTests(unittest.IsolatedAsyncioTestCase):
         await self.session._guard_route(route)
         self.assertTrue(route.aborted)
 
+    async def test_approved_interaction_post_is_exact_path_and_one_shot(self):
+        profile = dict(self.profile)
+        profile["action_post_paths"] = ["/search"]
+        session = PlatformBrowserSession(profile, {"example.com"}, secret_provider=object())
+        session._interaction_post_active = True
+        first = FakeRoute(FakeRequest("https://example.com/search", "POST"))
+        await session._guard_route(first)
+        self.assertTrue(first.continued)
+        second = FakeRoute(FakeRequest("https://example.com/search", "POST"))
+        await session._guard_route(second)
+        self.assertTrue(second.aborted)
+
+    async def test_unlisted_interaction_post_is_blocked(self):
+        profile = dict(self.profile)
+        profile["action_post_paths"] = ["/search"]
+        session = PlatformBrowserSession(profile, {"example.com"}, secret_provider=object())
+        session._interaction_post_active = True
+        route = FakeRoute(FakeRequest("https://example.com/api/other", "POST"))
+        await session._guard_route(route)
+        self.assertTrue(route.aborted)
+
+    async def test_financial_or_destructive_url_path_is_blocked_even_for_get(self):
+        route = FakeRoute(FakeRequest("https://example.com/api/withdraw", "GET", "text/html"))
+        await self.session._guard_route(route)
+        self.assertTrue(route.aborted)
+
+    async def test_profile_rejects_financial_action_post_paths(self):
+        profile = dict(self.profile)
+        profile["action_post_paths"] = ["/api/withdraw"]
+        with self.assertRaisesRegex(BrowserSessionError, "FINANCIAL_OR_DESTRUCTIVE_POST_PATH"):
+            PlatformBrowserSession(profile, {"example.com"}, secret_provider=object())
+
     async def test_post_after_login_window_is_blocked(self):
         route = FakeRoute(FakeRequest("https://example.com/login", "POST"))
         await self.session._guard_route(route)
