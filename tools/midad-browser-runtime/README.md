@@ -59,3 +59,8 @@ cat opportunities.json | python revenue_radar_cli.py
 python -m unittest -v
 ```
 Input may be a JSON array or `{"candidates":[...]}`. The CLI reports `paid_provider_used: false`, `browser_jobs_created: 0`, and `external_actions_performed: 0`. This is an offline qualification and planning adapter, not yet a deployed Supabase queue consumer; it does not claim any live payout has been verified.
+
+
+## Persistent assistant operator sessions
+
+The private queue-backed operator mode supports a platform hint, an in-memory authenticated Playwright session, and subsequent typed commands. Read [README-OPERATOR-MODE.md](README-OPERATOR-MODE.md) for private profile setup, command syntax, action/network safeguards, and deployment requirements. The worker and gateway changes are in PR #128; they are not live until the trusted worker, private environment configuration, and gateway version are deployed.
