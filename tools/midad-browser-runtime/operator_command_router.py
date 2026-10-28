@@ -94,7 +94,7 @@ def build_operator_request(hint: str, profiles: list[dict]) -> dict:
     """Build a secret-free queue payload from a platform hint."""
     profile = resolve_platform_hint(hint, profiles)
     action = infer_hint_action(hint)
-    urls = re.findall(r"https://[^\\s,;]+", str(hint or ""))
+    urls = re.findall(r"https://[^\s,;]+", str(hint or ""))
     target_url = urls[0].rstrip(").]}") if urls else None
     if action == "navigate" and not target_url:
         # A platform-only hint should establish a session, not fail on a missing URL.
