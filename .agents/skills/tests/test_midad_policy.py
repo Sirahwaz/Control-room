@@ -17,6 +17,20 @@ class MidadReplicaPolicyTests(unittest.TestCase):
         missing = [name for name in UPSTREAM_SKILLS if not (SKILLS / name / "SKILL.md").is_file()]
         self.assertEqual([], missing, f"Missing imported skill files: {missing}")
 
+    def test_intelligence_force_super_routes_leanrea_and_factory_separately(self):
+        router = (SKILLS / "midad-intelligence-force-super" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("leanrea", router)
+        self.assertIn("replica-recon", router)
+        self.assertIn("Mobile Factory", router)
+        self.assertIn("seen", router.lower())
+        self.assertIn("three attempts", router.lower())
+
+    def test_leanrea_import_has_authorization_override_and_evidence_gate(self):
+        skill = (SKILLS / "leanrea" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("MIDAD authorization and isolation override", skill)
+        self.assertIn("explicitly authorized", skill)
+        self.assertIn("Static analysis is not proof", skill)
+
     def test_router_enforces_authorization_and_bounded_retries(self):
         router = (SKILLS / "midad-replica-lab" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Authorization", router)
