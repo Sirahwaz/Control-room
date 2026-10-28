@@ -147,6 +147,7 @@
               <div class="field full">
                 <label for="requirements">وصف مختصر لما تحتاجه (اختياري)</label>
                 <textarea id="requirements" name="requirements" maxlength="5000" placeholder="الهدف، المشكلة، أو المخرجات المتوقعة. لا تضع أسراراً أو بيانات دخول."></textarea>
+                <span id="requirements-hint" class="hint">اختياري لمعظم الخدمات. لا تضع أسراراً أو بيانات دخول.</span>
               </div>
             </div>
             <div class="submit-row">
@@ -189,7 +190,7 @@
   </div>
 
   <script type="module">
-    import { SERVICES } from './services.catalog.mjs';
+    import { SERVICES, isServiceInputReady } from './services.catalog.mjs';
 
     const CHECKOUT_URL = 'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout';
     const catalog = document.getElementById('catalog');
@@ -197,6 +198,8 @@
     const checkoutForm = document.getElementById('checkout-form');
     const createButton = document.getElementById('create-invoice');
     const message = document.getElementById('checkout-message');
+    const requirementsField = document.getElementById('requirements');
+    const requirementsHint = document.getElementById('requirements-hint');
     const invoice = document.getElementById('invoice');
     const invoiceStatus = document.getElementById('invoice-status');
     let activeOrderKey = null;
@@ -256,10 +259,22 @@
       catalog.append(card);
     }
 
+    function updateRequirementsGate() {
+      const service = SERVICES.find((entry) => entry.id === serviceSelect.value);
+      const required = Boolean(service?.requiresSourceMaterial);
+      requirementsField.required = required;
+      requirementsField.minLength = required ? 60 : 0;
+      requirementsHint.textContent = required
+        ? "لا تنشأ الفاتورة قبل استيفاء المادة المصدرية المطلوبة. أرفق 60 حرفاً على الأقل من الكود أو السجل أو عينة البيانات ذات الصلة؛ لا تضع أسراراً أو مفاتيح أو كلمات مرور."
+        : "اختياري لمعظم الخدمات. اذكر الهدف أو المخرجات المتوقعة، ولا تضع أسراراً أو بيانات دخول.";
+    }
+
+    updateRequirementsGate();
     serviceSelect.addEventListener('change', () => {
       activeOrderKey = null;
       activePayment = null;
       invoice.hidden = true;
+      updateRequirementsGate();
     });
 
     async function postCheckout(body) {
@@ -280,6 +295,12 @@
       if (!checkoutForm.reportValidity()) return;
       const service = SERVICES.find((entry) => entry.id === serviceSelect.value);
       if (!service) return;
+      const requirementsText = requirementsField.value.trim();
+      if (!isServiceInputReady(service, requirementsText)) {
+        setMessage("لا تنشأ الفاتورة قبل استيفاء المادة المصدرية المطلوبة: أضف 60 حرفاً على الأقل مع سجل أو كود أو عينة بيانات ذات صلة.", 'error');
+        requirementsField.focus();
+        return;
+      }
       if (!activeOrderKey) activeOrderKey = 'store-' + crypto.randomUUID();
       createButton.disabled = true;
       setMessage('جارٍ طلب الفاتورة والتحقق من جاهزية مسار الاستلام…');
@@ -290,7 +311,7 @@
           network: 'base',
           customer_email: document.getElementById('email').value.trim(),
           customer_name: document.getElementById('customer-name').value.trim(),
-          requirements: document.getElementById('requirements').value.trim(),
+          requirements: requirementsText,
           order_key: activeOrderKey,
           attribution: {
             utm_source: new URLSearchParams(location.search).get('utm_source') || 'midad_services',
