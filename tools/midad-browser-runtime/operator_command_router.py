@@ -23,11 +23,14 @@ _FINANCIAL_OR_DESTRUCTIVE = re.compile(
     re.IGNORECASE,
 )
 _ACTIONS = {
-    "stop_session": ("stop", "logout", "log out", "close session", "وقف", "اغلق الجلسة", "تسجيل خروج"),
-    "status": ("status", "session status", "الحالة", "حالة الجلسة"),
-    "inspect": ("inspect", "check", "read", "look at", "show", "review", "افحص", "تحقق", "شوف", "اعرض", "راجع"),
+    "stop_session": ("stop session", "logout", "log out", "close session", "وقف الجلسة", "اغلق الجلسة", "تسجيل خروج"),
+    "status": ("session status", "status", "الحالة", "حالة الجلسة"),
+    "submit_form": ("submit form", "submit the form", "ارسل النموذج", "إرسال النموذج"),
+    "fill": ("fill", "type into", "enter value", "write in field", "اكتب في الحقل", "املأ الحقل", "ادخل النص"),
+    "click": ("click", "tap", "press button", "اضغط", "انقر", "اكبس"),
     "navigate": ("navigate", "go to", "open page", "visit", "اذهب", "افتح صفحة", "انتقل"),
     "wait_for_selector": ("wait for", "wait until", "انتظر ظهور", "انتظر"),
+    "inspect": ("inspect", "check", "read", "look at", "show", "review", "افحص", "تحقق", "شوف", "اعرض", "راجع"),
     "start_session": ("login", "log in", "sign in", "start session", "connect", "open session", "تسجيل الدخول", "سجل دخول", "اتصل"),
 }
 
@@ -84,21 +87,35 @@ def infer_hint_action(hint: str) -> str:
     normalized = _normalize(hint)
     if _FINANCIAL_OR_DESTRUCTIVE.search(hint or ""):
         raise CommandRoutingError("FINANCIAL_OR_DESTRUCTIVE_COMMAND_BLOCKED")
-    for action in ("stop_session", "status", "inspect", "navigate", "wait_for_selector", "start_session"):
+    for action in ("stop_session", "status", "submit_form", "fill", "click", "navigate", "wait_for_selector", "inspect", "start_session"):
         phrases = _ACTIONS[action]
         if any(_normalize(phrase) in normalized for phrase in phrases):
             return action
     return "start_session"
 
 def build_operator_request(hint: str, profiles: list[dict]) -> dict:
-    """Build a secret-free queue payload from a platform hint."""
+    """Build a secret-free typed command from a short assistant/operator hint."""
     profile = resolve_platform_hint(hint, profiles)
     action = infer_hint_action(hint)
     urls = re.findall(r"https://[^\s,;]+", str(hint or ""))
     target_url = urls[0].rstrip(").]}") if urls else None
+    selector_match = re.search(r"(?:selector|css)\s*[:=]\s*(.+?)(?=\s+value\s*[:=]|$)", hint, re.IGNORECASE)
+    selector = selector_match.group(1).strip().strip("'\"")[:300] if selector_match else ""
+    value_match = re.search(r"\bvalue\s*[:=]\s*(.+)$", hint, re.IGNORECASE)
+    value = value_match.group(1).strip() if value_match else None
+    if value is not None and len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
     if action == "navigate" and not target_url:
-        # A platform-only hint should establish a session, not fail on a missing URL.
         action = "start_session"
+    if action in {"click", "fill", "submit_form", "wait_for_selector"} and not selector:
+        raise CommandRoutingError("SELECTOR_REQUIRED")
+    if action == "fill":
+        if value is None:
+            raise CommandRoutingError("FILL_VALUE_REQUIRED")
+        if re.search(r"(?i)(password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)", selector):
+            raise CommandRoutingError("SENSITIVE_FIELD_NOT_AVAILABLE_TO_GENERIC_FILL")
+        if re.search(r"(?i)(password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)\s*[:=]", value):
+            raise CommandRoutingError("SENSITIVE_VALUE_NOT_AVAILABLE_TO_GENERIC_FILL")
     if action == "start_session":
         target_url = profile.get("login_url")
         required = ("username", "username_selector", "password_selector", "submit_selector",
@@ -113,9 +130,12 @@ def build_operator_request(hint: str, profiles: list[dict]) -> dict:
         "account_id": profile["account_id"],
         "action": action,
         "target_url": target_url,
-        "action_approved": False,
+        "selector": selector or None,
+        "value": value if action == "fill" else None,
+        "action_approved": action in {"click", "fill", "submit_form"},
         "request_text": str(hint)[:500],
     }
+
 
 def _validate_profile_url(raw_url: str, profile: dict) -> str:
     try:
