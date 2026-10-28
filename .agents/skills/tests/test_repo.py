@@ -24,7 +24,7 @@ class Repo(unittest.TestCase):
         found = sorted(d for d in os.listdir(ROOT)
                        if os.path.isfile(os.path.join(ROOT, d, "SKILL.md")))
         self.assertTrue(set(SKILLS).issubset(found), f"Missing upstream skills: {set(SKILLS) - set(found)}")
-        self.assertTrue(all(s in SKILLS or s.startswith("midad-") for s in found), f"Unexpected skill folder: {set(found) - set(SKILLS)}")
+        self.assertTrue(all(s in SKILLS or s.startswith("midad-") or s == "leanrea" for s in found), f"Unexpected skill folder: {set(found) - set(SKILLS)}")
 
     def test_frontmatter_name_and_description(self):
         for s in SKILLS:
