@@ -1,0 +1,16 @@
+{
+  "profiles": [
+    {
+      "account_id": "example-work-account",
+      "host": "example.com",
+      "username": "operator@example.com",
+      "password_secret_ref": "MIDAD_EXAMPLE_COM_PASSWORD",
+      "login_url": "https://example.com/login",
+      "username_selector": "input[name='username']",
+      "password_selector": "input[name='password']",
+      "submit_selector": "button[type='submit']",
+      "success_selector": "[data-testid='account-home']",
+      "notes": "Replace selectors after inspecting the authorized account login form."
+    }
+  ]
+}
