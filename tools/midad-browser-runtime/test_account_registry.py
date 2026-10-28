@@ -30,6 +30,20 @@ class AccountRegistryTests(unittest.TestCase):
         self.assertNotIn("never-store-this", stored)
         self.assertNotIn("also-never", stored)
 
+    def test_legacy_secret_fields_are_not_returned_or_rewritten(self):
+        self.path.write_text(json.dumps({"profiles": [{
+            **self.profile,
+            "password": "legacy-secret-must-not-leak",
+            "session": {"token": "nested-secret-must-not-leak"}
+        }]}), encoding="utf-8")
+        loaded = self.registry.get_profile("work-account")
+        self.assertNotIn("password", loaded)
+        self.assertNotIn("session", loaded)
+        self.registry.save_profile({**self.profile, "notes": "safe"})
+        stored = self.path.read_text(encoding="utf-8")
+        self.assertNotIn("legacy-secret-must-not-leak", stored)
+        self.assertNotIn("nested-secret-must-not-leak", stored)
+
     def test_rejects_non_allowlisted_host(self):
         with self.assertRaisesRegex(AccountRegistryError, "INVALID_ACCOUNT_PROFILE"):
             self.registry.save_profile({**self.profile, "host": "evil.example"})
