@@ -1,0 +1,23 @@
+{
+  "profiles": [
+    {
+      "account_id": "example-work-account",
+      "platform_key": "example",
+      "display_name": "Example",
+      "aliases": ["example.com", "demo portal"],
+      "host": "example.com",
+      "username": "operator@example.invalid",
+      "password_secret_ref": "MIDAD_EXAMPLE_COM_PASSWORD",
+      "login_url": "https://example.com/login",
+      "username_selector": "input[name='username']",
+      "password_selector": "input[name='password']",
+      "submit_selector": "button[type='submit']",
+      "success_selector": "[data-testid='account-home']",
+      "login_post_paths": ["/login"],
+      "login_post_content_types": ["application/x-www-form-urlencoded", "multipart/form-data"],
+      "action_post_paths": [],
+      "resource_hosts": [],
+      "notes": "Schema example only. Replace selectors and POST path after inspecting an authorized platform login form. Never put a real password here."
+    }
+  ]
+}

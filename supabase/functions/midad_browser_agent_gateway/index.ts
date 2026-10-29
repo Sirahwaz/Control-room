@@ -33,6 +33,53 @@ function authorized(req: Request) {
 const clip = (value: unknown, max = 4000) =>
   String(value ?? "").trim().slice(0, max);
 
+function safeOperatorPreview(value: unknown, max = 1400) {
+  return clip(value, max)
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]{12,}/gi, "[REDACTED]")
+    .replace(/(?:password|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|secret)\s*[:=]\s*[^\s,;]+/gi, "[REDACTED]")
+    .replace(/(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})/g, "[REDACTED]");
+}
+
+function unsafeOperatorHint(hint: string) {
+  const value = hint.slice(0, 500);
+  if (/\b(?:password|passcode|access[_ -]?token|refresh[_ -]?token|secret|api[_ -]?key|private[_ -]?key|recovery phrase|seed phrase)\s*[:=]\s*[^\s,;]+/i.test(value)) return true;
+  if (/\b(?:selector|css)\s*[:=][^;]{0,300}(?:password|passcode|secret|token|api[_ -]?key|private[_ -]?key|recovery|seed)\b/i.test(value)) return true;
+  if (/(?:Bearer\s+[A-Za-z0-9._~+/=-]{12,}|(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}))/i.test(value)) return true;
+  return false;
+}
+
+function sanitizeOperatorResult(raw: unknown) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, any>
+    : {};
+  const result: Record<string, unknown> = {
+    status: safeCode(source.status, "UNKNOWN"),
+    action: safeCode(source.action, "UNKNOWN"),
+    page_content_is_untrusted: true,
+  };
+  const platformKey = clip(source.platform_key, 100);
+  const accountId = clip(source.account_id, 100);
+  const host = clip(source.host, 253).toLowerCase().replace(/\.$/, "");
+  const title = safeOperatorPreview(source.title, 200);
+  const preview = safeOperatorPreview(source.text_preview, 1400);
+  const url = safeSourceUrl(source.url);
+  if (platformKey) result.platform_key = platformKey;
+  if (accountId) result.account_id = accountId;
+  if (host && /^[a-z0-9.-]+$/.test(host) && !host.includes("..") && !host.startsWith(".") && !host.endsWith(".")) result.host = host;
+  if (title) result.title = title;
+  if (preview) result.text_preview = preview;
+  if (url) result.url = url;
+  for (const key of ["text_chars", "value_length", "http_status"] as const) {
+    const n = Number(source[key]);
+    if (Number.isInteger(n) && n >= 0 && n <= (key === "http_status" ? 599 : 30000)) result[key] = n;
+  }
+  if (typeof source.authenticated === "boolean") result.authenticated = source.authenticated;
+  if (source.session_storage === "memory_only") result.session_storage = "memory_only";
+  if (typeof source.reason === "string" && source.reason.trim()) result.reason = safeOperatorPreview(source.reason, 500);
+  if (typeof source.code === "string" && /^[A-Za-z0-9_.:-]+$/.test(source.code)) result.code = clip(source.code, 100);
+  return result;
+}
+
 function safeCode(value: unknown, fallback = "BLOCKED_BY_POLICY") {
   const code = clip(value, 100);
   return code && /^[A-Za-z0-9_.:-]+$/.test(code) ? code : fallback;
@@ -249,6 +296,9 @@ Deno.serve(async (req: Request) => {
         capabilities: [
           "prepare_truthful_profile",
           "create_browser_job",
+          "queue_operator_hint",
+          "record_command_result",
+          "get_operator_result",
           "resume_browser_job",
           "record_navigation_and_evidence",
           "record_evidence_ledger",
@@ -358,6 +408,135 @@ Deno.serve(async (req: Request) => {
       });
 
       return json({ ok: true, job: inserted.data, profile_snapshot: snap });
+    }
+
+    if (action === "queue_operator_hint") {
+      const ownerUserId = clip(body.owner_user_id, 80);
+      const hint = clip(body.operator_hint ?? body.platform_hint, 500);
+      if (!ownerUserId || !hint) {
+        return json({ ok: false, error: "owner_user_id_and_operator_hint_required" }, 400);
+      }
+      if (unsafeOperatorHint(hint)) {
+        return json({ ok: false, error: "sensitive_operator_hint_rejected" }, 400);
+      }
+      // This endpoint is authenticated with the private ingest/service key only.
+      // A platform hint is data, not executable code; the worker resolves it against
+      // its private exact-host account registry and applies the action policy.
+      const idempotencyKey = clip(body.idempotency_key, 240) || ("operator-hint:" + crypto.randomUUID());
+      const old = await sb.from("midad_browser_jobs").select("*")
+        .eq("owner_user_id", ownerUserId).eq("session_ref", idempotencyKey).maybeSingle();
+      if (old.error) return json({ ok: false, error: "operator_job_lookup_failed" }, 500);
+      if (old.data) return json({ ok: true, idempotent: true, job_id: old.data.id, state: old.data.state });
+
+      const inserted = await sb.from("midad_browser_jobs").insert({
+        owner_user_id: ownerUserId,
+        agent_key: normalizeActorKey(body.agent_key || "midad_operator_command_router"),
+        platform_key: "operator_router",
+        objective: "Resolve approved platform hint and start or route the requested operator action",
+        state: "PREPARING",
+        session_ref: idempotencyKey,
+        current_url: null,
+        input_data: { operator_hint: hint },
+        profile_snapshot: {},
+        human_gate: { required: false, status: "none" },
+        blocker: {},
+        evidence: {},
+        next_action: "resolve_platform_hint_and_execute",
+        attempt_count: 0,
+      }).select("*").single();
+      if (inserted.error) return json({ ok: false, error: "operator_job_insert_failed" }, 500);
+
+      const ledger = await recordLedger(sb, {
+        jobId: inserted.data.id,
+        eventKey: "job-created:" + inserted.data.id,
+        eventType: "job_created",
+        actorKey: "midad_operator_command_router",
+        targetState: "PREPARING",
+        sourceUrl: null,
+        evidence: { source_kind: "operator_hint_queue" },
+        nextAction: "resolve_platform_hint_and_execute",
+        attemptCount: 0,
+      });
+      if (!ledger.ok) return ledgerFailure(ledger.error);
+      await sb.from("midad_agent_events").insert({
+        job_id: inserted.data.id,
+        agent_key: "midad_operator_command_router",
+        event_type: "operator_hint_queued",
+        state: "PREPARING",
+        payload: { hint_length: hint.length },
+      });
+      return json({
+        ok: true,
+        job_id: inserted.data.id,
+        state: "PREPARING",
+        next_action: "resolve_platform_hint_and_execute",
+      }, 202);
+    }
+
+    if (action === "record_command_result") {
+      const id = clip(body.job_id, 80);
+      if (!id || !body.result || typeof body.result !== "object" || Array.isArray(body.result)) {
+        return json({ ok: false, error: "job_id_and_result_object_required" }, 400);
+      }
+      const found = await getJob(sb, id);
+      if (found.error) return json({ ok: false, error: "job_lookup_failed" }, 500);
+      if (!found.data) return json({ ok: false, error: "not_found" }, 404);
+      const inputData = found.data.input_data && typeof found.data.input_data === "object" && !Array.isArray(found.data.input_data)
+        ? found.data.input_data
+        : {};
+      if (!(inputData.operator_command && typeof inputData.operator_command === "object") && !(typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())) {
+        return json({ ok: false, error: "not_an_operator_command_job" }, 409);
+      }
+      const result = sanitizeOperatorResult(body.result);
+      const currentEvidence = found.data.evidence && typeof found.data.evidence === "object" && !Array.isArray(found.data.evidence)
+        ? found.data.evidence
+        : {};
+      const updated = await sb.from("midad_browser_jobs").update({
+        evidence: { ...currentEvidence, operator_result: result },
+      }).eq("id", id).select("*").single();
+      if (updated.error) return json({ ok: false, error: "operator_result_write_failed" }, 500);
+      await sb.from("midad_agent_events").insert({
+        job_id: id,
+        agent_key: "midad_operator_worker",
+        event_type: "operator_command_result",
+        state: updated.data.state,
+        payload: { result },
+      });
+      return json({ ok: true, job_id: id, state: updated.data.state, result });
+    }
+
+    if (action === "get_operator_result") {
+      const id = clip(body.job_id, 80);
+      const ownerUserId = clip(body.owner_user_id, 80);
+      if (!id || !ownerUserId) {
+        return json({ ok: false, error: "job_id_and_owner_user_id_required" }, 400);
+      }
+      const found = await getJob(sb, id);
+      if (found.error) return json({ ok: false, error: "operator_result_lookup_failed" }, 500);
+      if (!found.data || String(found.data.owner_user_id || "") !== ownerUserId) {
+        return json({ ok: false, error: "not_found" }, 404);
+      }
+      const inputData = found.data.input_data && typeof found.data.input_data === "object" && !Array.isArray(found.data.input_data)
+        ? found.data.input_data
+        : {};
+      if (!(inputData.operator_command && typeof inputData.operator_command === "object") &&
+          !(typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())) {
+        return json({ ok: false, error: "not_an_operator_command_job" }, 409);
+      }
+      const evidence = found.data.evidence && typeof found.data.evidence === "object" && !Array.isArray(found.data.evidence)
+        ? found.data.evidence
+        : {};
+      const rawResult = evidence.operator_result;
+      const ready = !!rawResult && typeof rawResult === "object" && !Array.isArray(rawResult);
+      return json({
+        ok: true,
+        job_id: id,
+        state: safeCode(found.data.state, "UNKNOWN"),
+        platform_key: clip(found.data.platform_key, 100),
+        next_action: safeCode(found.data.next_action, "UNKNOWN"),
+        ready,
+        result: ready ? sanitizeOperatorResult(rawResult) : null,
+      });
     }
 
     if (action === "get_job") {
