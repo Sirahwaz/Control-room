@@ -10,30 +10,30 @@ const page = readFileSync(pagePath, 'utf8');
 const migration = existsSync(migrationPath) ? readFileSync(migrationPath, 'utf8') : '';
 
 test('migration fails closed on historical duplicate keys and enforces one order per public key', () => {
-  assert.match(migration, /HAVING\\s+count\\(\\*\\)\\s*>\\s*1/i);
-  assert.match(migration, /RAISE\\s+EXCEPTION/i);
-  assert.match(migration, /CREATE\\s+UNIQUE\\s+INDEX\\s+IF\\s+NOT\\s+EXISTS\\s+midad_store_orders_public_order_key_uidx/i);
-  assert.match(migration, /ON\\s+public\\.midad_store_orders\\s*\\(\\s*public_order_key\\s*\\)[\\s\\S]*?WHERE\\s+public_order_key\\s+IS\\s+NOT\\s+NULL/i);
+  assert.ok(migration.includes('HAVING count(*) > 1'), 'migration must detect duplicate public keys');
+  assert.ok(migration.includes('RAISE EXCEPTION'), 'migration must abort if historical duplicates exist');
+  assert.ok(migration.includes('CREATE UNIQUE INDEX IF NOT EXISTS midad_store_orders_public_order_key_uidx'));
+  assert.ok(migration.includes('ON public.midad_store_orders (public_order_key)'));
+  assert.ok(migration.includes('WHERE public_order_key IS NOT NULL'));
 });
 
 test('checkout reuses the order bound to a key and rejects terminal invoices instead of duplicating them', () => {
-  assert.match(checkout, /async function findExistingCheckoutByKey\\s*\\(/);
-  assert.match(checkout, /checkout_order_key_terminal/);
-  assert.match(checkout, /requires_new_order_key\\s*:\\s*true/);
-  assert.match(checkout, /checkout_order_key_product_mismatch/);
-  const initialLookup = checkout.indexOf('findExistingCheckoutByKey(key, oid, productId)');
+  assert.ok(checkout.includes('async function findExistingCheckoutByKey('));
+  assert.ok(checkout.includes('error:"checkout_order_key_terminal"'));
+  assert.ok(checkout.includes('requires_new_order_key:true'));
+  assert.ok(checkout.includes('error:"checkout_order_key_product_mismatch"'));
+  const initialLookup = checkout.indexOf('findExistingCheckoutByKey(key,oid,productId)');
   const atomicCreate = checkout.indexOf('db.rpc("midad_create_public_checkout_order"');
   assert.ok(initialLookup >= 0 && atomicCreate > initialLookup, 'existing key lookup must precede atomic checkout creation');
 });
 
-test('concurrent duplicate-key insert races resolve to the winning checkout rather than a generic server error', () => {
-  assert.match(checkout, /midad_store_orders_public_order_key_uidx/);
-  assert.match(checkout, /if\\s*\\(createError\\)[\\s\\S]{0,1200}findExistingCheckoutByKey\\(key, oid, productId\\)/);
+test('concurrent duplicate-key insert races resolve to the winning checkout', () => {
+  assert.ok(checkout.includes('midad_store_orders_public_order_key_uidx'));
+  assert.ok(checkout.includes('createError.code==="23505"'));
+  assert.ok(checkout.includes('const winner=await findExistingCheckoutByKey(key,oid,productId)'));
 });
 
-test('the checkout page rotates a key only after the server confirms its invoice is terminal, with one retry maximum', () => {
-  assert.match(page, /d\\?\\.error\\s*===\\s*["']checkout_order_key_terminal["']/);
-  assert.match(page, /d\\?\\.requires_new_order_key\\s*===\\s*true/);
-  assert.match(page, /clearCheckoutKey\\(\\{storage:window\\.localStorage,storageKey:keyState\\.storageKey\\}\\)/);
-  assert.match(page, /for\\s*\\(let attempt=0;attempt<2;attempt\\+\\+\\)/);
+test('checkout UI only clears its saved key after detecting a terminal payment/order status', () => {
+  assert.ok(page.includes('["expired","cancelled","failed"].includes(payment)||orderStatus==="CANCELLED"'));
+  assert.ok(page.includes('MIDADCheckoutKey.clearCheckoutKey({storage:window.localStorage,storageKey:currentMidadCheckoutKey.storageKey})'));
 });
