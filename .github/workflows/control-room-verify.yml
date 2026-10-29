@@ -94,3 +94,6 @@ jobs:
 
       - name: Revenue checkout order-key and status tests
         run: node --test tests/checkout-key.test.cjs
+
+      - name: Checkout order-key idempotency regression tests
+        run: node --test tests/checkout-order-key-idempotency.test.mjs
