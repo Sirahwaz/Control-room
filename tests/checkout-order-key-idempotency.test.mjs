@@ -33,7 +33,10 @@ test('concurrent duplicate-key insert races resolve to the winning checkout', ()
   assert.ok(checkout.includes('const winner=await findExistingCheckoutByKey(key,oid,productId)'));
 });
 
-test('checkout UI only clears its saved key after detecting a terminal payment/order status', () => {
+test('checkout UI only rotates a key after explicit terminal status and retries once', () => {
   assert.ok(page.includes('["expired","cancelled","failed"].includes(payment)||orderStatus==="CANCELLED"'));
   assert.ok(page.includes('MIDADCheckoutKey.clearCheckoutKey({storage:window.localStorage,storageKey:currentMidadCheckoutKey.storageKey})'));
+  assert.ok(page.includes('for(let attempt=0;attempt<2;attempt++)'));
+  assert.ok(page.includes('d?.error==="checkout_order_key_terminal"&&d?.requires_new_order_key===true'));
+  assert.ok(page.includes('clearCheckoutKey({storage:window.localStorage,storageKey:keyState.storageKey})'));
 });
