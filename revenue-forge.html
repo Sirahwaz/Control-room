@@ -236,20 +236,30 @@ async function makeCheckout(product){
   const buttons=Array.from(document.querySelectorAll('button[onclick^="makeCheckout"]'));
   buttons.forEach(b=>b.disabled=true);
   try{
-    const keyState=await checkoutKey(product);
-    const orderKey=keyState.orderKey;
-    currentMidadCheckoutKey=keyState;
-    const r=await fetch(MIDAD_CHECKOUT,{
-      method:"POST",
-      headers:{"content-type":"application/json","x-order-key":orderKey},
-      body:JSON.stringify({
-        product_id:product,order_key:orderKey,customer_name:name,
-        customer_email:email,customer_requirements:requirements,
-        attribution:window.MIDADCheckoutAttribution.buildCheckoutAttribution(window.location.href, document.referrer)
-      })
-    });
-    const d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
-    if(!r.ok||!d.ok) throw new Error(d.error||"checkout_failed");
+    let keyState=await checkoutKey(product);
+    let r=null,d=null;
+    for(let attempt=0;attempt<2;attempt++){
+      const orderKey=keyState.orderKey;
+      currentMidadCheckoutKey=keyState;
+      r=await fetch(MIDAD_CHECKOUT,{
+        method:"POST",
+        headers:{"content-type":"application/json","x-order-key":orderKey},
+        body:JSON.stringify({
+          product_id:product,order_key:orderKey,customer_name:name,
+          customer_email:email,customer_requirements:requirements,
+          attribution:window.MIDADCheckoutAttribution.buildCheckoutAttribution(window.location.href, document.referrer)
+        })
+      });
+      d=await r.json().catch(()=>({ok:false,error:"invalid_checkout_response"}));
+      if(r.ok&&d.ok)break;
+      if(attempt===0&&r.status===409&&d?.error==="checkout_order_key_terminal"&&d?.requires_new_order_key===true){
+        window.MIDADCheckoutKey.clearCheckoutKey({storage:window.localStorage,storageKey:keyState.storageKey});
+        keyState=await checkoutKey(product);
+        continue;
+      }
+      throw new Error(d.error||"checkout_failed");
+    }
+    if(!r?.ok||!d?.ok)throw new Error(d?.error||"checkout_failed");
     box.replaceChildren();
     addCheckoutText(box,"strong",d.product.name);
     addCheckoutText(box,"p","المبلغ الدقيق: "+d.payment.quoted_crypto_amount+" USDC");
