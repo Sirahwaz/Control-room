@@ -57,6 +57,59 @@ function reuseInstructions(payment:any){
   return "تمت إعادة استخدام الفاتورة النشطة. ادفع المبلغ الدقيق فقط قبل انتهاء الصلاحية.";
 }
 
+
+async function findExistingCheckoutByKey(orderKey:string, ownerUserId:string, requestedProductId:string){
+  const {data:order,error:orderError}=await db.from("midad_store_orders")
+    .select("id,product_id,product_name,public_order_key,status,payment_intent_id")
+    .eq("public_order_key",orderKey).maybeSingle();
+  if(orderError)throw orderError;
+  if(!order)return null;
+
+  const {data:intent,error:intentError}=await db.from("midad_payment_intents")
+    .select("id,user_id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,paid_at,verified_at,metadata")
+    .eq("id",order.payment_intent_id).maybeSingle();
+  if(intentError)throw intentError;
+  if(!intent||String(intent.user_id||"")!==String(ownerUserId||""))
+    return json({ok:false,error:"checkout_order_key_conflict"},409);
+  if(String(order.product_id||"")!==String(requestedProductId||""))
+    return json({ok:false,error:"checkout_order_key_product_mismatch"},409);
+
+  const paymentStatus=String(intent.status||"").toLowerCase();
+  const orderStatus=String(order.status||"").toUpperCase();
+  if(["expired","cancelled","failed"].includes(paymentStatus)){
+    return json({
+      ok:false,
+      error:"checkout_order_key_terminal",
+      requires_new_order_key:true,
+      payment_status:paymentStatus,
+      order_status:orderStatus
+    },409);
+  }
+  if(orderStatus==="CANCELLED"){
+    return json({
+      ok:false,
+      error:"checkout_order_terminal_review_required",
+      requires_new_order_key:false,
+      payment_status:paymentStatus,
+      order_status:orderStatus
+    },409);
+  }
+
+  const product=PRODUCTS[order.product_id];
+  if(!product)return json({ok:false,error:"checkout_product_unavailable"},409);
+  const payment=publicPayment(intent);
+  const receiving={asset:payment.settlement_asset,network:payment.network,wallet_address:payment.wallet_address};
+  return json({
+    ok:true,
+    reused:true,
+    payment,
+    payment_intent:payment,
+    product:{id:order.product_id,...product},
+    receiving,
+    instructions:reuseInstructions(payment)
+  });
+}
+
 async function ownerId(){
   const {data}=await db.from("profiles").select("id").limit(1).maybeSingle();
   return data?.id||null;
@@ -267,6 +320,10 @@ async function main(req:Request){
 
     const key=clean(body.order_key||req.headers.get("x-order-key"),160);
     if(key){
+      const existingCheckout=await findExistingCheckoutByKey(key,oid,productId);
+      if(existingCheckout)return existingCheckout;
+
+      // Legacy fallback for an intent created before its order row became visible.
       const {data:existing}=await db.from("midad_payment_intents")
         .select("id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,expires_at,metadata")
         .eq("user_id",oid).contains("metadata",{public_order_key:key})
@@ -360,7 +417,16 @@ async function main(req:Request){
       p_intent:intentPayload,
       p_order:orderPayload
     });
-    if(createError)throw createError;
+    if(createError){
+      const duplicateKeyError=String(createError.message||"").includes("midad_store_orders_public_order_key_uidx")
+        ||String(createError.details||"").includes("midad_store_orders_public_order_key_uidx")
+        ||createError.code==="23505";
+      if(key&&duplicateKeyError){
+        const winner=await findExistingCheckoutByKey(key,oid,productId);
+        if(winner)return winner;
+      }
+      throw createError;
+    }
     const updatedIntent=created?.intent;
     if(!updatedIntent?.id||String(updatedIntent.id)!==intentId){
       throw new Error("atomic_checkout_result_invalid");
