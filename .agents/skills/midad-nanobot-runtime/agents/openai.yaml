@@ -1,0 +1,6 @@
+interface:
+  display_name: "MIDAD Nanobot Runtime"
+  short_description: "Plan and validate a private Nanobot runtime with a server-side security boundary."
+  default_prompt: "Check host, pinned release, authentication, sandbox, and harmless runtime evidence before proposing a MIDAD connection."
+policy:
+  allow_implicit_invocation: true

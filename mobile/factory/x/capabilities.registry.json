@@ -1,6 +1,6 @@
 {
   "registry_version": 1,
-  "updated": "2026-10-17",
+  "updated": "2026-10-28",
   "capabilities": [
     {
       "id": "mobile-shell",
@@ -449,6 +449,38 @@
         "react-preview"
       ],
       "default_reuse": true
+    },
+    {
+      "id": "application-reverse-engineering",
+      "category": "software_intelligence",
+      "criticality": "high",
+      "tags": [
+        "reverse-engineering",
+        "apk",
+        "android",
+        "electron",
+        "native-binary",
+        "web-bundle",
+        "wasm",
+        "static-analysis",
+        "evidence"
+      ],
+      "default_reuse": true
+    },
+    {
+      "id": "self-hosted-agent-runtime",
+      "category": "ai",
+      "criticality": "high",
+      "tags": [
+        "nanobot",
+        "python",
+        "webui",
+        "telegram",
+        "openai-compatible-api",
+        "sandbox",
+        "server-side-auth"
+      ],
+      "default_reuse": false
     }
   ]
 }

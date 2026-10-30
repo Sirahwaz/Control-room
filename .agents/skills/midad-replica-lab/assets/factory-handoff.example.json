@@ -1,0 +1,37 @@
+{
+  "protocol": "MIDAD-REPLICA-1",
+  "job_id": "example-only-do-not-reuse",
+  "task_kind": "analyze_then_build",
+  "target": {
+    "kind": "web_or_apk",
+    "reference": "replace-with-authorized-url-or-artifact-id",
+    "asset_sha256": null,
+    "authorization": {
+      "status": "must_be_verified",
+      "evidence_reference": "replace-with-authorization-record",
+      "allowed_scope": ["static_inventory", "approved_test_flows"],
+      "excluded_scope": ["unrelated_hosts", "third_party_accounts", "credential_extraction"]
+    }
+  },
+  "mode": "read_only_analysis",
+  "inputs": [],
+  "expected_outputs": ["screen_flow_inventory", "feature_matrix", "analysis_report", "test_matrix"],
+  "safety": {
+    "isolated_workspace": true,
+    "secrets_in_client": false,
+    "live_network_testing": false,
+    "live_financial_actions": false,
+    "signing": false,
+    "production_publish": false
+  },
+  "execution": {
+    "max_attempts_per_incident": 3,
+    "circuit_breaker_after_limit": true
+  },
+  "factory_handoff": {
+    "required": false,
+    "product_key": null,
+    "build_channel": "debug",
+    "required_evidence": ["build_report", "test_report", "artifact_sha256"]
+  }
+}
