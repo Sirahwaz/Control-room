@@ -1,12 +1,12 @@
 # Wispbyte setup — MIDAD Operator Worker
 
-This archive contains source code and example configuration only. It contains **no real credentials**. The worker does not start a signed-in platform session until a real platform profile and password secret are configured in the private Wispbyte panel.
+This archive contains source code and example configuration only. It contains **no real credentials**. The worker sends a private heartbeat as soon as it starts. It does not start a signed-in platform session until a real platform profile and password secret are configured in the private Wispbyte panel.
 
 ## 1. Upload
 
 1. Open your Wispbyte server → **Files**.
 2. Upload `midad-operator-worker.zip` and extract it. If the panel extracts into a folder named `midad-operator-worker`, open that folder and use its `start_worker.sh` startup path.
-3. Copy `accounts.example.json` to `accounts.json` using the file manager. Edit `accounts.json` to add a platform you own and are allowed to access. Do not add a real password to this file.
+3. If `accounts.json` is absent and the allowlist contains `example.com`, startup safely copies the public read-only smoke profile from `accounts.example.json`. Keep that file for the first health check; later add your authorized platform profile without putting a password in JSON.
 
 Wispbyte's panel exposes uploads in Files and startup commands/environment variables under Startup. See the official docs: https://wispbyte.com/kb/server-management and https://wispbyte.com/kb/startup-settings.
 
@@ -24,12 +24,13 @@ If the files were extracted directly into the server root instead, use:
 sh /home/container/start_worker.sh
 ```
 
-Set these environment variables in the private Startup settings (not in a committed file):
+The startup script automatically loads the existing `.env` file in this folder, if present. You may keep secrets there in the private Wispbyte file manager, or use private Startup environment settings. The script does not commit or expose them.
+
+Required variables:
 
 - `SUPABASE_URL`: your MIDAD Supabase project URL.
 - `MIDAD_INGEST_KEY`: the private gateway ingest key. Never share it in chat or place it in the web UI.
 - `MIDAD_BROWSER_ALLOWED_HOSTS`: exact hosts only, comma-separated, e.g. `example.com,taskmarket.dev`.
-- `MIDAD_OPERATOR_OWNER_USER_ID`: the authorized owner UUID used by MIDAD's browser jobs.
 - `MIDAD_BROWSER_ACCOUNT_REGISTRY=/home/container/midad-operator-worker/accounts.json` (adjust if extracted into the root).
 - Define each `MIDAD_*_PASSWORD` alias in Wispbyte's environment settings. The profile file stores only the alias, never the password.
 
@@ -48,7 +49,7 @@ Use only accounts you own or are authorized to operate. Do not guess selectors. 
 ## 4. Start and verify
 
 1. Open **Console** and press Start.
-2. Watch logs. The worker should remain running and poll every few seconds. A startup error is not a successful deployment; fix the environment or Playwright runtime error first.
+2. Watch logs. The worker should remain running, resolve the single configured owner profile through the private gateway (unless an explicit owner UUID is supplied), send a heartbeat every 15 seconds, and poll every few seconds. A startup error is not a successful deployment; fix the environment or Playwright runtime error first.
 3. First test the gateway/read-only command path before relying on a signed-in account. A profile must have correct site-specific selectors and an injected password secret for login to succeed.
 
 ## What happens after startup
