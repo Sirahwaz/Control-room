@@ -1,19 +1,79 @@
 (()=>{"use strict";
+const SUPABASE_URL="https://froegigfmpmvtecztfbf.supabase.co";
+const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_user_api";
+const TELEGRAM_AUTH=SUPABASE_URL+"/functions/v1/midad_telegram_auth";
+const CONTROL_API=SUPABASE_URL+"/functions/v1/midad_control_room";
 const $=s=>document.querySelector(s);
-const API="/functions/v1/midad_browser_user_api";
-const state={connected:false,worker:false};
+const state={token:null,worker:false,ownerReady:false};
 function setStatus(ready,title,detail,pill){$("#bridgeTitle").textContent=title;$("#bridgeDetail").textContent=detail;$("#bridgePill").textContent=pill;$("#bridgePill").className="pill pending";$("#statusDot").style.background=ready?"var(--green)":"var(--amber)";$("#connectionLabel").textContent=ready?"متصل":"بانتظار الربط";}
-function lockControls(ready){["#addressInput","#navigateButton","#commandInput","#sendCommand"].forEach(s=>$(s).disabled=!ready);document.querySelectorAll("[data-local-action]").forEach(b=>b.disabled=!ready);}
+function lockControls(ready){["#platformInput","#addressInput","#navigateButton","#commandInput","#sendCommand"].forEach(s=>$(s).disabled=!ready);}
 function addActivity(title,detail){const box=$("#activityList");$("#activityEmpty").hidden=true;const item=document.createElement("div");item.className="activity-item";const b=document.createElement("b");b.textContent=title;const small=document.createElement("small");small.textContent=detail;item.append(b,small);box.prepend(item);}
-async function getAccessToken(){const adapter=window.MIDAD_BROWSER_AUTH;if(!adapter||typeof adapter.getAccessToken!=="function")return null;return await adapter.getAccessToken();}
-async function api(payload){const token=await getAccessToken();if(!token)throw new Error("جلسة MIDAD غير متاحة");const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+token},body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(!r.ok||d.ok!==true)throw new Error(d.error||("HTTP "+r.status));return d;}
-async function checkBridge(){lockControls(false);let token;try{token=await getAccessToken()}catch(e){setStatus(false,"تعذّر قراءة جلسة الدخول","تعذر الحصول على جلسة مستخدم موثقة. أعد فتح Control Room ثم حاول مجدداً.","AUTH REQUIRED");return}
-if(!token){setStatus(false,"طبقة الاتصال غير مفعّلة","الواجهة جاهزة؛ يلزم ربط جلسة دخول MIDAD مع واجهة المتصفح. لا يُرسل أي مفتاح خاص من هذه الصفحة.","BRIDGE PENDING");return}
-try{const d=await api({action:"capabilities"});state.connected=true;state.worker=d.worker_online===true;setStatus(true,"بوابة المتصفح متصلة",state.worker?"تم التحقق من البوابة والعامل.":"البوابة متصلة لكن Worker لم يثبت أنه يعمل.","CONNECTED");lockControls(state.worker);$("#sessionState").textContent=state.worker?"Worker متصل — لا توجد جلسة مؤكدة":"Worker غير متصل";if(!state.worker)$("#bridgePill").textContent="WORKER OFFLINE";addActivity("فحص الاتصال","تم التحقق من البوابة. لم يتم فتح أي موقع.");}
-catch(e){state.connected=false;setStatus(false,"بوابة المتصفح غير متاحة","تعذر التحقق من الواجهة الخلفية الآمنة: "+String(e.message||e),"BRIDGE UNAVAILABLE");}}
-$("#navigateForm").addEventListener("submit",async e=>{e.preventDefault();const url=$("#addressInput").value.trim();if(!url)return;try{const d=await api({action:"navigate",url});addActivity("طلب تنقل",d.state||"استلمت البوابة الطلب");}catch(err){addActivity("تعذر التنقل",String(err.message||err));}});
-$("#sendCommand").addEventListener("click",async()=>{const command=$("#commandInput").value.trim();if(!command)return;try{const d=await api({action:"command",command});addActivity("تم إرسال الأمر",d.state||"استلمت البوابة الطلب");}catch(err){addActivity("تعذر إرسال الأمر",String(err.message||err));}});
+async function obtainSession(force=false){
+ if(state.token&&!force)return state.token;
+ const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
+ const initData=tg?.initData||"";
+ let response;
+ if(initData){
+  response=await fetch(TELEGRAM_AUTH,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({telegram_init_data:initData,client:"midad-control-v2"})});
+ }else{
+  let key="";try{key=sessionStorage.getItem("midad_cockpit_key")||""}catch{}
+  if(!key)return null;
+  response=await fetch(CONTROL_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({access_key:key,client:"midad-control-v2"})});
+ }
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||!data.token)throw new Error(data.error||"MIDAD_LOGIN_REQUIRED");
+ state.token=data.token;return state.token;
+}
+async function api(payload,retry=true){
+ const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
+ const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,token})});
+ const data=await response.json().catch(()=>({}));
+ if(response.status===401&&retry){state.token=null;return api(payload,false)}
+ if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
+ return data;
+}
+function renderSessions(sessions){
+ const list=$("#sessionsList");list.replaceChildren();$("#sessionCount").textContent=String(sessions.length);
+ $("#sessionsEmpty").hidden=sessions.length>0;
+ for(const session of sessions){
+  const card=document.createElement("div");card.className="session-item";
+  const title=document.createElement("b");title.textContent=(session.platform_key||"Browser job")+" · "+session.state;
+  const detail=document.createElement("small");detail.textContent=(session.current_url||"لا يوجد عنوان بعد")+" · "+new Date(session.updated_at).toLocaleString();
+  card.append(title,detail);list.append(card);
+  if(session.result?.text_preview&&$("#browserViewport").dataset.jobId!==session.job_id){
+   $("#browserViewport").dataset.jobId=session.job_id;
+   const view=document.createElement("div");view.className="viewport-placeholder";
+   const heading=document.createElement("b");heading.textContent=session.result.title||"معاينة الصفحة";
+   const p=document.createElement("p");p.textContent=session.result.text_preview;
+   const stateLabel=document.createElement("span");stateLabel.className="pill neutral";stateLabel.textContent=session.result.status||"RESULT";
+   view.replaceChildren(heading,p,stateLabel);$("#browserViewport").replaceChildren(view);
+  }
+ }
+}
+async function refreshSessions(){const data=await api({action:"list_sessions"});renderSessions(data.sessions||[]);}
+async function checkBridge(){
+ lockControls(false);
+ try{
+  const data=await api({action:"capabilities"});
+  state.ownerReady=true;state.worker=data.worker_online===true;
+  if(state.worker){setStatus(true,"بوابة المتصفح والعامل متصلان","آخر نبضة مؤكدة: "+(data.worker_last_seen||"الآن"),"WORKER ONLINE");lockControls(true);$("#sessionState").textContent="Worker متصل — الجلسات في الذاكرة";}
+  else{setStatus(true,"بوابة المتصفح متصلة","العامل غير متصل أو لم يرسل Heartbeat حديثاً. الأوامر تبقى معطّلة حتى تأكيد تشغيله.","WORKER OFFLINE");$("#bridgePill").textContent="WORKER OFFLINE";$("#sessionState").textContent="Worker غير متصل";}
+  await refreshSessions();
+ }catch(e){state.ownerReady=false;state.worker=false;setStatus(false,"تعذر الاتصال الآمن",String(e.message||e),"AUTH / BRIDGE REQUIRED");lockControls(false);}
+}
+$("#navigateForm").addEventListener("submit",async e=>{
+ e.preventDefault();const platform=$("#platformInput").value.trim(),url=$("#addressInput").value.trim();
+ if(!platform||!url){addActivity("بيانات ناقصة","أدخل اسم المنصة المعتمدة وعنوان HTTPS.");return}
+ if(!/^https:\/\//i.test(url)){addActivity("عنوان مرفوض","المتصفح يقبل HTTPS فقط.");return}
+ await sendCommand("navigate "+platform+" "+url);
+});
+async function sendCommand(command){
+ const requestId=crypto.randomUUID().replace(/-/g,"");
+ try{const data=await api({action:"command",command,request_id:requestId});addActivity("أُرسل الأمر إلى الطابور",data.job_id+" · "+data.state);await refreshSessions();}
+ catch(e){addActivity("تعذر إرسال الأمر",String(e.message||e));}
+}
+$("#sendCommand").addEventListener("click",()=>{const command=$("#commandInput").value.trim();if(command)sendCommand(command);});
 $("#refreshStatus").addEventListener("click",checkBridge);
-document.querySelectorAll("[data-local-action]").forEach(b=>b.addEventListener("click",()=>addActivity("الإجراء غير متاح","يتطلب جلسة متصفح حقيقية مؤكدة.")));
+document.querySelectorAll("[data-local-action]").forEach(b=>b.addEventListener("click",()=>addActivity("الإجراء غير متاح حالياً","التنقل والتحكم يتمان عبر أوامر المنصة المعتمدة حتى نضيف بثّاً مباشراً للجلسة.")));
 lockControls(false);checkBridge();
 })();
