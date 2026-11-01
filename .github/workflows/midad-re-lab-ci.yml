@@ -1,0 +1,26 @@
+name: MIDAD Reverse Engineering Lab CI
+on:
+  push:
+    branches: [main, "feat/midad-browser-operator-bridge-*"]
+    paths:
+      - "tools/midad-re-lab/**"
+      - ".github/workflows/midad-re-lab-ci.yml"
+  pull_request:
+    paths:
+      - "tools/midad-re-lab/**"
+      - ".github/workflows/midad-re-lab-ci.yml"
+permissions:
+  contents: read
+jobs:
+  policy-and-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile analyzers
+        run: python -m py_compile tools/midad-re-lab/analyze_web.py tools/midad-re-lab/analyze_apk.py
+      - name: Verify public-target policy
+        working-directory: tools/midad-re-lab
+        run: python -m unittest -v test_web_policy.py
