@@ -108,9 +108,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
   const origin = req.headers.get("origin") || "";
   if (origin && origin !== ALLOWED_ORIGIN) return json({ ok: false, error: "origin_not_allowed" }, 403);
-  const length = Number(req.headers.get("content-length") || 0);
-  if (length > 4096) return json({ ok: false, error: "request_too_large" }, 413);
-  const body = await req.json().catch(() => null) as Record<string, any> | null;
+  const rawBody = await req.text();
+  if (rawBody.length > 4096) return json({ ok: false, error: "request_too_large" }, 413);
+  const body = (() => { try { return JSON.parse(rawBody); } catch { return null; } })() as Record<string, any> | null;
   if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "invalid_json_body" }, 400);
   const token = typeof body.token === "string" ? body.token : "";
   const action = clip(body.action, 40).toLowerCase();
