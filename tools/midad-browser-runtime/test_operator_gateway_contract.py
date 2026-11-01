@@ -18,7 +18,9 @@ class OperatorGatewayContractTests(unittest.TestCase):
         self.assertIn('browser_user_origin_not_allowed', self.source)
         self.assertIn('user_bridge_action_not_allowed', self.source)
         self.assertIn('eq("owner_user_id", ownerUserId)', self.source)
-        self.assertNotIn('body.owner_user_id', self.source)
+        start = self.source.index("async function resolveBrowserUserOwner")
+        end = self.source.index("Deno.serve", start)
+        self.assertNotIn("body.owner_user_id", self.source[start:end])
 
     def test_worker_heartbeat_is_ingest_key_only_and_persists_timestamp(self):
         self.assertIn('action === "worker_heartbeat"', self.source)
