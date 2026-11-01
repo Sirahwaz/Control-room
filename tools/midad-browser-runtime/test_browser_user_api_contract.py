@@ -17,7 +17,7 @@ class BrowserUserApiContractTests(unittest.TestCase):
 
     def test_owner_is_derived_from_single_profile_not_client_payload(self):
         self.assertIn('from("profiles").select("id").limit(2)', self.source)
-        self.assertIn('ownerUserId = profiles.data[0].id', self.source)
+        self.assertIn('ownerUserId: String(profiles.data[0].id)', self.source)
         self.assertNotIn('body.owner_user_id', self.source)
 
     def test_only_safe_browser_actions_are_exposed(self):
