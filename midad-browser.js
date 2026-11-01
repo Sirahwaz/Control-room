@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const SUPABASE_URL="https://froegigfmpmvtecztfbf.supabase.co";
-const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_user_api";
+const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_agent_gateway";
 const TELEGRAM_AUTH=SUPABASE_URL+"/functions/v1/midad_telegram_auth";
 const CONTROL_API=SUPABASE_URL+"/functions/v1/midad_control_room";
 const $=s=>document.querySelector(s);
@@ -26,7 +26,7 @@ async function obtainSession(force=false){
 }
 async function api(payload,retry=true){
  const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
- const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,token})});
+ const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,session_token:token})});
  const data=await response.json().catch(()=>({}));
  if(response.status===401&&retry){state.token=null;return api(payload,false)}
  if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
@@ -50,12 +50,12 @@ function renderSessions(sessions){
   }
  }
 }
-async function refreshSessions(){const data=await api({action:"list_sessions"});renderSessions(data.sessions||[]);}
+async function refreshSessions(){const data=await api({action:"ui_list_sessions"});renderSessions(data.sessions||[]);}
 async function waitForResult(jobId){
  for(let attempt=0;attempt<12;attempt++){
   await new Promise(resolve=>setTimeout(resolve,2500));
   try{
-   const result=await api({action:"get_result",job_id:jobId});
+   const result=await api({action:"ui_get_result",job_id:jobId});
    if(result.ready){addActivity("اكتمل تنفيذ الأمر",result.result?.status||result.state);await refreshSessions();return;}
   }catch(e){addActivity("تعذر جلب النتيجة",String(e.message||e));return;}
  }
@@ -64,7 +64,7 @@ async function waitForResult(jobId){
 async function checkBridge(){
  lockControls(false);
  try{
-  const data=await api({action:"capabilities"});
+  const data=await api({action:"ui_capabilities"});
   state.ownerReady=true;state.worker=data.worker_online===true;
   if(state.worker){setStatus(true,"بوابة المتصفح والعامل متصلان","آخر نبضة مؤكدة: "+(data.worker_last_seen||"الآن"),"WORKER ONLINE");lockControls(true);$("#sessionState").textContent="Worker متصل — الجلسات في الذاكرة";}
   else{setStatus(true,"بوابة المتصفح متصلة","العامل غير متصل أو لم يرسل Heartbeat حديثاً. الأوامر تبقى معطّلة حتى تأكيد تشغيله.","WORKER OFFLINE");$("#bridgePill").textContent="WORKER OFFLINE";$("#sessionState").textContent="Worker غير متصل";}
@@ -79,7 +79,7 @@ $("#navigateForm").addEventListener("submit",async e=>{
 });
 async function sendCommand(command){
  const requestId=crypto.randomUUID().replace(/-/g,"");
- try{const data=await api({action:"command",command,request_id:requestId});addActivity("أُرسل الأمر إلى الطابور",data.job_id+" · "+data.state);await refreshSessions();await waitForResult(data.job_id);}
+ try{const data=await api({action:"ui_command",command,request_id:requestId});addActivity("أُرسل الأمر إلى الطابور",data.job_id+" · "+data.state);await refreshSessions();await waitForResult(data.job_id);}
  catch(e){addActivity("تعذر إرسال الأمر",String(e.message||e));}
 }
 $("#sendCommand").addEventListener("click",()=>{const command=$("#commandInput").value.trim();if(command)sendCommand(command);});
