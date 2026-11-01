@@ -2,22 +2,22 @@
 
 ## Implemented in this branch
 - `midad-browser.html/css/js`: mobile-first Arabic control surface.
-- `supabase/functions/midad_browser_user_api/index.ts`: user-facing bridge.
+- `midad_browser_agent_gateway` exposes the authenticated `user_bridge` action; no additional Edge Function is required.
 - `midad_browser_agent_gateway`: private `worker_heartbeat` action.
 - `operator_worker.py`: sends an authenticated heartbeat every 15 seconds.
 - Control Room station tile opens the Browser page in the same tab so the existing sessionStorage access key remains available.
 
 ## Authentication model
-The existing Control Room does not use Supabase Auth JWTs in its browser client. It issues opaque session tokens after validating Telegram Mini App initData or the existing Control Room access key. The Browser bridge reuses that established flow:
+The existing Control Room does not use Supabase Auth JWTs in its browser client. It issues opaque session tokens after validating Telegram Mini App initData or the existing Control Room access key. The authenticated `user_bridge` action reuses that established flow:
 1. Telegram Mini App: exchange initData through `midad_telegram_auth`.
 2. Existing web access: exchange the same-tab `midad_cockpit_key` through `midad_control_room`.
-3. Send the opaque session token in the HTTPS request body to `midad_browser_user_api`.
-4. The bridge hashes the token, validates an active `control_room_sessions` row and enforces the existing 30-day session age limit.
+3. Send the opaque session token in the HTTPS request body to `midad_browser_agent_gateway` with `action: user_bridge` and a strict `subaction`.
+4. The gateway hashes the token, validates an active `control_room_sessions` row and enforces the existing 30-day session age limit.
 
-The bridge resolves the owner from `public.profiles` only when exactly one profile exists. It never accepts an owner UUID from the browser. If the project becomes multi-user, replace this singleton binding with an explicit server-side session-to-user mapping before enabling multiple owners.
+The user bridge resolves the owner from `public.profiles` only when exactly one profile exists. It never accepts an owner UUID from the browser. If the project becomes multi-user, replace this singleton binding with an explicit server-side session-to-user mapping before enabling multiple owners.
 
 ## Server-side boundary
-The browser bridge is deployed with platform JWT verification disabled because Control Room uses its own opaque session tokens. This is not anonymous access: the handler validates the hashed token against `control_room_sessions` on every request. It then uses server-side service credentials to call the private gateway.
+The existing gateway remains deployed with platform JWT verification disabled because its private worker calls use the ingest header and its user bridge uses the existing opaque Control Room session token. The user bridge is the only action that may bypass private-header authentication, and it requires the exact GitHub Pages Origin plus per-request session validation. This is not anonymous access: the handler validates the hashed token against `control_room_sessions` on every request. It then uses server-side service credentials to call the private gateway.
 
 - Service-role and ingest credentials remain server-side.
 - CORS is limited to `https://sirahwaz.github.io`.

@@ -10,6 +10,18 @@ class OperatorGatewayContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = GATEWAY.read_text(encoding="utf-8")
 
+    def test_public_user_bridge_uses_hashed_control_room_session_and_owner_scope(self):
+        self.assertIn('action === "user_bridge"', self.source)
+        self.assertIn('control_room_sessions', self.source)
+        self.assertIn('crypto.subtle.digest("SHA-256"', self.source)
+        self.assertIn('profiles.data.length !== 1', self.source)
+        self.assertIn('browser_user_origin_not_allowed', self.source)
+        self.assertIn('user_bridge_action_not_allowed', self.source)
+        self.assertIn('eq("owner_user_id", ownerUserId)', self.source)
+        start = self.source.index("async function resolveBrowserUserOwner")
+        end = self.source.index("Deno.serve", start)
+        self.assertNotIn("body.owner_user_id", self.source[start:end])
+
     def test_worker_heartbeat_is_ingest_key_only_and_persists_timestamp(self):
         self.assertIn('action === "worker_heartbeat"', self.source)
         start = self.source.index('if (action === "worker_heartbeat")')

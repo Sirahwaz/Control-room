@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const SUPABASE_URL="https://froegigfmpmvtecztfbf.supabase.co";
-const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_user_api";
+const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_agent_gateway";
 const TELEGRAM_AUTH=SUPABASE_URL+"/functions/v1/midad_telegram_auth";
 const CONTROL_API=SUPABASE_URL+"/functions/v1/midad_control_room";
 const $=s=>document.querySelector(s);
@@ -26,7 +26,7 @@ async function obtainSession(force=false){
 }
 async function api(payload,retry=true){
  const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
- const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,token})});
+ const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,action:"user_bridge",subaction:payload.action,token})});
  const data=await response.json().catch(()=>({}));
  if(response.status===401&&retry){state.token=null;return api(payload,false)}
  if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
