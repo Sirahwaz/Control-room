@@ -3,7 +3,7 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-from operator_worker import OperatorWorker
+from operator_worker import OperatorWorker, resolve_owner_user_id
 from submit_operator_command import submit_hint
 
 PROFILE = {
@@ -37,6 +37,8 @@ class FakeGateway:
         self.events = []
     async def call(self, action, **payload):
         self.calls.append((action, payload))
+        if action == "worker_identity":
+            return {"ok": True, "owner_user_id": "00000000-0000-4000-8000-000000000001"}
         if action == "queue_operator_hint":
             return {"ok": True, "job_id": "job-created", "state": "PREPARING"}
         if action == "create_job":
@@ -76,6 +78,16 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.pool = FakePool()
         self.worker = OperatorWorker(self.config, "00000000-0000-4000-8000-000000000001",
                                      self.registry, gateway=self.gateway, session_pool=self.pool)
+
+    async def test_owner_id_is_resolved_from_private_gateway_when_not_configured(self):
+        owner = await resolve_owner_user_id(self.gateway, "")
+        self.assertEqual(owner, "00000000-0000-4000-8000-000000000001")
+        self.assertEqual(self.gateway.calls[0][0], "worker_identity")
+
+    async def test_explicit_owner_id_skips_identity_lookup(self):
+        owner = await resolve_owner_user_id(self.gateway, "00000000-0000-4000-8000-000000000002")
+        self.assertEqual(owner, "00000000-0000-4000-8000-000000000002")
+        self.assertEqual(self.gateway.calls, [])
 
     async def test_submit_hint_queues_only_hint_for_private_worker_resolution(self):
         result = await submit_hint("Example", config=self.config, registry=self.registry,

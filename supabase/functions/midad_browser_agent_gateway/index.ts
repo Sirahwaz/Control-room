@@ -411,6 +411,15 @@ Deno.serve(async (req: Request) => {
         });
       }
     }
+    if (action === "worker_identity") {
+      // Private worker identity is derived server-side; clients cannot choose an owner.
+      const profiles = await sb.from("profiles").select("id").limit(2);
+      if (profiles.error || !Array.isArray(profiles.data) || profiles.data.length !== 1) {
+        return json({ ok: false, error: "worker_owner_profile_not_unambiguous" }, 503);
+      }
+      return json({ ok: true, owner_user_id: String(profiles.data[0].id) });
+    }
+
     if (action === "worker_heartbeat") {
       // Worker liveness is accepted only with the private ingest credential.
       const suppliedIngestKey = req.headers.get("x-midad-ingest-key") || "";
