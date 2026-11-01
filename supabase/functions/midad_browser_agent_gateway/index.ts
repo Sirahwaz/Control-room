@@ -306,7 +306,7 @@ async function authorizeControlRoomSession(admin: any, rawToken: unknown) {
 
 function unsafeBrowserUiCommand(command: string) {
   return unsafeOperatorHint(command) ||
-    /\\b(?:pay(?:ment)?|withdraw(?:al)?|transfer|wallet sign(?:ing)?|purchase|checkout|delete|publish|claim|send money)\\b/i.test(command) ||
+    /\b(?:pay(?:ment)?|withdraw(?:al)?|transfer|wallet sign(?:ing)?|purchase|checkout|delete|publish|claim|send money)\b/i.test(command) ||
     /(سحب|تحويل|دفع|شراء|توقيع|حذف|نشر|إرسال)/i.test(command);
 }
 
