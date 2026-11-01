@@ -9,6 +9,12 @@ class BrowserUserApiContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = SOURCE.read_text(encoding="utf-8")
 
+    def test_frontend_uses_existing_gateway_and_opaque_session_token(self):
+        ui = (SOURCE.parents[3] / "midad-browser.js").read_text(encoding="utf-8")
+        self.assertIn("/functions/v1/midad_browser_agent_gateway", ui)
+        self.assertIn("session_token:token", ui)
+        self.assertNotIn("midad_browser_user_api", ui)
+
     def test_custom_control_room_session_is_hashed_and_age_checked(self):
         self.assertIn("authorizeControlRoomSession", self.source)
         self.assertIn("control_room_sessions", self.source)
