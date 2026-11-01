@@ -28,9 +28,9 @@
     <section class="browser-panel panel">
       <div class="panel-heading"><div><span class="eyebrow">WORKSPACE</span><h2>مساحة التصفح</h2></div><span class="pill neutral">READ-ONLY DEFAULT</span></div>
       <form id="navigateForm" class="address-row">
-        <button class="go-button" type="submit" id="navigateButton" disabled>انتقال</button>
+        <input id="platformInput" type="text" inputmode="text" autocomplete="off" placeholder="المنصة المعتمدة" aria-label="اسم المنصة" disabled>
         <input id="addressInput" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com" aria-label="عنوان الصفحة" disabled>
-        <span class="globe">◎</span>
+        <button class="go-button" type="submit" id="navigateButton" disabled>انتقال</button>
       </form>
       <div class="browser-toolbar">
         <button type="button" data-local-action="back" disabled aria-label="رجوع">←</button>
