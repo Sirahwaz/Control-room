@@ -136,6 +136,13 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.pool.sessions)
         self.assertTrue(any(event["state"] == "BLOCKED" for event in self.gateway.events))
 
+    async def test_poll_once_emits_worker_heartbeat_once_per_interval(self):
+        await self.worker.poll_once()
+        await self.worker.poll_once()
+        heartbeat_calls = [call for call in self.gateway.calls if call[0] == "worker_heartbeat"]
+        self.assertEqual(len(heartbeat_calls), 1)
+        self.assertEqual(heartbeat_calls[0][1]["owner_user_id"], "00000000-0000-4000-8000-000000000001")
+
     async def test_poll_once_ignores_non_operator_jobs(self):
         self.gateway.jobs = [
             {"id": "unrelated", "input_data": {"task": "ordinary-browser-job"}},
