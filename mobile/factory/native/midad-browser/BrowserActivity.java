@@ -24,7 +24,7 @@ import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebStorage;
 import android.webkit.CookieManager;
-import android.webkit.SslError;
+import android.net.http.SslError;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
