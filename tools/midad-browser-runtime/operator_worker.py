@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import uuid
 from pathlib import Path
 
 from account_registry import AccountRegistry
@@ -207,15 +208,29 @@ class OperatorWorker:
         finally:
             await self.session_pool.close_all()
 
+async def resolve_owner_user_id(gateway, configured_owner: str = "") -> str:
+    owner = str(configured_owner or "").strip()
+    if not owner:
+        identity = await gateway.call("worker_identity")
+        owner = str(identity.get("owner_user_id") or "").strip() if isinstance(identity, dict) else ""
+    try:
+        uuid.UUID(owner)
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise RuntimeError("MIDAD_OPERATOR_OWNER_ID_RESOLUTION_FAILED") from exc
+    return owner
+
+
 def main() -> int:
     config = BrowserConfig.from_env()
-    owner = os.environ.get("MIDAD_OPERATOR_OWNER_USER_ID", "").strip()
+    gateway = GatewayClient(config)
+    configured_owner = os.environ.get("MIDAD_OPERATOR_OWNER_USER_ID", "").strip()
+    owner = asyncio.run(resolve_owner_user_id(gateway, configured_owner))
     registry_path = os.environ.get(
         "MIDAD_BROWSER_ACCOUNT_REGISTRY",
         "/var/lib/midad-browser/accounts.json",
     )
     registry = AccountRegistry(registry_path, set(config.allowed_hosts))
-    worker = OperatorWorker(config, owner, registry,
+    worker = OperatorWorker(config, owner, registry, gateway=gateway,
                             poll_interval=float(os.environ.get("MIDAD_OPERATOR_POLL_SECONDS", "3")))
     try:
         asyncio.run(worker.run_forever())
