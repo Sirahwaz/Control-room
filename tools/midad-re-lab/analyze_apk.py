@@ -58,13 +58,35 @@ def download_apk(url: str, destination: Path):
         return total, digest.hexdigest(), current
     raise ValueError("REDIRECT_LIMIT_EXCEEDED")
 
+def file_digest(path: Path):
+    if not path.is_file() or path.stat().st_size > MAX_APK_BYTES or not zipfile.is_zipfile(path):
+        raise ValueError("INPUT_NOT_VALID_APK_ZIP")
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return path.stat().st_size, digest.hexdigest()
+
 def run(command):
     subprocess.run(command, check=True, timeout=300, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 def main():
-    parser=argparse.ArgumentParser(); parser.add_argument("--url",required=True); parser.add_argument("--jadx",required=True); parser.add_argument("--apktool",required=True); parser.add_argument("--out",default="artifacts/apk"); args=parser.parse_args()
-    out=Path(args.out); out.mkdir(parents=True,exist_ok=True); apk=out/"input.apk"
-    size,sha,url=download_apk(args.url,apk)
+    parser=argparse.ArgumentParser()
+    source=parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--url")
+    source.add_argument("--file")
+    parser.add_argument("--jadx",required=True); parser.add_argument("--apktool",required=True); parser.add_argument("--out",default="artifacts/apk")
+    args=parser.parse_args()
+    out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
+    temporary_download = bool(args.url)
+    if args.url:
+        apk=out/"input.apk"
+        size,sha,url=download_apk(args.url,apk)
+        source_host=urlsplit(url).hostname
+    else:
+        apk=Path(args.file).resolve()
+        size,sha=file_digest(apk)
+        source_host="github-actions-artifact"
     decoded=out/"apktool"; decompiled=out/"jadx"
     run(["java","-jar",args.apktool,"d","-f","-o",str(decoded),str(apk)])
     run([args.jadx,"-d",str(decompiled),"--deobf",str(apk)])
@@ -84,13 +106,13 @@ def main():
         resources=sum(1 for n in names if n.startswith("res/"))
     source_count=sum(1 for _ in decompiled.rglob("*.java")) + sum(1 for _ in decompiled.rglob("*.kt"))
     report={"schema":"midad-android-static-v1","generated_at":datetime.now(timezone.utc).isoformat(),
-      "input":{"source_url_host":urlsplit(url).hostname,"bytes":size,"sha256":sha},
+      "input":{"source_url_host":source_host,"bytes":size,"sha256":sha},
       "manifest":{"package":manifest.attrib.get("package"),"version_code":manifest.attrib.get(ANDROID_NS+"versionCode"),"version_name":manifest.attrib.get(ANDROID_NS+"versionName"),"min_sdk":(decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace").split("minSdkVersion:",1)[-1].splitlines()[0].strip() if "minSdkVersion:" in (decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace") else None,"permissions":permissions,"components":components},
       "archive":{"dex_files":dex,"native_abis":native,"asset_file_count":assets,"resource_file_count":resources},
       "analysis":{"jadx_java_kt_source_file_count":source_count,"jadx":"completed","apktool":"completed"},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    apk.unlink(missing_ok=True)
+    if temporary_download: apk.unlink(missing_ok=True)
     print("ANDROID_STATIC_REPORT_READY",out/"android-static-report.json")
 
 if __name__=="__main__": main()
