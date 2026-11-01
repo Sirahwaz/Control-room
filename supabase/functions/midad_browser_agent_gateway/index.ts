@@ -288,6 +288,35 @@ Deno.serve(async (req: Request) => {
   const action = clip(body.action || "capabilities", 60).toLowerCase();
 
   try {
+    if (action === "worker_heartbeat") {
+      // Worker liveness is accepted only with the private ingest credential.
+      const suppliedIngestKey = req.headers.get("x-midad-ingest-key") || "";
+      const configuredIngestKey = Deno.env.get("MIDAD_INGEST_KEY") || "";
+      if (!configuredIngestKey || suppliedIngestKey !== configuredIngestKey) {
+        return json({ ok: false, error: "ingest_key_required" }, 403);
+      }
+      const ownerUserId = clip(body.owner_user_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ownerUserId)) {
+        return json({ ok: false, error: "valid_owner_user_id_required" }, 400);
+      }
+      const heartbeatAt = new Date().toISOString();
+      const { error } = await sb.from("midad_browser_providers").upsert({
+        provider_key: "midad_playwright_worker",
+        provider_name: "MIDAD Playwright Operator Worker",
+        provider_type: "self_hosted_playwright",
+        status: "online",
+        capabilities: { persistent_sessions: true, operator_commands: true },
+        profile_ref: ownerUserId,
+        metadata: {
+          owner_user_id: ownerUserId,
+          heartbeat_at: heartbeatAt,
+          worker_version: safeCode(body.worker_version, "operator_worker_v1"),
+        },
+      }, { onConflict: "provider_key" });
+      if (error) return json({ ok: false, error: "worker_heartbeat_write_failed" }, 500);
+      return json({ ok: true, heartbeat_at: heartbeatAt });
+    }
+
     if (action === "capabilities") {
       return json({
         ok: true,
