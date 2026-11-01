@@ -27,7 +27,7 @@ class OperatorWorker:
         self.session_pool = session_pool or PersistentSessionPool(set(config.allowed_hosts))
         self.poll_interval = max(1.0, min(float(poll_interval), 30.0))
         self._processed_ids: set[str] = set()
-        self._last_heartbeat = 0.0
+        self._last_heartbeat: float | None = None
         self._stopping = asyncio.Event()
 
     def stop(self):
@@ -163,7 +163,7 @@ class OperatorWorker:
 
     async def poll_once(self) -> list[dict]:
         now = asyncio.get_running_loop().time()
-        if now - self._last_heartbeat >= 15.0:
+        if self._last_heartbeat is None or now - self._last_heartbeat >= 15.0:
             await self.gateway.call(
                 "worker_heartbeat", owner_user_id=self.owner_user_id,
                 worker_version="operator_worker_v1",
