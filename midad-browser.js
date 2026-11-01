@@ -51,6 +51,16 @@ function renderSessions(sessions){
  }
 }
 async function refreshSessions(){const data=await api({action:"list_sessions"});renderSessions(data.sessions||[]);}
+async function waitForResult(jobId){
+ for(let attempt=0;attempt<12;attempt++){
+  await new Promise(resolve=>setTimeout(resolve,2500));
+  try{
+   const result=await api({action:"get_result",job_id:jobId});
+   if(result.ready){addActivity("اكتمل تنفيذ الأمر",result.result?.status||result.state);await refreshSessions();return;}
+  }catch(e){addActivity("تعذر جلب النتيجة",String(e.message||e));return;}
+ }
+ addActivity("الأمر ما زال قيد التنفيذ","يمكنك تحديث الحالة لاحقاً لمتابعة النتيجة.");
+}
 async function checkBridge(){
  lockControls(false);
  try{
@@ -69,7 +79,7 @@ $("#navigateForm").addEventListener("submit",async e=>{
 });
 async function sendCommand(command){
  const requestId=crypto.randomUUID().replace(/-/g,"");
- try{const data=await api({action:"command",command,request_id:requestId});addActivity("أُرسل الأمر إلى الطابور",data.job_id+" · "+data.state);await refreshSessions();}
+ try{const data=await api({action:"command",command,request_id:requestId});addActivity("أُرسل الأمر إلى الطابور",data.job_id+" · "+data.state);await refreshSessions();await waitForResult(data.job_id);}
  catch(e){addActivity("تعذر إرسال الأمر",String(e.message||e));}
 }
 $("#sendCommand").addEventListener("click",()=>{const command=$("#commandInput").value.trim();if(command)sendCommand(command);});
