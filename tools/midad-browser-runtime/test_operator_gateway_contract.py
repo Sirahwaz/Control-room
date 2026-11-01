@@ -22,6 +22,15 @@ class OperatorGatewayContractTests(unittest.TestCase):
         end = self.source.index("Deno.serve", start)
         self.assertNotIn("body.owner_user_id", self.source[start:end])
 
+    def test_worker_identity_is_private_and_derives_single_profile_owner(self):
+        self.assertIn('action === "worker_identity"', self.source)
+        start = self.source.index('if (action === "worker_identity")')
+        end = self.source.index('if (action === "worker_heartbeat")', start)
+        branch = self.source[start:end]
+        self.assertIn('from("profiles").select("id").limit(2)', branch)
+        self.assertIn('profiles.data.length !== 1', branch)
+        self.assertIn('owner_user_id: String(profiles.data[0].id)', branch)
+
     def test_worker_heartbeat_is_ingest_key_only_and_persists_timestamp(self):
         self.assertIn('action === "worker_heartbeat"', self.source)
         start = self.source.index('if (action === "worker_heartbeat")')
