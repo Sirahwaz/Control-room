@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 html = Path("ai-room.html").read_text(encoding="utf-8")
-match = re.search(r'<script type="module">\\s*(.*?)</script>', html, re.DOTALL)
+match = re.search(r'<script type="module">\s*(.*?)</script>', html, re.DOTALL)
 if not match:
     raise SystemExit("AI_ROOM_MODULE_SCRIPT_NOT_FOUND")
 with tempfile.NamedTemporaryFile("w", suffix=".mjs", encoding="utf-8", delete=False) as handle:
