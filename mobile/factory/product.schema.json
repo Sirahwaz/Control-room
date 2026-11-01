@@ -185,6 +185,18 @@
         },
         "send_requires_human_gate": {
           "type": "boolean"
+        },
+        "safe_browsing": {
+          "type": "boolean"
+        },
+        "default_browser_role": {
+          "type": "boolean"
+        },
+        "human_gate_for_captcha_mfa": {
+          "type": "boolean"
+        },
+        "http_and_https_navigation": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
