@@ -489,6 +489,77 @@
         "android_emulator_screenshot_and_accessibility_checks"
       ],
       "account_action": "none_by_default"
+    },
+    {
+      "id": "apmix",
+      "name": "APMIX AI Gateway",
+      "kind": "llm_provider",
+      "status": "known_available",
+      "capabilities": [
+        "model-routing",
+        "tool-calling"
+      ],
+      "strengths": [
+        "openai-compatible-chat",
+        "model-catalog",
+        "usage-preflight"
+      ],
+      "fallbacks": [
+        "openai",
+        "gemini"
+      ],
+      "account_action": "server_secret_required",
+      "integration": "midad_model_gateway_v3",
+      "notes": "Existing OpenAI-compatible provider path; retain as primary or fallback per midad_private.model_routes."
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "kind": "llm_advisor",
+      "status": "discover_on_need",
+      "capabilities": [
+        "model-routing",
+        "multimodal-reasoning",
+        "research-synthesis"
+      ],
+      "strengths": [
+        "multimodal-advice",
+        "research-synthesis",
+        "vision"
+      ],
+      "fallbacks": [
+        "openai",
+        "apmix"
+      ],
+      "account_action": "server_secret_required",
+      "integration": "midad_ai_router",
+      "notes": "Existing separate Gemini advisor route; enable as an execution provider only after a tested route is configured."
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI API",
+      "kind": "llm_provider",
+      "status": "discover_on_need",
+      "capabilities": [
+        "model-routing",
+        "multimodal-reasoning",
+        "tool-calling"
+      ],
+      "strengths": [
+        "reasoning",
+        "structured-output",
+        "vision",
+        "tool-calling",
+        "server-side-api"
+      ],
+      "fallbacks": [
+        "apmix",
+        "gemini",
+        "anthropic"
+      ],
+      "account_action": "server_secret_required",
+      "integration": "midad_model_gateway_v3",
+      "notes": "OpenAI-compatible chat completions adapter is implemented; enable only after a server-side OPENAI_API_KEY is provisioned and a model route is configured."
     }
   ],
   "updated": "2026-10-17"

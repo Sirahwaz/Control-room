@@ -301,7 +301,12 @@
         "llm",
         "fallback",
         "cost",
-        "latency"
+        "latency",
+        "openai",
+        "apmix",
+        "provider-adapter",
+        "openai-compatible",
+        "model-fallback"
       ],
       "default_reuse": true
     },
