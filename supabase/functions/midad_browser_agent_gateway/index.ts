@@ -278,16 +278,139 @@ async function getJob(sb: any, id: string) {
   return { data: data || null, error: null };
 }
 
+async function resolveBrowserUserOwner(sb: any, token: string) {
+  if (token.length < 32 || token.length > 200) {
+    return { ok: false as const, status: 401, error: "invalid_session" };
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const { data: session, error } = await sb.from("control_room_sessions")
+    .select("id,active,created_at")
+    .eq("token_hash", tokenHash)
+    .eq("active", true)
+    .maybeSingle();
+  if (error || !session) return { ok: false as const, status: 401, error: "session_expired" };
+  const ageMs = Date.now() - new Date(session.created_at).getTime();
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 30 * 24 * 60 * 60 * 1000) {
+    await sb.from("control_room_sessions").update({ active: false }).eq("id", session.id);
+    return { ok: false as const, status: 401, error: "session_expired" };
+  }
+  const profiles = await sb.from("profiles").select("id").limit(2);
+  if (profiles.error || !Array.isArray(profiles.data) || profiles.data.length !== 1) {
+    return { ok: false as const, status: 503, error: "browser_owner_profile_not_unambiguous" };
+  }
+  await sb.from("control_room_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", session.id);
+  return { ok: true as const, ownerUserId: String(profiles.data[0].id) };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
-  if (!authorized(req)) return json({ ok: false, error: "unauthorized" }, 401);
-
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const body = await req.json().catch(() => ({})) as Record<string, any>;
   const action = clip(body.action || "capabilities", 60).toLowerCase();
+  const userBridge = action === "user_bridge";
+  if (!authorized(req) && !userBridge) return json({ ok: false, error: "unauthorized" }, 401);
+  if (userBridge && req.headers.get("origin") !== "https://sirahwaz.github.io") {
+    return json({ ok: false, error: "browser_user_origin_not_allowed" }, 403);
+  }
+
+  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   try {
+    if (userBridge) {
+      const subaction = clip(body.subaction, 40).toLowerCase();
+      if (!["capabilities", "list_sessions", "command", "get_result"].includes(subaction)) {
+        return json({ ok: false, error: "user_bridge_action_not_allowed" }, 403);
+      }
+      const auth = await resolveBrowserUserOwner(sb, typeof body.token === "string" ? body.token : "");
+      if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+      const ownerUserId = auth.ownerUserId;
+
+      if (subaction === "capabilities") {
+        const { data, error } = await sb.from("midad_browser_providers")
+          .select("status,profile_ref,metadata,updated_at")
+          .eq("provider_key", "midad_playwright_worker")
+          .eq("profile_ref", ownerUserId)
+          .maybeSingle();
+        if (error) return json({ ok: false, error: "worker_status_lookup_failed" }, 500);
+        const heartbeatAt = typeof data?.metadata?.heartbeat_at === "string" ? data.metadata.heartbeat_at : "";
+        const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : 0;
+        const workerOnline = data?.status === "online" && Number.isFinite(heartbeatMs) &&
+          Date.now() - heartbeatMs >= 0 && Date.now() - heartbeatMs <= 45_000;
+        return json({
+          ok: true, service: "midad_browser_agent_gateway", contract: "browser-user-v1",
+          worker_online: workerOnline, worker_last_seen: workerOnline ? heartbeatAt : null,
+          browser_engine: "Playwright Chromium", session_storage: "memory_only",
+          allowed_actions: ["start_session", "status", "inspect", "navigate", "wait_for_selector", "click", "fill", "submit_form", "stop_session"],
+          hard_blocks: ["password_input", "secret_input", "captcha_bypass", "mfa_bypass", "financial_actions", "destructive_actions"],
+        });
+      }
+
+      if (subaction === "list_sessions") {
+        const { data, error } = await sb.from("midad_browser_jobs")
+          .select("id,state,platform_key,current_url,created_at,updated_at,evidence,next_action")
+          .eq("owner_user_id", ownerUserId)
+          .order("updated_at", { ascending: false })
+          .limit(20);
+        if (error) return json({ ok: false, error: "browser_sessions_lookup_failed" }, 500);
+        const sessions = (data || []).map((job: any) => ({
+          job_id: job.id, state: safeCode(job.state, "UNKNOWN"),
+          platform_key: clip(job.platform_key, 100),
+          current_url: safeSourceUrl(job.current_url),
+          created_at: job.created_at, updated_at: job.updated_at,
+          next_action: safeCode(job.next_action, "UNKNOWN"),
+          result: sanitizeOperatorResult(job?.evidence?.operator_result),
+        }));
+        return json({ ok: true, sessions });
+      }
+
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+      const ingestKey = Deno.env.get("MIDAD_INGEST_KEY") || "";
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+      if (!serviceKey || !ingestKey || !supabaseUrl) {
+        return json({ ok: false, error: "browser_gateway_server_secrets_missing" }, 503);
+      }
+
+      if (subaction === "command") {
+        const command = clip(body.command, 500);
+        const requestId = clip(body.request_id, 100);
+        if (!command) return json({ ok: false, error: "command_required" }, 400);
+        if (!requestId || !/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) {
+          return json({ ok: false, error: "valid_request_id_required" }, 400);
+        }
+        if (unsafeOperatorHint(command)) return json({ ok: false, error: "command_rejected_by_policy" }, 403);
+        const response = await fetch(supabaseUrl + "/functions/v1/midad_browser_agent_gateway", {
+          method: "POST",
+          headers: { "content-type": "application/json", "authorization": "Bearer " + serviceKey, "x-midad-ingest-key": ingestKey },
+          body: JSON.stringify({
+            action: "queue_operator_hint", owner_user_id: ownerUserId,
+            operator_hint: command, agent_key: "midad_browser_web_ui",
+            idempotency_key: "browser-ui:" + ownerUserId + ":" + requestId,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.ok !== true) return json({ ok: false, error: safeCode(result?.error, "browser_command_queue_failed") }, 502);
+        return json({ ok: true, job_id: result.job_id, state: result.state, next_action: result.next_action }, 202);
+      }
+
+      if (subaction === "get_result") {
+        const jobId = clip(body.job_id, 80);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
+          return json({ ok: false, error: "valid_job_id_required" }, 400);
+        }
+        const response = await fetch(supabaseUrl + "/functions/v1/midad_browser_agent_gateway", {
+          method: "POST",
+          headers: { "content-type": "application/json", "authorization": "Bearer " + serviceKey, "x-midad-ingest-key": ingestKey },
+          body: JSON.stringify({ action: "get_operator_result", owner_user_id: ownerUserId, job_id: jobId }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.ok !== true) return json({ ok: false, error: safeCode(result?.error, "browser_result_lookup_failed") }, 502);
+        return json({
+          ok: true, job_id: result.job_id, state: result.state, ready: result.ready === true,
+          result: result.ready ? sanitizeOperatorResult(result.result) : null,
+        });
+      }
+    }
     if (action === "worker_heartbeat") {
       // Worker liveness is accepted only with the private ingest credential.
       const suppliedIngestKey = req.headers.get("x-midad-ingest-key") || "";
