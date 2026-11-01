@@ -1,0 +1,87 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-browser",
+  "display_name": "MIDAD Browser",
+  "version": "0.1.0",
+  "app_id": "ai.midad.browser",
+  "artifact_name": "MIDAD-Browser-v0.1.0",
+  "web_entry": "midad-browser.html",
+  "product_mode": "native-browser",
+  "release_channel": "debug",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": true,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true,
+    "agentic_browser": true,
+    "provider_router": true,
+    "safe_browsing": true,
+    "default_browser_role": true,
+    "human_gate_for_captcha_mfa": true,
+    "http_and_https_navigation": true,
+    "live_financial_execution": false
+  },
+  "surfaces": [
+    "native-browser",
+    "address-bar",
+    "safe-browsing",
+    "midad-ai-control",
+    "remote-playwright-worker",
+    "agent-orchestration",
+    "platform-inspector",
+    "evidence-ledger",
+    "human-gates"
+  ],
+  "target_markets": [
+    "global_remote",
+    "europe_uk",
+    "arab_gcc",
+    "middle_east"
+  ],
+  "monetization_models": [
+    "internal",
+    "subscription",
+    "b2b_license",
+    "white_label"
+  ],
+  "revenue_mode": "internal",
+  "factory": {
+    "profile": "request-driven-native-browser",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": ["ar", "en", "fa"],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": ["product", "tenant"],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "supabase",
+      "offline_first": true,
+      "sync_strategy": "outbox_then_reconcile"
+    },
+    "delivery": {
+      "outputs": ["apk", "sha256", "manifest", "build_report", "test_report"]
+    }
+  },
+  "web_assets": [
+    "midad-browser.css",
+    "midad-browser.js"
+  ]
+}
