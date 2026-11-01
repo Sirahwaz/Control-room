@@ -1,0 +1,36 @@
+name: MIDAD Browser Bridge CI
+on:
+  push:
+    branches: [main, "feat/midad-browser-operator-bridge-*"]
+    paths:
+      - "ai-room.html"
+      - "midad-browser-bridge.js"
+      - "tools/midad-browser-runtime/test_web_bridge.mjs"
+      - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - ".github/workflows/midad-browser-bridge-ci.yml"
+  pull_request:
+    paths:
+      - "ai-room.html"
+      - "midad-browser-bridge.js"
+      - "tools/midad-browser-runtime/test_web_bridge.mjs"
+      - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - ".github/workflows/midad-browser-bridge-ci.yml"
+permissions:
+  contents: read
+jobs:
+  bridge-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate bridge contract
+        run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
+      - name: Check bridge module syntax
+        run: node --check midad-browser-bridge.js
+      - name: Check AI Room module syntax
+        run: python tools/midad-browser-runtime/check_ai_room_script.py
