@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111a">
+<meta name="description" content="MIDAD Browser — secure remote browser control surface">
+<title>MIDAD Browser</title>
+<link rel="stylesheet" href="./midad-browser.css?v=1">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="MIDAD Control Room"><span class="brand-mark">M</span><span><b>MIDAD</b><small>BROWSER MESH</small></span></a>
+    <div class="top-status"><i id="statusDot"></i><span id="connectionLabel">غير متصل</span></div>
+  </header>
+  <main>
+    <section class="intro">
+      <div class="eyebrow">REMOTE BROWSER · CONTROL SURFACE</div>
+      <h1>متصفح مداد</h1>
+      <p>تحكم بجلسات المتصفح، افتح الصفحات المسموح بها، وراقب تنفيذ الأوامر والأدلة من مكان واحد.</p>
+      <div class="status-card" id="bridgeCard" role="status">
+        <span class="status-icon">⌁</span><div><b id="bridgeTitle">طبقة الاتصال غير مفعّلة</b><small id="bridgeDetail">الواجهة جاهزة؛ ننتظر ربط بوابة آمنة موثّقة للمستخدم.</small></div>
+        <span class="pill pending" id="bridgePill">PENDING</span>
+      </div>
+    </section>
+
+    <section class="browser-panel panel">
+      <div class="panel-heading"><div><span class="eyebrow">WORKSPACE</span><h2>مساحة التصفح</h2></div><span class="pill neutral">READ-ONLY DEFAULT</span></div>
+      <form id="navigateForm" class="address-row">
+        <button class="go-button" type="submit" id="navigateButton" disabled>انتقال</button>
+        <input id="addressInput" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com" aria-label="عنوان الصفحة" disabled>
+        <span class="globe">◎</span>
+      </form>
+      <div class="browser-toolbar">
+        <button type="button" data-local-action="back" disabled aria-label="رجوع">←</button>
+        <button type="button" data-local-action="forward" disabled aria-label="تقدم">→</button>
+        <button type="button" data-local-action="refresh" disabled aria-label="تحديث">↻</button>
+        <span class="toolbar-note">تظهر الصفحة هنا بعد تشغيل جلسة Worker</span>
+        <button type="button" class="expand" disabled aria-label="تكبير">⛶</button>
+      </div>
+      <div class="viewport" id="browserViewport">
+        <div class="viewport-placeholder">
+          <div class="browser-glyph">◫</div>
+          <b>مساحة العرض المباشر</b>
+          <p>لم يتم إنشاء جلسة متصفح بعد. لن نعرض صفحة وهمية أو ندّعي وجود اتصال حي.</p>
+          <span class="pill pending">WORKER NOT VERIFIED</span>
+        </div>
+      </div>
+      <div class="workspace-foot"><span>الجلسة: <b id="sessionState">غير منشأة</b></span><span>المحرك: <b>Playwright · Chromium</b></span></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel command-panel">
+        <div class="panel-heading"><div><span class="eyebrow">OPERATOR</span><h2>مركز الأوامر</h2></div><span class="lock">⌑ آمن</span></div>
+        <label for="commandInput">أمر المتصفح</label>
+        <textarea id="commandInput" rows="3" placeholder="مثال: inspect Taskmarket" disabled></textarea>
+        <div class="command-actions"><small>الأوامر الحساسة والمالية محظورة افتراضياً.</small><button id="sendCommand" class="primary" disabled>إرسال الأمر</button></div>
+      </article>
+      <article class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">SESSIONS</span><h2>الجلسات</h2></div><span class="count" id="sessionCount">0</span></div>
+        <div class="empty-state" id="sessionsEmpty">لا توجد جلسات مؤكدة حالياً.</div>
+        <div id="sessionsList" class="sessions-list"></div>
+      </article>
+    </section>
+
+    <section class="panel activity-panel">
+      <div class="panel-heading"><div><span class="eyebrow">OBSERVABILITY</span><h2>النشاط والأدلة</h2></div><button class="text-button" id="refreshStatus" type="button">تحديث الحالة</button></div>
+      <div class="activity-empty" id="activityEmpty">سيظهر هنا سجل التنقل، نتائج الأوامر، وحالة Worker بعد ربط الخدمة.</div>
+      <div id="activityList" class="activity-list"></div>
+    </section>
+
+    <section class="security-note">
+      <span>🛡️</span><p><b>حماية الجلسات:</b> لا تُدخل كلمات المرور أو مفاتيح API أو رموز التحقق داخل الأوامر. تسجيل الدخول يتم عبر أسرار محفوظة في الخادم، وتحديات CAPTCHA وMFA تتطلب تدخلك ولا يتم تجاوزها.</p>
+    </section>
+  </main>
+  <footer><span>MIDAD AI · Browser Mesh</span><a href="https://github.com/Sirahwaz/Control-room/tree/main/tools/midad-browser-runtime">Runtime source ↗</a></footer>
+</div>
+<script src="./midad-browser.js?v=1" defer></script>
+</body>
+</html>
