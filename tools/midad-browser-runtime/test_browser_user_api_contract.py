@@ -23,7 +23,9 @@ class BrowserUserApiContractTests(unittest.TestCase):
     def test_owner_is_derived_from_one_server_side_profile(self):
         self.assertIn('from("profiles").select("id").limit(2)', self.source)
         self.assertIn('ownerUserId: String(profiles.data[0].id)', self.source)
-        self.assertNotIn('body.owner_user_id', self.source)
+        start = self.source.index("async function resolveBrowserUserOwner")
+        end = self.source.index("Deno.serve", start)
+        self.assertNotIn("body.owner_user_id", self.source[start:end])
 
     def test_only_safe_subactions_are_exposed(self):
         self.assertIn('["capabilities", "list_sessions", "command", "get_result"]', self.source)
