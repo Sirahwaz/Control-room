@@ -6,12 +6,18 @@ on:
         description: "Authorized public HTTPS website to inspect (read-only, same-host only)"
         required: false
         type: string
+      analyze_existing_midad_apks:
+        description: "Analyze the three existing MIDAD Android build artifacts in parallel"
+        required: true
+        default: true
+        type: boolean
       apk_url:
-        description: "Direct HTTPS URL to an APK you own or are authorized to analyze"
+        description: "Optional direct HTTPS URL to another APK you own or are authorized to analyze"
         required: false
         type: string
 permissions:
   contents: read
+  actions: read
 jobs:
   web-surface:
     if: ${{ inputs.target_url != '' }}
@@ -36,7 +42,62 @@ jobs:
           path: artifacts/web/web-surface-report.json
           if-no-files-found: error
           retention-days: 14
-  android-static:
+  android-existing-artifacts:
+    if: ${{ inputs.analyze_existing_midad_apks }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - run_id: 41302227269
+            artifact_name: MIDAD-Browser-v0.1.0-release
+          - run_id: 41302227280
+            artifact_name: MIDAD-Omni-Agent-v0.4.1-release
+          - run_id: 41302227307
+            artifact_name: MIDAD-Human-Bridge-v0.1.0-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download existing MIDAD APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          run-id: ${{ matrix.run_id }}
+          github-token: ${{ github.token }}
+          path: incoming
+      - name: Locate APK
+        id: apk
+        run: |
+          APK_FILE="$(find incoming -type f -name '*.apk' -print -quit)"
+          test -n "$APK_FILE"
+          echo "path=$APK_FILE" >> "$GITHUB_OUTPUT"
+      - name: Install pinned JADX and Apktool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          curl -fsSL https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip -o /tmp/jadx.zip
+          unzip -q /tmp/jadx.zip -d /opt/jadx
+          sudo chmod +x /opt/jadx/bin/jadx
+          curl -fsSL https://raw.githubusercontent.com/iBotPeaches/Apktool/v2.11.1/scripts/linux/apktool -o /usr/local/bin/apktool
+          curl -fsSL https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar -o /usr/local/bin/apktool.jar
+          sudo chmod +x /usr/local/bin/apktool
+      - name: Static APK analysis
+        env:
+          APK_FILE: ${{ steps.apk.outputs.path }}
+        run: python tools/midad-re-lab/analyze_apk.py --file "$APK_FILE" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midad-android-static-${{ matrix.artifact_name }}
+          path: artifacts/apk/android-static-report.json
+          if-no-files-found: error
+          retention-days: 14
+  android-external-apk:
     if: ${{ inputs.apk_url != '' }}
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +125,7 @@ jobs:
         run: python tools/midad-re-lab/analyze_apk.py --url "$APK_URL" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
       - uses: actions/upload-artifact@v4
         with:
-          name: midad-android-static-report
+          name: midad-android-static-external
           path: artifacts/apk/android-static-report.json
           if-no-files-found: error
           retention-days: 14
