@@ -366,7 +366,7 @@ Deno.serve(async (req: Request) => {
         created_at: job.created_at,
         updated_at: job.updated_at,
         next_action: safeCode(job.next_action, "UNKNOWN"),
-        result: sanitizeOperatorResult(job?.evidence?.operator_result),
+        result: job?.evidence?.operator_result ? sanitizeOperatorResult(job.evidence.operator_result) : null,
       }));
       return json({ ok: true, sessions });
     }
