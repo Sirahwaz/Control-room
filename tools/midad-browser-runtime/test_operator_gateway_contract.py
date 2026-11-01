@@ -10,6 +10,16 @@ class OperatorGatewayContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = GATEWAY.read_text(encoding="utf-8")
 
+    def test_worker_heartbeat_is_ingest_key_only_and_persists_timestamp(self):
+        self.assertIn('action === "worker_heartbeat"', self.source)
+        start = self.source.index('if (action === "worker_heartbeat")')
+        end = self.source.index('if (action === "capabilities")', start)
+        branch = self.source[start:end]
+        self.assertIn('req.headers.get("x-midad-ingest-key")', branch)
+        self.assertIn('midad_browser_providers', branch)
+        self.assertIn('heartbeat_at', branch)
+        self.assertIn('upsert', branch)
+
     def test_private_queue_endpoint_accepts_only_bounded_hint_data(self):
         self.assertIn('action === "queue_operator_hint"', self.source)
         start = self.source.index('if (action === "queue_operator_hint")')
