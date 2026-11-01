@@ -27,7 +27,9 @@ jobs:
           python -m pip install playwright
           python -m playwright install --with-deps chromium
       - name: Read-only web surface analysis
-        run: python tools/midad-re-lab/analyze_web.py --url "${{ inputs.target_url }}" --out artifacts/web
+        env:
+          TARGET_URL: ${{ inputs.target_url }}
+        run: python tools/midad-re-lab/analyze_web.py --url "$TARGET_URL" --out artifacts/web
       - uses: actions/upload-artifact@v4
         with:
           name: midad-web-surface-report
@@ -57,7 +59,9 @@ jobs:
           curl -fsSL https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar -o /usr/local/bin/apktool.jar
           sudo chmod +x /usr/local/bin/apktool
       - name: Static APK analysis
-        run: python tools/midad-re-lab/analyze_apk.py --url "${{ inputs.apk_url }}" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
+        env:
+          APK_URL: ${{ inputs.apk_url }}
+        run: python tools/midad-re-lab/analyze_apk.py --url "$APK_URL" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
       - uses: actions/upload-artifact@v4
         with:
           name: midad-android-static-report
