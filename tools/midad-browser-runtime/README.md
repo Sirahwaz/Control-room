@@ -61,6 +61,37 @@ python -m unittest -v
 Input may be a JSON array or `{"candidates":[...]}`. The CLI reports `paid_provider_used: false`, `browser_jobs_created: 0`, and `external_actions_performed: 0`. This is an offline qualification and planning adapter, not yet a deployed Supabase queue consumer; it does not claim any live payout has been verified.
 
 
+## Persistent browser profiles (draft preview)
+
+The optional SetupLogin path lives in profile_cli.py, profile_vault.py and profile_runtime.py. It is a local Python utility; it is not yet wired into the Supabase job queue or exposed as a remote service for GPT/agents.
+
+Install Chromium once on the machine where this utility will run:
+
+    python -m pip install -r tools/midad-browser-runtime/requirements.txt
+    python -m playwright install chromium
+
+Create a profile after reviewing every host that the login flow needs (for example, an identity-provider host):
+
+    python tools/midad-browser-runtime/profile_cli.py setup-login --profile-id taskmarket --url https://taskmarket.dev/login --allow-host taskmarket.dev --allow-host auth.taskmarket.dev
+
+The command opens a visible Chromium window. Type credentials and complete MFA/CAPTCHA only in that site window; when finished, return to the terminal and confirm. No password is accepted by the CLI. Profile state becomes ready_user_confirmed because the user confirmed the flow; this is not independent verification that a login succeeded.
+
+List safe metadata only:
+
+    python tools/midad-browser-runtime/profile_cli.py list
+
+Open an existing profile through the read-only facade from a trusted Python runtime:
+
+    from profile_runtime import open_profile_session
+    from profile_vault import ProfileStore
+
+    async with open_profile_session(ProfileStore(), "taskmarket", "https://taskmarket.dev/tasks") as session:
+        snapshot = await session.snapshot()
+
+Do not expose the profile's user_data_dir, Playwright page/context object, filesystem contents, cookies, localStorage, or raw browser state to untrusted agents. The underscore-prefixed runtime members are not a security sandbox: only pass the facade into code you trust.
+
+**Mobile-only blocker:** the current SetupLogin CLI opens Chromium on the computer or server that runs the Python process. It does not yet stream a browser to a phone or provide an Android WebView setup surface. With a phone only, do not assume this command is usable as-is. That remote/mobile setup bridge and a supervised persistent runtime are still required before the profile core can be used by cloud agents without TinyFish.
+
 ## Persistent assistant operator sessions
 
 The private queue-backed operator mode supports a platform hint, an in-memory authenticated Playwright session, and subsequent typed commands. Read [README-OPERATOR-MODE.md](README-OPERATOR-MODE.md) for private profile setup, command syntax, action/network safeguards, and deployment requirements. The worker and gateway changes are in PR #128; they are not live until the trusted worker, private environment configuration, and gateway version are deployed.
