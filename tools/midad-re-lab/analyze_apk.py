@@ -113,7 +113,7 @@ def main():
     if apktool_result["status"] != "completed":
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
-    jadx_result = run_tool([args.jadx,"-d",str(decompiled),"--deobf",str(apk)], "jadx")
+    jadx_result = run_tool([args.jadx,"--verbose","-d",str(decompiled),"--deobf",str(apk)], "jadx")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
     app=manifest.find("application")
