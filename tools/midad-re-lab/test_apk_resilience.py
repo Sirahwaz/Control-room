@@ -75,3 +75,30 @@ class JadxFallbackTests(unittest.TestCase):
             (root / "nested").mkdir()
             (root / "nested" / "C.java").write_text("class C {}")
             self.assertEqual(count_decompiled_sources(root), 3)
+
+
+    @patch("analyze_apk.run_tool")
+    def test_preserves_partial_outputs_from_both_jadx_attempts_and_selects_best(self, mocked_run):
+        from pathlib import Path
+        import tempfile
+
+        def failed_with_outputs(command, _tool_name):
+            output = Path(command[command.index("-d") + 1])
+            output.mkdir(parents=True, exist_ok=True)
+            if "simple" in command:
+                (output / "Fallback.java").write_text("class Fallback {}")
+                return {"status": "failed", "returncode": 3, "error": "coroutine decode error"}
+            (output / "Standard.java").write_text("class Standard {}")
+            (output / "Standard2.kt").write_text("class Standard2")
+            return {"status": "failed", "returncode": 3, "error": "coroutine decode error"}
+
+        mocked_run.side_effect = failed_with_outputs
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "jadx"
+            result = run_jadx("jadx", "sample.apk", str(root))
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["strategy"], "best_effort_partial")
+            self.assertEqual(result["output_dir"], str(root / "attempts" / "standard"))
+            self.assertEqual(result["source_file_count"], 2)
+            self.assertTrue((root / "attempts" / "simple_fallback" / "Fallback.java").exists())
+            self.assertTrue((root / "attempts" / "standard" / "Standard.java").exists())

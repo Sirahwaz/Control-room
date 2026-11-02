@@ -94,33 +94,40 @@ def run_tool(command, tool_name: str):
         return {"status": "timeout", "returncode": None, "error": suffix[-4096:]}
 
 def run_jadx(jadx: str, apk: str, output_dir: str):
-    """Try normal Java reconstruction, then a lower-risk simple-mode fallback."""
+    """Run isolated JADX strategies and retain the most useful output, even on partial failure."""
     output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-    standard_command = [jadx, "--verbose", "-d", str(output), "--deobf", str(apk)]
-    standard = run_tool(standard_command, "jadx")
-    if standard["status"] == "completed":
-        return {"status": "completed", "strategy": "standard", "attempts": [standard], "error": None}
+    attempts_root = output / "attempts"
+    standard_dir = attempts_root / "standard"
+    fallback_dir = attempts_root / "simple_fallback"
+    shutil.rmtree(attempts_root, ignore_errors=True)
+    standard_dir.mkdir(parents=True, exist_ok=True)
 
-    # Remove partial files so the fallback report is deterministic.
-    shutil.rmtree(output, ignore_errors=True)
-    output.mkdir(parents=True, exist_ok=True)
+    standard_command = [jadx, "--verbose", "-d", str(standard_dir), "--deobf", str(apk)]
+    standard = run_tool(standard_command, "jadx")
+    standard_count = count_decompiled_sources(standard_dir)
+    standard.update({"strategy": "standard", "output_dir": str(standard_dir), "source_file_count": standard_count})
+    if standard["status"] == "completed":
+        return {"status": "completed", "strategy": "standard", "attempts": [standard],
+                "output_dir": str(standard_dir), "source_file_count": standard_count, "error": None}
+
+    fallback_dir.mkdir(parents=True, exist_ok=True)
     fallback_command = [
         jadx, "--verbose", "--show-bad-code", "--decompilation-mode", "simple",
         "--no-inline-anonymous", "--no-inline-methods", "--no-inline-kotlin-lambda",
-        "--no-move-inner-classes", "-j", "1", "-d", str(output), "--deobf", str(apk)
+        "--no-move-inner-classes", "-j", "1", "-d", str(fallback_dir), "--deobf", str(apk)
     ]
     fallback = run_tool(fallback_command, "jadx")
-    error = None if fallback["status"] == "completed" else (
-        "standard: " + str(standard["error"] or standard["status"]) +
-        "; simple_fallback: " + str(fallback["error"] or fallback["status"])
-    )[-4096:]
-    return {
-        "status": fallback["status"],
-        "strategy": "simple_fallback" if fallback["status"] == "completed" else "failed",
-        "attempts": [standard, fallback],
-        "error": error,
-    }
+    fallback_count = count_decompiled_sources(fallback_dir)
+    fallback.update({"strategy": "simple_fallback", "output_dir": str(fallback_dir), "source_file_count": fallback_count})
+    if fallback["status"] == "completed":
+        return {"status": "completed", "strategy": "simple_fallback", "attempts": [standard, fallback],
+                "output_dir": str(fallback_dir), "source_file_count": fallback_count, "error": None}
+
+    best = standard if standard_count >= fallback_count else fallback
+    error = ("standard: " + str(standard["error"] or standard["status"]) +
+             "; simple_fallback: " + str(fallback["error"] or fallback["status"]))[-4096:]
+    return {"status": "failed", "strategy": "best_effort_partial", "attempts": [standard, fallback],
+            "output_dir": best["output_dir"], "source_file_count": best["source_file_count"], "error": error}
 
 
 def count_decompiled_sources(directory: Path) -> int:
@@ -152,6 +159,7 @@ def main():
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
+    decompiled = Path(jadx_result["output_dir"])
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     package_name=manifest.attrib.get("package")
     product_manifest = None
@@ -178,7 +186,7 @@ def main():
         native=sorted({n.split("/")[1] for n in names if n.startswith("lib/") and len(n.split("/"))>2})
         assets=sum(1 for n in names if n.startswith("assets/"))
         resources=sum(1 for n in names if n.startswith("res/"))
-    source_count=count_decompiled_sources(decompiled)
+    source_count=jadx_result["source_file_count"]
     report={"schema":"midad-android-static-v1","generated_at":datetime.now(timezone.utc).isoformat(),
       "input":{"source_url_host":source_host,"bytes":size,"sha256":sha},
       "manifest":{"package":manifest.attrib.get("package"),"version_code":manifest.attrib.get(ANDROID_NS+"versionCode"),"version_name":manifest.attrib.get(ANDROID_NS+"versionName"),"min_sdk":(decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace").split("minSdkVersion:",1)[-1].splitlines()[0].strip() if "minSdkVersion:" in (decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace") else None,"permissions":permissions,"components":components},
