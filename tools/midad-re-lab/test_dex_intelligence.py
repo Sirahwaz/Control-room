@@ -60,7 +60,7 @@ class DexIntelligenceTests(unittest.TestCase):
                 FakeMethod("onCreate", "()V"),
                 FakeMethod("loadConfig", "()Ljava/lang/String;", "private"),
             ])],
-            ["https://api.example.test/v1", "ordinary label", "content://provider/items"],
+            ["https://api.example.test/v1?token=do-not-leak", "ordinary label", "content://provider/items"],
         )
         report = summarize_dex("classes.dex", dex)
         self.assertEqual(report["status"], "completed")
@@ -69,6 +69,7 @@ class DexIntelligenceTests(unittest.TestCase):
         self.assertEqual(report["classes"][0]["methods"][0]["name"], "onCreate")
         self.assertEqual(report["string_count"], 3)
         self.assertEqual(len(report["string_indicators"]), 2)
+        self.assertNotIn("do-not-leak", str(report["string_indicators"]))
 
     def test_processes_all_dex_files_and_preserves_partial_failures(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -92,6 +93,21 @@ class DexIntelligenceTests(unittest.TestCase):
             self.assertEqual(report["parsed_dex_count"], 1)
             self.assertEqual(report["status"], "partial")
             self.assertIn("malformed dex fixture", report["errors"][0]["error"])
+
+    def test_caps_dex_file_count_and_reports_omitted_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "many-dex.apk"
+            valid = bytes.fromhex("6465780a30333500") + b"fixture"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("classes.dex", valid)
+                for index in range(2, 19):
+                    archive.writestr(f"classes{index}.dex", valid)
+            report = analyze_apk_dex(apk, dex_factory=lambda raw: FakeDex([], []))
+            self.assertEqual(report["dex_file_count"], 17)
+            self.assertEqual(report["parsed_dex_count"], 16)
+            self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["errors"][0]["error"], "DEX_FILE_LIMIT_EXCEEDED")
+            self.assertEqual(report["errors"][0]["omitted_count"], 1)
 
     def test_reports_missing_dex_as_failed_not_success(self):
         with tempfile.TemporaryDirectory() as tmp:
