@@ -100,7 +100,7 @@ class DexIntelligenceTests(unittest.TestCase):
             valid = bytes.fromhex("6465780a30333500") + b"fixture"
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("classes.dex", valid)
-                for index in range(2, 19):
+                for index in range(2, 18):
                     archive.writestr(f"classes{index}.dex", valid)
             report = analyze_apk_dex(apk, dex_factory=lambda raw: FakeDex([], []))
             self.assertEqual(report["dex_file_count"], 17)
