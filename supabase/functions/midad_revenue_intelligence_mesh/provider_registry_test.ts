@@ -40,6 +40,6 @@ Deno.test("mapped JSON normalization rejects incomplete and off-domain listing U
     { task: { id: "bad", title: "Bad", url: "https://provider-alpha.example.com.attacker.test/bad" } },
     { task: { id: "missing", title: "Missing URL" } },
     { task: { id: "ok", title: "OK", url: "https://provider-alpha.example.com/ok" } },
-  ] } }, source, new Date("2026-11-02T00:00:00.000Z"));
+  ] } }, { ...source, max_items: 10 }, new Date("2026-11-02T00:00:00.000Z"));
   assertEquals(rows.map((row) => row.externalId), ["ok"]);
 });
