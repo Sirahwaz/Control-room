@@ -3,7 +3,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from dex_intelligence import analyze_apk_dex, summarize_dex
+from dex_intelligence import analyze_apk_dex, summarize_dex, summarize_smali_tree
 
 
 class FakeMethod:
@@ -93,6 +93,28 @@ class DexIntelligenceTests(unittest.TestCase):
             self.assertEqual(report["parsed_dex_count"], 1)
             self.assertEqual(report["status"], "partial")
             self.assertIn("malformed dex fixture", report["errors"][0]["error"])
+
+    def test_smali_inventory_counts_methods_and_api_categories_without_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            smali = root / "smali" / "com" / "midad"
+            smali.mkdir(parents=True)
+            (smali / "Main.smali").write_text(
+                ".class public Lcom/midad/Main;\n"
+                ".method public onCreate()V\n"
+                "    invoke-virtual {v0}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V\n"
+                "    invoke-static {v1}, Lokhttp3/OkHttpClient;->newCall()V\n"
+                ".end method\n",
+                encoding="utf-8",
+            )
+            report = summarize_smali_tree(root)
+            self.assertEqual(report["status"], "completed")
+            self.assertEqual(report["smali_file_count"], 1)
+            self.assertEqual(report["method_definition_count"], 1)
+            self.assertEqual(report["invoke_reference_count"], 2)
+            self.assertEqual(report["api_category_counts"]["webview"], 1)
+            self.assertEqual(report["api_category_counts"]["network"], 1)
+            self.assertFalse(report["source_code_included"])
 
     def test_caps_dex_file_count_and_reports_omitted_entries(self):
         with tempfile.TemporaryDirectory() as tmp:
