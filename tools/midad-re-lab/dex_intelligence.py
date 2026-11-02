@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import hashlib
 import zipfile
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -99,7 +100,7 @@ def _safe_call(obj: Any, method_name: str, default=None):
         return default
 
 
-def summarize_dex(dex_name: str, dex_obj: Any) -> dict:
+def summarize_dex(dex_name: str, dex_obj: Any, dex_sha256: str | None = None, byte_size: int | None = None) -> dict:
     classes = list(_safe_call(dex_obj, "get_classes", []) or [])
     strings = list(_safe_call(dex_obj, "get_strings", []) or [])
     class_records = []
@@ -149,6 +150,8 @@ def summarize_dex(dex_name: str, dex_obj: Any) -> dict:
 
     return {
         "dex_name": dex_name,
+        "sha256": dex_sha256,
+        "bytes": byte_size,
         "status": "completed",
         "class_count": len(classes),
         "method_count": method_count,
@@ -160,7 +163,7 @@ def summarize_dex(dex_name: str, dex_obj: Any) -> dict:
     }
 
 
-def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None = None) -> dict:
+def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None = None, apk_sha256: str | None = None) -> dict:
     """Parse every canonical DEX entry without installing or executing the APK."""
     factory = dex_factory or _default_dex_factory
     try:
@@ -187,7 +190,7 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
                     raw = archive.read(name)
                     if not raw.startswith(b"dex\n"):
                         raise ValueError("INVALID_DEX_MAGIC")
-                    results.append(summarize_dex(name, factory(raw)))
+                    results.append(summarize_dex(name, factory(raw), hashlib.sha256(raw).hexdigest(), len(raw)))
                 except Exception as exc:
                     errors.append({"dex_name": name, "error": str(exc)[:512]})
     except (OSError, zipfile.BadZipFile) as exc:
@@ -209,6 +212,7 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
     )
     return {
         "schema": "midad-dex-intelligence-v1",
+        "apk_sha256": apk_sha256,
         "status": status,
         "dex_file_count": total,
         "parsed_dex_count": parsed,
