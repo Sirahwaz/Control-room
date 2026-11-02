@@ -70,7 +70,7 @@ test("missing or stale payout evidence blocks affiliate review", () => {
 });
 
 test("unknown or positive upfront cost and claim bond fail closed", () => {
-  const unknown = verifiedAffiliate({ upfront_cost_usd: null });
+  const unknown = verifiedAffiliate({ upfront_cost_usd: null, evidence: { affiliate: { ...verifiedAffiliate().evidence.affiliate, upfront_cost_usd: null } } });
   const paid = verifiedAffiliate({ claim_bond_usd: 2 });
   assert.ok(evaluateAffiliateProgramEvidence(unknown, Date.parse("2026-11-02T13:00:00.000Z")).blockers.includes("affiliate_upfront_cost_unverified"));
   assert.ok(evaluateAffiliateProgramEvidence(paid, Date.parse("2026-11-02T13:00:00.000Z")).blockers.includes("affiliate_claim_bond_disallowed"));
