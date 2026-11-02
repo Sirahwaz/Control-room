@@ -37,3 +37,12 @@ test("revenue worker retains fail-closed defaults for external actions", () => {
   assert.match(source, /external_actions: \["none"\]/);
   assert.match(source, /claimBondUsd|claim_bond_usd/);
 });
+
+test("affiliate opportunities use the separate fail-closed lane before generic payout verification", () => {
+  assert.match(source, /import \{ evaluateAffiliateProgramEvidence, isAffiliateProgramTask \} from "\.\/affiliate_lane\.mjs";/);
+  const processStart = source.indexOf("async function processTask(t: any)");
+  const affiliateGate = source.indexOf("if (isAffiliateProgramTask(t))", processStart);
+  const genericRole = source.indexOf('const role = String(t.agent_role || "");', processStart);
+  assert.ok(processStart >= 0 && affiliateGate > processStart && genericRole > affiliateGate);
+  assert.match(source.slice(affiliateGate, genericRole), /queue_status: affiliate.ready \? "COMPLETED" : "BLOCKED"/);
+});
