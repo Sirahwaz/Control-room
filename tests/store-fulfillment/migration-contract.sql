@@ -66,6 +66,18 @@ begin
     raise exception 'input guard failed: expected WAITING_FOR_INPUT';
   end if;
 
+  -- Malformed digest lengths are rejected before any fulfillment state transition.
+  begin
+    perform public.midad_complete_store_fulfillment(
+      v_job_id,
+      jsonb_build_object('report','sample report','output_sha256','not-a-sha256'),
+      'not-a-sha256',
+      '{}'::jsonb);
+    raise exception 'negative test failed: malformed SHA-256 was accepted';
+  exception when sqlstate '22023' then
+    if sqlerrm <> 'invalid_fulfillment_artifact' then raise; end if;
+  end;
+
   -- The database validates the actual artifact digest, and successful delivery transitions are idempotent.
   update public.midad_store_fulfillment_jobs set status='PROCESSING' where id=v_job_id;
   select encode(extensions.digest('sample report','sha256'),'hex') into v_hash;
