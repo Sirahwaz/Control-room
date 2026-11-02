@@ -20,6 +20,15 @@ _STRING_PATTERNS = (
 )
 
 
+def _is_dex_name(name: str) -> bool:
+    if name == "classes.dex":
+        return True
+    if not name.startswith("classes") or not name.endswith(".dex"):
+        return False
+    suffix = name[len("classes"):-len(".dex")]
+    return suffix.isdigit() and int(suffix) >= 2
+
+
 def _default_dex_factory(raw: bytes):
     try:
         from androguard.core.dex import DEX
@@ -101,7 +110,7 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
     try:
         with zipfile.ZipFile(apk_path) as archive:
             names = sorted(
-                (name for name in archive.namelist() if _DEX_NAME.fullmatch(name)),
+                (name for name in archive.namelist() if _is_dex_name(name)),
                 key=lambda name: (0 if name == "classes.dex" else int(name[7:-4])),
             )
             if len(names) > MAX_DEX_FILES:
