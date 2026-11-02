@@ -16,6 +16,9 @@ function createConnectionHarness(liveBusy = false) {
     "connectLive",
     "refreshLive",
     "connectorCount",
+    "liveModeState",
+    "runPipelineSmoke",
+    "pipelineSmokeConfirmModal",
   ];
   const elements = Object.fromEntries(
     ids.map((id) => [id, { textContent: "", className: "", disabled: false }]),
@@ -25,7 +28,7 @@ function createConnectionHarness(liveBusy = false) {
     assert.ok(elements[id], `unexpected selector: ${selector}`);
     return elements[id];
   };
-  const setConnectionFn = new Function("$", "liveBusy", `${setConnectionSource}; return setConnection;`)($, liveBusy);
+  const setConnectionFn = new Function("$", "liveBusy", "syncPipelineSmokeButton", `${setConnectionSource}; return setConnection;`)($, liveBusy, () => {});
   return { elements, setConnection: setConnectionFn };
 }
 
@@ -107,7 +110,7 @@ function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
   })) assert.ok(source, name + " implementation exists");
 
   const ids = ["connectionState", "connectionMessage", "liveModeState", "connectLive", "refreshLive", "connectorCount",
-    "liveSignals", "liveOpportunities", "liveRuns", "liveAlerts", "liveApprovals", "liveTasks", "refreshAgents"];
+    "liveSignals", "liveOpportunities", "liveRuns", "liveAlerts", "liveApprovals", "liveTasks", "refreshAgents", "runPipelineSmoke", "pipelineSmokeConfirmModal"];
   const elements = Object.fromEntries(ids.map(id => [id, { textContent: id.startsWith("live") ? "stale-value" : "", className: "", disabled: false }]));
   const $ = selector => {
     const id = selector.startsWith("#") ? selector.slice(1) : selector;
@@ -125,6 +128,9 @@ function createRefreshHarness({ fetchImpl, sessionToken = "valid-session" }) {
     const setRefreshFailure = ${setRefreshFailureSource};
     const renderLiveStatus = () => {};
     const renderAgentMesh = () => {};
+    const refreshBrowserOperator = async () => {};
+    const closePipelineSmokeModal = () => {};
+    const syncPipelineSmokeButton = () => {};
     const log = () => {};
     const refreshLive = ${refreshLiveSource};
     return { refreshLive, elements: null, token: () => liveSessionToken, lastSuccess: () => lastLiveSuccessAt };
