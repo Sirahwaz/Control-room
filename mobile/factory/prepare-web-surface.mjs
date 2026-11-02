@@ -39,7 +39,7 @@ export function prepareProductWebSurface({ repoRoot, productKey, outputDir } = {
   if (!Array.isArray(manifest.web_assets)) throw new Error("WEB_ASSETS_MUST_BE_DECLARED");
 
   const entryPath = resolveInside(root, manifest.web_entry, "WEB_ENTRY_PATH_OUTSIDE_REPOSITORY");
-  if (!fs.isFileSync?.(entryPath) && !fs.existsSync(entryPath)) throw new Error("WEB_ENTRY_NOT_FOUND");
+  if (!fs.existsSync(entryPath) || !fs.statSync(entryPath).isFile()) throw new Error("WEB_ENTRY_NOT_FOUND");
   const entryHtml = fs.readFileSync(entryPath, "utf8");
   const assets = manifest.web_assets.map((asset) => {
     const source = resolveInside(root, asset, "WEB_ASSET_PATH_OUTSIDE_REPOSITORY");
