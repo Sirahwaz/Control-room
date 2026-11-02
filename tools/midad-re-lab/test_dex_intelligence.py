@@ -165,17 +165,17 @@ class DexIntelligenceTests(unittest.TestCase):
             own.mkdir(parents=True)
             vendor.mkdir(parents=True)
             (own / "Main.smali").write_text(
-                ".class public Lcom/midad/Main;\\n"
-                ".method public onCreate()V\\n"
-                "    invoke-virtual {v0}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V\\n"
-                ".end method\\n",
+                ".class public Lcom/midad/Main;\n"
+                ".method public onCreate()V\n"
+                "    invoke-virtual {v0}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V\n"
+                ".end method\n",
                 encoding="utf-8",
             )
             (vendor / "Library.smali").write_text(
-                ".class public Lcom/vendor/Library;\\n"
-                ".method public run()V\\n"
-                "    invoke-virtual {v0}, Ljava/lang/Runtime;->exec(Ljava/lang/String;)Ljava/lang/Process;\\n"
-                ".end method\\n",
+                ".class public Lcom/vendor/Library;\n"
+                ".method public run()V\n"
+                "    invoke-virtual {v0}, Ljava/lang/Runtime;->exec(Ljava/lang/String;)Ljava/lang/Process;\n"
+                ".end method\n",
                 encoding="utf-8",
             )
             report = summarize_smali_tree(root, package_name="com.midad")
