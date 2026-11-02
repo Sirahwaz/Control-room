@@ -136,6 +136,26 @@ jobs:
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           rm -rf signing
 
+      - name: Verify APK contains only manifest-scoped web assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          apk = Path("dist/${{ steps.product.outputs.artifact_name }}-release.apk")
+          expected = {
+              "assets/public/index.html",
+              "assets/public/human-bridge.css",
+              "assets/public/human-bridge.js",
+          }
+          with zipfile.ZipFile(apk) as archive:
+              actual = {name for name in archive.namelist() if name.startswith("assets/public/")}
+          if actual != expected:
+              raise SystemExit(f"APK_WEB_ASSET_SCOPE_MISMATCH: unexpected={sorted(actual-expected)} missing={sorted(expected-actual)}")
+          print("APK_WEB_ASSET_SCOPE_VERIFIED", len(actual))
+          PY
+
       - name: Enable KVM for Android emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node/kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
