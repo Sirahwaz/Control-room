@@ -1,0 +1,98 @@
+/**
+ * Data-driven public JSON provider adapter.
+ * This module normalizes discovery evidence only; provider claims never become
+ * independent payout, escrow, identity, region, or KYC proof.
+ */
+export type RevenueParserKey = "taskmarket" | "basedagents" | "bountybook" | "chain_bounties" | "immunefi_public_json" | "official_airdrop_json" | "superteam" | "mapped_json";
+
+const REGISTERED = new Set<RevenueParserKey>(["taskmarket","basedagents","bountybook","chain_bounties","immunefi_public_json","official_airdrop_json","superteam","mapped_json"]);
+const ALIASES: Record<string,string[]> = {
+  items:["items"], id:["id","external_id"], title:["title"], description:["description"],
+  url:["url","listing_url"], status:["status"], amount:["amount","reward_amount","individual_reward_amount"],
+  asset:["asset","payout_asset","reward_asset"], network:["network","payout_network","reward_network"],
+  deadline:["deadline","expires_at"], upfront_cost_usd:["upfront_cost_usd","upfront_cost"],
+  claim_bond_usd:["claim_bond_usd","claim_bond"], fee_usd:["fee_usd","estimated_fee_usd"],
+  effort_hours:["effort_hours","estimated_effort_hours"], tags:["tags","skills","capabilities"],
+};
+const ASSETS = new Set(["BTC","USDC","USDT","ETH","SOL","DAI","EURC","LTC","XLM","XRP","AVAX","POL","POLYX","XMR"]);
+const TERMINAL = new Set(["closed","expired","cancelled","canceled","completed","paid","disabled","archived","removed","rejected","withdrawn"]);
+type RecordValue = Record<string,unknown>;
+const record = (v:unknown):RecordValue|null => v!==null && typeof v==="object" && !Array.isArray(v) ? v as RecordValue : null;
+function safePath(v:unknown):string|null {
+  if(typeof v!=="string" || !v || v.length>180) return null;
+  const parts=v.split(".");
+  return parts.every(p=>/^[A-Za-z0-9_-]+$/.test(p) && !["__proto__","prototype","constructor"].includes(p.toLowerCase())) ? v : null;
+}
+function safeHost(host:string):boolean {
+  const h=host.toLowerCase().replace(/\.$/,"");
+  return !!h && h.includes(".") && !h.includes("..") && !h.startsWith("[") && !h.includes(":") &&
+    !/^(?:\d{1,3}\.){3}\d{1,3}$/.test(h) &&
+    !["localhost"].some(x=>h===x || h.endsWith("."+x)) &&
+    ![".local",".internal",".test",".invalid",".example"].some(x=>h.endsWith(x)) &&
+    /^[a-z0-9.-]+$/.test(h) &&
+    h.split(".").every(label=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label));
+}
+function httpsUrl(v:unknown):URL|null {
+  try { const u=new URL(String(v??"")); return u.protocol==="https:" && !u.username && !u.password && safeHost(u.hostname) ? u : null; }
+  catch { return null; }
+}
+export function resolveRevenueParser(v:unknown):RevenueParserKey|null {
+  const key=String(v??"").trim().toLowerCase() as RevenueParserKey;
+  return REGISTERED.has(key)?key:null;
+}
+export function isSafeMappedJsonSource(v:unknown):boolean {
+  const s=record(v); if(!s || resolveRevenueParser(s.parser_key)!=="mapped_json") return false;
+  const feed=httpsUrl(s.api_url??s.url), domain=String(s.official_domain??"").trim().toLowerCase().replace(/\.$/,"");
+  if(!feed || !safeHost(domain) || (feed.hostname.toLowerCase()!==domain && !feed.hostname.toLowerCase().endsWith("."+domain))) return false;
+  const map=record(s.field_map); if(!map) return false;
+  for(const [key,path] of Object.entries(map)) if(ALIASES[key] && safePath(path)===null) return false;
+  return ["items","id","title"].every(k=>safePath(map[k])!==null);
+}
+function pathValue(root:unknown,path:unknown):unknown {
+  const p=safePath(path); if(!p) return undefined;
+  let current:unknown=root;
+  for(const part of p.split(".")){const r=record(current);if(!r || !Object.prototype.hasOwnProperty.call(r,part))return undefined;current=r[part];}
+  return current;
+}
+function mapped(item:unknown,map:RecordValue,key:string):unknown {
+  for(const alias of ALIASES[key]||[key]) if(map[alias]!==undefined) return pathValue(item,map[alias]);
+  return undefined;
+}
+function str(v:unknown,max:number):string { return typeof v==="string" || typeof v==="number" ? String(v).trim().slice(0,max) : ""; }
+function num(v:unknown):number|null { if(typeof v!=="number" && typeof v!=="string")return null; const n=Number(String(v).replace(/[,$\s]/g,""));return Number.isFinite(n)&&n>=0?n:null; }
+function candidateUrl(v:unknown,domain:string):string|null { const u=httpsUrl(v); if(!u)return null;const h=u.hostname.toLowerCase();return h===domain || h.endsWith("."+domain) ? u.toString() : null; }
+
+export function normalizeMappedJsonFeed(body:unknown,sourceValue:unknown,now:Date|number=new Date()):any[] {
+  const source=record(sourceValue); if(!source || !isSafeMappedJsonSource(source))return [];
+  const map=record(source.field_map); if(!map)return [];
+  const items=pathValue(body,map.items); if(!Array.isArray(items))return [];
+  const capRaw=Number(source.max_items??50),cap=Number.isFinite(capRaw)?Math.max(1,Math.min(50,Math.trunc(capRaw))):50;
+  const domain=String(source.official_domain).trim().toLowerCase().replace(/\.$/,"");
+  const observed=now instanceof Date?now.toISOString():new Date(now).toISOString();
+  const output:any[]=[];
+  for(const item of items.slice(0,cap)){
+    const id=str(mapped(item,map,"id"),256),title=str(mapped(item,map,"title"),500);
+    if(!id || !title)continue;
+    const url=candidateUrl(mapped(item,map,"url"),domain); if(!url)continue;
+    const status=str(mapped(item,map,"status"),100)||"unknown";if(TERMINAL.has(status.toLowerCase()))continue;
+    const rawAsset=str(mapped(item,map,"asset"),24).toUpperCase(),asset=ASSETS.has(rawAsset)?rawAsset:null;
+    const amount=num(mapped(item,map,"amount")),cost=num(mapped(item,map,"upfront_cost_usd")),bond=num(mapped(item,map,"claim_bond_usd")),fee=num(mapped(item,map,"fee_usd"));
+    const deadlineValue=mapped(item,map,"deadline"),deadlineDate=deadlineValue?new Date(deadlineValue as string|number):null;
+    const deadline=deadlineDate && Number.isFinite(deadlineDate.getTime())?deadlineDate:null;
+    const rawTags=mapped(item,map,"tags"),tags=Array.isArray(rawTags)?rawTags.map(x=>str(x,100)).filter(Boolean).slice(0,40):typeof rawTags==="string"?rawTags.split(/[,;|]/).map(x=>x.trim().slice(0,100)).filter(Boolean).slice(0,40):[];
+    output.push({
+      sourceSlug:str(source.slug,100),sourceUrl:httpsUrl(source.api_url??source.url)?.toString()||"",
+      externalId:id,title,description:str(mapped(item,map,"description"),6000),url,externalStatus:status,
+      amount:amount!==null&&amount>0?amount:null,asset,network:str(mapped(item,map,"network"),48)||"unknown",
+      payoutClass:"C2_PROGRAM_CONDITIONAL_CRYPTO",payoutProofStatus:"unverified",payoutConfidence:0,
+      paymentProof:false,escrowFunded:null,tx:null,payoutProofUrl:null,cost:cost??0,bond:bond??0,fee:fee??0,
+      effortHours:num(mapped(item,map,"effort_hours")),deadline,region:"unknown",regionEligible:null,kyc:"unknown",
+      identity:"unknown",identityEligible:null,caps:tags,tags,competition:0,
+      test:/\b(?:do not claim|selfaudit|compatibility probe|test task|synthetic test)\b/i.test(title+" "+str(mapped(item,map,"description"),6000)),
+      notes:["Mapped public JSON is discovery evidence only; payout and eligibility are not independently verified.","Provider self-asserted payment or payout fields are never promoted to verified escrow or payment.","Upfront cost, claim bond, KYC and region requirements require independent verification."],
+      revenueLane:"crypto_task",evidenceMeta:{revenue_lane:"crypto_task",official_domain:domain,observed_at:observed,cost_evidence_present:cost!==null,claim_bond_evidence_present:bond!==null},
+      raw:item,httpStatus:200,contentHash:null,
+    });
+  }
+  return output;
+}
