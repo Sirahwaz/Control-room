@@ -85,7 +85,7 @@ class DexIntelligenceTests(unittest.TestCase):
                 return FakeDex([], [])
 
             report = analyze_apk_dex(apk, dex_factory=factory)
-            self.assertEqual(calls, [b"dex-one", b"dex-two"])
+            self.assertEqual(calls, [b"dex\\n035\\x00one", b"dex\\n035\\x00two"])
             self.assertEqual(report["dex_file_count"], 2)
             self.assertEqual(report["parsed_dex_count"], 1)
             self.assertEqual(report["status"], "partial")
