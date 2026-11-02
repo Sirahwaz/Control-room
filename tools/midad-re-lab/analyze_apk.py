@@ -151,10 +151,11 @@ def main():
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
-    dex_report = analyze_apk_dex(apk, apk_sha256=sha)
-    dex_report["smali"] = summarize_smali_tree(decoded)
-    (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
+    package_name=manifest.attrib.get("package")
+    dex_report = analyze_apk_dex(apk, apk_sha256=sha, package_name=package_name)
+    dex_report["smali"] = summarize_smali_tree(decoded, package_name=package_name)
+    (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
     app=manifest.find("application")
     components=[]
@@ -180,9 +181,15 @@ def main():
                   "apktool":apktool_result["status"],
                   "dex_intelligence": {"status":dex_report["status"],"dex_file_count":dex_report["dex_file_count"],
                     "parsed_dex_count":dex_report["parsed_dex_count"],"class_count":dex_report["class_count"],
-                    "method_count":dex_report["method_count"],"error_count":len(dex_report["errors"]),
+                    "method_count":dex_report["method_count"],
+                    "app_owned_class_count":dex_report["app_owned_class_count"],
+                    "app_owned_method_count":dex_report["app_owned_method_count"],
+                    "error_count":len(dex_report["errors"]),
                     "smali_file_count":dex_report["smali"]["smali_file_count"],
                     "smali_method_count":dex_report["smali"]["method_definition_count"],
+                    "first_party_smali_file_count":dex_report["smali"]["first_party_smali_file_count"],
+                    "first_party_smali_method_count":dex_report["smali"]["first_party_method_definition_count"],
+                    "first_party_smali_api_categories":dex_report["smali"]["first_party_api_category_counts"],
                     "smali_api_categories":dex_report["smali"]["api_category_counts"],
                     "report":"dex-intelligence-report.json"}},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
