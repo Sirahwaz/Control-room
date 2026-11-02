@@ -94,6 +94,8 @@ jobs:
         run: node --test tests/ai-room-status-ui.test.mjs
       - name: Telegram bot and paper-only engine source contract
         run: node --test tests/telegram-bot-paper-only-contract.test.mjs
+      - name: MIDAD Forge workflow least-privilege contract
+        run: node --test tests/midad-forge-workflow-permissions.test.mjs
       - name: AI Room deployed source parity tests
         run: node --test tests/ai-room-static.test.mjs tests/ai-room-read-model.test.mjs tests/ai-room-preview-contract.test.mjs
       - name: Set up Deno for deployed AI Room source
