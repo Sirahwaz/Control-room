@@ -21,3 +21,8 @@ Read-only retrieval from Supabase project `froegigfmpmvtecztfbf` on 2026-11-02:
 ## Scope and safety
 
 This PR restores the deployed source and adds static contracts only. It does not deploy Edge Functions, invoke Telegram commands, create paper trades, alter finance governors, enable live trading, or change database schema/RLS. Live financial execution remains disabled.
+
+
+## Type-check debt observed
+
+A strict `deno check` against the deployed v101/v26 source produced 21 TypeScript diagnostics: four in the paper-only engine and the remainder in the Telegram bot. Findings include nullable values, implicit `any`, and `unknown` error/result shapes. This is a static typing debt in the deployed source, not evidence that the deployed functions are failing at runtime. This source-recovery PR deliberately does not rewrite those functions to satisfy the checker. The separate static paper-only and credential contracts remain enforced; type hardening requires its own regression-tested change and staging verification.
