@@ -62,6 +62,19 @@ test("verified crypto affiliate terms reach operator review only, never realized
   assert.ok(result.human_gates_required.includes("obtain_personal_tracking_link"));
 });
 
+test("listing URL alone cannot self-assert an official affiliate program domain", () => {
+  const task = verifiedAffiliate({
+    url: "https://attacker.example/affiliate",
+    evidence: {
+      affiliate: {
+        ...verifiedAffiliate().evidence.affiliate,
+        official_program_url: "",
+      },
+    },
+  });
+  assert.ok(evaluateAffiliateProgramEvidence(task, Date.parse("2026-11-02T13:00:00.000Z")).blockers.includes("affiliate_official_url_missing_or_insecure"));
+});
+
 test("missing or stale payout evidence blocks affiliate review", () => {
   const missing = verifiedAffiliate({ evidence: { affiliate: { ...verifiedAffiliate().evidence.affiliate, crypto_payout_confirmed: false } } });
   const stale = verifiedAffiliate({ evidence: { affiliate: { ...verifiedAffiliate().evidence.affiliate, verified_at: "2026-09-01T00:00:00.000Z" } } });
