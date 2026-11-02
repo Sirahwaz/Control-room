@@ -85,6 +85,8 @@ jobs:
 
       - name: AI Room read-only agent mesh tests
         run: node --test tests/ai-room-agents.test.mjs
+      - name: AI Room live-status UI regression tests
+        run: node --test tests/ai-room-status-ui.test.mjs
 
       - name: AI Room pipeline diagnostics tests
         run: node --test tests/render-pipeline-diagnostics.test.cjs
