@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, hashlib, ipaddress, json, socket, subprocess, zipfile
+import argparse, hashlib, ipaddress, json, shutil, socket, subprocess, zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError
@@ -91,6 +91,42 @@ def run_tool(command, tool_name: str):
             suffix += f": {detail}"
         return {"status": "timeout", "returncode": None, "error": suffix[-4096:]}
 
+def run_jadx(jadx: str, apk: str, output_dir: str):
+    """Try normal Java reconstruction, then a lower-risk simple-mode fallback."""
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    standard_command = [jadx, "--verbose", "-d", str(output), "--deobf", str(apk)]
+    standard = run_tool(standard_command, "jadx")
+    if standard["status"] == "completed":
+        return {"status": "completed", "strategy": "standard", "attempts": [standard], "error": None}
+
+    # Remove partial files so the fallback report is deterministic.
+    shutil.rmtree(output, ignore_errors=True)
+    output.mkdir(parents=True, exist_ok=True)
+    fallback_command = [
+        jadx, "--verbose", "--show-bad-code", "--decompilation-mode", "simple",
+        "--no-inline-anonymous", "--no-inline-methods", "--no-inline-kotlin-lambda",
+        "--no-move-inner-classes", "-j", "1", "-d", str(output), "--deobf", str(apk)
+    ]
+    fallback = run_tool(fallback_command, "jadx")
+    error = None if fallback["status"] == "completed" else (
+        "standard: " + str(standard["error"] or standard["status"]) +
+        "; simple_fallback: " + str(fallback["error"] or fallback["status"])
+    )[-4096:]
+    return {
+        "status": fallback["status"],
+        "strategy": "simple_fallback" if fallback["status"] == "completed" else "failed",
+        "attempts": [standard, fallback],
+        "error": error,
+    }
+
+
+def count_decompiled_sources(directory: Path) -> int:
+    if not directory.exists():
+        return 0
+    return sum(1 for pattern in ("*.java", "*.kt") for _ in directory.rglob(pattern))
+
+
 def main():
     parser=argparse.ArgumentParser()
     source=parser.add_mutually_exclusive_group(required=True)
@@ -113,7 +149,7 @@ def main():
     if apktool_result["status"] != "completed":
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
-    jadx_result = run_tool([args.jadx,"--verbose","-d",str(decompiled),"--deobf",str(apk)], "jadx")
+    jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
     app=manifest.find("application")
@@ -128,14 +164,15 @@ def main():
         native=sorted({n.split("/")[1] for n in names if n.startswith("lib/") and len(n.split("/"))>2})
         assets=sum(1 for n in names if n.startswith("assets/"))
         resources=sum(1 for n in names if n.startswith("res/"))
-    source_count=(sum(1 for _ in decompiled.rglob("*.java")) + sum(1 for _ in decompiled.rglob("*.kt"))) if jadx_result["status"] == "completed" else 0
+    source_count=count_decompiled_sources(decompiled)
     report={"schema":"midad-android-static-v1","generated_at":datetime.now(timezone.utc).isoformat(),
       "input":{"source_url_host":source_host,"bytes":size,"sha256":sha},
       "manifest":{"package":manifest.attrib.get("package"),"version_code":manifest.attrib.get(ANDROID_NS+"versionCode"),"version_name":manifest.attrib.get(ANDROID_NS+"versionName"),"min_sdk":(decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace").split("minSdkVersion:",1)[-1].splitlines()[0].strip() if "minSdkVersion:" in (decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace") else None,"permissions":permissions,"components":components},
       "archive":{"dex_files":dex,"native_abis":native,"asset_file_count":assets,"resource_file_count":resources},
-      "analysis":{"status":"completed" if jadx_result["status"] == "completed" else "partial",
+      "analysis":{"status":"completed" if jadx_result["status"] == "completed" and jadx_result["strategy"] == "standard" else "partial",
                   "jadx_java_kt_source_file_count":source_count,
-                  "jadx":jadx_result["status"],"jadx_error":jadx_result["error"],
+                  "jadx":jadx_result["status"],"jadx_strategy":jadx_result["strategy"],
+                  "jadx_attempts":jadx_result["attempts"],"jadx_error":jadx_result["error"],
                   "apktool":apktool_result["status"]},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
