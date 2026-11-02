@@ -1,3 +1,14 @@
+/**
+ * @typedef {{ agent_key: string, status?: string | null }} AgentIdentity
+ * @typedef {{ agent_key: string, created_at?: string | null }} AgentEvent
+ * @param {{
+ *   metrics: Record<string, number | null | undefined>,
+ *   unavailableMetrics?: string[],
+ *   identities?: AgentIdentity[] | null,
+ *   events?: AgentEvent[] | null,
+ *   generatedAt?: string
+ * }} input
+ */
 export function buildAgentReadiness({ metrics, unavailableMetrics = [], identities = [], events = [], generatedAt = new Date().toISOString() }) {
   const metricNames = ["signals", "opportunities", "engine_runs", "active_alerts", "pending_approvals", "pending_human_tasks"];
   const unavailable = [...new Set(unavailableMetrics)];

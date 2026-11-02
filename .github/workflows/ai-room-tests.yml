@@ -1,0 +1,52 @@
+name: MIDAD AI Room static contract tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "ai-room.html"
+      - "tests/ai-room-static.test.mjs"
+      - "tests/ai-room-read-model.test.mjs"
+      - "tests/ai-room-preview-contract.test.mjs"
+      - "supabase/functions/midad_ai_room_preview/**"
+      - "supabase/functions/midad_ai_room_status/**"
+      - ".github/workflows/ai-room-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ai-room.html"
+      - "tests/ai-room-static.test.mjs"
+      - "tests/ai-room-read-model.test.mjs"
+      - "tests/ai-room-preview-contract.test.mjs"
+      - "supabase/functions/midad_ai_room_status/**"
+      - "supabase/functions/midad_ai_room_preview/**"
+      - ".github/workflows/ai-room-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-room-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: AI Room static contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run AI Room static and read-model contracts
+        run: node --test tests/ai-room-static.test.mjs tests/ai-room-read-model.test.mjs tests/ai-room-preview-contract.test.mjs
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check deployed AI Room functions
+        run: deno check supabase/functions/midad_ai_room_status/index.ts supabase/functions/midad_ai_room_preview/index.ts
