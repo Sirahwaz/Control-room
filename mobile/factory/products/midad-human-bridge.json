@@ -46,5 +46,9 @@
     "b2b_license",
     "white_label"
   ],
-  "revenue_mode": "internal"
+  "revenue_mode": "internal",
+  "web_assets": [
+    "mobile/web/human-bridge.css",
+    "mobile/web/human-bridge.js"
+  ]
 }
