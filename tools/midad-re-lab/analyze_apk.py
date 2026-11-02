@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import xml.etree.ElementTree as ET
 from dex_intelligence import analyze_apk_dex, summarize_smali_tree
+from web_bundle_intelligence import analyze_apk_web_bundle
 
 MAX_APK_BYTES = 200 * 1024 * 1024
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
@@ -133,7 +134,7 @@ def main():
     source=parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--url")
     source.add_argument("--file")
-    parser.add_argument("--jadx",required=True); parser.add_argument("--apktool",required=True); parser.add_argument("--out",default="artifacts/apk")
+    parser.add_argument("--jadx",required=True); parser.add_argument("--apktool",required=True); parser.add_argument("--product-key"); parser.add_argument("--out",default="artifacts/apk")
     args=parser.parse_args()
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
     temporary_download = bool(args.url)
@@ -153,6 +154,14 @@ def main():
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     package_name=manifest.attrib.get("package")
+    product_manifest = None
+    if args.product_key:
+        product_manifest_path = Path("mobile/factory/products") / (args.product_key + ".json")
+        product_manifest = json.loads(product_manifest_path.read_text(encoding="utf-8"))
+        if product_manifest.get("product_key") != args.product_key:
+            raise ValueError("PRODUCT_MANIFEST_KEY_MISMATCH")
+    web_report = analyze_apk_web_bundle(apk, product_manifest=product_manifest, package_name=package_name, apk_sha256=sha)
+    (out/"web-intelligence-report.json").write_text(json.dumps(web_report,ensure_ascii=False,indent=2),encoding="utf-8")
     dex_report = analyze_apk_dex(apk, apk_sha256=sha, package_name=package_name)
     dex_report["smali"] = summarize_smali_tree(decoded, package_name=package_name)
     (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
@@ -191,7 +200,16 @@ def main():
                     "first_party_smali_method_count":dex_report["smali"]["first_party_method_definition_count"],
                     "first_party_smali_api_categories":dex_report["smali"]["first_party_api_category_counts"],
                     "smali_api_categories":dex_report["smali"]["api_category_counts"],
-                    "report":"dex-intelligence-report.json"}},
+                    "report":"dex-intelligence-report.json"},
+                  "web_bundle": {"status":web_report["status"],"file_count":web_report["file_count"],
+                    "scanned_text_file_count":web_report["scanned_text_file_count"],
+                    "undeclared_file_count":len(web_report.get("undeclared_files",[])),
+                    "missing_file_count":len(web_report.get("missing_files",[])),
+                    "network_calls":web_report.get("indicators",{}).get("network_calls",0),
+                    "storage_apis":web_report.get("indicators",{}).get("storage_apis",0),
+                    "capacitor_bridge":web_report.get("indicators",{}).get("capacitor_bridge",0),
+                    "dynamic_execution":web_report.get("indicators",{}).get("dynamic_execution",0),
+                    "report":"web-intelligence-report.json"}},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     if temporary_download: apk.unlink(missing_ok=True)
