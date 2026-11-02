@@ -50,10 +50,13 @@ jobs:
       matrix:
         include:
           - run_id: 41302227269
+            product_key: midad-browser
             artifact_name: MIDAD-Browser-v0.1.0-release
           - run_id: 41302227280
+            product_key: midad-omni-agent
             artifact_name: MIDAD-Omni-Agent-v0.4.1-release
-          - run_id: 41302227307
+          - run_id: 41431015005
+            product_key: midad-human-bridge
             artifact_name: MIDAD-Human-Bridge-v0.1.0-release
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +94,8 @@ jobs:
       - name: Static APK analysis
         env:
           APK_FILE: ${{ steps.apk.outputs.path }}
-        run: python tools/midad-re-lab/analyze_apk.py --file "$APK_FILE" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
+          PRODUCT_KEY: ${{ matrix.product_key }}
+        run: python tools/midad-re-lab/analyze_apk.py --file "$APK_FILE" --product-key "$PRODUCT_KEY" --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
       - uses: actions/upload-artifact@v4
         with:
           name: midad-android-static-${{ matrix.artifact_name }}
