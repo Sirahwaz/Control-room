@@ -31,7 +31,7 @@ test('browser networking is limited to fixed MIDAD endpoints and Telegram bootst
   assert.doesNotMatch(html, /SUPABASE_SERVICE_ROLE_KEY|service_role|OPENAI_API_KEY|sk-[A-Za-z0-9]{16,}/i);
   const scriptSources = [...html.matchAll(/<script\s+src=["']([^"']+)["']/gi)].map(match => match[1]);
   assert.deepEqual(scriptSources, ['https://telegram.org/js/telegram-web-app.js']);
-  assert.deepEqual([...html.matchAll(/<link\\b[^>]*>/gi)].map(match => match[0]), []);
+  assert.deepEqual([...html.matchAll(/<link\b[^>]*>/gi)].map(match => match[0]), []);
 });
 
 test('status endpoint requires an active hashed Control Room session', () => {
