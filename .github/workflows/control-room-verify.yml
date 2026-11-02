@@ -72,7 +72,7 @@ jobs:
           if(manifest.app_id !== cap.appId) fail('Capacitor appId drift');
           if(manifest.app_id !== 'ai.midad.mobile') fail('Canonical mobile appId changed');
           // Product versions come from the per-product manifest; package.json tracks the shared factory package.
-          if(!/^\\d+\\.\\d+\\.\\d+$/.test(manifest.version)) fail('Mobile Factory product version must be semantic version');
+          if(!/^\d+\.\d+\.\d+$/.test(manifest.version)) fail('Mobile Factory product version must be semantic version');
           if(!String(manifest.artifact_name||'').endsWith('-v'+manifest.version)) fail('Mobile Factory artifact/version contract drift');
           if(pkg.name !== 'midad-mobile') fail('Unexpected mobile package name');
           if(manifest.features?.server_side_secrets_only !== true) fail('Mobile secret boundary weakened');
