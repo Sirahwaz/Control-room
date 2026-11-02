@@ -9,6 +9,8 @@ on:
       - "mobile/factory/product.schema.json"
       - "mobile/package.json"
       - "mobile/factory/render.mjs"
+      - "mobile/factory/prepare-web-surface.mjs"
+      - "mobile/factory/test-prepare-web-surface.mjs"
       - ".github/workflows/midad-human-bridge-android.yml"
   push:
     branches: ["main"]
@@ -78,15 +80,18 @@ jobs:
         working-directory: mobile
         run: npm install --no-fund --no-audit
 
+      - name: Test product-scoped web asset packager
+        run: node --test mobile/factory/test-prepare-web-surface.mjs
+
       - name: Prepare Human Bridge web surface
-        shell: bash
         run: |
           set -euo pipefail
-          rm -rf mobile/www
-          mkdir -p mobile/www/site
-          cp -R mobile/web/. mobile/www/
-          cp mobile/web/human-bridge.html mobile/www/index.html
-          find . -maxdepth 1 -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" -o -name "*.webmanifest" \) -not -path "./mobile/*" -exec cp {} mobile/www/site/ \;
+          node mobile/factory/prepare-web-surface.mjs midad-human-bridge
+          test -f mobile/www/index.html
+          test -f mobile/www/human-bridge.css
+          test -f mobile/www/human-bridge.js
+          test "$(find mobile/www -type f | wc -l)" -eq 3
+          test ! -d mobile/www/site
 
       - name: Add Android platform
         working-directory: mobile
