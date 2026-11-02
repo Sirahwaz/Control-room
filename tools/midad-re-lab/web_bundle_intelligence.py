@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import posixpath
 import re
 import zipfile
@@ -12,11 +13,12 @@ MAX_TEXT_FILE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_TEXT_BYTES = 30 * 1024 * 1024
 TEXT_EXTENSIONS = {".html", ".htm", ".js", ".mjs", ".css", ".json", ".webmanifest", ".txt"}
 FRAMEWORK_FILES = {"assets/public/cordova.js", "assets/public/cordova_plugins.js"}
+FRAMEWORK_ASSETS = {"assets/native-bridge.js", "assets/proxy-bridge.js", "assets/capacitor.config.json", "assets/capacitor.plugins.json"}
 
 _PATTERNS = {
     "network_calls": re.compile(r"\bfetch\s*\(|XMLHttpRequest|\bWebSocket\s*\(|\bEventSource\s*\(|sendBeacon\s*\(|\baxios\.", re.I),
     "storage_apis": re.compile(r"localStorage|sessionStorage|indexedDB|document\.cookie|Capacitor\.Plugins\.Preferences|Preferences\.(?:get|set|remove)", re.I),
-    "capacitor_bridge": re.compile(r"window\.Capacitor|Capacitor\.Plugins|window\.mobileApp|webkit\.messageHandlers", re.I),
+    "capacitor_bridge": re.compile(r"nativeBridge|nativeCallback|window\.Capacitor|Capacitor\.Plugins|window\.mobileApp|webkit\.messageHandlers", re.I),
     "message_bridge": re.compile(r"postMessage\s*\(|addEventListener\s*\(\s*['\"]message['\"]|\bonmessage\s*=", re.I),
     "dynamic_execution": re.compile(r"\beval\s*\(|\bnew\s+Function\s*\(|(?:setTimeout|setInterval)\s*\(\s*['\"]|document\.write\s*\(", re.I),
     "dom_injection_sinks": re.compile(r"\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|dangerouslySetInnerHTML", re.I),
@@ -79,6 +81,11 @@ def analyze_apk_web_bundle(
                 }
 
             all_names = sorted(info.filename for info in public_infos)
+            framework_infos = [
+                archive.getinfo(name) for name in sorted(FRAMEWORK_ASSETS)
+                if name in archive.namelist()
+            ]
+            scan_infos = public_infos + framework_infos
             product_key, expected = _manifest_files(product_manifest)
             allowed = expected | FRAMEWORK_FILES if expected is not None else None
             undeclared = sorted(name for name in all_names if allowed is not None and name not in allowed)
@@ -87,9 +94,12 @@ def analyze_apk_web_bundle(
             file_reports = []
             total_text_bytes = 0
             aggregate = {name: 0 for name in _PATTERNS}
+            public_aggregate = {name: 0 for name in _PATTERNS}
+            framework_aggregate = {name: 0 for name in _PATTERNS}
             endpoints = set()
 
-            for info in public_infos[:MAX_PUBLIC_FILES]:
+            for info in scan_infos[:MAX_PUBLIC_FILES + len(FRAMEWORK_ASSETS)]:
+                scope = "public" if info.filename.startswith("assets/public/") else "framework"
                 suffix = Path(info.filename).suffix.lower()
                 if suffix not in TEXT_EXTENSIONS:
                     continue
@@ -106,11 +116,12 @@ def analyze_apk_web_bundle(
                 indicators = {name: len(pattern.findall(text)) for name, pattern in _PATTERNS.items()}
                 for name, count in indicators.items():
                     aggregate[name] += count
+                    (public_aggregate if scope == "public" else framework_aggregate)[name] += count
                 urls = sorted({safe for match in _URL.findall(text) if (safe := _safe_url(match))})
                 endpoints.update(urls)
 
                 local_refs = []
-                if suffix in {".html", ".htm"}:
+                if scope == "public" and suffix in {".html", ".htm"}:
                     for ref in _HTML_REF.findall(text):
                         value = ref.strip()
                         if not value or value.startswith("#") or re.match(r"^(?:https?:|data:|mailto:|tel:|javascript:|wss?:)", value, re.I):
@@ -121,6 +132,7 @@ def analyze_apk_web_bundle(
                             local_refs.append(clean)
                 file_reports.append({
                     "path": info.filename,
+                    "scope": scope,
                     "bytes": len(raw),
                     "sha256": digest,
                     "extension": suffix,
@@ -135,6 +147,26 @@ def analyze_apk_web_bundle(
             ]
             if len(public_infos) > MAX_PUBLIC_FILES:
                 errors.append({"error": "PUBLIC_FILE_COUNT_LIMIT", "omitted_count": len(public_infos) - MAX_PUBLIC_FILES})
+            capacitor_config = None
+            try:
+                raw_config = json.loads(archive.read("assets/capacitor.config.json"))
+                capacitor_config = {
+                    key: raw_config.get(key) for key in ("appId", "appName", "webDir")
+                    if isinstance(raw_config.get(key), str)
+                }
+            except (KeyError, ValueError, UnicodeDecodeError):
+                pass
+            plugin_inventory = []
+            try:
+                raw_plugins = json.loads(archive.read("assets/capacitor.plugins.json"))
+                if isinstance(raw_plugins, list):
+                    plugin_inventory = [
+                        {"package": item.get("pkg"), "classpath": item.get("classpath")}
+                        for item in raw_plugins
+                        if isinstance(item, dict) and item.get("pkg") and item.get("classpath")
+                    ]
+            except (KeyError, ValueError, UnicodeDecodeError):
+                pass
             status = "completed" if not errors and not undeclared and not missing and not missing_local_refs else "partial"
             return {
                 "schema": "midad-web-bundle-intelligence-v1",
@@ -143,13 +175,21 @@ def analyze_apk_web_bundle(
                 "package_name": package_name,
                 "apk_sha256": apk_sha256,
                 "file_count": len(all_names),
+                "framework_file_count": len(framework_infos),
+                "framework_files": sorted(info.filename for info in framework_infos),
                 "scanned_text_file_count": len(file_reports),
+                "scanned_public_text_file_count": sum(1 for item in file_reports if item["scope"] == "public"),
+                "scanned_framework_text_file_count": sum(1 for item in file_reports if item["scope"] == "framework"),
                 "scanned_text_bytes": total_text_bytes,
+                "capacitor_config": capacitor_config,
+                "framework_plugin_inventory": plugin_inventory,
                 "expected_files": sorted(expected) if expected is not None else None,
                 "undeclared_files": undeclared,
                 "missing_files": missing,
                 "missing_local_references": missing_local_refs[:500],
                 "indicators": aggregate,
+                "public_indicators": public_aggregate,
+                "framework_indicators": framework_aggregate,
                 "external_endpoints": sorted(endpoints)[:200],
                 "errors": errors,
                 "files": file_reports,
