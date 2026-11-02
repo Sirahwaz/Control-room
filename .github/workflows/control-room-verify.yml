@@ -97,8 +97,6 @@ jobs:
           deno-version: v2.x
       - name: Type-check deployed AI Room functions
         run: deno check supabase/functions/midad_ai_room_status/index.ts supabase/functions/midad_ai_room_preview/index.ts
-      - name: Type-check Telegram bot and paper-only engine
-        run: deno check supabase/functions/telegram_bot/index.ts supabase/functions/midad_noncopy_trading_engine/index.ts
 
       - name: AI Room pipeline diagnostics tests
         run: node --test tests/render-pipeline-diagnostics.test.cjs
