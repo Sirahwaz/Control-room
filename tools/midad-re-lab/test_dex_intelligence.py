@@ -143,5 +143,48 @@ class DexIntelligenceTests(unittest.TestCase):
             self.assertEqual(report["dex_file_count"], 0)
 
 
+    def test_dex_report_counts_first_party_classes_and_methods(self):
+        dex = FakeDex(
+            [
+                FakeClass("Lcom/midad/Main;", "Ljava/lang/Object;", [FakeMethod("start", "()V")]),
+                FakeClass("Lcom/vendor/Library;", "Ljava/lang/Object;", [FakeMethod("helper", "()V"), FakeMethod("other", "()V")]),
+            ],
+            [],
+        )
+        report = summarize_dex("classes.dex", dex, package_name="com.midad")
+        self.assertEqual(report["class_count"], 2)
+        self.assertEqual(report["method_count"], 3)
+        self.assertEqual(report["app_owned_class_count"], 1)
+        self.assertEqual(report["app_owned_method_count"], 1)
+
+    def test_smali_report_separates_first_party_api_references(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            own = root / "smali" / "com" / "midad"
+            vendor = root / "smali" / "com" / "vendor"
+            own.mkdir(parents=True)
+            vendor.mkdir(parents=True)
+            (own / "Main.smali").write_text(
+                ".class public Lcom/midad/Main;\\n"
+                ".method public onCreate()V\\n"
+                "    invoke-virtual {v0}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V\\n"
+                ".end method\\n",
+                encoding="utf-8",
+            )
+            (vendor / "Library.smali").write_text(
+                ".class public Lcom/vendor/Library;\\n"
+                ".method public run()V\\n"
+                "    invoke-virtual {v0}, Ljava/lang/Runtime;->exec(Ljava/lang/String;)Ljava/lang/Process;\\n"
+                ".end method\\n",
+                encoding="utf-8",
+            )
+            report = summarize_smali_tree(root, package_name="com.midad")
+            self.assertEqual(report["api_category_counts"]["webview"], 1)
+            self.assertEqual(report["api_category_counts"]["process_execution"], 1)
+            self.assertEqual(report["first_party_smali_file_count"], 1)
+            self.assertEqual(report["first_party_method_definition_count"], 1)
+            self.assertEqual(report["first_party_api_category_counts"]["webview"], 1)
+            self.assertEqual(report["first_party_api_category_counts"]["process_execution"], 0)
+
 if __name__ == "__main__":
     unittest.main()
