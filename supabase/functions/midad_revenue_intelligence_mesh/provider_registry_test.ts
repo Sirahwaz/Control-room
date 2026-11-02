@@ -43,3 +43,11 @@ Deno.test("mapped JSON normalization rejects incomplete and off-domain listing U
   ] } }, { ...source, max_items: 10 }, new Date("2026-11-02T00:00:00.000Z"));
   assertEquals(rows.map((row) => row.externalId), ["ok"]);
 });
+
+Deno.test("mapped JSON source trust checks happen before any provider fetch", async () => {
+  const engine = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  const workerStart = engine.indexOf('const parser=String(f.parser_key||"");');
+  const fetchStart = engine.indexOf("const r=await fetchJson(f.url,authHeaders);", workerStart);
+  const guardStart = engine.indexOf("isSafeMappedJsonSource", workerStart);
+  assertEquals(workerStart >= 0 && guardStart > workerStart && fetchStart > guardStart, true);
+});
