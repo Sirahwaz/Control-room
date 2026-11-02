@@ -6,6 +6,7 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import xml.etree.ElementTree as ET
+from dex_intelligence import analyze_apk_dex
 
 MAX_APK_BYTES = 200 * 1024 * 1024
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
@@ -150,6 +151,8 @@ def main():
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
+    dex_report = analyze_apk_dex(apk)
+    (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
     app=manifest.find("application")
@@ -173,7 +176,11 @@ def main():
                   "jadx_java_kt_source_file_count":source_count,
                   "jadx":jadx_result["status"],"jadx_strategy":jadx_result["strategy"],
                   "jadx_attempts":jadx_result["attempts"],"jadx_error":jadx_result["error"],
-                  "apktool":apktool_result["status"]},
+                  "apktool":apktool_result["status"],
+                  "dex_intelligence": {"status":dex_report["status"],"dex_file_count":dex_report["dex_file_count"],
+                    "parsed_dex_count":dex_report["parsed_dex_count"],"class_count":dex_report["class_count"],
+                    "method_count":dex_report["method_count"],"error_count":len(dex_report["errors"]),
+                    "report":"dex-intelligence-report.json"}},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     if temporary_download: apk.unlink(missing_ok=True)
