@@ -9,7 +9,10 @@ test('Telegram AI Room command opens the fixed static preview without changing t
   assert.match(bot, /const AI_ROOM_PREVIEW_URL="https:\/\/sirahwaz\.github\.io\/Control-room\/ai-room\.html"/);
   assert.match(bot, /userText\.split\("@"\)\[0\]==="\/airoom"/);
   assert.match(bot, /web_app:\{url:AI_ROOM_PREVIEW_URL\}/);
-  assert.match(bot, /setChatMenuButton[\s\S]{0,260}web_app:\{url:CONTROL_ROOM_URL\}/);
+  assert.match(bot, /const CONTROL_ROOM_URL=/);
+  assert.match(bot, /const menuUrl=isMidadRoomBot\?AI_ROOM_PREVIEW_URL:CONTROL_ROOM_URL/);
+  assert.match(bot, /setChatMenuButton/);
+  assert.match(bot, /web_app:\{url:menuUrl\}/);
 });
 
 test('Telegram trade and mysun commands delegate to the isolated non-copy engine', () => {
