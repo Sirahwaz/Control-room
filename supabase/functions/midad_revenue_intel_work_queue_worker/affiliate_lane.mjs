@@ -58,7 +58,7 @@ export function evaluateAffiliateProgramEvidence(task = {}, now = Date.now()) {
     ...object(base.affiliate),
   };
   const blockers = [];
-  const officialProgramUrl = String(evidence.official_program_url || task.url || "");
+  const officialProgramUrl = String(evidence.official_program_url || "");
   const officialTermsUrl = String(evidence.official_terms_url || evidence.official_payout_url || "");
 
   if (!isSafeOfficialHttpsUrl(officialProgramUrl, officialProgramUrl)) {
