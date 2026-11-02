@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import zipfile
+import json
 from pathlib import Path
 
 from web_bundle_intelligence import analyze_apk_web_bundle
@@ -88,6 +89,34 @@ class WebBundleIntelligenceTests(unittest.TestCase):
             self.assertEqual(report["status"], "failed")
             self.assertEqual(report["file_count"], 0)
 
+
+    def test_scans_capacitor_native_bridges_and_plugin_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "capacitor.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/public/index.html", '<script src="./app.js"></script>')
+                archive.writestr("assets/public/app.js", 'window.Capacitor.Plugins.Preferences.get({key:"x"});')
+                archive.writestr("assets/native-bridge.js", 'var nativeBridge={}; window.Capacitor={}; postMessage({ready:true});')
+                archive.writestr("assets/proxy-bridge.js", 'fetch("https://proxy.example.test/request");')
+                archive.writestr("assets/capacitor.config.json", json.dumps({
+                    "appId": "ai.midad.test", "appName": "MIDAD Test", "webDir": "www"
+                }))
+                archive.writestr("assets/capacitor.plugins.json", json.dumps([
+                    {"pkg": "@capacitor/app", "classpath": "com.capacitorjs.plugins.app.AppPlugin"},
+                    {"pkg": "@capacitor/preferences", "classpath": "com.capacitorjs.plugins.preferences.PreferencesPlugin"},
+                ]))
+            manifest = {"product_key": "midad-test", "web_assets": ["mobile/web/app.js"]}
+            report = analyze_apk_web_bundle(apk, product_manifest=manifest, package_name="ai.midad.test")
+            self.assertEqual(report["status"], "completed")
+            self.assertEqual(report["framework_file_count"], 4)
+            self.assertEqual(report["capacitor_config"]["appId"], "ai.midad.test")
+            self.assertEqual(
+                [item["package"] for item in report["framework_plugin_inventory"]],
+                ["@capacitor/app", "@capacitor/preferences"],
+            )
+            self.assertGreaterEqual(report["framework_indicators"]["capacitor_bridge"], 1)
+            self.assertGreaterEqual(report["framework_indicators"]["network_calls"], 1)
+            self.assertGreaterEqual(report["indicators"]["message_bridge"], 1)
 
 if __name__ == "__main__":
     unittest.main()
