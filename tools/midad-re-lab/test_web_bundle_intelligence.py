@@ -38,7 +38,7 @@ class WebBundleIntelligenceTests(unittest.TestCase):
             }
             report = analyze_apk_web_bundle(apk, product_manifest=manifest, package_name="ai.midad.test")
 
-            self.assertEqual(report["status"], "completed")
+            self.assertEqual(report["status"], "partial")
             self.assertEqual(report["package_name"], "ai.midad.test")
             self.assertEqual(report["product_key"], "midad-test")
             self.assertEqual(report["file_count"], 6)
@@ -51,6 +51,20 @@ class WebBundleIntelligenceTests(unittest.TestCase):
             self.assertGreaterEqual(report["indicators"]["dynamic_execution"], 1)
             self.assertNotIn("DO_NOT_LEAK", str(report))
             self.assertTrue(report["safety"]["static_only"])
+
+    def test_declared_bundle_without_extras_reports_completed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "clean.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("assets/public/index.html", '<script src="./app.js"></script>')
+                archive.writestr("assets/public/app.js", 'fetch("https://api.example.test/v1");')
+                archive.writestr("assets/public/cordova.js", b"")
+                archive.writestr("assets/public/cordova_plugins.js", b"")
+            manifest = {"product_key": "midad-test", "web_assets": ["mobile/web/app.js"]}
+            report = analyze_apk_web_bundle(apk, product_manifest=manifest)
+            self.assertEqual(report["status"], "completed")
+            self.assertEqual(report["undeclared_files"], [])
+            self.assertEqual(report["missing_files"], [])
 
     def test_reports_missing_manifest_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
