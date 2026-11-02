@@ -12,8 +12,7 @@ MAX_CLASS_RECORDS = 2000
 MAX_METHODS_PER_CLASS = 100
 MAX_STRING_INDICATORS = 500
 
-_DEX_NAME = re.compile(r"^classes(?:[2-9]|[1-9][0-9]+)?\.dex$")
-_SMALI_INVOKE = re.compile(r"\\b(invoke-\\S+)\\s+\\{[^}]*\\},\\s*(L[^;]+;->[^\\s]+)")
+_SMALI_INVOKE = re.compile(r"\b(invoke-\S+)\s+\{[^}]*\},\s*(L[^;]+;->[^\s]+)")
 _SMALI_CATEGORIES = {
     "network": ("Ljava/net/", "Lokhttp3/", "Lretrofit2/", "Lorg/apache/http/"),
     "webview": ("Landroid/webkit/WebView;",),
