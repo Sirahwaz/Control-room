@@ -7,8 +7,10 @@ const workflow = readFileSync(new URL("../.github/workflows/midad-forge.yml", im
 function block(name) {
   const start = workflow.indexOf(`  ${name}:\n`);
   assert.notEqual(start, -1, `missing Forge job: ${name}`);
-  const next = workflow.indexOf("\n  ", start + 4);
-  return workflow.slice(start, next === -1 ? workflow.length : next);
+  const nextJob = /\n  [a-zA-Z0-9_-]+:\n/g;
+  nextJob.lastIndex = start + 4;
+  const next = nextJob.exec(workflow);
+  return workflow.slice(start, next ? next.index : workflow.length);
 }
 
 test("Forge workflow defaults to read-only repository access", () => {
