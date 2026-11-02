@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import { normalizeTaskmarketRail, isSupportedBaseUsdcRail, isSupportedTempoOusdRail, evaluateTaskmarketTempoReceipt, resolveOfficialProofUrl } from "./taskmarket_rail.mjs";
 import { providerCooldownUntil } from "./provider_circuit_breaker.mjs";
+import { evaluateAffiliateProgramEvidence, isAffiliateProgramTask } from "./affiliate_lane.mjs";
 
 const VERSION = 5;
 type PublicFetchResult = { ok: boolean; status: number; url?: string | null; hash?: string | null; excerpt?: string; error?: string; content_type?: string; redirect_not_followed?: boolean; };
@@ -441,6 +442,14 @@ async function processTask(t: any) {
   if (deadlineMs !== null && deadlineMs <= Date.now()) {
     await markStale(String(t.opportunity_id));
     return { queue_status: "COMPLETED", blocker: null, data: { decision: "STALE", reason: "deadline_expired_at_processing_time", deadline: t.deadline, external_action_allowed: false } };
+  }
+  if (isAffiliateProgramTask(t)) {
+    const affiliate = evaluateAffiliateProgramEvidence(t);
+    return {
+      queue_status: affiliate.ready ? "COMPLETED" : "BLOCKED",
+      blocker: affiliate.blockers.join("|") || null,
+      data: affiliate,
+    };
   }
   const role = String(t.agent_role || "");
   if (role === "execution_planner") {
