@@ -67,8 +67,29 @@ def file_digest(path: Path):
             digest.update(chunk)
     return path.stat().st_size, digest.hexdigest()
 
-def run(command):
-    subprocess.run(command, check=True, timeout=300, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+def run_tool(command, tool_name: str):
+    """Run a static-analysis tool and return bounded diagnostics instead of hiding failures."""
+    try:
+        result = subprocess.run(
+            command, check=True, timeout=300,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        return {"status": "completed", "returncode": result.returncode, "error": None}
+    except subprocess.CalledProcessError as exc:
+        output = exc.stdout or exc.output or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", "replace")
+        detail = str(output)[-4096:].strip() or f"{tool_name} exited with status {exc.returncode}"
+        return {"status": "failed", "returncode": exc.returncode, "error": detail}
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", "replace")
+        detail = str(output)[-3500:].strip()
+        suffix = f"Timed out after {exc.timeout} seconds"
+        if detail:
+            suffix += f": {detail}"
+        return {"status": "timeout", "returncode": None, "error": suffix[-4096:]}
 
 def main():
     parser=argparse.ArgumentParser()
@@ -88,8 +109,11 @@ def main():
         size,sha=file_digest(apk)
         source_host="github-actions-artifact"
     decoded=out/"apktool"; decompiled=out/"jadx"
-    run(["java","-jar",args.apktool,"d","-f","-o",str(decoded),str(apk)])
-    run([args.jadx,"-d",str(decompiled),"--deobf",str(apk)])
+    apktool_result = run_tool(["java","-jar",args.apktool,"d","-f","-o",str(decoded),str(apk)], "apktool")
+    if apktool_result["status"] != "completed":
+        raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
+    # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
+    jadx_result = run_tool([args.jadx,"-d",str(decompiled),"--deobf",str(apk)], "jadx")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
     app=manifest.find("application")
@@ -104,12 +128,15 @@ def main():
         native=sorted({n.split("/")[1] for n in names if n.startswith("lib/") and len(n.split("/"))>2})
         assets=sum(1 for n in names if n.startswith("assets/"))
         resources=sum(1 for n in names if n.startswith("res/"))
-    source_count=sum(1 for _ in decompiled.rglob("*.java")) + sum(1 for _ in decompiled.rglob("*.kt"))
+    source_count=(sum(1 for _ in decompiled.rglob("*.java")) + sum(1 for _ in decompiled.rglob("*.kt"))) if jadx_result["status"] == "completed" else 0
     report={"schema":"midad-android-static-v1","generated_at":datetime.now(timezone.utc).isoformat(),
       "input":{"source_url_host":source_host,"bytes":size,"sha256":sha},
       "manifest":{"package":manifest.attrib.get("package"),"version_code":manifest.attrib.get(ANDROID_NS+"versionCode"),"version_name":manifest.attrib.get(ANDROID_NS+"versionName"),"min_sdk":(decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace").split("minSdkVersion:",1)[-1].splitlines()[0].strip() if "minSdkVersion:" in (decoded/"apktool.yml").read_text(encoding="utf-8",errors="replace") else None,"permissions":permissions,"components":components},
       "archive":{"dex_files":dex,"native_abis":native,"asset_file_count":assets,"resource_file_count":resources},
-      "analysis":{"jadx_java_kt_source_file_count":source_count,"jadx":"completed","apktool":"completed"},
+      "analysis":{"status":"completed" if jadx_result["status"] == "completed" else "partial",
+                  "jadx_java_kt_source_file_count":source_count,
+                  "jadx":jadx_result["status"],"jadx_error":jadx_result["error"],
+                  "apktool":apktool_result["status"]},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     if temporary_download: apk.unlink(missing_ok=True)
