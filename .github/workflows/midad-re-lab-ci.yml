@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile analyzers
-        run: python -m py_compile tools/midad-re-lab/analyze_web.py tools/midad-re-lab/analyze_apk.py
+        run: python -m py_compile tools/midad-re-lab/analyze_web.py tools/midad-re-lab/analyze_apk.py tools/midad-re-lab/test_apk_resilience.py
       - name: Verify public-target policy
         working-directory: tools/midad-re-lab
-        run: python -m unittest -v test_web_policy.py
+        run: python -m unittest -v test_web_policy.py test_apk_resilience.py
