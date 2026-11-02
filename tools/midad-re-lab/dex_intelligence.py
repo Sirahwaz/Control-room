@@ -11,7 +11,7 @@ MAX_CLASS_RECORDS = 2000
 MAX_METHODS_PER_CLASS = 100
 MAX_STRING_INDICATORS = 500
 
-_DEX_NAME = re.compile(r"^classes(?:[2-9][0-9]*)?\.dex$")
+_DEX_NAME = re.compile(r"^classes(?:[2-9]|[1-9][0-9]+)?\.dex$")
 _STRING_PATTERNS = (
     ("https_url", re.compile(r"https://[^\s\"'<>]{1,240}", re.IGNORECASE)),
     ("content_uri", re.compile(r"content://[^\s\"'<>]{1,200}", re.IGNORECASE)),
