@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import xml.etree.ElementTree as ET
-from dex_intelligence import analyze_apk_dex
+from dex_intelligence import analyze_apk_dex, summarize_smali_tree
 
 MAX_APK_BYTES = 200 * 1024 * 1024
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
@@ -152,6 +152,7 @@ def main():
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
     dex_report = analyze_apk_dex(apk)
+    dex_report["smali"] = summarize_smali_tree(decoded)
     (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
     permissions=sorted({e.attrib.get(ANDROID_NS+"name","") for e in manifest.findall("uses-permission") if e.attrib.get(ANDROID_NS+"name")})
@@ -180,6 +181,9 @@ def main():
                   "dex_intelligence": {"status":dex_report["status"],"dex_file_count":dex_report["dex_file_count"],
                     "parsed_dex_count":dex_report["parsed_dex_count"],"class_count":dex_report["class_count"],
                     "method_count":dex_report["method_count"],"error_count":len(dex_report["errors"]),
+                    "smali_file_count":dex_report["smali"]["smali_file_count"],
+                    "smali_method_count":dex_report["smali"]["method_definition_count"],
+                    "smali_api_categories":dex_report["smali"]["api_category_counts"],
                     "report":"dex-intelligence-report.json"}},
       "safety":{"static_only":True,"no_install":True,"no_execution":True,"decompiled_sources_not_published":True}}
     (out/"android-static-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
