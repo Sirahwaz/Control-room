@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "supabase/functions/midad_ai_room_status/**"
+      - "supabase/functions/midad_ai_room_preview/**"
       - ".github/workflows/ai-room-live-endpoint.yml"
   push:
     branches:
