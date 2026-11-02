@@ -2,6 +2,10 @@
  * Summarizes independent read-only metric queries.
  * A successful zero is kept; failed metrics are omitted so clients can display a dash.
  */
+/**
+ * @param {Record<string, { count?: number | null, error?: unknown } | null | undefined>} results
+ * @returns {{ counts: Record<string, number>, partial: boolean, unavailable_metrics: string[] }}
+ */
 export function summarizeStatusCounts(results) {
   const counts = {};
   const unavailable_metrics = [];
