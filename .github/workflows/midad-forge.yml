@@ -10,9 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  contents: read
 
 env:
   MIDAD_SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
@@ -22,6 +20,8 @@ env:
 jobs:
   claim:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     outputs:
       claimed: ${{ steps.claim.outputs.claimed }}
       run_id: ${{ steps.claim.outputs.run_id }}
@@ -41,6 +41,8 @@ jobs:
     needs: claim
     if: needs.claim.outputs.claimed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     outputs:
       run_id: ${{ steps.prepare.outputs.run_id }}
     steps:
