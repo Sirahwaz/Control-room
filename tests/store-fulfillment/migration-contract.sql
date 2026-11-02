@@ -40,6 +40,16 @@ begin
     '{"created_by":"midad_public_checkout_v1","product_id":"payment-path-mini-v1"}');
   insert into public.midad_wallet_receipts(id,wallet_id,tx_hash,asset,network,amount,direction,matched_payment_intent_id,mint,commitment,evidence)
   values ('33333333-3333-4333-8333-333333333332','33333333-3333-4333-8333-333333333333','0xabc333','USDC','base',5.000123,'inbound','33333333-3333-4333-8333-333333333331','0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913','finalized','{"independently_verified":true}');
+
+  -- A payment intent cannot be claimed by a second receipt row. The unique
+  -- index is the database-level concurrency guard (not a COUNT(*) pre-check).
+  begin
+    insert into public.midad_wallet_receipts(id,wallet_id,tx_hash,asset,network,amount,direction,matched_payment_intent_id,mint,commitment,evidence)
+    values ('33333333-3333-4333-8333-333333333335','33333333-3333-4333-8333-333333333333','0xabc333-duplicate','USDC','base',5.000123,'inbound','33333333-3333-4333-8333-333333333331','0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913','finalized','{"independently_verified":true}');
+    raise exception 'negative test failed: duplicate matched receipt was accepted';
+  exception when unique_violation then
+    null;
+  end;
   insert into public.midad_store_orders(id,payment_intent_id,product_id,product_name,status,customer_requirements,metadata)
   values ('33333333-3333-4333-8333-333333333334','33333333-3333-4333-8333-333333333331','payment-path-mini-v1','Diagnostic','AWAITING_PAYMENT','Review one public checkout path','{}');
   update public.midad_store_orders set status='PAID',paid_at='2026-10-21T10:00:00Z' where id='33333333-3333-4333-8333-333333333334';
@@ -65,6 +75,18 @@ begin
   if (select status from public.midad_store_fulfillment_jobs where order_id='44444444-4444-4444-8444-444444444444') <> 'WAITING_FOR_INPUT' then
     raise exception 'input guard failed: expected WAITING_FOR_INPUT';
   end if;
+
+  -- Malformed digest lengths are rejected before any fulfillment state transition.
+  begin
+    perform public.midad_complete_store_fulfillment(
+      v_job_id,
+      jsonb_build_object('report','sample report','output_sha256','not-a-sha256'),
+      'not-a-sha256',
+      '{}'::jsonb);
+    raise exception 'negative test failed: malformed SHA-256 was accepted';
+  exception when sqlstate '22023' then
+    if sqlerrm <> 'invalid_fulfillment_artifact' then raise; end if;
+  end;
 
   -- The database validates the actual artifact digest, and successful delivery transitions are idempotent.
   update public.midad_store_fulfillment_jobs set status='PROCESSING' where id=v_job_id;
@@ -102,6 +124,19 @@ begin
   if coalesce((v_result->>'idempotent')::boolean,false) <> true then raise exception 'completion idempotency failed'; end if;
   if (select status from public.midad_store_orders where id=v_order_id) <> 'DELIVERED' then raise exception 'delivery status was not updated'; end if;
   if (select status from public.midad_store_fulfillment_jobs where id=v_job_id) <> 'DELIVERED' then raise exception 'job status was not updated'; end if;
+
+  -- A receipt with the wrong canonical token mint must not enqueue fulfillment.
+  insert into public.midad_payment_intents(id,status,reconciliation_status,amount_fiat,fiat_currency,settlement_asset,network,quoted_crypto_amount,wallet_address,received_tx_hash,verified_at,paid_at,metadata)
+  values ('55555555-5555-4555-8555-555555555551','paid','matched',5,'USD','USDC','base',5.000123,'0x5555555555555555555555555555555555555555','0xwrongmint','2026-10-21T10:00:00Z','2026-10-21T10:00:00Z',
+    '{"created_by":"midad_public_checkout_v1","product_id":"payment-path-mini-v1"}');
+  insert into public.midad_wallet_receipts(id,wallet_id,tx_hash,asset,network,amount,direction,matched_payment_intent_id,mint,commitment,evidence)
+  values ('55555555-5555-4555-8555-555555555552','33333333-3333-4333-8333-333333333333','0xwrongmint','USDC','base',5.000123,'inbound','55555555-5555-4555-8555-555555555551','0x0000000000000000000000000000000000000000','finalized','{"independently_verified":true}');
+  insert into public.midad_store_orders(id,payment_intent_id,product_id,product_name,status,customer_requirements,metadata)
+  values ('55555555-5555-4555-8555-555555555553','55555555-5555-4555-8555-555555555551','payment-path-mini-v1','Diagnostic','AWAITING_PAYMENT','review one public checkout','{}');
+  update public.midad_store_orders set status='PAID',paid_at='2026-10-21T10:00:00Z' where id='55555555-5555-4555-8555-555555555553';
+  if exists(select 1 from public.midad_store_fulfillment_jobs where order_id='55555555-5555-4555-8555-555555555553') then
+    raise exception 'negative test failed: noncanonical token mint created a fulfillment job';
+  end if;
 
   raise notice 'Store fulfillment migration contract tests passed';
 end $$;
