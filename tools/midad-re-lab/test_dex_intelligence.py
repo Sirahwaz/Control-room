@@ -73,19 +73,21 @@ class DexIntelligenceTests(unittest.TestCase):
     def test_processes_all_dex_files_and_preserves_partial_failures(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp) / "multi.apk"
+            dex_one = bytes.fromhex("6465780a30333500") + b"one"
+            dex_two = bytes.fromhex("6465780a30333500") + b"two"
             with zipfile.ZipFile(apk, "w") as archive:
-                archive.writestr("classes.dex", b"dex\\n035\\x00one")
-                archive.writestr("classes2.dex", b"dex\\n035\\x00two")
+                archive.writestr("classes.dex", dex_one)
+                archive.writestr("classes2.dex", dex_two)
             calls = []
 
             def factory(raw):
                 calls.append(raw)
-                if raw == b"dex\\n035\\x00two":
+                if raw == dex_two:
                     raise ValueError("malformed dex fixture")
                 return FakeDex([], [])
 
             report = analyze_apk_dex(apk, dex_factory=factory)
-            self.assertEqual(calls, [b"dex\\n035\\x00one", b"dex\\n035\\x00two"])
+            self.assertEqual(calls, [dex_one, dex_two])
             self.assertEqual(report["dex_file_count"], 2)
             self.assertEqual(report["parsed_dex_count"], 1)
             self.assertEqual(report["status"], "partial")
