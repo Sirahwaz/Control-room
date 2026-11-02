@@ -151,7 +151,7 @@ def main():
         raise RuntimeError(f"APKTOOL_{apktool_result['status'].upper()}: {apktool_result['error']}")
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
-    dex_report = analyze_apk_dex(apk)
+    dex_report = analyze_apk_dex(apk, apk_sha256=sha)
     dex_report["smali"] = summarize_smali_tree(decoded)
     (out/"dex-intelligence-report.json").write_text(json.dumps(dex_report,ensure_ascii=False,indent=2),encoding="utf-8")
     manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
