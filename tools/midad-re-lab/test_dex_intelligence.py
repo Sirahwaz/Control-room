@@ -87,11 +87,13 @@ class DexIntelligenceTests(unittest.TestCase):
                     raise ValueError("malformed dex fixture")
                 return FakeDex([], [])
 
-            report = analyze_apk_dex(apk, dex_factory=factory)
+            report = analyze_apk_dex(apk, dex_factory=factory, apk_sha256='a' * 64)
             self.assertEqual(calls, [dex_one, dex_two])
             self.assertEqual(report["dex_file_count"], 2)
             self.assertEqual(report["parsed_dex_count"], 1)
             self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["apk_sha256"], "a" * 64)
+            self.assertEqual(len(report["dex_files"][0]["sha256"]), 64)
             self.assertIn("malformed dex fixture", report["errors"][0]["error"])
 
     def test_smali_inventory_counts_methods_and_api_categories_without_source(self):
