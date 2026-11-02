@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import zipfile
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from typing import Callable, Any
 
 MAX_DEX_FILES = 16
@@ -80,7 +81,11 @@ def summarize_dex(dex_name: str, dex_obj: Any) -> dict:
             continue
         for kind, pattern in _STRING_PATTERNS:
             for match in pattern.findall(value):
-                item = (kind, match[:512])
+                safe_value = match[:512]
+                if kind in ("https_url", "content_uri", "file_uri"):
+                    parts = urlsplit(safe_value)
+                    safe_value = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+                item = (kind, safe_value)
                 if item not in seen:
                     seen.add(item)
                     indicators.append({"type": kind, "value": item[1]})
@@ -109,14 +114,19 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
     factory = dex_factory or _default_dex_factory
     try:
         with zipfile.ZipFile(apk_path) as archive:
-            names = sorted(
+            all_names = sorted(
                 (name for name in archive.namelist() if _is_dex_name(name)),
                 key=lambda name: (0 if name == "classes.dex" else int(name[7:-4])),
             )
-            if len(names) > MAX_DEX_FILES:
-                names = names[:MAX_DEX_FILES]
+            names = all_names[:MAX_DEX_FILES]
             results = []
             errors = []
+            if len(all_names) > MAX_DEX_FILES:
+                errors.append({
+                    "dex_name": None,
+                    "error": "DEX_FILE_LIMIT_EXCEEDED",
+                    "omitted_count": len(all_names) - MAX_DEX_FILES,
+                })
             for name in names:
                 info = archive.getinfo(name)
                 if info.file_size > MAX_DEX_BYTES:
@@ -142,7 +152,7 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
         }
 
     parsed = len(results)
-    total = len(names)
+    total = len(all_names)
     status = "completed" if total and parsed == total and not errors else (
         "partial" if parsed else "failed"
     )
