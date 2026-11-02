@@ -13,6 +13,58 @@ MAX_METHODS_PER_CLASS = 100
 MAX_STRING_INDICATORS = 500
 
 _DEX_NAME = re.compile(r"^classes(?:[2-9]|[1-9][0-9]+)?\.dex$")
+_SMALI_INVOKE = re.compile(r"\\b(invoke-\\S+)\\s+\\{[^}]*\\},\\s*(L[^;]+;->[^\\s]+)")
+_SMALI_CATEGORIES = {
+    "network": ("Ljava/net/", "Lokhttp3/", "Lretrofit2/", "Lorg/apache/http/"),
+    "webview": ("Landroid/webkit/WebView;",),
+    "reflection": ("Ljava/lang/reflect/",),
+    "dynamic_code_loading": ("Ldalvik/system/DexClassLoader;", "Ldalvik/system/PathClassLoader;", "Ljava/lang/ClassLoader;->loadClass"),
+    "cryptography": ("Ljavax/crypto/", "Ljava/security/"),
+    "location": ("Landroid/location/",),
+    "sms": ("Landroid/telephony/SmsManager;",),
+    "accessibility": ("Landroid/accessibilityservice/",),
+    "process_execution": ("Ljava/lang/Runtime;->exec", "Ljava/lang/ProcessBuilder;"),
+    "device_identifiers": ("Landroid/telephony/TelephonyManager;->getDeviceId", "Landroid/telephony/TelephonyManager;->getImei"),
+}
+
+
+def summarize_smali_tree(decoded_root: Path) -> dict:
+    """Summarize APKtool Smali output without copying source code into reports."""
+    files = sorted(decoded_root.glob("smali*/**/*.smali"))
+    counts = {name: 0 for name in _SMALI_CATEGORIES}
+    samples = {name: [] for name in _SMALI_CATEGORIES}
+    method_count = 0
+    invoke_count = 0
+    for path in files:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith(".method "):
+                method_count += 1
+            match = _SMALI_INVOKE.search(stripped)
+            if not match:
+                continue
+            invoke_count += 1
+            reference = match.group(2)
+            for category, prefixes in _SMALI_CATEGORIES.items():
+                if any(prefix in reference for prefix in prefixes):
+                    counts[category] += 1
+                    if len(samples[category]) < 30 and reference not in samples[category]:
+                        samples[category].append(reference[:240])
+    return {
+        "status": "completed" if files else "unavailable",
+        "smali_file_count": len(files),
+        "method_definition_count": method_count,
+        "invoke_reference_count": invoke_count,
+        "api_category_counts": counts,
+        "api_reference_samples": samples,
+        "source_code_included": False,
+    }
+
+
 _STRING_PATTERNS = (
     ("https_url", re.compile(r"https://[^\s\"'<>]{1,240}", re.IGNORECASE)),
     ("content_uri", re.compile(r"content://[^\s\"'<>]{1,200}", re.IGNORECASE)),
