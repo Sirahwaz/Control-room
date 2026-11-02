@@ -74,13 +74,13 @@ class DexIntelligenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp) / "multi.apk"
             with zipfile.ZipFile(apk, "w") as archive:
-                archive.writestr("classes.dex", b"dex-one")
-                archive.writestr("classes2.dex", b"dex-two")
+                archive.writestr("classes.dex", b"dex\\n035\\x00one")
+                archive.writestr("classes2.dex", b"dex\\n035\\x00two")
             calls = []
 
             def factory(raw):
                 calls.append(raw)
-                if raw == b"dex-two":
+                if raw == b"dex\\n035\\x00two":
                     raise ValueError("malformed dex fixture")
                 return FakeDex([], [])
 
