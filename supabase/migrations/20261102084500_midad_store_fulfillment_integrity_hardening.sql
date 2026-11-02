@@ -3,7 +3,7 @@
 -- A payment intent may be bound to at most one matched wallet receipt. The guard
 -- aborts safely if historical data violates that invariant; the partial unique
 -- index then serializes concurrent attempts to claim the same intent.
-do $
+do $guard$
 begin
   if exists (
     select 1
@@ -15,7 +15,7 @@ begin
     raise exception 'midad_wallet_receipt_intent_uniqueness_aborted_existing_duplicates';
   end if;
 end;
-$;
+$guard$;
 
 create unique index if not exists midad_wallet_receipts_matched_intent_uidx
   on public.midad_wallet_receipts (matched_payment_intent_id)
