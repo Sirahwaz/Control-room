@@ -11,7 +11,6 @@ export function isReceiptMonitorRouteEligible(
   return route.active === true && route.route_kind === "receive";
 }
 
-
 export interface SolanaReceiptReadinessInput {
   paymentVerifierReady?: unknown;
   signatureScanComplete?: unknown;
