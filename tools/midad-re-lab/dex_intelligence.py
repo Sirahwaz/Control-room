@@ -28,30 +28,47 @@ _SMALI_CATEGORIES = {
 }
 
 
-def summarize_smali_tree(decoded_root: Path) -> dict:
+def summarize_smali_tree(decoded_root: Path, package_name: str | None = None) -> dict:
     """Summarize APKtool Smali output without copying source code into reports."""
     files = sorted(decoded_root.glob("smali*/**/*.smali"))
     counts = {name: 0 for name in _SMALI_CATEGORIES}
     samples = {name: [] for name in _SMALI_CATEGORIES}
     method_count = 0
     invoke_count = 0
+    package_prefix = "L" + package_name.replace(".", "/") + "/" if package_name else None
+    first_party_files = 0
+    first_party_method_count = 0
+    first_party_invoke_count = 0
+    first_party_counts = {name: 0 for name in _SMALI_CATEGORIES}
     for path in files:
         try:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
+        first_party = False
         for line in lines:
             stripped = line.strip()
+            if stripped.startswith(".class "):
+                descriptor = stripped.split()[-1]
+                first_party = bool(package_prefix and descriptor.startswith(package_prefix))
+                if first_party:
+                    first_party_files += 1
             if stripped.startswith(".method "):
                 method_count += 1
+                if first_party:
+                    first_party_method_count += 1
             match = _SMALI_INVOKE.search(stripped)
             if not match:
                 continue
             invoke_count += 1
+            if first_party:
+                first_party_invoke_count += 1
             reference = match.group(2)
             for category, prefixes in _SMALI_CATEGORIES.items():
                 if any(prefix in reference for prefix in prefixes):
                     counts[category] += 1
+                    if first_party:
+                        first_party_counts[category] += 1
                     if len(samples[category]) < 30 and reference not in samples[category]:
                         samples[category].append(reference[:240])
     return {
@@ -61,6 +78,11 @@ def summarize_smali_tree(decoded_root: Path) -> dict:
         "invoke_reference_count": invoke_count,
         "api_category_counts": counts,
         "api_reference_samples": samples,
+        "first_party_smali_file_count": first_party_files,
+        "first_party_method_definition_count": first_party_method_count,
+        "first_party_invoke_reference_count": first_party_invoke_count,
+        "first_party_api_category_counts": first_party_counts,
+        "package_name": package_name,
         "source_code_included": False,
     }
 
@@ -100,15 +122,22 @@ def _safe_call(obj: Any, method_name: str, default=None):
         return default
 
 
-def summarize_dex(dex_name: str, dex_obj: Any, dex_sha256: str | None = None, byte_size: int | None = None) -> dict:
+def summarize_dex(dex_name: str, dex_obj: Any, dex_sha256: str | None = None, byte_size: int | None = None, package_name: str | None = None) -> dict:
     classes = list(_safe_call(dex_obj, "get_classes", []) or [])
     strings = list(_safe_call(dex_obj, "get_strings", []) or [])
     class_records = []
     method_count = 0
+    app_owned_class_count = 0
+    app_owned_method_count = 0
+    package_prefix = "L" + package_name.replace(".", "/") + "/" if package_name else None
 
     for cls in classes:
+        class_name = _safe_call(cls, "get_name", "")
         methods = list(_safe_call(cls, "get_methods", []) or [])
         method_count += len(methods)
+        if package_prefix and class_name.startswith(package_prefix):
+            app_owned_class_count += 1
+            app_owned_method_count += len(methods)
         if len(class_records) >= MAX_CLASS_RECORDS:
             continue
         method_records = []
@@ -155,6 +184,9 @@ def summarize_dex(dex_name: str, dex_obj: Any, dex_sha256: str | None = None, by
         "status": "completed",
         "class_count": len(classes),
         "method_count": method_count,
+        "app_owned_class_count": app_owned_class_count,
+        "app_owned_method_count": app_owned_method_count,
+        "package_name": package_name,
         "string_count": len(strings),
         "class_records_truncated": max(0, len(classes) - len(class_records)),
         "classes": class_records,
@@ -163,7 +195,7 @@ def summarize_dex(dex_name: str, dex_obj: Any, dex_sha256: str | None = None, by
     }
 
 
-def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None = None, apk_sha256: str | None = None) -> dict:
+def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None = None, apk_sha256: str | None = None, package_name: str | None = None) -> dict:
     """Parse every canonical DEX entry without installing or executing the APK."""
     factory = dex_factory or _default_dex_factory
     try:
@@ -190,7 +222,7 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
                     raw = archive.read(name)
                     if not raw.startswith(b"dex\n"):
                         raise ValueError("INVALID_DEX_MAGIC")
-                    results.append(summarize_dex(name, factory(raw), hashlib.sha256(raw).hexdigest(), len(raw)))
+                    results.append(summarize_dex(name, factory(raw), hashlib.sha256(raw).hexdigest(), len(raw), package_name))
                 except Exception as exc:
                     errors.append({"dex_name": name, "error": str(exc)[:512]})
     except (OSError, zipfile.BadZipFile) as exc:
@@ -201,6 +233,8 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
             "parsed_dex_count": 0,
             "class_count": 0,
             "method_count": 0,
+            "app_owned_class_count": 0,
+            "app_owned_method_count": 0,
             "errors": [{"dex_name": None, "error": str(exc)[:512]}],
             "dex_files": [],
         }
@@ -213,11 +247,14 @@ def analyze_apk_dex(apk_path: Path, dex_factory: Callable[[bytes], Any] | None =
     return {
         "schema": "midad-dex-intelligence-v1",
         "apk_sha256": apk_sha256,
+        "package_name": package_name,
         "status": status,
         "dex_file_count": total,
         "parsed_dex_count": parsed,
         "class_count": sum(item["class_count"] for item in results),
         "method_count": sum(item["method_count"] for item in results),
+        "app_owned_class_count": sum(item["app_owned_class_count"] for item in results),
+        "app_owned_method_count": sum(item["app_owned_method_count"] for item in results),
         "errors": errors,
         "dex_files": results,
         "safety": {"static_only": True, "no_install": True, "no_execution": True},
