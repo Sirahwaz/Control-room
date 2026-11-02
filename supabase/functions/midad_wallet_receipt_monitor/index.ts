@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
-import { isReceiptMonitorRouteEligible } from "./route-policy.ts";
+import { evaluateSolanaReceiptReadiness, isReceiptMonitorRouteEligible } from "./route-policy.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -268,10 +268,16 @@ async function scanRoute(route:any){
    paymentVerifierCalls+=Number(reconciliation.payment_verifier_calls||0);
    receipts.push({receipt_id:receiptId||null,tx_hash:signature,amount,evidence_status:reconciliation.payment_intent_matched?"ONCHAIN_FINALIZED_MATCHED":"ONCHAIN_FINALIZED_UNMATCHED",...reconciliation});
  }
- const receiptReadiness=paymentReconciliationReady&&signatureScanComplete;
- const senderAtaCreationSupported=receiptReadiness;
- const stateStatus=accounts.length?"VERIFIED":senderAtaCreationSupported?"READY_AWAITING_FIRST_TOKEN_ACCOUNT":"NO_TOKEN_ACCOUNT";
- const readinessReason=!paymentReconciliationReady?"strict_payment_verifier_not_ready":!signatureScanComplete?"signature_scan_incomplete":!accounts.length?"sender_ata_creation_supported":null;
+ const readiness=evaluateSolanaReceiptReadiness({
+   paymentVerifierReady:paymentReconciliationReady,
+   signatureScanComplete,
+   tokenAccountCount:accounts.length,
+   senderAtaCreationSupported:route.metadata?.sender_ata_creation_supported===true&&route.metadata?.sender_ata_creation_evidence_verified===true,
+ });
+ const receiptReadiness=readiness.paymentReconciliationReady;
+ const senderAtaCreationSupported=readiness.senderAtaCreationSupported;
+ const stateStatus=readiness.stateStatus;
+ const readinessReason=readiness.readinessReason;
  const metadata={provider:"solana_rpc",asset,wallet_address:wallet.address,mint,token_decimals:decimalsExpected,token_accounts:accounts.length,scanned_signatures:signatures.size,receipt_count:receipts.length,payment_verifier_calls:paymentVerifierCalls,payment_reconciliation_ready:receiptReadiness,sender_ata_creation_supported:senderAtaCreationSupported,readiness_reason:readinessReason,signature_scan_complete:signatureScanComplete,signature_cursors_by_account:signatureCursorsByAccount,settlement_performed:false};
  const lastSlot=[...signatures.values()].reduce((m:number,x:any)=>Math.max(m,Number(x.slot||0)),0)||null;
  await d.unsafe("insert into public.midad_wallet_monitor_state(route_id,last_scan_at,last_signature,last_slot,latest_balance,latest_balance_updated_at,status,error_count,last_error,metadata,updated_at) values($1,now(),$2,$3,$4,now(),$5,0,null,$6::jsonb,now()) on conflict(route_id) do update set last_scan_at=excluded.last_scan_at,last_signature=excluded.last_signature,last_slot=excluded.last_slot,latest_balance=excluded.latest_balance,latest_balance_updated_at=excluded.latest_balance_updated_at,status=excluded.status,error_count=0,last_error=null,metadata=excluded.metadata,updated_at=now()",[route.id,[...signatures.keys()][0]||null,lastSlot,balanceRaw/Math.pow(10,decimalsExpected),stateStatus,metadata]);
