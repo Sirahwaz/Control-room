@@ -44,5 +44,5 @@ test("affiliate opportunities use the separate fail-closed lane before generic p
   const affiliateGate = source.indexOf("if (isAffiliateProgramTask(t))", processStart);
   const genericRole = source.indexOf('const role = String(t.agent_role || "");', processStart);
   assert.ok(processStart >= 0 && affiliateGate > processStart && genericRole > affiliateGate);
-  assert.match(source.slice(affiliateGate, genericRole), /external_action_allowed/);
+  assert.match(source.slice(affiliateGate, genericRole), /queue_status: affiliate.ready \? "COMPLETED" : "BLOCKED"/);
 });
