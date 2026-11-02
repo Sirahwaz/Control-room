@@ -18,7 +18,7 @@ Read-only retrieval from Supabase project `froegigfmpmvtecztfbf` on 2026-11-02:
 - Agent identity and event evidence is bounded to 200 identities and 50 events, with deterministic read-only readiness synthesis.
 - Response guards disable mutations, financial actions, and model calls.
 - Preview endpoint accepts GET only and redirects to the fixed GitHub Pages AI Room page; non-GET requests receive 405.
-- No secret or private-key material was found in the retrieved status/preview source files. The service-role key is read only from the Supabase environment.
+- No secret or private-key material was found in the retrieved status/preview source files. The service-role key is read only from the Supabase environment. The captured deployment SHA records the original deployed bundle; repository-only JSDoc annotations do not alter runtime behavior.
 
 ## Deliberate exclusion
 
