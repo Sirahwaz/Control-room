@@ -11,7 +11,7 @@ Read-only retrieval from Supabase project `froegigfmpmvtecztfbf` on 2026-11-02:
 
 ## Verified behavior
 
-- The Telegram `/airoom` command opens the fixed static AI Room preview; the existing main-menu URL remains unchanged.
+- The Telegram `/airoom` command opens the fixed static AI Room preview; the existing main-menu URL remains unchanged. The deployed metadata version is 101, while the function's internal diagnostic payload still reports code version 97; this discrepancy is recorded, not rewritten.
 - `/trade` and `/mysun` delegate to `midad_noncopy_trading_engine` with `mode: "run"`.
 - The deployed engine explicitly returns and enforces `paper_only: true` and `live_execution: false`.
 - The engine writes only to `signal_events` (upsert) and `midad_paper_trades` (insert). It reads market/telemetry, prior outcomes, and feedback; no exchange order placement, withdrawal, transfer, signing, or transaction API path was found.
