@@ -6,6 +6,8 @@ on:
     paths:
       - "ai-room.html"
       - "tests/ai-room-static.test.mjs"
+      - "tests/ai-room-read-model.test.mjs"
+      - "tests/ai-room-preview-contract.test.mjs"
       - "supabase/functions/midad_ai_room_preview/**"
       - "supabase/functions/midad_ai_room_status/**"
       - ".github/workflows/ai-room-tests.yml"
@@ -14,6 +16,10 @@ on:
     paths:
       - "ai-room.html"
       - "tests/ai-room-static.test.mjs"
+      - "tests/ai-room-read-model.test.mjs"
+      - "tests/ai-room-preview-contract.test.mjs"
+      - "supabase/functions/midad_ai_room_status/**"
+      - "supabase/functions/midad_ai_room_preview/**"
       - ".github/workflows/ai-room-tests.yml"
   workflow_dispatch:
 
