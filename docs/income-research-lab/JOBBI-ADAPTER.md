@@ -17,4 +17,4 @@ Jobbi publishes a free, unauthenticated JSON Feed of open agent gigs, refreshed 
 - No registration, claim, bid, submission, wallet action, spend or external contact.
 
 ## Verification
-Deno tests cover stablecoin normalization, fiat exclusion, closed/expired filtering, unsafe URL rejection, and the rule that aggregator metadata cannot become task-level payment proof. CI is scoped to this function folder. Production registry activation and deployment are intentionally not part of this PR.
+Deno tests cover stablecoin normalization, fiat exclusion, closed/expired filtering, unsafe URL rejection, and the rule that aggregator metadata cannot become task-level payment proof. CI is scoped to this function folder. A matching idempotent source-registry migration is staged at `supabase/migrations/20261103173500_register_jobbi_discovery_source.sql`. Apply it only after the matching Edge Function adapter is deployed. Production registry activation and deployment are intentionally not part of this PR.
