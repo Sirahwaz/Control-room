@@ -28,7 +28,7 @@ async function processOne(){
    ORDER BY q.priority DESC,q.value_score DESC,q.novelty_score DESC,q.created_at ASC
    LIMIT 1 FOR UPDATE OF q SKIP LOCKED`;
   if(!rows.length)return null;
-  const task=rows[0];
+  const task:any=rows[0];
   await tx`UPDATE public.midad_research_queue SET status='RUNNING',attempts=attempts+1,started_at=now(),metadata=metadata || '{"worker":"midad_revenue_intel_research_worker_v1","execution":"public_source_research"}'::jsonb WHERE id=${task.id}`;
   await tx`UPDATE public.midad_research_runs SET status='running',started_at=coalesce(started_at,now()),updated_at=now() WHERE id=${task.source_run_id}`;
   return {...task,attempts:Number(task.attempts||0)+1};
