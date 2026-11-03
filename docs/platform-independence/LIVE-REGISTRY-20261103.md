@@ -447,3 +447,13 @@ All 152 public tables are owned by `postgres`. Public routines: 38 (31 PL/pgSQL,
 **Reconciliation note:** the earlier verbose table-metadata response yielded a summed foreign-key count of 234, which does not reconcile with the direct catalog count of 132. Use the direct `pg_constraint` count (132) and total 572 as the authoritative values for this registry; the metadata endpoint's foreign-key aggregate requires separate validation before relying on it.
 
 The 28 SECURITY DEFINER routines and Vault-related functions are portability/security-critical. Their bodies and EXECUTE grants must be captured and reviewed before migration. No grants, owners, policies, or routine definitions were changed.
+
+ 
+### Repository archive verification
+
+A post-write comparison against live Supabase source confirms that these two recovered files are present on this branch and byte-for-byte identical to their deployed entrypoints:
+
+- `supabase/functions/midad_income_factory/index.ts` — live v27, exact match, 9,996 characters, secret-pattern scan CLEAR.
+- `supabase/functions/midad_money_hunter/index.ts` — live v57, exact match, 63,862 characters, secret-pattern scan CLEAR.
+
+The other three retrieved sources (`midad_paid_revenue_feed`, `midad_revenue_recovery`, `midad_opportunity_engine`) were **not** found in the branch after the write attempt. Do not treat them as archived. No production deployment was performed. The two archived functions remain recovery baselines only; deployment requires dependency review and tests.
