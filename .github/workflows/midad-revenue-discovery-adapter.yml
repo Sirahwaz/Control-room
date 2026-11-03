@@ -14,5 +14,6 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.1.4
+      # Includes USDC/BTC Jobbi feed normalization, endpoint pinning, and source bootstrap checks.
       - name: Test revenue discovery provider adapters
         run: deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts
