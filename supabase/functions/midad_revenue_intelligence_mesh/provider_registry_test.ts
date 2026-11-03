@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isSafeMappedJsonSource, normalizeMappedJsonFeed, resolveRevenueParser } from "./provider_registry.ts";
+import { isSafeMappedJsonSource, normalizeMappedJsonFeed, normalizeJobbiJsonFeed, resolveRevenueParser } from "./provider_registry.ts";
 
 const source = {
   slug: "provider_alpha",
@@ -50,4 +50,76 @@ Deno.test("mapped JSON source trust checks happen before any provider fetch", as
   const fetchStart = engine.indexOf("const r=await fetchJson(f.url,authHeaders);", workerStart);
   const guardStart = engine.indexOf("isSafeMappedJsonSource", workerStart);
   assertEquals(workerStart >= 0 && guardStart > workerStart && fetchStart > guardStart, true);
+});
+
+
+Deno.test("Jobbi adapter keeps crypto discovery separate from payment proof", () => {
+  const now = new Date("2026-11-03T00:00:00.000Z");
+  const rows = normalizeJobbiJsonFeed({
+    version: "https://jsonfeed.org/version/1.1",
+    items: [
+      {
+        id: "agent-bounties:task-001",
+        title: "Build an API integration",
+        url: "https://jobs.sample.org/tasks/001",
+        content_text: "Deliver a tested API connector.",
+        tags: ["api", "automation"],
+        _jobbi: {
+          source: "agent-bounties",
+          claims_open: true,
+          expires: "2026-11-09T00:00:00.000Z",
+          payment_state: "escrowed",
+          payout_grade: "A-",
+          reward: { amount: 25, currency: "USDC", rail: "usdc-base" }
+        }
+      },
+      {
+        id: "fiat:task-002",
+        title: "Write a report",
+        url: "https://example.org/tasks/002",
+        content_text: "A report task paid in USD.",
+        _jobbi: {
+          source: "fiat-board",
+          claims_open: true,
+          expires: "2026-11-09T00:00:00.000Z",
+          reward: { amount: 100, currency: "USD", rail: "stripe" }
+        }
+      },
+      {
+        id: "closed:task-003",
+        title: "Closed task",
+        url: "https://example.org/tasks/003",
+        _jobbi: { source: "board", claims_open: false, reward: { amount: 5, currency: "USDC", rail: "base" } }
+      },
+      {
+        id: "expired:task-004",
+        title: "Expired task",
+        url: "https://example.org/tasks/004",
+        _jobbi: { source: "board", claims_open: true, expires: "2026-11-02T00:00:00.000Z", reward: { amount: 5, currency: "USDC", rail: "base" } }
+      },
+      {
+        id: "unsafe:task-005",
+        title: "Unsafe link",
+        url: "javascript:alert(1)",
+        _jobbi: { source: "board", claims_open: true, reward: { amount: 5, currency: "USDC", rail: "base" } }
+      }
+    ]
+  }, { slug: "jobbi_gigs_index", url: "https://jobbi.org/gigs.json", max_items: 50 }, now);
+
+  assertEquals(rows.length, 2);
+  const crypto = rows.find((row: any) => row.externalId === "agent-bounties:task-001");
+  const fiat = rows.find((row: any) => row.externalId === "fiat:task-002");
+  assertEquals([crypto?.asset, crypto?.network, crypto?.paymentProof, crypto?.payoutProofStatus, crypto?.escrowFunded],
+    ["USDC", "Base", false, "unverified", null]);
+  assertEquals([fiat?.asset, fiat?.amount], [null, null]);
+});
+
+Deno.test("Jobbi adapter rejects missing identifiers and unsafe external URLs", () => {
+  const rows = normalizeJobbiJsonFeed({
+    items: [
+      { title: "Missing ID", url: "https://example.org/a", _jobbi: { claims_open: true } },
+      { id: "bad-url", title: "Bad URL", url: "http://127.0.0.1/private", _jobbi: { claims_open: true } }
+    ]
+  }, { slug: "jobbi_gigs_index", url: "https://jobbi.org/gigs.json" }, new Date("2026-11-03T00:00:00.000Z"));
+  assertEquals(rows.length, 0);
 });
