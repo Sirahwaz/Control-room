@@ -14,7 +14,7 @@ StageShow is a visual-authoring layer for product UI stills and cursor-led demon
 2. Use existing analyzers (`analyze_web.py`, `analyze_apk.py`, `dex_intelligence.py`, `web_bundle_intelligence.py`) for evidence collection and technical analysis.
 3. Use StageShow only after the screen/flow specification is grounded in evidence, or to create original MIDAD product visuals.
 4. Never copy third-party logos, proprietary assets, private content or protected branding.
-5. Clearly label authored scenes as illustrative. An animation does not prove an action occurred.
+5. Clearly label authored scenes as illustrative. An animation does not prove an action occurred or constitute runtime evidence.
 6. Respect reduced-motion preferences and review desktop and 390px layouts before treating a visual as complete.
 7. Keep dependencies isolated to `lab/stageshow`; do not add StageShow dependencies to production bundles.
 
