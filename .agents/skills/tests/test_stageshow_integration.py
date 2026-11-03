@@ -22,6 +22,12 @@ class StageShowIntegrationTests(unittest.TestCase):
         self.assertIn("PENDING", guide)
         self.assertIn("dependency audit", guide)
 
+    def test_reference_pack_is_complete(self):
+        refs = ROOT / "stageshow" / "references"
+        required = ["annotations.md", "backgrounds.md", "bento.md", "brands.md", "choreography.md", "craft.md", "framing.md", "kit.md", "looks.md", "motion.md", "products.md", "rehearse.md", "review.md", "teaching.md", "verify.md"]
+        self.assertEqual(len(required), 15)
+        self.assertTrue(all((refs / name).is_file() for name in required))
+
     def test_lab_and_top_level_router_register_stageshow(self):
         lab = (ROOT / "midad-replica-lab" / "SKILL.md").read_text(encoding="utf-8")
         router = (ROOT / "midad-intelligence-force-super" / "SKILL.md").read_text(encoding="utf-8")
