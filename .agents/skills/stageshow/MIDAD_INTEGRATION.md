@@ -1,5 +1,11 @@
 # StageShow × MIDAD Reverse Engineering Lab
 
+## Source provenance
+
+Upstream: https://github.com/benjitaylor/skills/tree/802057409787133703c56001080169e347305572/stageshow
+
+Pinned upstream revision: `802057409787133703c56001080169e347305572`.
+
 ## Purpose
 
 StageShow is a visual-authoring skill and React/CSS kit for high-fidelity product mockups, interface illustrations and short cursor-led demos. It is a presentation layer for approved Lab findings, not an APK/web analyzer, reverse-engineering engine, browser automation agent or replacement for the existing Lab/Factory pipeline.
