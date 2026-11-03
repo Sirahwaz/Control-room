@@ -10,8 +10,8 @@ export default defineConfig({
   publicDir: false,
   plugins: [react()],
   build: {
-    outDir: repositoryRoot,
-    emptyOutDir: false,
+    outDir: resolve(process.cwd(), 'dist'),
+    emptyOutDir: true,
     assetsDir: '.',
     cssCodeSplit: false,
     rollupOptions: {
