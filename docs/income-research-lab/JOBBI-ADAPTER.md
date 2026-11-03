@@ -8,7 +8,7 @@
 Jobbi publishes a free, unauthenticated JSON Feed of open agent gigs, refreshed hourly, with stable IDs, original board URLs, reward currency/rail, payment state, payout grade, expiry and source board metadata. Its current index snapshot reported 703 open gigs across 12 boards on 3 November 2026. This is a discovery index, not a payer; many listings are fiat-only and must be filtered out.
 
 ## Adapter contract
-- Read only `https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50`.
+- Read two pinned feeds hourly: `https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50` and `https://jobbi.org/gigs.json?lane=agent&currency=BTC&limit=50`.
 - Preserve original board URL and stable external ID.
 - Normalize USDC/USDT only as numeric stablecoin reward amounts; other crypto assets remain native-unit evidence and fiat currencies are not classified as crypto.
 - Require HTTPS external links and reject private/internal hosts, unsafe protocols, missing IDs and expired/closed tasks.
@@ -17,4 +17,4 @@ Jobbi publishes a free, unauthenticated JSON Feed of open agent gigs, refreshed 
 - No registration, claim, bid, submission, wallet action, spend or external contact.
 
 ## Verification
-Deno tests cover stablecoin normalization, fiat exclusion, closed/expired filtering, unsafe URL rejection, and the rule that aggregator metadata cannot become task-level payment proof. CI is scoped to this function folder. A matching idempotent source-registry migration is staged at `supabase/migrations/20261103173500_register_jobbi_discovery_source.sql`. Apply it only after the matching Edge Function adapter is deployed. Production registry activation and deployment are intentionally not part of this PR.
+Deno tests cover stablecoin normalization, fiat exclusion, closed/expired filtering, unsafe URL rejection, and the rule that aggregator metadata cannot become task-level payment proof. CI is scoped to this function folder. A matching idempotent source-registry migration is staged at `supabase/migrations/20261103173500_register_jobbi_discovery_source.sql`. Apply it only after the matching Edge Function adapter is deployed. The mesh idempotently bootstraps two `midad_income_sources` rows (USDC and BTC) at discovery time, then rate-limits Jobbi to one poll per hour using `last_feed_checked_at`. It also excludes the previously repeated LaborX and Superteam source slugs from its discovery query. These behaviors are staged in code only; they take effect in production only after the tested Edge Function is deployed.
