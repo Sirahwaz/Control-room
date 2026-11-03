@@ -527,3 +527,22 @@ This snapshot was gathered through connected GitHub, Supabase, Railway, and Noti
 2. Trace the public checkout route and its invocation/authentication path; the absence of checkout requests is a stronger lead than adding more opportunity discovery.
 3. Select at most a small number of income sources for official payout verification, prioritizing existing active accounts and zero-upfront-cost paths.
 4. Preserve all production state; no DDL, ACL, cron, financial, or deployment changes were made in this snapshot.
+
+
+### External payout-policy verification — 2026-11-03
+
+Official/public policy spot-check for existing source candidates (policy support is not proof that this user's account is eligible or that a specific listing will pay):
+
+- **LaborX** — its FAQ states support for Ethereum and BNB Chain payments, including USDC and USDT on both; it also states a 10% platform fee for completed jobs/gigs. This is the closest documented fit to low-fee stablecoin rails in the current source list, subject to checking the specific job's escrow, chain, fee, and account status. Source: https://laborx.com/
+- **HackerOne** — its current payment preferences documentation lists direct BTC and USDC wallet payouts, with a $15 minimum for BTC/USDC; it requires identity verification, a valid payment method, and an approved tax form. The documentation specifies USDC on Ethereum/ERC-20, so network fees must be included. Source: https://docs.hackerone.com/en/articles/8395720-payment-preferences
+- **Bugcrowd** — standard methods are bank transfer and PayPal; Bitcoin is available only for select researchers/programs. Do not classify Bugcrowd as a generally crypto-payable lane until the specific program/account shows Bitcoin eligibility. Sources: https://docs.bugcrowd.com/researchers/payments/setting-up-payment-methods/ and https://docs.bugcrowd.com/researchers/payments/setting-up-payment-methods/setting-up-bitcoin-payment-method/
+- **Superteam Earn** — its FAQ distinguishes Superteam/Solana-sponsored listings (winner payment form, KYC, expected payment within 7 days after submitting the form) from external-sponsor listings (generally paid to the winner's associated wallet, with sponsor-specific invoice/KYC exceptions). Verify sponsor and payout terms per listing; a displayed USDC prize alone is not payment proof. Source: https://docs.superteam.fun/the-superteam-handbook/community/faqs/superteam-earn-faq
+
+**Execution classification**
+- LaborX: `CRYPTO_RAILS_DOCUMENTED — BNB Chain USDC/USDT`; still requires live job/escrow/eligibility validation.
+- HackerOne: `CRYPTO_RAILS_DOCUMENTED — BTC or Ethereum USDC`; account KYC/tax prerequisites and ERC-20 cost apply.
+- Bugcrowd: `CONDITIONAL_CRYPTO — BTC only for select programs`.
+- Superteam Earn: `LISTING_DEPENDENT_CRYPTO — wallet payout / KYC varies by sponsor`.
+- CryptoTask, DevGhouse, Payrelayer, and all other source rows remain `PAYOUT_PROOF_UNVERIFIED` until official evidence is recorded for the exact payment route.
+
+No signup, task submission, customer outreach, wallet action, or payment was performed. This is policy evidence only; it does not prove an award or received income.
