@@ -1,0 +1,82 @@
+name: MIDAD Revenue Runtime
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-revenue-runtime
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
+      MIDAD_AUTONOMY_KEY: ${{ secrets.MIDAD_AUTONOMY_KEY }}
+    steps:
+      - name: Fail closed if runtime credential is absent
+        shell: bash
+        run: |
+          if [[ -z "${MIDAD_AUTONOMY_KEY}" ]]; then
+            echo "::error::Configure repository secret MIDAD_AUTONOMY_KEY before enabling this runtime."
+            exit 1
+          fi
+
+      - name: Check live mesh health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --connect-timeout 15 --max-time 90 \
+            -X POST "${SUPABASE_URL}/functions/v1/midad_revenue_intelligence_mesh" \
+            -H "content-type: application/json" \
+            -H "x-midad-autonomy-key: ${MIDAD_AUTONOMY_KEY}" \
+            --data '{"action":"health"}' -o /tmp/mesh-health.json
+          jq -c '{ok,service,version,counts,error}' /tmp/mesh-health.json
+
+      - name: Discover current crypto-paid work
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --connect-timeout 15 --max-time 180 \
+            -X POST "${SUPABASE_URL}/functions/v1/midad_revenue_intelligence_mesh" \
+            -H "content-type: application/json" \
+            -H "x-midad-autonomy-key: ${MIDAD_AUTONOMY_KEY}" \
+            --data '{"action":"discover"}' -o /tmp/mesh-discovery.json
+          jq -c '{ok,action,run_id,research_run_id,queued,created,stats,error}' /tmp/mesh-discovery.json
+
+  process:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [1, 2, 3]
+    env:
+      SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
+      MIDAD_AUTONOMY_KEY: ${{ secrets.MIDAD_AUTONOMY_KEY }}
+    steps:
+      - name: Fail closed if runtime credential is absent
+        shell: bash
+        run: |
+          if [[ -z "${MIDAD_AUTONOMY_KEY}" ]]; then
+            echo "::error::Configure repository secret MIDAD_AUTONOMY_KEY before enabling this runtime."
+            exit 1
+          fi
+
+      - name: Process one queued research task
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --connect-timeout 15 --max-time 180 \
+            -X POST "${SUPABASE_URL}/functions/v1/midad_revenue_intel_research_worker" \
+            -H "content-type: application/json" \
+            -H "x-midad-autonomy-key: ${MIDAD_AUTONOMY_KEY}" \
+            --data '{"action":"process"}' -o /tmp/worker-result.json
+          jq -c '{ok,processed,reason,task_id,research_run_id,error}' /tmp/worker-result.json
