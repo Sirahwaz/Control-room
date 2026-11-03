@@ -486,3 +486,44 @@ A read-only ACL/RLS cross-check found:
 - Default ACL metadata exists across `public`, `auth`, `storage`, `realtime`, `graphql`, `graphql_public`, `cron`, and `extensions` schemas.
 
 Interpretation: broad table ACLs do not by themselves prove public data exposure; RLS is enabled for every `anon`-granted base table found in this check. This is a metadata-only review, not a policy-expression audit or penetration test. Do not change grants, policies, routine ownership, or `search_path` during portability inventory. Before moving SECURITY DEFINER routines, review their complete bodies, EXECUTE grants, search-path safety, and dependencies.
+
+
+### Parallel operational snapshot — 2026-11-03 (mobile/API-only, read-only)
+
+This snapshot was gathered through connected GitHub, Supabase, Railway, and Notion integrations without a desktop terminal.
+
+**GitHub / CI**
+- Repository is public, writable by the connected identity, and not archived.
+- PR #170 remains open and draft; its head commit is `78b4b50313b7069ad23c8aa8052dd0846e878dbf`.
+- Two workflow runs associated with that head completed successfully: `MIDAD FIX Contract` and `MIDAD Control Room Verify`. The combined commit-status endpoint returned no status contexts; the workflow-run results are the positive evidence.
+- Branch comparison: 13 commits ahead of `main`, 0 behind.
+
+**Supabase runtime**
+- Project status `ACTIVE_HEALTHY`; PostgreSQL 17.11.
+- Current Edge Function inventory: 100 functions, all 100 `ACTIVE`.
+- Applied migration inventory: 141.
+- Selected deployed function versions remain: public checkout v25, payment verifier v41, wallet receipt monitor v13, revenue autopilot v23, income factory v27, opportunity engine v41, money hunter v57. This inventory is not a source parity claim.
+
+**Revenue conversion — live row counts**
+- `opportunities`: 209,647; `midad_income_discoveries`: 121 (15 candidate, 102 discovered, 4 stale); `midad_income_sources`: 43.
+- `leads`: 10 (6 `qualified_target`, 4 `human_review`).
+- `midad_payment_intents`: 6 (all expired/cancelled); `midad_store_orders`: 4 (all CANCELLED); `midad_payment_events`: 0; `midad_wallet_receipts`: 0; `midad_income_source_evidence`: 0.
+- No income source currently has `payout_proof_status=verified` in the sampled source registry. Two sources have official policy documented, but payout proof remains unverified. Several marketplace rows are explicitly blocked for unverified payout, account health, security risk, or upfront cost.
+- This confirms that opportunity volume is not the blocker to verified income. The immediate operational gap is source-level payout proof plus conversion from qualified lead to a valid checkout, verified payment event, receipt, and delivery.
+
+**Function activity — latest 24-hour log window**
+- `midad_payment_verifier`: 86 requests, all HTTP 200, average execution 566.6 ms.
+- `midad_wallet_receipt_monitor`: 23 requests, all HTTP 200, average execution 3,612 ms.
+- `midad_revenue_autopilot`: 4 requests, all HTTP 200, average execution 4,550.2 ms.
+- No `midad_public_checkout` requests appeared in the targeted 24-hour function-edge-log query. HTTP 200 proves handler responses, not successful payment settlement; the database still contains zero payment events and zero wallet receipts.
+
+**Alternative orchestration / hosting**
+- Four connected Railway account links returned zero accessible projects. No Railway service is available as a verified target from these connections.
+- Both available n8n connector routes failed internally during workflow discovery; no workflow state was changed.
+- Notion governance records confirm the priority is conversion and verified crypto receipts, not feature proliferation or raw opportunity counts.
+
+**Next execution priority**
+1. Inspect the six existing payment intents and four cancelled orders by non-sensitive status/reason metadata only; do not expose customer PII or wallet addresses.
+2. Trace the public checkout route and its invocation/authentication path; the absence of checkout requests is a stronger lead than adding more opportunity discovery.
+3. Select at most a small number of income sources for official payout verification, prioritizing existing active accounts and zero-upfront-cost paths.
+4. Preserve all production state; no DDL, ACL, cron, financial, or deployment changes were made in this snapshot.
