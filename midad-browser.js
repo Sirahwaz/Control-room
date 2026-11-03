@@ -84,6 +84,20 @@ async function sendCommand(command){
 }
 $("#sendCommand").addEventListener("click",()=>{const command=$("#commandInput").value.trim();if(command)sendCommand(command);});
 $("#refreshStatus").addEventListener("click",checkBridge);
+$("#copyChatGPTToken").addEventListener("click",async()=>{
+ try{
+  const token=await obtainSession();
+  if(!token)throw new Error("MIDAD_LOGIN_REQUIRED");
+  let copied=false;
+  try{await navigator.clipboard.writeText(token);copied=true;}catch{}
+  if(!copied){
+   const field=document.createElement("textarea");field.value=token;field.setAttribute("readonly","");field.style.position="fixed";field.style.opacity="0";document.body.append(field);field.select();
+   copied=document.execCommand("copy");field.remove();
+  }
+  if(!copied)throw new Error("CLIPBOARD_PERMISSION_DENIED");
+  addActivity("تم نسخ رمز ربط ChatGPT","الرمز صالح لمدة الجلسة. الصقه فقط في إعداد اتصال MIDAD Browser داخل ChatGPT، ولا ترسله في المحادثة.");
+ }catch(e){addActivity("تعذر إنشاء رمز الربط",String(e.message||e));}
+});
 document.querySelectorAll("[data-local-action]").forEach(b=>b.addEventListener("click",()=>addActivity("الإجراء غير متاح حالياً","التنقل والتحكم يتمان عبر أوامر المنصة المعتمدة حتى نضيف بثّاً مباشراً للجلسة.")));
 lockControls(false);checkBridge();
 })();
