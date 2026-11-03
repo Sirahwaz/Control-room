@@ -409,3 +409,22 @@ The target scheduler must not be activated while corresponding production cron j
 ### Capture limits
 
 This section records catalog counts and dependency signals only. It is not a restorable DDL dump. Full object definitions, ownership/grants, policy expressions, routine bodies, and complete migration history still require a secure export/archive path. No production data, Auth credentials, or Vault values were exported.
+
+ 
+### Additional scheduler counts
+
+A second aggregate query confirmed 17 of the 19 active cron jobs use `net.http_*` and dispatch to Edge Functions; all 8 inactive jobs also contain `net.http_*` references. Total jobs: 27. This makes the `pg_net` replacement a high-priority compatibility workstream, not an optional cleanup.
+
+### Revenue-critical function source retrieval checkpoint
+
+Five live sources were retrieved from Supabase and scanned in-memory. The pattern scan was clear for private-key blocks, common provider-token formats, literal JWTs, and generic secret assignments. Only environment variable **names** were recorded:
+
+| Function | Live version | Deployed SHA-256 | Environment variable names |
+|---|---:|---|---|
+| `midad_income_factory` | 27 | `9f6e86e907aa55361f484d5ebb7c98987966ed8c5700e28132ea7d0e8ced2757` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| `midad_money_hunter` | 57 | `94f8bbde366c37467d67b5c8dddd1533ae2e45c12d5fb08d5c2569fbd0019a79` | `SUPABASE_SERVICE_ROLE_KEY`, `MIDAD_INGEST_KEY`, `MIDAD_AUTONOMY_KEY`, `SUPABASE_URL` |
+| `midad_paid_revenue_feed` | 7 | `329099865a5388b1d98f7e24b280760fcdd2c71c4f4d3381f24a56792cddf44` | `SUPABASE_DB_URL` |
+| `midad_revenue_recovery` | 27 | `3b6cba1d937c02bebe842e76d0aaa3a181754832cd8c4a7cbbf78508e05f489b` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| `midad_opportunity_engine` | 41 | `997b08d231869ff97bc3d309e5046a802d2549d72b575fa05f7f2797fafff6aa` | `MIDAD_INGEST_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` |
+
+Runtime imports: four functions use `jsr:@supabase/supabase-js@2`; `midad_paid_revenue_feed` uses PostgreSQL and x402/Hono packages. Source archival to the repository was blocked by the connected write safety gate; **these five source files have not been committed**. Retrieval and scan do not constitute approval to deploy.
