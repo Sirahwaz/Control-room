@@ -27,6 +27,9 @@ export function buildLearnHubUrl({ workflow, topic = "", lang = "AR" } = {}) {
 export function openLearnHubWorkflow({ workflow, topic = "", lang = "AR" } = {}, openWindow = globalThis.window?.open?.bind(globalThis.window)) {
   const url = buildLearnHubUrl({ workflow, topic, lang });
   if (typeof openWindow !== "function") return { ok: false, url, reason: "window_unavailable" };
-  const opened = openWindow(url, "_blank", "noopener,noreferrer");
+  const opened = openWindow(url, "_blank");
+  if (opened) {
+    try { opened.opener = null; } catch { /* Cross-origin WindowProxy may reject assignment. */ }
+  }
   return { ok: Boolean(opened), url, reason: opened ? null : "popup_blocked" };
 }
