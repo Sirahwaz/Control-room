@@ -373,3 +373,39 @@ The four other source-retrieved critical functions (midad_control_room, midad_cl
 
 **Finding:** three of the six existing critical function entrypoints match live source exactly; three do not. Do not deploy repository copies of the mismatched functions. For each mismatch, preserve the deployed source as the reference, diff it against the repository version, and reconcile only after code review and secret scanning. The live deployment's SHA-256 metadata is the reference fingerprint.
 
+
+ 
+## Additional database catalog and portability dependency capture (2026-11-03)
+
+Read-only PostgreSQL catalog queries confirmed the following current counts:
+
+| Catalog item | Count |
+|---|---:|
+| Public indexes | 459 |
+| Public views | 2 |
+| Public routines | 38 |
+| Non-system routines across non-system schemas | 163 |
+| Public SECURITY DEFINER routines | 28 |
+| Public non-internal triggers | 7 |
+| Public RLS policies | 147 |
+| RLS-enabled public tables with no policy row | 30 |
+| Active pg_cron jobs | 19 |
+| Inactive pg_cron jobs | 8 |
+
+The 30 RLS-enabled tables without policy rows remain **unclassified**, not presumed vulnerable; effective access depends on grants, ownership, service-role paths, and callers. No policy or grant changes were made.
+
+### Runtime coupling confirmed
+
+- Active cron jobs call Supabase Edge Functions through `net.http_post`; this is a material `pg_net` portability dependency.
+- The current cron inventory includes 27 jobs; several inactive jobs are intentionally retained as inactive. In particular, `midad-finance-autopilot-5m` (job 18) remains inactive.
+- Database routines referencing `net.http_*` include `midad_ops.dispatch_revenue_operation`, in addition to extension-owned routines.
+- Vault-related routine names are present in public and internal schemas. No Vault values were read.
+- Auth integration is present through the `auth` schema; function source also shows direct Supabase SDK/service-role dependencies. Keep Supabase Auth as provider 1 during initial portability work.
+
+### Scheduler migration constraint
+
+The target scheduler must not be activated while corresponding production cron jobs remain active. Migration requires an explicit single-writer handover, idempotency checks, observable dispatch receipts, and rollback to the existing scheduler. No cron jobs were changed.
+
+### Capture limits
+
+This section records catalog counts and dependency signals only. It is not a restorable DDL dump. Full object definitions, ownership/grants, policy expressions, routine bodies, and complete migration history still require a secure export/archive path. No production data, Auth credentials, or Vault values were exported.
