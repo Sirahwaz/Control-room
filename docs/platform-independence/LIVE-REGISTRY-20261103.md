@@ -472,3 +472,17 @@ Five additional live functions were retrieved and scanned. Pattern scan status w
 | `midad_revenue_intel_work_queue_worker` | 10 | `2947c476602a13423913088c3d5dd776bca6a406fceb58e49c719b768806c0f4` | 4 / 55,036 | PostgreSQL; `SUPABASE_DB_URL` |
 
 The two PostgreSQL-heavy revenue workers have multiple local modules; source archival must preserve every file and relative import. Their database dependency is direct PostgreSQL rather than the Supabase JS SDK. This batch increases the retrieved-but-not-archived source inventory; do not treat it as repository recovery or deployment approval.
+
+
+### Privilege and SECURITY DEFINER review (read-only catalog, 2026-11-03)
+
+A read-only ACL/RLS cross-check found:
+- `anon` has table ACL entries on 83 public tables; all 83 have RLS enabled, and none has zero policy rows.
+- No public table with an `anon` ACL was found with RLS disabled.
+- `information_schema.table_privileges` reports 84 `anon` table-privilege entries per common DML privilege; this differs from the 83 base-table ACL count because the views expose a different object scope. Do not treat these counts as interchangeable.
+- 28 public SECURITY DEFINER routines were enumerated. Every one of the 28 has a non-owner EXECUTE grant to `service_role`; the review did not find `anon` or `authenticated` among their non-owner EXECUTE grantees.
+- The 28 routines' effective `search_path` settings were captured for review. Most pin `pg_catalog`;`public` (sometimes `vault` or `midad_private`). Exceptions requiring source-level review before portability include `midad_agent_fee_reserve_request` (`public, pg_temp`), `midad_sentinel_build_graph` and `midad_sentinel_correlate` (`public` only), and Vault helper routines whose path begins with `vault` or `public`.
+- Installed extension versions: `pg_cron 1.6.4`, `pg_net 0.20.4`, `pg_stat_statements 1.11`, `pgcrypto 1.3`, `plpgsql 1.0`, `supabase_vault 0.3.1`, `uuid-ossp 1.1`.
+- Default ACL metadata exists across `public`, `auth`, `storage`, `realtime`, `graphql`, `graphql_public`, `cron`, and `extensions` schemas.
+
+Interpretation: broad table ACLs do not by themselves prove public data exposure; RLS is enabled for every `anon`-granted base table found in this check. This is a metadata-only review, not a policy-expression audit or penetration test. Do not change grants, policies, routine ownership, or `search_path` during portability inventory. Before moving SECURITY DEFINER routines, review their complete bodies, EXECUTE grants, search-path safety, and dependencies.
