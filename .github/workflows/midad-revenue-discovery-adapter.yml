@@ -15,4 +15,4 @@ jobs:
         with:
           deno-version: v2.1.4
       - name: Test revenue discovery provider adapters
-        run: deno test supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts
+        run: deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts
