@@ -104,6 +104,15 @@ export function normalizeMappedJsonFeed(body:unknown,sourceValue:unknown,now:Dat
  * index's payout metadata as evidence only. Never promote its payout grade or
  * payment_state into task-level funding proof.
  */
+export function isSafeJobbiJsonSource(v:unknown):boolean {
+  const source=record(v);
+  if(!source || resolveRevenueParser(source.parser_key)!=="jobbi_json_feed") return false;
+  const url=httpsUrl(source.api_url??source.url);
+  if(!url || url.hostname.toLowerCase()!=="jobbi.org" || url.pathname!=="/gigs.json") return false;
+  const limit=Number(url.searchParams.get("limit"));
+  return url.searchParams.get("lane")==="agent" && url.searchParams.get("currency")==="USDC" && Number.isInteger(limit) && limit>=1 && limit<=50;
+}
+
 export function normalizeJobbiJsonFeed(body:unknown,sourceValue:unknown,now:Date|number=new Date()):any[] {
   const source=record(sourceValue);
   if(!source) return [];
