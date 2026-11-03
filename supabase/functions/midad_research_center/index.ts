@@ -156,7 +156,7 @@ async function groundedSynthesis(admin:any, query:string, sources:any[], languag
 
 Deno.serve(async(req)=>{
   if(req.method==="OPTIONS") return new Response("ok",{headers:H});
-  if(req.method!=="POST") return json({ok:true,service:"midad_research_center",version:2});
+  if(req.method!=="POST") return json({ok:true,service:"midad_research_center",version:32});
   try{
     const supplied=req.headers.get("x-midad-ingest-key")||"";
     const suppliedAutonomy=req.headers.get("x-midad-autonomy-key")||"";
