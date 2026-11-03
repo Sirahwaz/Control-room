@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "lab/stageshow/**"
+      - "stageshow-preview.html"
       - ".github/workflows/stageshow-runtime.yml"
   push:
     branches: [main]
