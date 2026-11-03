@@ -355,3 +355,21 @@ Applied migrations: 141; repository SQL files: 11; exact version+name filename m
 ## P1.2 Schema baseline
 
 Generate a schema-only snapshot from the live catalog in a controlled export path. Include tables, columns, types, defaults, constraints, indexes, views, routines, triggers, policies, grants, ownership and extension dependencies. Exclude row data, auth secrets and Vault values. Compare the snapshot against the candidate target before any restore test.
+
+## Deployed-source parity spot check (10 critical functions)
+
+Source was retrieved from the live Supabase deployment and compared byte-for-byte with the repository copy for the six critical functions that already have source folders:
+
+| Function | Live version | index.ts parity | Dependency-file parity |
+|---|---:|---|---|
+| midad_payment_verifier | 41 | EXACT | n/a |
+| midad_base_usdc_monitor | 17 | EXACT | n/a |
+| midad_revenue_autopilot | 23 | EXACT | finality.ts not yet compared |
+| midad_public_checkout | 25 | DIFFERENT | route-policy.ts EXACT |
+| midad_wallet_receipt_monitor | 13 | DIFFERENT | route-policy.ts DIFFERENT |
+| midad_browser_agent_gateway | 12 | DIFFERENT | ledger.ts EXACT |
+
+The four other source-retrieved critical functions (midad_control_room, midad_client_gateway, midad_telegram_auth, midad_finance_autopilot) have no same-named repository function directory in the current tree.
+
+**Finding:** three of the six existing critical function entrypoints match live source exactly; three do not. Do not deploy repository copies of the mismatched functions. For each mismatch, preserve the deployed source as the reference, diff it against the repository version, and reconcile only after code review and secret scanning. The live deployment's SHA-256 metadata is the reference fingerprint.
+
