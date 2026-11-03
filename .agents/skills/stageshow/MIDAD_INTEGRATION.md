@@ -4,7 +4,7 @@
 
 Upstream: https://github.com/benjitaylor/skills/tree/802057409787133703c56001080169e347305572
 
-Pinned upstream revision: `802057409787133703c56001080169e347305572`.
+Pinned upstream revision: `802057409787133703c56001080169e347305572`. The skill documentation and all 15 reference guides are vendored in the repository.
 
 ## Purpose and routing
 
