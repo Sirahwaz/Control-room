@@ -20,6 +20,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Build isolated StageShow preview
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install StageShow demo dependencies
+        working-directory: lab/stageshow
+        run: npm install --no-audit --no-fund
+      - name: Typecheck StageShow demo
+        working-directory: lab/stageshow
+        run: npm run typecheck
+      - name: Build StageShow demo
+        working-directory: lab/stageshow
+        run: npm run build
+      - name: Smoke-test StageShow bundle
+        working-directory: lab/stageshow
+        run: npm run smoke
+      - name: Stage preview under additive Pages path
+        run: |
+          mkdir -p stageshow-preview
+          cp -R lab/stageshow/dist/. stageshow-preview/
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
