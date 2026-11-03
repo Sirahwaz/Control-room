@@ -1,0 +1,62 @@
+name: MIDAD Revenue External Scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-revenue-external-scheduler
+  cancel-in-progress: false
+
+jobs:
+  discover-and-process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
+      MIDAD_AUTONOMY_KEY: ${{ secrets.MIDAD_AUTONOMY_KEY }}
+    steps:
+      - name: Validate required secret
+        shell: bash
+        run: |
+          if [[ -z "${MIDAD_AUTONOMY_KEY}" ]]; then
+            echo "::error::Repository secret MIDAD_AUTONOMY_KEY is not configured."
+            exit 1
+          fi
+
+      - name: Run discovery mesh
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 15 --max-time 180 \
+            --retry 2 --retry-all-errors --retry-delay 5 \
+            -X POST "${SUPABASE_URL}/functions/v1/midad_revenue_intelligence_mesh" \
+            -H "content-type: application/json" \
+            -H "x-midad-autonomy-key: ${MIDAD_AUTONOMY_KEY}" \
+            --data '{"action":"discover"}' \
+            -o /tmp/midad-discovery-response.json
+          echo "Discovery request completed."
+          # Print only the response body; never print request headers or secrets.
+          cat /tmp/midad-discovery-response.json
+
+      - name: Process queued research tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Worker pass ${attempt}/3"
+            curl --fail-with-body --silent --show-error \
+              --connect-timeout 15 --max-time 180 \
+              --retry 2 --retry-all-errors --retry-delay 5 \
+              -X POST "${SUPABASE_URL}/functions/v1/midad_revenue_intel_research_worker" \
+              -H "content-type: application/json" \
+              -H "x-midad-autonomy-key: ${MIDAD_AUTONOMY_KEY}" \
+              --data '{"action":"process"}' \
+              -o "/tmp/midad-worker-${attempt}.json"
+            cat "/tmp/midad-worker-${attempt}.json"
+          done
