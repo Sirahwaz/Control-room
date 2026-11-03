@@ -457,3 +457,18 @@ A post-write comparison against live Supabase source confirms that these two rec
 - `supabase/functions/midad_money_hunter/index.ts` — live v57, exact match, 63,862 characters, secret-pattern scan CLEAR.
 
 The other three retrieved sources (`midad_paid_revenue_feed`, `midad_revenue_recovery`, `midad_opportunity_engine`) were **not** found in the branch after the write attempt. Do not treat them as archived. No production deployment was performed. The two archived functions remain recovery baselines only; deployment requires dependency review and tests.
+
+ 
+### Revenue/fulfillment source retrieval batch 2
+
+Five additional live functions were retrieved and scanned. Pattern scan status was CLEAR for the same private-key, common provider-token, literal-JWT, and generic secret-assignment patterns. These are **retrieved in this session but not archived in the repository**:
+
+| Function | Version | SHA-256 | Files / total source chars | Runtime / environment dependencies |
+|---|---:|---|---|---|
+| `midad_money_hunter_loop` | 29 | `fab4b05fd0130c8b68eac7124ffb8e4b96a2151a5ebe347e58c19c1653aa44ae` | 1 / 2,041 | Supabase JS; `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` |
+| `midad_money_hunt` | 26 | `29ad9f73e6a9699bd74842ce55ae7128c9f845434fd3400b928b37aa8ac46e01` | 1 / 4,090 | Supabase JS; `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| `midad_store_fulfillment` | 3 | `d76a0a82e6864a04e2c185779eeec5266e00336d786f6a64d5d359d03dcf9aad` | 2 / 17,656 | Supabase JS, PostgreSQL; `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL` |
+| `midad_revenue_intelligence_mesh` | 26 | `69688804c27d31ab5664753b450c8a046ece8aa1a9db647e7f2514f926adb139` | 6 / 83,511 | PostgreSQL; `SUPABASE_DB_URL` |
+| `midad_revenue_intel_work_queue_worker` | 10 | `2947c476602a13423913088c3d5dd776bca6a406fceb58e49c719b768806c0f4` | 4 / 55,036 | PostgreSQL; `SUPABASE_DB_URL` |
+
+The two PostgreSQL-heavy revenue workers have multiple local modules; source archival must preserve every file and relative import. Their database dependency is direct PostgreSQL rather than the Supabase JS SDK. This batch increases the retrieved-but-not-archived source inventory; do not treat it as repository recovery or deployment approval.
