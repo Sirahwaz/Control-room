@@ -17,6 +17,8 @@ class StageShowIntegrationTests(unittest.TestCase):
         guide = (ROOT / "stageshow" / "MIDAD_INTEGRATION.md").read_text(encoding="utf-8")
         self.assertIn("not an APK/web analyzer", guide)
         self.assertIn("runtime evidence", guide)
+        self.assertIn("802057409787133703c56001080169e347305572", guide)
+        self.assertIn("all 15 reference guides", guide)
         self.assertIn("PENDING", guide)
         self.assertIn("dependency audit", guide)
 
