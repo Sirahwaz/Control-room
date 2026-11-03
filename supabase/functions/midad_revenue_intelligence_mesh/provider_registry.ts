@@ -110,7 +110,7 @@ export function isSafeJobbiJsonSource(v:unknown):boolean {
   const url=httpsUrl(source.api_url??source.url);
   if(!url || url.hostname.toLowerCase()!=="jobbi.org" || url.pathname!=="/gigs.json") return false;
   const limit=Number(url.searchParams.get("limit"));
-  return url.searchParams.get("lane")==="agent" && url.searchParams.get("currency")==="USDC" && Number.isInteger(limit) && limit>=1 && limit<=50;
+  return url.searchParams.get("lane")==="agent" && ["USDC","BTC"].includes(String(url.searchParams.get("currency")||"").toUpperCase()) && Number.isInteger(limit) && limit>=1 && limit<=50;
 }
 
 export function normalizeJobbiJsonFeed(body:unknown,sourceValue:unknown,now:Date|number=new Date()):any[] {
