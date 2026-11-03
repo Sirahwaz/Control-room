@@ -37,5 +37,11 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Stage root-level Pages assets
+        working-directory: .
+        run: |
+          cp lab/stageshow/dist/stageshow-preview.html stageshow-preview.html
+          cp lab/stageshow/dist/stageshow-preview.js stageshow-preview.js
+          cp lab/stageshow/dist/stageshow-preview.css stageshow-preview.css
       - name: Built bundle smoke test
         run: npm run smoke
