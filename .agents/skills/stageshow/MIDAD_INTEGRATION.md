@@ -16,7 +16,7 @@ StageShow is a visual-authoring skill and React/CSS kit for high-fidelity produc
 
 ## Upstream runtime
 
-The complete kit, examples, references and film/rehearsal scripts remain maintained upstream at https://github.com/benjitaylor/skills/tree/main/stageshow. This MIDAD integration vendors the skill instructions and attribution/license notices only; it does not claim the React kit or playground has been installed or executed. To use the kit, obtain the upstream StageShow package into an isolated workspace, inspect its package manifest and dependencies, then pin the reviewed revision before use.
+The skill instructions, README, MIT license, NOTICE and all 15 reference guides are vendored at the pinned revision above. The React kit, examples, teaching assets, app-icons, brand registry and filming scripts remain upstream and are not installed in MIDAD. NOTICE identifies third-party brand artwork and app icons that are not covered by the StageShow MIT license; do not copy these assets into MIDAD. The full package requires Node >=20.19 and includes React 18, Vite, TypeScript, lucide-react, playwright-core and optional portless. Before runtime use, obtain only the required kit source into an isolated workspace, exclude branded assets, inspect and pin dependencies, and run npm ci, typecheck, CSS checks and production build there. No dependency is added to the Control Room production bundle by this skill-only integration.
 
 ## MIDAD controls
 
