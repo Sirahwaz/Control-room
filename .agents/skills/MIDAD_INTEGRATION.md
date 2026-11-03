@@ -7,6 +7,9 @@ Upstream sources:
 - Replica skill pack: https://github.com/Jakeschincariol/replica-skill (MIT).
 - Nanobot: https://github.com/HKUDS/nanobot (self-hosted Python agent runtime; review its security, API and deployment guides before use).
 
+## Upstream sources
+- StageShow: https://github.com/benjitaylor/skills/tree/main/stageshow (MIT; skill and attribution notices vendored; full React kit/playground remain upstream pending isolated dependency review).
+
 ## Included workflows
 
 - midad-intelligence-force-super: evidence-first routing across LeanREA, Replica, isolated analysis, Nanobot runtime planning and Factory handoff
@@ -23,6 +26,7 @@ Upstream sources:
 - replica-brand: independent brand and residual-name sweep
 - replica-launch: store listing and launch materials
 - replica-deploy: preflight and release checklist
+- stageshow: polished product UI stills and short animated demos; presentation-only, not reverse engineering or browser automation
 
 ## Runtime decision
 
@@ -44,7 +48,7 @@ Nanobot requires Python 3.11 or newer and a configured model provider or local m
 
 ## Intelligence routing and evidence
 
-Use LeanREA for technical internals only after target authorization and tool preflight. Use Replica for clean-room UX/feature mapping and independent rebuild. Use Nanobot only for the persistent runtime/UI/chat/API need, not to replace the specialized analysis skills. Keep the Lab and Mobile Factory as separate execution tracks. Label claims seen/inferred/unknown and do not claim runtime behavior from static inspection.
+Use LeanREA for technical internals only after target authorization and tool preflight. Use Replica for clean-room UX/feature mapping and independent rebuild. Use StageShow only to visualize evidence-backed flows or original MIDAD interfaces; never treat a mockup as runtime evidence. Use Nanobot only for the persistent runtime/UI/chat/API need, not to replace the specialized analysis skills. Keep the Lab and Mobile Factory as separate execution tracks. Label claims seen/inferred/unknown and do not claim runtime behavior from static inspection.
 
 ## Handoff
 
