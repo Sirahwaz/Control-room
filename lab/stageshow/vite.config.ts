@@ -9,6 +9,13 @@ export default defineConfig({
   base: './',
   publicDir: false,
   plugins: [react()],
+  resolve: {
+    alias: [
+      { find: 'react/jsx-runtime', replacement: resolve(process.cwd(), 'node_modules/react/jsx-runtime.js') },
+      { find: 'react', replacement: resolve(process.cwd(), 'node_modules/react') },
+      { find: 'react-dom', replacement: resolve(process.cwd(), 'node_modules/react-dom') },
+    ],
+  },
   build: {
     outDir: resolve(process.cwd(), 'dist'),
     emptyOutDir: true,
