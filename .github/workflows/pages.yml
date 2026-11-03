@@ -33,13 +33,16 @@ jobs:
       - name: Build StageShow demo
         working-directory: lab/stageshow
         run: npm run build
+      - name: Stage root-level Pages assets
+        run: |
+          cp lab/stageshow/dist/stageshow-preview.html stageshow-preview.html
+          cp lab/stageshow/dist/stageshow-preview.js stageshow-preview.js
+          cp lab/stageshow/dist/stageshow-preview.css stageshow-preview.css
       - name: Smoke-test StageShow bundle
         working-directory: lab/stageshow
         run: npm run smoke
-      - name: Stage preview under additive Pages path
-        run: |
-          mkdir -p stageshow-preview
-          cp -R lab/stageshow/dist/. stageshow-preview/
+      - name: Verify root-level preview assets
+        run: test -s stageshow-preview.html && test -s stageshow-preview.js && test -s stageshow-preview.css
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

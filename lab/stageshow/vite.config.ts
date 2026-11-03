@@ -1,9 +1,34 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const repositoryRoot = resolve(process.cwd(), '../..')
+
 export default defineConfig({
-  plugins: [react()],
+  root: repositoryRoot,
   base: './',
-  build: { outDir: 'dist', emptyOutDir: true },
+  publicDir: false,
+  plugins: [react()],
+  resolve: {
+    alias: [
+      { find: 'react/jsx-runtime', replacement: resolve(process.cwd(), 'node_modules/react/jsx-runtime.js') },
+      { find: 'react', replacement: resolve(process.cwd(), 'node_modules/react') },
+      { find: 'react-dom', replacement: resolve(process.cwd(), 'node_modules/react-dom') },
+    ],
+  },
+  build: {
+    outDir: resolve(process.cwd(), 'dist'),
+    emptyOutDir: true,
+    assetsDir: '.',
+    cssCodeSplit: false,
+    rollupOptions: {
+      input: resolve(repositoryRoot, 'stageshow-preview.html'),
+      output: {
+        entryFileNames: 'stageshow-preview.js',
+        chunkFileNames: 'stageshow-preview-[hash].js',
+        assetFileNames: 'stageshow-preview.[ext]',
+      },
+    },
+  },
   server: { host: '0.0.0.0', port: 4173, strictPort: true },
 })
