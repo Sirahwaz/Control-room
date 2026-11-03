@@ -7,7 +7,7 @@ An isolated React/Vite visual-authoring proof of concept. The demo uses original
 - Node.js `>=20.19`
 - `npm install --no-audit --no-fund`
 - `npm run typecheck`
-- `npm run build`
+- `npm run build` (emits the root-level Pages entry and assets)
 - `npm run smoke`
 - `npm run dev`
 
