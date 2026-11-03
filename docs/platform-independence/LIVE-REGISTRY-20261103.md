@@ -428,3 +428,22 @@ Five live sources were retrieved from Supabase and scanned in-memory. The patter
 | `midad_opportunity_engine` | 41 | `997b08d231869ff97bc3d309e5046a802d2549d72b575fa05f7f2797fafff6aa` | `MIDAD_INGEST_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` |
 
 Runtime imports: four functions use `jsr:@supabase/supabase-js@2`; `midad_paid_revenue_feed` uses PostgreSQL and x402/Hono packages. Source archival to the repository was blocked by the connected write safety gate; **these five source files have not been committed**. Retrieval and scan do not constitute approval to deploy.
+
+ 
+### Constraint, ownership, and policy metadata refinement
+
+A direct `pg_catalog` query provides the authoritative constraint breakdown for `public`:
+
+| Constraint type | Count |
+|---|---:|
+| Primary keys | 152 |
+| Foreign keys | 132 |
+| Unique constraints | 73 |
+| Check constraints | 215 |
+| **Total** | **572** |
+
+All 152 public tables are owned by `postgres`. Public routines: 38 (31 PL/pgSQL, 7 SQL); 28 are SECURITY DEFINER. Policy command counts: ALL 115, SELECT 17, INSERT 7, UPDATE 5, DELETE 3. Policy role counts overlap because policies can target multiple roles: authenticated 124, anon 89, public 13.
+
+**Reconciliation note:** the earlier verbose table-metadata response yielded a summed foreign-key count of 234, which does not reconcile with the direct catalog count of 132. Use the direct `pg_constraint` count (132) and total 572 as the authoritative values for this registry; the metadata endpoint's foreign-key aggregate requires separate validation before relying on it.
+
+The 28 SECURITY DEFINER routines and Vault-related functions are portability/security-critical. Their bodies and EXECUTE grants must be captured and reviewed before migration. No grants, owners, policies, or routine definitions were changed.
