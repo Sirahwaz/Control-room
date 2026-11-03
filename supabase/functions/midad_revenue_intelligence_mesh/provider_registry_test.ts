@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isSafeMappedJsonSource, normalizeMappedJsonFeed, normalizeJobbiJsonFeed, resolveRevenueParser } from "./provider_registry.ts";
+import { isSafeMappedJsonSource, isSafeJobbiJsonSource, normalizeMappedJsonFeed, normalizeJobbiJsonFeed, resolveRevenueParser } from "./provider_registry.ts";
 
 const source = {
   slug: "provider_alpha",
@@ -122,4 +122,14 @@ Deno.test("Jobbi adapter rejects missing identifiers and unsafe external URLs", 
     ]
   }, { slug: "jobbi_gigs_index", url: "https://jobbi.org/gigs.json" }, new Date("2026-11-03T00:00:00.000Z"));
   assertEquals(rows.length, 0);
+});
+
+
+Deno.test("Jobbi source URL is pinned to the public feed before network access", () => {
+  const safe = { slug: "jobbi_gigs_index", parser_key: "jobbi_json_feed", url: "https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50" };
+  assertEquals(isSafeJobbiJsonSource(safe), true);
+  assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://attacker.test/gigs.json?lane=agent&currency=USDC&limit=50" }), false);
+  assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/other.json?lane=agent&currency=USDC&limit=50" }), false);
+  assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/gigs.json?lane=human&currency=USDC&limit=50" }), false);
+  assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=1000" }), false);
 });
