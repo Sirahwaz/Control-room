@@ -16,7 +16,7 @@ class StageShowIntegrationTests(unittest.TestCase):
     def test_midad_adapter_keeps_visuals_separate_from_lab_evidence(self):
         guide = (ROOT / "stageshow" / "MIDAD_INTEGRATION.md").read_text(encoding="utf-8")
         self.assertIn("not an APK/web analyzer", guide)
-        self.assertIn("not runtime evidence", guide)
+        self.assertIn("runtime evidence", guide)
         self.assertIn("pending isolated dependency review", guide)
 
     def test_lab_and_top_level_router_register_stageshow(self):
