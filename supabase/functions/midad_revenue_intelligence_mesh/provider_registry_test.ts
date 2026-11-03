@@ -128,8 +128,21 @@ Deno.test("Jobbi adapter rejects missing identifiers and unsafe external URLs", 
 Deno.test("Jobbi source URL is pinned to the public feed before network access", () => {
   const safe = { slug: "jobbi_gigs_index", parser_key: "jobbi_json_feed", url: "https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50" };
   assertEquals(isSafeJobbiJsonSource(safe), true);
+  assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/gigs.json?lane=agent&currency=BTC&limit=50" }), true);
   assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://attacker.test/gigs.json?lane=agent&currency=USDC&limit=50" }), false);
   assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/other.json?lane=agent&currency=USDC&limit=50" }), false);
   assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/gigs.json?lane=human&currency=USDC&limit=50" }), false);
   assertEquals(isSafeJobbiJsonSource({ ...safe, url: "https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=1000" }), false);
+});
+
+
+Deno.test("wide mesh bootstraps Jobbi feeds, excludes repeat lanes, and respects hourly polling", async () => {
+  const engine = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  const bootstrap = engine.indexOf("INSERT INTO public.midad_income_sources");
+  const feedQuery = engine.indexOf("SELECT slug,api_url AS url");
+  assertEquals(bootstrap >= 0 && feedQuery > bootstrap, true);
+  assertEquals(engine.includes("slug NOT IN ('laborx','superteam_agent_api','superteam_earn')"), true);
+  assertEquals(engine.includes("interval '1 hour'"), true);
+  assertEquals(engine.includes("jobbi_gigs_usdc"), true);
+  assertEquals(engine.includes("jobbi_gigs_btc"), true);
 });
