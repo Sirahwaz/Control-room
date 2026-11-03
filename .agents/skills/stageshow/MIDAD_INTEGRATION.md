@@ -24,7 +24,7 @@ The isolated runtime demo is in `lab/stageshow`. It vendors only the StageShow S
 
 The demo package pins direct dependencies and uses React 18, TypeScript and Vite. GitHub Actions typecheck, production-build and built-bundle smoke tests passed on PR #175 before merge. Dependencies remain isolated from the Control Room production bundle. The upstream `NOTICE.md` warns that third-party app icons and brand artwork are not covered by the StageShow MIT license; none are included in the demo.
 
-The Pages workflow publishes the built preview additively at `/Control-room/stageshow-preview/`; the existing Control Room root remains the main application. The preview contains original MIDAD sample data only and has no backend, network, account, wallet, payment or live analyzer connection.
+The Pages workflow builds the preview into three root-level static files: `stageshow-preview.html`, `stageshow-preview.js`, and `stageshow-preview.css`. The direct URL is `/Control-room/stageshow-preview.html`; the existing Control Room root remains the main application. The preview contains original MIDAD sample data only and has no backend, network, account, wallet, payment or live analyzer connection.
 
 ## MIDAD controls
 
