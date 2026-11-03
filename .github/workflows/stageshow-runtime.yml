@@ -1,0 +1,41 @@
+name: StageShow Runtime Demo
+
+on:
+  pull_request:
+    paths:
+      - "lab/stageshow/**"
+      - ".github/workflows/stageshow-runtime.yml"
+  push:
+    branches: [main]
+    paths:
+      - "lab/stageshow/**"
+      - ".github/workflows/stageshow-runtime.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stageshow-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-runtime:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab/stageshow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: lab/stageshow/package.json
+      - name: Install isolated dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Built bundle smoke test
+        run: npm run smoke
