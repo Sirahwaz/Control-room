@@ -22,7 +22,7 @@ StageShow is a visual-authoring layer for product UI stills and cursor-led demon
 
 The isolated runtime demo is in `lab/stageshow`. It vendors only the StageShow Stage, cursor, keys, timing, measuring and motion modules from the pinned revision. It excludes the upstream brand registry, app icons, examples, teaching assets, playground, filming scripts, and Playwright/browser automation.
 
-The demo package pins direct dependencies and uses React 18, TypeScript and Vite. GitHub Actions typecheck, production-build and built-bundle smoke tests passed on PR #175 before merge. Dependencies remain isolated from the Control Room production bundle. The upstream `NOTICE.md` warns that third-party app icons and brand artwork are not covered by the StageShow MIT license; none are included in the demo.
+The demo package pins direct dependencies and uses React 18, TypeScript and Vite. A full transitive dependency audit remains pending before any broader runtime adoption. GitHub Actions typecheck, production-build and built-bundle smoke tests passed on PR #175 before merge. Dependencies remain isolated from the Control Room production bundle. The upstream `NOTICE.md` warns that third-party app icons and brand artwork are not covered by the StageShow MIT license; none are included in the demo.
 
 The Pages workflow builds the preview into three root-level static files: `stageshow-preview.html`, `stageshow-preview.js`, and `stageshow-preview.css`. The direct URL is `/Control-room/stageshow-preview.html`; the existing Control Room root remains the main application. The preview contains original MIDAD sample data only and has no backend, network, account, wallet, payment or live analyzer connection.
 
