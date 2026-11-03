@@ -28,6 +28,7 @@ Use midad-intelligence-force-super as the top-level router. For authorized techn
 4. Verify with replica-test and replica-diff; add replica-brand before preparing a distributable clone.
 5. Use replica-entrepreneur only when real, cited public evidence is available. Never invent reviews, counts or quotes.
 6. Treat replica-launch and replica-deploy as checklists, not permission to publish.
+7. For polished still illustrations, dashboard/phone mockups, marketing heroes or short cursor-led product demos, use `stageshow` only after the relevant UX/flow facts are established. StageShow is an authored visual presentation layer, not a reverse-engineering analyzer, browser automation tool or proof of live behavior. See `../stageshow/MIDAD_INTEGRATION.md`.
 
 ## Authorization gate
 

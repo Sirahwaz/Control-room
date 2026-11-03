@@ -22,6 +22,7 @@ This is the top-level router, not a new model or a claim that tools are installe
    - Authorized security/runtime analysis that requires isolation, a target hash, tool readiness report or strict exclusions: use midad-authorized-app-analysis.
    - Tests and parity: replica-test then replica-diff.
    - Long-running agent UI, private chat channels or API runtime: route through midad-nanobot-runtime. Nanobot is a self-hosted runtime, not an Android-native app or a model provider; it must remain disconnected until host, access controls and smoke tests are verified.
+   - Product mockups, interface illustrations, feature heroes and short authored cursor demos: use `stageshow` after evidence/design inputs exist. It is visual authoring only, not a reverse-engineering analyzer, browser automation tool or live-system proof.
    - Android package production and emulator smoke tests: hand off to Mobile Factory / Factory X using mobile/factory/REPLICA_SKILL_INTEGRATION.md.
 4. Do not confuse the tools' roles. LeanREA gives an agent command-selection instructions; it is not itself JADX, Apktool, Frida, Ghidra, a browser, an emulator or a running analysis service. Replica skills generate a workflow; they do not prove a worker ran.
 5. Preserve boundaries. Keep the Lab and Mobile Factory separate execution tracks with one shared job contract. Never rebuild a working subsystem just to make a cleaner diagram.
