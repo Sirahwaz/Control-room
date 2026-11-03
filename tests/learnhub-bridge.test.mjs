@@ -35,3 +35,17 @@ test("reports popup blocking without claiming the workflow opened", () => {
   assert.equal(result.ok, false);
   assert.equal(result.reason, "popup_blocked");
 });
+
+test("opens a workflow and clears the child window opener", () => {
+  const child = { opener: "parent" };
+  const result = openLearnHubWorkflow({ workflow: "search" }, () => child);
+  assert.equal(result.ok, true);
+  assert.equal(child.opener, null);
+  assert.equal(result.reason, null);
+});
+
+test("reports unavailable window APIs safely", () => {
+  const result = openLearnHubWorkflow({ workflow: "starter" }, undefined);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "window_unavailable");
+});
