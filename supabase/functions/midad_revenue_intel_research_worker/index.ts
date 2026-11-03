@@ -46,7 +46,9 @@ async function processOne(){
   payout_verifier:["https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50","https://jobbi.org/gigs.json?lane=agent&currency=BTC&limit=50","https://www.task-force.app/docs/api","https://payapi.market/faq","https://taskerdata.com/terms-and-conditions","https://www.silencio.network/payout-rewards-terms","https://loopuman.com/browse-tasks","https://collaborators.build/"],
   payment_auditor:["https://payapi.market/faq","https://payapi.market/","https://www.task-force.app/docs/api","https://loopuman.com/browse-tasks","https://taskerdata.com/terms-and-conditions","https://www.silencio.network/payout-rewards-terms","https://www.j4c.app/how-escrow-works","https://docs.openx402.ai/building-a-server"],
   multichain_source_scout:["https://nadbounty.app/api/nad/bounties","https://www.basebounty.app/api/v1/bounties?status=open","https://arcbounty.app/api/v1/bounties?status=open","https://jobbi.org/gigs.json?lane=agent&currency=USDC&limit=50","https://jobbi.org/gigs.json?lane=agent&currency=BTC&limit=50","https://collaborators.build/","https://www.task-force.app/docs/api","https://loopuman.com/browse-tasks"],
-  x402_revenue_researcher:["https://www.req402.com/","https://docs.openx402.ai/building-a-server","https://github.com/x402-foundation/x402/blob/main/docs/introduction.md","https://payrelayer.com/sdks/fastapi","https://payrelayer.com/blog/how-ai-agents-pay-apis","https://docs.tools402.dev/reference/x402-protocol"],
+  x402_revenue_researcher:["https://payapi.market/faq","https://payapi.market/","https://payapi.market/list","https://www.req402.com/","https://docs.openx402.ai/building-a-server","https://github.com/x402-foundation/x402/blob/main/docs/introduction.md","https://payrelayer.com/sdks/fastapi","https://docs.tools402.dev/reference/x402-protocol"],
+  ai_training_scout:[],
+  direct_client_scout:[],
    mining_provider_scout:["https://www.cloudminecrypto.com/faq","https://cloudminecrypto.com/terms_and_conditions.html","https://www.cloudminecrypto.com/withdrawals","https://www.cloudminecrypto.com/learn/free-bitcoin-mining","https://www.cloudminecrypto.com/learn/reward-rules","https://www.cloudminecrypto.com/referral","https://f2pool.io/","https://www.nicehash.com/"]
  };
  const urls=(urlsByRole[role]||[]).slice(0,8);
@@ -59,7 +61,7 @@ async function processOne(){
    method:"POST",
    headers:{"content-type":"application/json","accept":"application/json","x-midad-autonomy-key":autonomyKey},
    body:JSON.stringify(requestBody),
-   signal:AbortSignal.timeout(90000)
+   signal:AbortSignal.timeout(70000)
   });
   const raw=await r.text();
   try{response=JSON.parse(raw);}catch{response={raw:clip(raw,1500)};}
