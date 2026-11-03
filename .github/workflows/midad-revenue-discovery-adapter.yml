@@ -1,0 +1,29 @@
+name: MIDAD Revenue Discovery Adapter Tests
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/midad_revenue_intelligence_mesh/**'
+      - 'supabase/functions/midad_research_center/**'
+      - 'supabase/functions/midad_revenue_intel_research_worker/**'
+      - '.github/workflows/midad-revenue-discovery-adapter.yml'
+permissions:
+  contents: read
+jobs:
+  provider-adapter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.1.4
+      - name: Type-check all research and revenue edge functions
+        run: |
+          deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts
+          deno check supabase/functions/midad_research_center/index.ts
+          deno check supabase/functions/midad_revenue_intel_research_worker/index.ts
+      - name: Test Jobbi provider adapter and mesh integration
+        run: deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh supabase/functions/midad_revenue_intelligence_mesh/provider_registry_test.ts supabase/functions/midad_revenue_intelligence_mesh/wide_research_integration_test.ts
+      - name: Test no-cost research center
+        run: deno test --allow-read=supabase/functions/midad_research_center supabase/functions/midad_research_center/index_test.ts
+      - name: Test research worker coverage
+        run: deno test --allow-read=supabase/functions/midad_revenue_intel_research_worker supabase/functions/midad_revenue_intel_research_worker/index_test.ts
