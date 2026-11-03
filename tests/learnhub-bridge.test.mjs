@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLearnHubUrl } from "../midad-learnhub-bridge.mjs";
+import { buildLearnHubUrl, openLearnHubWorkflow } from "../midad-learnhub-bridge.mjs";
 
 test("builds an Arabic LearnHub global search link", () => {
   const url = new URL(buildLearnHubUrl({ workflow: "search", lang: "AR" }));
@@ -28,4 +28,10 @@ test("requires a non-empty bounded topic for topic links", () => {
 test("does not accept a caller-controlled destination", () => {
   const url = new URL(buildLearnHubUrl({ workflow: "starter", lang: "AR", baseUrl: "https://evil.example" }));
   assert.equal(url.origin, "https://alisol.ir");
+});
+
+test("reports popup blocking without claiming the workflow opened", () => {
+  const result = openLearnHubWorkflow({ workflow: "starter" }, () => null);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "popup_blocked");
 });
