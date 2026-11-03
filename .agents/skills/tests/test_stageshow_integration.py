@@ -17,8 +17,16 @@ class StageShowIntegrationTests(unittest.TestCase):
         guide = (ROOT / "stageshow" / "MIDAD_INTEGRATION.md").read_text(encoding="utf-8")
         self.assertIn("not an APK/web analyzer", guide)
         self.assertIn("runtime evidence", guide)
+        self.assertIn("802057409787133703c56001080169e347305572", guide)
+        self.assertIn("all 15 reference guides", guide)
         self.assertIn("PENDING", guide)
         self.assertIn("dependency audit", guide)
+
+    def test_reference_pack_is_complete(self):
+        refs = ROOT / "stageshow" / "references"
+        required = ["annotations.md", "backgrounds.md", "bento.md", "brands.md", "choreography.md", "craft.md", "framing.md", "kit.md", "looks.md", "motion.md", "products.md", "rehearse.md", "review.md", "teaching.md", "verify.md"]
+        self.assertEqual(len(required), 15)
+        self.assertTrue(all((refs / name).is_file() for name in required))
 
     def test_lab_and_top_level_router_register_stageshow(self):
         lab = (ROOT / "midad-replica-lab" / "SKILL.md").read_text(encoding="utf-8")
