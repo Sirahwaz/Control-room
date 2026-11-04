@@ -25,6 +25,7 @@ test("rejects unknown fields, malformed dates, inverted and oversized ranges", (
   assert.equal(validateCalendarInput({ ...valid, from: "tomorrow" }).ok, false);
   assert.equal(validateCalendarInput({ ...valid, from: valid.to, to: valid.from }).ok, false);
   assert.equal(validateCalendarInput({ ...valid, to: "2026-12-20T18:00:00+01:00" }).ok, false);
+  assert.equal(validateCalendarInput({ to: "2030-12-20T18:00:00+01:00" }).ok, false);
 });
 
 test("rejects invalid durations and working-hour bounds", () => {
