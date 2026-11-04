@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { buildLearnHubUrl, openLearnHubWorkflow } from "../midad-learnhub-bridge.mjs";
 
 test("builds an Arabic LearnHub global search link", () => {
@@ -48,4 +49,19 @@ test("reports unavailable window APIs safely", () => {
   const result = openLearnHubWorkflow({ workflow: "starter" }, undefined);
   assert.equal(result.ok, false);
   assert.equal(result.reason, "window_unavailable");
+});
+
+test("AI Room exposes the LearnHub bridge controls", async () => {
+  const html = await readFile(new URL("../ai-room.html", import.meta.url), "utf8");
+  assert.match(html, /id="learnhubPanel"/);
+  assert.match(html, /id="learnhubForm"/);
+  assert.match(html, /data-learnhub-workflow="search"/);
+  assert.match(html, /data-learnhub-workflow="starter"/);
+  assert.match(html, /data-learnhub-workflow="topic"/);
+});
+
+test("AI Room imports and binds the LearnHub bridge without a MIDAD token", async () => {
+  const html = await readFile(new URL("../ai-room.html", import.meta.url), "utf8");
+  assert.match(html, /from "\.\/midad-learnhub-bridge\.mjs"/);
+  assert.match(html, /openLearnHubWorkflow\(\{workflow,topic,lang\}\)/);
 });
