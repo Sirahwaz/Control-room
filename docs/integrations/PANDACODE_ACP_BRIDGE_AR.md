@@ -14,7 +14,7 @@ PandaCode is a native Tauri/Rust desktop workspace. Its desktop design does not 
 
 ## Existing MIDAD boundary
 
-The existing Factory X envelope remains authoritative:
+The existing Factory X envelope remains authoritative under the **MIDAD-FX-1** contract:
 
 `TASK → AGENT → ACTION → CAPABILITY → PROVIDER → ADAPTER → SAFETY → RESULT`
 
