@@ -87,6 +87,9 @@ jobs:
           console.log(JSON.stringify({ok:true,protocol:fabric.protocol,executor:fabric.executor}));
           NODE
 
+      - name: Factory X preflight regression test
+        run: node --test tests/mobile-factory-x-preflight.test.mjs
+
       - name: Factory X preflight
         run: node mobile/factory/x/preflight.mjs
 
