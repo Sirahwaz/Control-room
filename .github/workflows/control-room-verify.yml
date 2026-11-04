@@ -85,6 +85,10 @@ jobs:
 
       - name: Mobile Factory version contract regression tests
         run: node --test tests/mobile-factory-version-contract.test.mjs
+      - name: PandaCode ACP adapter fail-closed contract
+        run: node --test tests/pandacode-acp-adapter-contract.test.mjs
+      - name: Factory X adapter policy syntax
+        run: node --check mobile/factory/x/adapter-policy.mjs && node --check mobile/factory/x/execution-fabric.mjs
       - name: Bot Fabric surface
         run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
 
