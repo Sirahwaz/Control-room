@@ -54,10 +54,11 @@ Deno.serve(async (req: Request) => {
   const result = await callMicroCalendarAvailability({ token, input });
   if (result.ok) return json(result, 200);
 
-  const status = ["invalid_input", "unsupported_parameter", "invalid_time_range", "invalid_duration", "invalid_working_hours"].includes(result.error)
+  const errorCode = "error" in result ? String(result.error) : "unknown";
+  const status = ["invalid_input", "unsupported_parameter", "invalid_time_range", "invalid_duration", "invalid_working_hours"].includes(errorCode)
     ? 400
-    : result.error === "micro_token_missing" ? 503
-    : result.error === "micro_rate_limited" ? 429
+    : errorCode === "micro_token_missing" ? 503
+    : errorCode === "micro_rate_limited" ? 429
     : 502;
   return json(result, status);
 });
