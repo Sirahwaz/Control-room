@@ -22,10 +22,9 @@ export function validateCalendarInput(input) {
       params[key] = input[key];
     }
   }
-  if (params.from && params.to) {
-    const from = Date.parse(params.from), to = Date.parse(params.to);
-    if (to <= from || to - from > MAX_RANGE_MS) return fail("invalid_time_range");
-  }
+  const effectiveFrom = params.from ? Date.parse(params.from) : Date.now();
+  const effectiveTo = params.to ? Date.parse(params.to) : effectiveFrom + 7 * 24 * 60 * 60 * 1000;
+  if (effectiveTo <= effectiveFrom || effectiveTo - effectiveFrom > MAX_RANGE_MS) return fail("invalid_time_range");
   if (input.minutes !== undefined) {
     if (!Number.isInteger(input.minutes) || input.minutes < 15 || input.minutes > 480) return fail("invalid_duration");
     params.minutes = input.minutes;
