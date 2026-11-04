@@ -96,6 +96,12 @@ This foundation is a clean-room protocol integration plan; it does not copy Pand
 - ACP v1 protocol overview: https://agentclientprotocol.com/protocol/overview
 - ACP v1 tool permission flow: https://agentclientprotocol.com/protocol/tool-calls#requesting-permission
 - MIDAD Factory X Fabric protocol: https://github.com/Sirahwaz/Control-room/blob/main/mobile/factory/x/FABRIC_PROTOCOL.md
+- Gemini CLI ACP mode: https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/acp-mode.md
+- Gemini CLI sandbox controls: https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/sandbox.md
+- Gemini CLI authentication: https://github.com/google-gemini/gemini-cli/blob/main/docs/get-started/authentication.md
+- Kimi Code CLI ACP mode: https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-acp
+- Kimi Code CLI command/login reference: https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command
+- Hermes Agent ACP host integration: https://hermes-agent.nousresearch.com/docs/user-guide/features/acp
 
 ---
 This document describes a future capability gate, not a deployed or connected ACP runtime.
