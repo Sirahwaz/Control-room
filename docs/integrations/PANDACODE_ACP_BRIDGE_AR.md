@@ -10,7 +10,7 @@ Keep MIDAD Factory X as the control plane and source of truth for task identity,
 
 Do not embed PandaCode's desktop application in the Telegram Mini App or replace MIDAD's Fabric, Forge, Model Gateway, browser worker or Revenue services.
 
-PandaCode is a native Tauri/Rust desktop workspace. Its desktop design does not expose a general-purpose HTTP API for MIDAD. Its headless `pandacode serve` mode is a host for PandaCode Connect clients, not a documented MIDAD REST API. Therefore, a future integration must launch an explicitly installed and authorized ACP-compatible agent as a local subprocess on a managed worker, or use a separately reviewed bridge. Do not assume that a PandaCode Connect relay is an available MIDAD provider.
+PandaCode is a native Tauri/Rust desktop workspace. لا توجد واجهة HTTP عامة موثقة لربط MIDAD مباشرة بواجهة PandaCode. Its desktop design does not expose a general-purpose HTTP API for MIDAD. Its headless `pandacode serve` mode is a host for PandaCode Connect clients, not a documented MIDAD REST API. Therefore, a future integration must launch an explicitly installed and authorized ACP-compatible agent as a local subprocess on a managed worker, or use a separately reviewed bridge. Do not assume that a PandaCode Connect relay is an available MIDAD provider.
 
 ## Existing MIDAD boundary
 
