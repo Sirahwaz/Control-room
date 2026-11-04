@@ -33,6 +33,7 @@ const bindingRegistry=load("mobile/factory/x/agent-bindings.registry.json").bind
 const adapterIds=new Set(adapterRegistry.map(a=>a.id));
 const agentIds=new Set(agents.map(a=>a.id));
 const boundAgentIds=new Set(bindingRegistry.map(b=>b.agent));
+const failures=[];
 if(bindingRegistry.length !== agents.length) failures.push("agent_binding_count_mismatch");
 for(const a of agents) if(!boundAgentIds.has(a.id)) failures.push("agent_missing_binding:"+a.id);
 for(const b of bindingRegistry) {
@@ -46,7 +47,6 @@ const requiredCapIds=new Set(caps.map(c=>c.id));
 const providerCapCoverage=new Set(providers.flatMap(p=>p.capabilities));
 const pluginCapCoverage=new Set(plugins.flatMap(p=>p.capabilities));
 
-const failures=[];
 if(cfg.selection?.strategy!=="need-first-provider-second") failures.push("selection_strategy");
 if(cfg.quality?.fail_closed_on_security_gate!==true) failures.push("security_gate");
 if(cfg.execution?.max_parallel_agents<4) failures.push("parallel_agents_too_low");
