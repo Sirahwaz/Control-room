@@ -8,6 +8,7 @@ on:
     paths:
       - 'mobile/factory/x/**'
       - 'mobile/factory/factory.config.json'
+      - 'tests/mobile-factory-x-preflight.test.mjs'
       - '.github/workflows/mobile-factory-x.yml'
   pull_request:
     paths:
