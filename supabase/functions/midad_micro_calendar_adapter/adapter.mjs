@@ -3,7 +3,7 @@ const MICRO_PATH = "/api/v1/events/free";
 const MAX_RANGE_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_RESPONSE_BYTES = 32 * 1024;
 const ALLOWED_INPUT_KEYS = new Set(["from", "to", "minutes", "day_start", "day_end"]);
-const RFC3339_WITH_ZONE = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-](?:0\\d|1\\d|2[0-3]):[0-5]\\d)$/;
+const RFC3339_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/;
 
 function fail(error) { return { ok: false, error }; }
 
