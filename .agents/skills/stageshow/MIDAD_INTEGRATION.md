@@ -39,3 +39,8 @@ The Pages workflow builds the preview into three root-level static files: `stage
 - `VERIFIED`: skill/reference integration merged; isolated runtime demo merged; TypeScript, Vite production build and bundle smoke tests passed in CI.
 - `PENDING`: additive Pages preview deployment and real-browser visual rehearsal at desktop and 390px.
 - `NOT CLAIMED`: production integration, runtime automation, reverse-engineering capability, or live data connectivity.
+
+
+## GitHub Pages deployment
+
+The repository's GitHub Pages source is configured to **GitHub Actions**. The `Deploy MIDAD Control Room to GitHub Pages` workflow builds the isolated StageShow demo with Vite, stages the generated HTML/JS/CSS bundle at the repository root, smoke-tests those outputs, and deploys the artifact. Do not switch Pages back to branch-based/Jekyll publishing; it would serve the TSX source as an opaque static file instead of the compiled application.
