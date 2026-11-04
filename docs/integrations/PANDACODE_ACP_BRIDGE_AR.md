@@ -56,6 +56,20 @@ Any protocol methods, file operations or terminal requests that the bridge does 
 - **Kill switch:** stop new ACP launches and cancel owned process groups without affecting unrelated MIDAD workers.
 - **No financial authority:** ACP agents receive no wallet signing, transfers, withdrawals, live trading or settlement capability.
 
+## Evaluated ACP coding-agent candidates
+
+These are upstream-supported candidates, **not installed or enabled MIDAD providers**:
+
+| Candidate | Verified upstream entry point | Authentication / isolation note | MIDAD decision |
+|---|---|---|---|
+| Gemini CLI | ACP stdio mode is documented. The ACP page shows `gemini --acp`; the CLI reference has also listed `--experimental-acp`, so pin a release and verify its actual `--help` output before launch. | Headless API-key auth supports `GEMINI_API_KEY`. Its sandbox is disabled by default; Docker/Podman-based sandboxing must be explicitly enabled and the container runtime must actually exist. | **First candidate to evaluate**, because MIDAD already has a Gemini route. No key is copied to GitHub Actions or the browser worker. |
+| Kimi Code CLI | `kimi acp` speaks ACP JSON-RPC over stdio. | `kimi login` documents an RFC 8628 device-code OAuth flow; the resulting token is stored on the host. | **Fallback candidate** if a dedicated host can hold its login safely. |
+| Hermes Agent | `hermes acp` / `hermes-acp` is documented after installing the ACP extra. | Exposes a broader curated file/tool/terminal workflow, so it needs an especially careful capability and approval review. | **Defer** until MIDAD's permission broker and process sandbox are verified. |
+
+The Gemini CLI sources differ on the exact ACP flag name across documentation pages; do not hard-code either spelling based on a moving upstream branch. Pin a release, inspect its help output, and make a protocol-only handshake before any model call. A documented `--sandbox` option is not proof that a sandbox is active: the host must have the selected Docker/Podman/runtime installed and the CLI must report/use the configured sandbox.
+
+**Provider selection:** do not auto-select any candidate while `acp-stdio-pending` is PENDING. The first real-provider gate should be Gemini CLI on a separate worker with Docker/Podman isolation, an ephemeral workspace, least-privilege credential injection and a read-only prompt. No production secret is to be copied into repository or CI configuration.
+
 ## Activation gates
 
 The candidate stays **PENDING** until all of the following are evidenced:
