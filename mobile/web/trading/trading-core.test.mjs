@@ -7,6 +7,7 @@ test("normalizes a valid Binance ticker and rejects malformed values",()=>{
   assert.equal(x.symbol,"BTCUSDT");
   assert.equal(x.last,67000);
   assert.equal(x.changePct,2.5);
+  assert.equal(x.provider,"binance");
   assert.equal(normalizeTicker({s:"BTCUSDT",c:"NaN"}),null);
 });
 
