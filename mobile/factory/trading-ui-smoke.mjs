@@ -15,6 +15,7 @@ const mime = { ".html": "text/html; charset=utf-8", ".mjs": "text/javascript; ch
 const server = http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url || "/", "http://127.0.0.1").pathname);
+    if (pathname === "/favicon.ico") { res.writeHead(204).end(); return; }
     const target = path.resolve(webRoot, "." + (pathname === "/" ? "/index.html" : pathname));
     if (!target.startsWith(webRoot + path.sep) && target !== path.join(webRoot, "index.html")) {
       res.writeHead(403).end("Forbidden"); return;
