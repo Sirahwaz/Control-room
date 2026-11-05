@@ -54,7 +54,7 @@ test("normalizes CoinEx REST ticker with explicit provider provenance",()=>{
   const x=normalizeCoinExTicker({market:"BTCUSDT",last:"101000",open:"100000",value:"2500000",ts:1700000000000});
   assert.equal(x.symbol,"BTCUSDT");
   assert.equal(x.last,101000);
-  assert.equal(x.changePct,1);
+  assert.ok(Math.abs(x.changePct-1)<1e-9);
   assert.equal(x.quoteVolume,2500000);
   assert.equal(x.provider,"coinex");
   assert.equal(x.timestamp,1700000000000);
