@@ -40,8 +40,9 @@ const htmlOpen=(html.match(/<html\b/gi)||[]).length;
 const htmlClose=(html.match(/<\/html\s*>/gi)||[]).length;
 if(scriptOpen!==scriptClose) fail(`HTML script tag mismatch: ${scriptOpen} open / ${scriptClose} close`);
 if(bodyOpen!==1||bodyClose!==1||htmlOpen!==1||htmlClose!==1||!/<\/html\s*>\s*$/i.test(html)) fail("HTML document boundary tags are invalid");
-const inlineScripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].filter(match=>!(/\bsrc\s*=/i.test(match[1])));
-if(inlineScripts.length!==scriptOpen) fail("Could not parse every inline HTML script block");
+const parsedScripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+if(parsedScripts.length!==scriptOpen) fail("Could not parse every HTML script element");
+const inlineScripts=parsedScripts.filter(match=>!(/\bsrc\s*=/i.test(match[1])));
 for(let i=0;i<inlineScripts.length;i++){
   const attrs=inlineScripts[i][1],source=inlineScripts[i][2];
   const mode=/\btype\s*=\s*["']module["']/i.test(attrs)?"module":"commonjs";
