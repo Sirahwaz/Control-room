@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-product-key="context-forge">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101729">
+  <meta name="description" content="Context Forge — محلل سياق محلي وآمن من MIDAD AI">
+  <title>Context Forge — MIDAD AI</title>
+  <link rel="stylesheet" href="./context-forge.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">CF</div>
+      <div class="brand-copy">
+        <p class="eyebrow">MIDAD AI · INTELLIGENCE WORKBENCH</p>
+        <h1>Context Forge</h1>
+        <p class="subtitle">حوّل الملاحظات والقرارات إلى سياق واضح يمكن مراجعته.</p>
+      </div>
+      <span class="local-badge"><span class="status-dot"></span>محلي فقط</span>
+    </header>
+
+    <main>
+      <section class="privacy-strip" aria-label="حدود التشغيل">
+        <span class="privacy-icon" aria-hidden="true">盾</span>
+        <div>
+          <strong>لا إرسال تلقائي ولا تنفيذ خارجي</strong>
+          <p>التحليل والحفظ هنا على الجهاز. كل ادعاء يبقى UNVERIFIED إلى أن يُراجع بمصدر.</p>
+        </div>
+      </section>
+
+      <section class="panel input-panel" aria-labelledby="input-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">01 / INGEST</p>
+            <h2 id="input-title">أدخل السياق</h2>
+          </div>
+          <span id="char-count" class="counter">0 حرف</span>
+        </div>
+
+        <div class="templates" aria-label="قوالب سريعة">
+          <button class="template-button" type="button" data-template="project">مثال: مشروع</button>
+          <button class="template-button" type="button" data-template="decisions">مثال: قرارات</button>
+          <button class="template-button" type="button" data-template="opportunity">مثال: فرصة</button>
+        </div>
+
+        <label class="field-label" for="context-input">ملاحظات، شروط، مصادر، قرارات أو أسئلة</label>
+        <textarea id="context-input" maxlength="30000" spellcheck="false" placeholder="الهدف: ما النتيجة التي تريد الوصول إليها؟&#10;القيد: ما الذي يجب عدم فعله؟&#10;القرار: ما الذي تم اعتماده؟&#10;سؤال مفتوح: ما الذي يحتاج إلى تحقق؟"></textarea>
+        <div class="input-footer">
+          <span>TXT / MD / JSON</span>
+          <div class="button-row compact">
+            <input id="file-input" type="file" accept=".txt,.md,.json,text/plain,application/json" hidden>
+            <button class="button button-quiet" id="import-button" type="button">استيراد ملف</button>
+            <button class="button button-quiet" id="clear-button" type="button">مسح</button>
+          </div>
+        </div>
+
+        <div class="button-row primary-actions">
+          <button class="button button-primary" id="analyze-button" type="button">حلّل السياق <span aria-hidden="true">←</span></button>
+          <button class="button button-secondary" id="draft-plan-button" type="button">مسودة خطة محلية</button>
+        </div>
+        <p id="notice" class="notice" role="status" aria-live="polite">جاهز للتحليل. استخدم قالبًا للبدء بسرعة.</p>
+      </section>
+
+      <section class="panel" id="results-panel" aria-labelledby="results-title" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">02 / INSPECT</p>
+            <h2 id="results-title">نتيجة التحليل</h2>
+          </div>
+          <span class="status-tag">تحليل قواعد محلية</span>
+        </div>
+
+        <div class="readiness-card">
+          <div>
+            <p class="section-kicker">STRUCTURE ONLY · HEURISTIC</p>
+            <h3>اكتمال تنظيم السياق</h3>
+            <p>مؤشر بنيوي تقريبي؛ ليس درجة صحة أو دقة.</p>
+          </div>
+          <div class="score-wrap"><strong id="readiness-score">0</strong><span>/100</span></div>
+        </div>
+
+        <div class="metrics-grid" data-testid="metrics">
+          <article class="metric-card"><span>ادعاءات</span><strong id="metric-claims">0</strong></article>
+          <article class="metric-card"><span>قيود</span><strong id="metric-constraints">0</strong></article>
+          <article class="metric-card"><span>قرارات</span><strong id="metric-decisions">0</strong></article>
+          <article class="metric-card"><span>تعارضات محتملة</span><strong id="metric-conflicts" data-testid="conflict-count">0</strong></article>
+        </div>
+
+        <div id="warnings-area" class="stack"></div>
+        <section class="subsection">
+          <div class="subsection-title"><h3>وحدات السياق</h3><span>كلها تحتاج تحققًا</span></div>
+          <div id="claims-list" class="stack"></div>
+        </section>
+        <section class="subsection" id="conflicts-section">
+          <div class="subsection-title"><h3>التعارضات المحتملة</h3><span>مراجعة بشرية</span></div>
+          <div id="conflicts-list" class="stack"></div>
+        </section>
+
+        <div class="button-row result-actions">
+          <button class="button button-primary" id="save-button" type="button">احفظ محليًا</button>
+          <button class="button button-secondary" id="copy-button" type="button">انسخ JSON</button>
+          <button class="button button-quiet" id="export-button" type="button">صدّر التقرير</button>
+        </div>
+      </section>
+
+      <section class="panel" id="draft-panel" aria-labelledby="draft-title" hidden>
+        <div class="section-heading">
+          <div><p class="section-kicker">03 / PLAN</p><h2 id="draft-title">مسودة خطة إرشادية</h2></div>
+          <span class="status-tag inferred">INFERRED</span>
+        </div>
+        <p class="panel-note">توليد محلي مبني على قواعد ثابتة، وليس استدلال نموذج لغوي. لا ينفّذ أدوات ولا يثبت إنجاز المهمة.</p>
+        <ol id="draft-list" class="draft-list"></ol>
+      </section>
+
+      <section class="panel history-panel" id="history-panel" aria-labelledby="history-title" hidden>
+        <div class="section-heading">
+          <div><p class="section-kicker">04 / LOCAL MEMORY</p><h2 id="history-title">السجل المحلي</h2></div>
+          <span class="status-tag">على الجهاز</span>
+        </div>
+        <p class="panel-note">لا تتم المزامنة إلى السحابة. احفظ يدويًا فقط ما تريد الاحتفاظ به.</p>
+        <div id="history-list" class="stack"></div>
+        <button class="button button-quiet clear-history" id="clear-history-button" type="button">مسح السجل المحلي</button>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>MIDAD AI · Context Forge v0.1.0</span>
+      <span>OFFLINE-FIRST · DRY-RUN</span>
+    </footer>
+  </div>
+  <script type="module" src="./context-forge.js"></script>
+</body>
+</html>
