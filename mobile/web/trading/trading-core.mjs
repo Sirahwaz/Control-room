@@ -52,3 +52,29 @@ export function classifyPumpSignal({ change5mPct, volumeRatio, liquidityUsd, sou
     note: "A pump alert is not a buy signal; verify liquidity, exits, ownership and source integrity."
   };
 }
+
+
+export function createPaperPosition({ id, symbol, side, quantity, entryPrice, feePct = 0.1, slippagePct = 0.05, openedAt = Date.now() } = {}) {
+  const q=Number(quantity), p=Number(entryPrice), fee=Number(feePct), slip=Number(slippagePct), opened=Number(openedAt);
+  const pair=String(symbol||"").toUpperCase();
+  if (!id || !/^[A-Z0-9]{4,24}$/.test(pair) || !["buy","sell"].includes(String(side)) || ![q,p,fee,slip,opened].every(Number.isFinite) || q<=0 || p<=0 || fee<0 || fee>5 || slip<0 || slip>20 || opened<=0) throw new TypeError("INVALID_PAPER_POSITION");
+  return { id:String(id), symbol:pair, side, quantity:q, entryPrice:p, feePct:fee, slippagePct:slip, openedAt:opened, status:"OPEN", mode:"PAPER_ONLY" };
+}
+
+export function markPaperPosition(position, markPrice) {
+  if (!position || position.mode!=="PAPER_ONLY" || position.status!=="OPEN") throw new TypeError("INVALID_PAPER_POSITION");
+  const mark=Number(markPrice), q=Number(position.quantity), entry=Number(position.entryPrice);
+  if (![mark,q,entry].every(Number.isFinite) || mark<=0 || q<=0 || entry<=0) throw new TypeError("INVALID_PAPER_MARK");
+  const direction=position.side==="buy"?1:-1;
+  const grossPnl=(mark-entry)*q*direction;
+  const turnover=(entry+mark)*q;
+  const totalCosts=turnover*(Number(position.feePct)+Number(position.slippagePct))/100;
+  const netPnl=grossPnl-totalCosts;
+  return { markPrice:mark, markValue:mark*q, grossPnl, totalCosts, netPnl, returnPct:(netPnl/(entry*q))*100 };
+}
+
+export function closePaperPosition(position, exitPrice, closedAt = Date.now()) {
+  const mark=markPaperPosition(position,exitPrice), timestamp=Number(closedAt);
+  if (!Number.isFinite(timestamp) || timestamp<=0) throw new TypeError("INVALID_PAPER_CLOSE_TIME");
+  return { ...position, status:"CLOSED", closedAt:timestamp, exitPrice:Number(exitPrice), ...mark, executionAllowed:false };
+}
