@@ -86,9 +86,11 @@ try {
   checks.push("page-load-and-market-feed");
 
   await page.getByRole("button", { name: "DEX Discovery" }).click();
-  await page.locator("#dexStatus").getByText("OBSERVED · 0").waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector("#dexStatus")?.textContent === "OBSERVED · 0", null, { timeout: 10000 });
   assert.equal(await page.locator(".view.active").count(), 1);
   checks.push("tab-navigation-and-dex-discovery");
+  await page.getByRole("button", { name: "المحفظة" }).click();
+  assert.equal(await page.locator("#portfolio.view.active").count(), 1);
 
   const sample = createPaperPosition({
     id: "ui-smoke-paper-001", symbol: "BTCUSDT", side: "buy", quantity: 0.01,
@@ -100,7 +102,7 @@ try {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(backup))
   });
-  await page.locator("#paperBackupStatus").getByText("اكتمل الدمج", { exact: false }).waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector("#paperBackupStatus")?.textContent?.includes("اكتمل الدمج"), null, { timeout: 10000 });
   assert.equal(await page.locator("#paperPositions .signal").count(), 1);
   checks.push("paper-journal-import");
 
@@ -114,7 +116,7 @@ try {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(conflictBackup))
   });
-  await page.locator("#paperBackupStatus").getByText("PAPER_BACKUP_ID_CONFLICT", { exact: false }).waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector("#paperBackupStatus")?.textContent?.includes("PAPER_BACKUP_ID_CONFLICT"), null, { timeout: 10000 });
   assert.equal(await page.locator("#paperPositions .signal").count(), 1);
   checks.push("paper-journal-conflict-is-non-destructive");
 
