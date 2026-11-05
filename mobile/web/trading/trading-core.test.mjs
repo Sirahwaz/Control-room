@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeTicker, isFresh, computeTradePreview, classifyPumpSignal } from "./trading-core.mjs";
+import { normalizeTicker, isFresh, computeTradePreview, classifyPumpSignal, createPaperPosition, markPaperPosition, closePaperPosition } from "./trading-core.mjs";
 
 test("normalizes a valid Binance ticker and rejects malformed values",()=>{
   const x=normalizeTicker({s:"BTCUSDT",c:"67000",P:"2.5",q:"1000000",E:Date.now()});
@@ -28,4 +28,22 @@ test("pump classifier requires independent market confirmation and labels risk",
   assert.ok(p.riskFlags.includes("HIGH_HOLDER_CONCENTRATION"));
   const weak=classifyPumpSignal({change5mPct:8,volumeRatio:1,liquidityUsd:1000,sourceCount:1,holderConcentrationPct:90});
   assert.equal(weak.state,"REJECT");
+});
+
+
+test("paper position marks net PnL after round-trip fees and slippage",()=>{
+  const position=createPaperPosition({id:"p1",symbol:"BTCUSDT",side:"buy",quantity:0.01,entryPrice:100000,feePct:0.1,slippagePct:0.05,openedAt:1000});
+  const marked=markPaperPosition(position,101000);
+  assert.equal(marked.grossPnl,10);
+  assert.ok(marked.totalCosts>0);
+  assert.ok(marked.netPnl<marked.grossPnl);
+  const closed=closePaperPosition(position,101000,2000);
+  assert.equal(closed.status,"CLOSED");
+  assert.equal(closed.closedAt,2000);
+  assert.equal(closed.netPnl,marked.netPnl);
+});
+
+test("paper position rejects invalid quantity, price and side",()=>{
+  assert.throws(()=>createPaperPosition({id:"p2",symbol:"BTCUSDT",side:"buy",quantity:0,entryPrice:100}),/INVALID_PAPER_POSITION/);
+  assert.throws(()=>createPaperPosition({id:"p3",symbol:"BTCUSDT",side:"short",quantity:1,entryPrice:100}),/INVALID_PAPER_POSITION/);
 });
