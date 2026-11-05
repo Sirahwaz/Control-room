@@ -107,3 +107,40 @@ test("Paper cap deducts existing exposure and modeled costs",()=>{const a=planPa
 test("Paper journal metrics count closed net PnL only",()=>{const x=summarizePaperJournal([{mode:"PAPER_ONLY",status:"CLOSED",netPnl:10,closedAt:1000},{mode:"PAPER_ONLY",status:"CLOSED",netPnl:-5,closedAt:2000},{mode:"PAPER_ONLY",status:"OPEN",netPnl:999}]);assert.equal(x.realizedNetPnl,5);assert.equal(x.winRatePct,50);assert.equal(x.profitFactor,2);assert.equal(x.maxDrawdownUsd,5)});
 
 test("paper risk budget allows for conservative short-side exit costs",()=>{const budget=calculatePositionBudget({capital:1000,bucket:"tactical",stopPct:10,maxRiskPct:1,feePct:1,slippagePct:0});assert.ok(budget.riskRate>0.1);assert.ok(budget.positionNotional<100)});
+
+import { createPaperJournalBackup, restorePaperJournalBackup } from "./trading-core.mjs";
+
+test("paper journal backup round-trips validated open and closed positions",()=>{
+  const open=createPaperPosition({id:"backup-open",symbol:"BTCUSDT",side:"buy",quantity:.01,entryPrice:100000,feePct:.1,slippagePct:.05,openedAt:1000,bucket:"tactical"});
+  const closed=closePaperPosition(createPaperPosition({id:"backup-closed",symbol:"ETHUSDT",side:"sell",quantity:1,entryPrice:2000,feePct:.1,slippagePct:.05,openedAt:1100,bucket:"core"}),1900,2100);
+  const backup=createPaperJournalBackup([open,closed],{createdAt:3000});
+  assert.equal(backup.format,"MIDAD_PAPER_JOURNAL");
+  assert.equal(backup.schemaVersion,1);
+  assert.equal(backup.positionCount,2);
+  assert.equal(backup.createdAt,3000);
+  const restored=restorePaperJournalBackup([],backup);
+  assert.equal(restored.addedCount,2);
+  assert.deepEqual(restored.positions.map(p=>p.id),["backup-closed","backup-open"]);
+  assert.equal(restorePaperJournalBackup(restored.positions,backup).addedCount,0);
+});
+
+test("paper journal restore rejects malformed or unauthorized backup records atomically",()=>{
+  const base=createPaperJournalBackup([createPaperPosition({id:"safe-one",symbol:"BTCUSDT",side:"buy",quantity:.01,entryPrice:100000,openedAt:1000})],{createdAt:3000});
+  const badMode=structuredClone(base);badMode.positions[0].mode="LIVE";
+  assert.throws(()=>restorePaperJournalBackup([],badMode),/INVALID_PAPER_BACKUP_POSITION/);
+  const badPnl=structuredClone(base);badPnl.positions[0].status="CLOSED";badPnl.positions[0].netPnl=1;
+  assert.throws(()=>restorePaperJournalBackup([],badPnl),/INVALID_PAPER_BACKUP_POSITION/);
+  const duplicate=structuredClone(base);duplicate.positions.push(structuredClone(duplicate.positions[0]));duplicate.positionCount=2;
+  assert.throws(()=>restorePaperJournalBackup([],duplicate),/DUPLICATE_PAPER_BACKUP_ID/);
+});
+
+test("paper journal restore never overwrites a conflicting existing trade",()=>{
+  const backup=createPaperJournalBackup([createPaperPosition({id:"same-id",symbol:"BTCUSDT",side:"buy",quantity:.01,entryPrice:100000,openedAt:1000})],{createdAt:3000});
+  const existing=[createPaperPosition({id:"same-id",symbol:"BTCUSDT",side:"buy",quantity:.02,entryPrice:100000,openedAt:1000})];
+  assert.throws(()=>restorePaperJournalBackup(existing,backup),/PAPER_BACKUP_ID_CONFLICT/);
+  assert.equal(existing[0].quantity,.02);
+});
+
+test("paper journal backup enforces a bounded position count",()=>{
+  assert.throws(()=>createPaperJournalBackup(Array.from({length:5001},(_,i)=>({id:"p"+i}))),/PAPER_BACKUP_TOO_LARGE/);
+});
