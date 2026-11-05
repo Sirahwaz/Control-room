@@ -9,6 +9,17 @@ export function normalizeTicker(raw) {
   return { symbol, last, changePct, quoteVolume: Number.isFinite(quoteVolume) && quoteVolume >= 0 ? quoteVolume : 0, timestamp };
 }
 
+export function normalizeCoinExTicker(raw, expectedMarket = null, receivedAt = Date.now()) {
+  if (!raw || typeof raw !== "object") return null;
+  const symbol = String(raw.market || "").toUpperCase();
+  const expected = expectedMarket == null ? null : String(expectedMarket).toUpperCase();
+  const last = Number(raw.last), open = Number(raw.open);
+  const quoteVolume = Number(raw.value ?? 0);
+  const timestamp = Number(raw.ts ?? receivedAt);
+  if (!/^[A-Z0-9]{4,24}$/.test(symbol) || (expected && symbol !== expected) || !Number.isFinite(last) || last <= 0 || !Number.isFinite(open) || open <= 0 || !Number.isFinite(quoteVolume) || quoteVolume < 0 || !Number.isFinite(timestamp) || timestamp <= 0) return null;
+  return { symbol, last, changePct: ((last / open) - 1) * 100, quoteVolume, timestamp, provider: "coinex" };
+}
+
 export function isFresh(timestamp, maxAgeMs = 5000, now = Date.now()) {
   const ts = Number(timestamp);
   return Number.isFinite(ts) && ts > 0 && now >= ts && now - ts <= maxAgeMs;
