@@ -43,7 +43,8 @@ if(fs.existsSync(webDir)) walk(webDir);
 
 for(const file of jsFiles){
   const r=spawnSync(process.execPath,["--check",file],{encoding:"utf8"});
-  if(r.status!==0) fail(`JS syntax: ${path.relative(root,file)}\n${r.stderr||r.stdout}`);
+  if(r.status!==0) fail(`JS syntax: ${path.relative(root,file)}
+${r.stderr||r.stdout}`);
   const s=fs.readFileSync(file,"utf8");
   if(/-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-/m.test(s)){
     fail(`Possible hard-coded secret detected in ${path.relative(root,file)}`);
@@ -55,9 +56,12 @@ if(key==="midad-trading"){
   const tradingTest=path.join(webDir,"trading","trading-core.test.mjs");
   if(!fs.existsSync(tradingTest)) fail("Trading contract tests are missing");
   const tests=spawnSync(process.execPath,["--test",tradingTest],{cwd:root,encoding:"utf8"});
-  if(tests.status!==0) fail(`Trading contract tests failed:\n${tests.stdout||""}\n${tests.stderr||""}`);
+  if(tests.status!==0) fail(`Trading contract tests failed:
+${tests.stdout||""}
+${tests.stderr||""}`);
 }
-\nif(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
+
+if(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
 if(!cfg.quality?.required_gates?.includes("runtime_smoke")) fail("runtime_smoke must be a required Factory quality gate");
 if(cfg.quality?.optional_gates?.includes("runtime_smoke")) fail("runtime_smoke cannot be optional when APKs are released");
 
