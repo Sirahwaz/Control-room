@@ -35,7 +35,7 @@ function walk(dir){
   for(const ent of fs.readdirSync(dir,{withFileTypes:true})){
     const p=path.join(dir,ent.name);
     if(ent.isDirectory()) walk(p);
-    else if(p.endsWith(".js")) jsFiles.push(p);
+    else if(p.endsWith(".js") || p.endsWith(".mjs")) jsFiles.push(p);
   }
 }
 const webDir=path.join(root,"mobile","web");
@@ -50,7 +50,14 @@ for(const file of jsFiles){
   }
 }
 
-if(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
+
+if(key==="midad-trading"){
+  const tradingTest=path.join(webDir,"trading","trading-core.test.mjs");
+  if(!fs.existsSync(tradingTest)) fail("Trading contract tests are missing");
+  const tests=spawnSync(process.execPath,["--test",tradingTest],{cwd:root,encoding:"utf8"});
+  if(tests.status!==0) fail(`Trading contract tests failed:\n${tests.stdout||""}\n${tests.stderr||""}`);
+}
+\nif(cfg.quality?.fail_closed_on_security_gate!==true) fail("Factory configuration security gate is not fail-closed");
 if(!cfg.quality?.required_gates?.includes("runtime_smoke")) fail("runtime_smoke must be a required Factory quality gate");
 if(cfg.quality?.optional_gates?.includes("runtime_smoke")) fail("runtime_smoke cannot be optional when APKs are released");
 
