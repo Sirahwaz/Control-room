@@ -166,3 +166,99 @@ export function summarizePaperJournal(positions=[]) {
  for(const p of closed){const pnl=Number(p.netPnl);realizedNetPnl+=pnl;if(pnl>0){wins++;grossProfit+=pnl}else if(pnl<0){losses++;grossLoss+=Math.abs(pnl)}peak=Math.max(peak,realizedNetPnl);maxDrawdownUsd=Math.max(maxDrawdownUsd,peak-realizedNetPnl)}
  return {closedTrades:closed.length,openTrades:open.length,wins,losses,realizedNetPnl,winRatePct:closed.length?wins/closed.length*100:null,expectancy:closed.length?realizedNetPnl/closed.length:null,profitFactor:grossLoss>0?grossProfit/grossLoss:null,maxDrawdownUsd,mode:"PAPER_ONLY"};
 }
+
+const PAPER_JOURNAL_FORMAT = "MIDAD_PAPER_JOURNAL";
+const PAPER_JOURNAL_SCHEMA_VERSION = 1;
+const PAPER_JOURNAL_MAX_POSITIONS = 5000;
+
+function normalizePaperJournalPosition(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.mode !== "PAPER_ONLY" || raw.executionAllowed === true) {
+    throw new TypeError("INVALID_PAPER_BACKUP_POSITION");
+  }
+  const base = createPaperPosition({
+    id: raw.id, symbol: raw.symbol, side: raw.side, quantity: raw.quantity,
+    entryPrice: raw.entryPrice, feePct: raw.feePct, slippagePct: raw.slippagePct,
+    stopPrice: raw.stopPrice ?? null, targetPrice: raw.targetPrice ?? null,
+    bucket: raw.bucket ?? null, openedAt: raw.openedAt
+  });
+  if (raw.status === "OPEN") return base;
+  if (raw.status !== "CLOSED") throw new TypeError("INVALID_PAPER_BACKUP_POSITION");
+  const closedAt = Number(raw.closedAt), exitPrice = Number(raw.exitPrice);
+  if (!Number.isFinite(closedAt) || closedAt <= 0 || closedAt < base.openedAt || !Number.isFinite(exitPrice) || exitPrice <= 0) {
+    throw new TypeError("INVALID_PAPER_BACKUP_POSITION");
+  }
+  const recomputed = closePaperPosition(base, exitPrice, closedAt);
+  const fields = ["markPrice", "markValue", "grossPnl", "totalCosts", "netPnl", "returnPct"];
+  for (const field of fields) {
+    const value = Number(raw[field]), expected = Number(recomputed[field]);
+    if (!Number.isFinite(value) || Math.abs(value - expected) > 1e-8 * Math.max(1, Math.abs(expected))) {
+      throw new TypeError("INVALID_PAPER_BACKUP_POSITION");
+    }
+  }
+  return recomputed;
+}
+
+function stablePaperPosition(position) {
+  return JSON.stringify(position);
+}
+
+export function createPaperJournalBackup(positions, { createdAt = Date.now() } = {}) {
+  if (!Array.isArray(positions)) throw new TypeError("INVALID_PAPER_BACKUP");
+  if (positions.length > PAPER_JOURNAL_MAX_POSITIONS) throw new TypeError("PAPER_BACKUP_TOO_LARGE");
+  const timestamp = Number(createdAt);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) throw new TypeError("INVALID_PAPER_BACKUP_TIME");
+  const seen = new Set();
+  const normalized = positions.map(raw => {
+    const position = normalizePaperJournalPosition(raw);
+    if (seen.has(position.id)) throw new TypeError("DUPLICATE_PAPER_BACKUP_ID");
+    seen.add(position.id);
+    return position;
+  });
+  return {
+    format: PAPER_JOURNAL_FORMAT,
+    schemaVersion: PAPER_JOURNAL_SCHEMA_VERSION,
+    product: "midad-trading",
+    createdAt: timestamp,
+    positionCount: normalized.length,
+    positions: normalized
+  };
+}
+
+export function restorePaperJournalBackup(currentPositions, backup) {
+  if (!Array.isArray(currentPositions) || !backup || typeof backup !== "object" ||
+      backup.format !== PAPER_JOURNAL_FORMAT || backup.schemaVersion !== PAPER_JOURNAL_SCHEMA_VERSION ||
+      backup.product !== "midad-trading" || !Number.isFinite(Number(backup.createdAt)) ||
+      Number(backup.createdAt) <= 0 || !Array.isArray(backup.positions) ||
+      backup.positions.length > PAPER_JOURNAL_MAX_POSITIONS ||
+      Number(backup.positionCount) !== backup.positions.length) {
+    throw new TypeError("INVALID_PAPER_BACKUP");
+  }
+  if (currentPositions.length > PAPER_JOURNAL_MAX_POSITIONS) throw new TypeError("PAPER_BACKUP_TOO_LARGE");
+  const existing = new Map();
+  for (const raw of currentPositions) {
+    let position;
+    try { position = normalizePaperJournalPosition(raw); }
+    catch { throw new TypeError("INVALID_CURRENT_PAPER_JOURNAL"); }
+    const prior = existing.get(position.id);
+    if (prior && stablePaperPosition(prior) !== stablePaperPosition(position)) throw new TypeError("PAPER_BACKUP_ID_CONFLICT");
+    existing.set(position.id, position);
+  }
+  const incomingIds = new Set();
+  let addedCount = 0, unchangedCount = 0;
+  for (const raw of backup.positions) {
+    const position = normalizePaperJournalPosition(raw);
+    if (incomingIds.has(position.id)) throw new TypeError("DUPLICATE_PAPER_BACKUP_ID");
+    incomingIds.add(position.id);
+    const prior = existing.get(position.id);
+    if (prior) {
+      if (stablePaperPosition(prior) !== stablePaperPosition(position)) throw new TypeError("PAPER_BACKUP_ID_CONFLICT");
+      unchangedCount++;
+      continue;
+    }
+    existing.set(position.id, position);
+    addedCount++;
+  }
+  if (existing.size > PAPER_JOURNAL_MAX_POSITIONS) throw new TypeError("PAPER_BACKUP_TOO_LARGE");
+  const merged = [...existing.values()].sort((a, b) => Number(b.openedAt) - Number(a.openedAt));
+  return { positions: merged, addedCount, unchangedCount };
+}
