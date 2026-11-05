@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111c"><meta name="color-scheme" content="dark">
+<meta name="description" content="MIDAD Trading Intelligence — live market data, research radar and risk-first trading cockpit">
+<title>MIDAD Trading Intelligence</title>
+<style>
+:root{color-scheme:dark;--bg:#07111c;--panel:#0d1b2a;--panel2:#102235;--line:#1d3549;--text:#e8f2f9;--muted:#8ca4b7;--cyan:#4edcf2;--green:#42d6a4;--red:#ff6d83;--amber:#f2c66d;--violet:#a995ff;--radius:16px}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(850px 480px at 90% -10%,#18344b 0,transparent 60%),var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;background:#07111ceF;border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+.brand{display:flex;align-items:center;gap:10px}.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#163c50,#182344);display:grid;place-items:center;color:var(--cyan);font-weight:900}.brand b{display:block;letter-spacing:.04em}.brand small{display:block;color:var(--muted);font-size:10px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:10px;color:var(--muted);white-space:nowrap}.pill.live{color:var(--green);border-color:#21664f}.pill.warn{color:var(--amber);border-color:#705b2d}
+main{max-width:1100px;margin:auto;padding:14px;display:grid;gap:14px}.hero{border:1px solid #23465b;border-radius:20px;padding:18px;background:linear-gradient(135deg,#10293b,#111d32 65%,#181d39);display:grid;gap:12px}.hero h1{margin:0;font-size:clamp(23px,6vw,36px);line-height:1.2}.hero p{margin:0;color:#b2c5d4;font-size:12px}.statusline{display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric,.panel{border:1px solid var(--line);background:linear-gradient(160deg,var(--panel),#0a1724);border-radius:var(--radius);padding:13px;min-width:0}.metric span{display:block;color:var(--muted);font-size:11px}.metric strong{display:block;font:700 20px ui-monospace,monospace;margin-top:5px;overflow:hidden;text-overflow:ellipsis}.metric small{color:var(--muted);font-size:10px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.section-head h2{font-size:15px;margin:0}.section-head small{color:var(--muted);font-size:10px}
+.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:430px;font-variant-numeric:tabular-nums}th,td{text-align:right;padding:9px 7px;border-bottom:1px solid #1a3042;font-size:11px}th{color:var(--muted);font-weight:600}td b{font-size:12px}.positive{color:var(--green)}.negative{color:var(--red)}.muted{color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,monospace}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #2a4a60;background:#132b3d;color:var(--text);padding:9px 12px;border-radius:11px;font-size:11px}.btn.primary{background:#123f50;border-color:#25748a;color:#baf6ff}.btn.danger{border-color:#693346;color:#ff9cae;background:#351c2b}
+input,select{width:100%;background:#081522;border:1px solid #284257;color:var(--text);padding:10px;border-radius:10px;min-width:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field label{display:block;color:var(--muted);font-size:10px;margin:0 0 5px}
+.notice{border:1px solid #69542b;background:#241f15;color:#f1dba9;border-radius:12px;padding:10px;font-size:11px}.empty{padding:18px;text-align:center;color:var(--muted);font-size:11px;border:1px dashed #294356;border-radius:12px}
+.tabs{position:fixed;z-index:15;bottom:0;left:0;right:0;display:flex;justify-content:space-around;gap:2px;padding:8px 5px calc(8px + env(safe-area-inset-bottom));background:#07111cf2;border-top:1px solid var(--line);backdrop-filter:blur(18px)}
+.tabs button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:7px 6px;border-radius:9px;flex:1}.tabs button.active{color:var(--cyan);background:#123044}
+.view{display:none}.view.active{display:grid;gap:14px}
+#spark{width:100%;height:75px;display:block}.small{font-size:10px}.signal{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #1a3042}
+@media(min-width:760px){main{padding:22px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hero{grid-template-columns:1fr auto;align-items:center}.two-col{display:grid;grid-template-columns:1.3fr .7fr;gap:12px}.tabs{position:sticky;top:66px;bottom:auto;justify-content:flex-start;padding:8px 12px;border:1px solid var(--line);border-radius:12px;margin:0 auto;max-width:1100px}.tabs button{flex:0 0 auto;min-width:110px}body{padding-bottom:25px}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">M</div><div><b>MIDAD TRADING</b><small>INTELLIGENCE · RISK-FIRST · v0.1.0</small></div></div><span id="feedStatus" class="pill warn">CONNECTING FEED…</span></header>
+<main>
+<section class="hero"><div><div class="statusline"><span class="pill live">PUBLIC MARKET DATA</span><span class="pill warn">EXECUTION LOCKED</span><span class="pill">PAPER / PREVIEW</span></div><h1>السوق أمامك.<br>والقرار بالدليل.</h1><p>Live market cockpit with MIDAD intelligence, multi-source verification and risk controls. لا توجد وعود ربح أو أوامر مالية مفعّلة في هذه النسخة.</p></div><div class="toolbar"><button class="btn primary" id="refreshBtn">تحديث الاتصال</button><button class="btn" id="lockBtn">حالة الحماية: ON</button></div></section>
+
+<div class="grid">
+ <div class="metric"><span>BTC / USDT</span><strong id="btcPrice">—</strong><small id="btcChange">بانتظار بيانات حية</small></div>
+ <div class="metric"><span>ETH / USDT</span><strong id="ethPrice">—</strong><small id="ethChange">بانتظار بيانات حية</small></div>
+ <div class="metric"><span>LIVE SYMBOLS</span><strong id="symbolCount">0</strong><small>من تدفق Binance Spot</small></div>
+ <div class="metric"><span>FEED LATENCY</span><strong id="latency">—</strong><small id="lastUpdate">لا توجد عينة بعد</small></div>
+</div>
+
+<nav class="tabs" aria-label="Trading sections">
+<button class="active" data-view="market">السوق</button><button data-view="radar">Pump Radar</button><button data-view="trade">التداول</button><button data-view="portfolio">المحفظة</button><button data-view="lab">الاستراتيجيات</button>
+</nav>
+
+<section id="market" class="view active">
+ <div class="two-col">
+  <div class="panel"><div class="section-head"><h2>مراقبة السوق الحية</h2><small>WebSocket · Binance Spot</small></div><div class="table-wrap"><table><thead><tr><th>الزوج</th><th>السعر</th><th>24h %</th><th>Quote Volume</th></tr></thead><tbody id="marketRows"><tr><td colspan="4" class="muted">جارٍ انتظار أول تحديث من المصدر…</td></tr></tbody></table></div></div>
+  <div class="panel"><div class="section-head"><h2>BTC Momentum</h2><small>Live ticker samples</small></div><canvas id="spark" aria-label="BTC price sparkline"></canvas><div class="small muted" id="chartCaption">لا نعرض رسماً أو سعراً افتراضياً.</div></div>
+ </div>
+ <div class="panel"><div class="section-head"><h2>حالة مصادر البيانات</h2><small>Freshness & provenance</small></div><div class="signal"><span>Binance Spot WebSocket</span><b id="binanceState" class="muted">CONNECTING</b></div><div class="signal"><span>CoinEx / Bybit / Kraken</span><b class="muted">BACKEND ADAPTER PENDING</b></div><div class="signal"><span>DEX liquidity / holders</span><b class="muted">NOT CONNECTED</b></div><div class="signal"><span>Social OSINT</span><b class="muted">NOT CONNECTED</b></div></div>
+</section>
+
+<section id="radar" class="view">
+ <div class="panel"><div class="section-head"><h2>Neural Pump / Dump Radar</h2><span class="pill warn">EVIDENCE GATE</span></div><p class="muted small">نرصد تحركات السوق العامة، لا الأفراد. لا يصدر الرادار اتهاماً بالتلاعب ولا يحوّل ارتفاع السعر وحده إلى إشارة شراء.</p><div class="grid"><div class="metric"><span>Price acceleration</span><strong>WAITING</strong><small>5m / 15m / 1h</small></div><div class="metric"><span>Relative volume</span><strong>WAITING</strong><small>against rolling baseline</small></div><div class="metric"><span>Liquidity / depth</span><strong>NOT CONNECTED</strong><small>DEX + CEX</small></div><div class="metric"><span>Holder concentration</span><strong>NOT CONNECTED</strong><small>on-chain checks</small></div></div><div class="notice" style="margin-top:12px">الرادار لن يطلق تنبيه فرصة قبل توافر مصدرين مستقلين على الأقل، وحجم تداول مؤكد، وسيولة قابلة للخروج، وفحص تركّز الحيازة ومخاطر العقد.</div><div id="radarFeed" class="empty" style="margin-top:12px">لا توجد بعد إشارة Pump/Dump موثقة. لن نملأ القائمة ببيانات مصطنعة.</div></div>
+ <div class="panel"><h2 style="font-size:14px">قواعد كشف التلاعب</h2><div class="signal"><span>Volume spike + price acceleration</span><b>REQUIRED</b></div><div class="signal"><span>Liquidity withdrawal / depth collapse</span><b>REQUIRED</b></div><div class="signal"><span>Top-holder / deployer concentration</span><b>REQUIRED</b></div><div class="signal"><span>Contract / mint / freeze / honeypot risk</span><b>REQUIRED</b></div><div class="signal"><span>Public social attention anomaly</span><b>CONFIRMATION ONLY</b></div></div>
+</section>
+
+<section id="trade" class="view">
+ <div class="panel"><div class="section-head"><h2>Manual Trade Ticket</h2><span class="pill warn">PREVIEW ONLY</span></div><div class="form-grid">
+ <div class="field"><label>Symbol</label><select id="tradeSymbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option><option>BNBUSDT</option><option>XRPUSDT</option><option>DOGEUSDT</option></select></div>
+ <div class="field"><label>Side</label><select id="tradeSide"><option value="buy">BUY</option><option value="sell">SELL</option></select></div>
+ <div class="field"><label>Quote budget (USDT)</label><input id="tradeBudget" type="number" min="1" step="0.01" value="10"></div>
+ <div class="field"><label>Fee estimate (%)</label><input id="tradeFee" type="number" min="0" step="0.01" value="0.1"></div>
+ <div class="field"><label>Slippage estimate (%)</label><input id="tradeSlippage" type="number" min="0" step="0.01" value="0.2"></div>
+ <div class="field"><label>Stop distance (%)</label><input id="tradeStop" type="number" min="0.1" step="0.1" value="1"></div>
+ </div><div class="toolbar" style="margin-top:12px"><button class="btn primary" id="previewBtn">احسب المعاينة والمخاطرة</button><button class="btn danger" disabled>إرسال أمر حقيقي — مقفل</button></div><div id="tradePreview" class="empty" style="margin-top:12px">اختر الزوج وأدخل الميزانية لحساب الكمية والرسوم والتكلفة التقديرية.</div><div class="notice" style="margin-top:12px">هذا الحساب تقديري ولا يمثل أمر تداول. التنفيذ الحقيقي يحتاج مصادقة مستقلة، اتصال Exchange موثّق، فحص الرصيد والحد الأدنى، تقدير العمق والانزلاق، وموافقة بشرية.</div></div>
+</section>
+
+<section id="portfolio" class="view">
+ <div class="panel"><div class="section-head"><h2>Portfolio & PnL</h2><span class="pill warn">ACCOUNT NOT CONNECTED</span></div><div class="grid"><div class="metric"><span>Available balance</span><strong>—</strong><small>لا يوجد حساب موصول</small></div><div class="metric"><span>Open positions</span><strong>0</strong><small>لا توجد بيانات حساب</small></div><div class="metric"><span>Realized net PnL</span><strong>—</strong><small>بعد الرسوم فقط</small></div><div class="metric"><span>Unrealized PnL</span><strong>—</strong><small>لا يتم التخمين</small></div></div><div class="empty" style="margin-top:12px">لن نعرض أرباحاً وهمية. ربط الحساب ينتظر مصادقة آمنة وقراءة صلاحيات فقط أولاً.</div></div>
+ <div class="panel"><h2 style="font-size:14px">Order integrity</h2><p class="muted small">أي منفذ أوامر مستقبلي سيكون واحداً فقط. يجب تسجيل clientOrderId، وفحص حالة الأمر قبل إعادة المحاولة، مع دعم partial fills والرسوم الفعلية.</p></div>
+</section>
+
+<section id="lab" class="view">
+ <div class="panel"><div class="section-head"><h2>Strategy Lab</h2><span class="pill">RESEARCH</span></div><div class="signal"><span>Backtesting / walk-forward</span><b>PLANNED</b></div><div class="signal"><span>Vectorized parameter research</span><b>PLANNED</b></div><div class="signal"><span>Paper trading with fees & slippage</span><b>PLANNED</b></div><div class="signal"><span>Out-of-sample validation</span><b>REQUIRED</b></div><div class="signal"><span>Strategy drift / kill switch</span><b>REQUIRED</b></div><div class="notice" style="margin-top:12px">لا تُعتمد استراتيجية بناءً على أفضل Backtest فقط. يلزم walk-forward، out-of-sample، رسوم وانزلاق، latency، partial fills، max drawdown، ومقارنة Paper مقابل التنفيذ الفعلي.</div></div>
+</section>
+<footer class="small muted">MIDAD AI · Data is not advice · No profit guarantee · No live order route in this build</footer>
+</main>
+<script type="module">
+import { normalizeTicker, isFresh, computeTradePreview } from "./trading-core.mjs";
+const symbols=["btcusdt","ethusdt","solusdt","bnbusdt","xrpusdt","dogeusdt","adausdt","linkusdt","avaxusdt","ltcusdt","pepeusdt","suiusdt"];
+const state={socket:null,rows:new Map(),samples:[],lastMessage:0,retry:0};
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n).toLocaleString("en-US",{maximumFractionDigits:n<1?8:2});
+function setFeed(ok,label){$("feedStatus").textContent=label;$("feedStatus").className="pill "+(ok?"live":"warn");$("binanceState").textContent=ok?"LIVE":"STALE / OFFLINE";$("binanceState").className=ok?"positive":"negative"}
+function render(){
+ const rows=[...state.rows.values()].sort((a,b)=>b.quoteVolume-a.quoteVolume);
+ $("symbolCount").textContent=rows.length;
+ $("marketRows").innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="mono">'+fmt(x.last)+'</td><td class="'+(x.changePct>=0?"positive":"negative")+'">'+(x.changePct>=0?"+":"")+x.changePct.toFixed(2)+'%</td><td class="mono">'+fmt(x.quoteVolume)+'</td></tr>').join(""):'<tr><td colspan="4">بانتظار البيانات…</td></tr>';
+ for(const sym of ["BTCUSDT","ETHUSDT"]){const x=state.rows.get(sym);if(x){$(sym==="BTCUSDT"?"btcPrice":"ethPrice").textContent=fmt(x.last);const el=$(sym==="BTCUSDT"?"btcChange":"ethChange");el.textContent=(x.changePct>=0?"+":"")+x.changePct.toFixed(2)+"% · 24h";el.className=x.changePct>=0?"positive":"negative"}}
+ if(state.lastMessage){$("latency").textContent=Math.max(0,Date.now()-state.lastMessage)+" ms";$("lastUpdate").textContent=new Date(state.lastMessage).toLocaleTimeString()}
+ drawSpark();
+}
+function drawSpark(){const c=$("spark"),ctx=c.getContext("2d"),w=c.clientWidth||300,h=75,dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);const a=state.samples;if(a.length<2){$("chartCaption").textContent="نحتاج عينتين حقيقيتين على الأقل لرسم الحركة.";return}const lo=Math.min(...a),hi=Math.max(...a),range=hi-lo||1;ctx.beginPath();a.forEach((v,i)=>{const x=i/(a.length-1)*w,y=h-5-(v-lo)/range*(h-10);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.lineWidth=2;ctx.strokeStyle="#4edcf2";ctx.stroke();$("chartCaption").textContent="آخر "+a.length+" عينات حقيقية من WebSocket"}
+function connect(){
+ try{state.socket?.close()}catch{}
+ const streams=symbols.map(s=>s+"@ticker").join("/");
+ const ws=new WebSocket("wss://stream.binance.com:9443/stream?streams="+streams);
+ state.socket=ws;setFeed(false,"CONNECTING…");
+ ws.onopen=()=>{state.retry=0;setFeed(false,"CONNECTED · WAITING")};
+ ws.onmessage=e=>{try{const packet=JSON.parse(e.data),x=normalizeTicker(packet.data);if(!x)return;state.rows.set(x.symbol,x);state.lastMessage=Date.now();if(x.symbol==="BTCUSDT"){state.samples.push(x.last);if(state.samples.length>70)state.samples.shift()}setFeed(true,"LIVE · BINANCE");render()}catch{}};
+ ws.onerror=()=>setFeed(false,"FEED ERROR");
+ ws.onclose=()=>{setFeed(false,"RECONNECTING…");const delay=Math.min(30000,1500*Math.pow(2,state.retry++));setTimeout(connect,delay)};
+}
+$("refreshBtn").addEventListener("click",connect);
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===b.dataset.view))}));
+$("previewBtn").addEventListener("click",()=>{const symbol=$("tradeSymbol").value,x=state.rows.get(symbol);if(!x){$("tradePreview").textContent="لا توجد بيانات حية لهذا الزوج. لن نستخدم سعراً قديماً.";return}try{const p=computeTradePreview({side:$("tradeSide").value,price:x.last,quoteBudget:Number($("tradeBudget").value),feePct:Number($("tradeFee").value),slippagePct:Number($("tradeSlippage").value),stopPct:Number($("tradeStop").value)});$("tradePreview").innerHTML='<b class="positive">PREVIEW ONLY · NOT AN ORDER</b><div class="signal"><span>Live price</span><b class="mono">'+fmt(p.price)+'</b></div><div class="signal"><span>Estimated quantity</span><b class="mono">'+p.quantity.toFixed(8)+'</b></div><div class="signal"><span>Fee + slippage</span><b class="mono">'+p.estimatedCost.toFixed(4)+' USDT</b></div><div class="signal"><span>Estimated stop risk incl. costs</span><b class="mono">'+p.estimatedStopLoss.toFixed(4)+' USDT</b></div><div class="signal"><span>Execution permission</span><b class="negative">DENIED / LOCKED</b></div>'}catch(e){$("tradePreview").textContent="تحقق من المدخلات: "+e.message}});
+$("lockBtn").addEventListener("click",()=>alert("الحماية مفعّلة. لا يوجد مسار أوامر حقيقية في هذا الإصدار."));
+connect();
+setInterval(()=>{if(state.lastMessage&& !isFresh(state.lastMessage,7000)){setFeed(false,"DATA STALE");$("latency").textContent="STALE"}},2000);
+window.addEventListener("resize",drawSpark);
+</script>
+</body></html>
