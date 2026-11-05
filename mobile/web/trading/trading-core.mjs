@@ -1,12 +1,12 @@
-export function normalizeTicker(raw) {
+export function normalizeTicker(raw, receivedAt = Date.now()) {
   if (!raw || typeof raw !== "object") return null;
   const symbol = String(raw.s || raw.symbol || "").toUpperCase();
   const last = Number(raw.c ?? raw.lastPrice ?? raw.last);
   const changePct = Number(raw.P ?? raw.priceChangePercent ?? raw.changePct);
   const quoteVolume = Number(raw.q ?? raw.quoteVolume ?? raw.turnover24h ?? 0);
-  const timestamp = Number(raw.E ?? raw.ts ?? Date.now());
-  if (!/^[A-Z0-9]{4,24}$/.test(symbol) || !Number.isFinite(last) || last <= 0 || !Number.isFinite(changePct)) return null;
-  return { symbol, last, changePct, quoteVolume: Number.isFinite(quoteVolume) && quoteVolume >= 0 ? quoteVolume : 0, timestamp, provider: "binance" };
+  const timestamp = Number(raw.E ?? raw.ts);
+  if (!/^[A-Z0-9]{4,24}$/.test(symbol) || !Number.isFinite(last) || last <= 0 || !Number.isFinite(changePct) || !Number.isFinite(timestamp) || timestamp <= 0 || !Number.isFinite(receivedAt) || receivedAt <= 0) return null;
+  return { symbol, last, changePct, quoteVolume: Number.isFinite(quoteVolume) && quoteVolume >= 0 ? quoteVolume : 0, timestamp, observedAt: receivedAt, timestampQuality: "SOURCE_EVENT", provider: "binance" };
 }
 
 export function normalizeCoinExTicker(raw, expectedMarket = null, receivedAt = Date.now()) {
@@ -15,9 +15,10 @@ export function normalizeCoinExTicker(raw, expectedMarket = null, receivedAt = D
   const expected = expectedMarket == null ? null : String(expectedMarket).toUpperCase();
   const last = Number(raw.last), open = Number(raw.open);
   const quoteVolume = Number(raw.value ?? 0);
-  const timestamp = Number(raw.ts ?? receivedAt);
+  const hasSourceTimestamp = raw.ts != null;
+  const timestamp = Number(hasSourceTimestamp ? raw.ts : receivedAt);
   if (!/^[A-Z0-9]{4,24}$/.test(symbol) || (expected && symbol !== expected) || !Number.isFinite(last) || last <= 0 || !Number.isFinite(open) || open <= 0 || !Number.isFinite(quoteVolume) || quoteVolume < 0 || !Number.isFinite(timestamp) || timestamp <= 0) return null;
-  return { symbol, last, changePct: ((last / open) - 1) * 100, quoteVolume, timestamp, provider: "coinex" };
+  return { symbol, last, changePct: ((last / open) - 1) * 100, quoteVolume, timestamp, observedAt: receivedAt, timestampQuality: hasSourceTimestamp ? "SOURCE_EVENT" : "RETRIEVED_AT", provider: "coinex" };
 }
 
 export function isFresh(timestamp, maxAgeMs = 5000, now = Date.now()) {
@@ -65,11 +66,11 @@ export function classifyPumpSignal({ change5mPct, volumeRatio, liquidityUsd, sou
 }
 
 
-export function createPaperPosition({ id, symbol, side, quantity, entryPrice, feePct = 0.1, slippagePct = 0.05, openedAt = Date.now() } = {}) {
-  const q=Number(quantity), p=Number(entryPrice), fee=Number(feePct), slip=Number(slippagePct), opened=Number(openedAt);
-  const pair=String(symbol||"").toUpperCase();
-  if (!id || !/^[A-Z0-9]{4,24}$/.test(pair) || !["buy","sell"].includes(String(side)) || ![q,p,fee,slip,opened].every(Number.isFinite) || q<=0 || p<=0 || fee<0 || fee>5 || slip<0 || slip>20 || opened<=0) throw new TypeError("INVALID_PAPER_POSITION");
-  return { id:String(id), symbol:pair, side, quantity:q, entryPrice:p, feePct:fee, slippagePct:slip, openedAt:opened, status:"OPEN", mode:"PAPER_ONLY" };
+export function createPaperPosition({ id, symbol, side, quantity, entryPrice, feePct = 0.1, slippagePct = 0.05, stopPrice = null, targetPrice = null, bucket = null, openedAt = Date.now() } = {}) {
+ const q=Number(quantity),p=Number(entryPrice),fee=Number(feePct),slip=Number(slippagePct),opened=Number(openedAt),pair=String(symbol||"").toUpperCase(),stop=stopPrice==null?null:Number(stopPrice),target=targetPrice==null?null:Number(targetPrice);
+ const levels=(stop===null&&target===null)||(Number.isFinite(stop)&&Number.isFinite(target)&&stop>0&&target>0&&(side==="buy"?stop<p&&target>p:target<p&&stop>p));
+ if(!id||!/^[A-Z0-9]{4,24}$/.test(pair)||!["buy","sell"].includes(String(side))||![q,p,fee,slip,opened].every(Number.isFinite)||q<=0||p<=0||fee<0||fee>5||slip<0||slip>20||opened<=0||!levels||(bucket!==null&&!["core","tactical","experimental"].includes(bucket)))throw new TypeError("INVALID_PAPER_POSITION");
+ return {id:String(id),symbol:pair,side,quantity:q,entryPrice:p,feePct:fee,slippagePct:slip,stopPrice:stop,targetPrice:target,bucket,openedAt:opened,status:"OPEN",mode:"PAPER_ONLY"};
 }
 
 export function markPaperPosition(position, markPrice) {
@@ -145,12 +146,23 @@ export function allocateCapitalBuckets(capital, allocation = { reserve: 45, core
   return { ...buckets, total, reserve, deployable: total-reserve, protectedReservePct: Number(allocation.reserve||0), executionAllowed:false, mode:"VIRTUAL_LEDGER_ONLY" };
 }
 
-export function calculatePositionBudget({ capital, bucket, stopPct, maxRiskPct = 1, allocation } = {}) {
-  const ledger=allocateCapitalBuckets(capital,allocation);
-  if (bucket === "reserve") throw new TypeError("PROTECTED_BUCKET");
-  if (!Object.hasOwn(ledger,bucket) || !["core","tactical","experimental"].includes(bucket)) throw new TypeError("INVALID_CAPITAL_BUCKET");
-  const stop=Number(stopPct), risk=Number(maxRiskPct), base=Number(capital);
-  if (![stop,risk].every(Number.isFinite) || stop<=0 || risk<=0 || risk>5) throw new TypeError("INVALID_POSITION_RISK");
-  const riskBudget=base*risk/100, positionNotional=Math.min(ledger[bucket],riskBudget/(stop/100));
-  return { bucket, bucketAvailable:ledger[bucket], riskBudget, positionNotional, maxLossAtStop:positionNotional*stop/100, executionAllowed:false, mode:"PAPER_BUDGET_ONLY" };
+export function calculatePositionBudget({capital,bucket,stopPct,maxRiskPct=1,feePct=0,slippagePct=0,allocation}={}) {
+ const ledger=allocateCapitalBuckets(capital,allocation);if(bucket==="reserve")throw new TypeError("PROTECTED_BUCKET");if(!Object.hasOwn(ledger,bucket)||!["core","tactical","experimental"].includes(bucket))throw new TypeError("INVALID_CAPITAL_BUCKET");
+ const stop=Number(stopPct),risk=Number(maxRiskPct),fee=Number(feePct),slip=Number(slippagePct),base=Number(capital);
+ if(![stop,risk,fee,slip].every(Number.isFinite)||stop<=0||stop>100||risk<=0||risk>5||fee<0||fee>5||slip<0||slip>20)throw new TypeError("INVALID_POSITION_RISK");
+ const riskBudget=base*risk/100,riskRate=stop/100+(2-stop/100)*(fee+slip)/100,positionNotional=Math.min(ledger[bucket],riskBudget/riskRate);
+ return {bucket,bucketAvailable:ledger[bucket],riskBudget,riskRate,positionNotional,maxLossAtStop:positionNotional*riskRate,executionAllowed:false,mode:"PAPER_BUDGET_ONLY"};
+}
+export function planPaperEntry({symbol,side,price,quoteBudget,feePct=.1,slippagePct=.05,stopPct=1,targetR=2,capital=1000,bucket="tactical",maxRiskPct=1,existingExposure=0}={}) {
+ const preview=computeTradePreview({side,price,quoteBudget,feePct,slippagePct,stopPct}),stop=Number(stopPct),reward=Number(targetR),exposure=Number(existingExposure);
+ if(!Number.isFinite(reward)||reward<=0||reward>10||!Number.isFinite(exposure)||exposure<0)throw new TypeError("INVALID_PAPER_RISK_PLAN");
+ const budget=calculatePositionBudget({capital,bucket,stopPct:stop,feePct,slippagePct,maxRiskPct}),remaining=Math.max(0,budget.positionNotional-exposure),direction=side==="buy"?1:-1,allowed=preview.grossNotional<=remaining+1e-9;
+ return {symbol:String(symbol||"").toUpperCase(),side,allowed,reason:allowed?"WITHIN_VIRTUAL_RISK_BUDGET":"EXCEEDS_REMAINING_BUCKET_OR_RISK_BUDGET",preview,budget,existingExposure:exposure,remainingNotional:remaining,stopPrice:Number(price)*(1-direction*stop/100),targetPrice:Number(price)*(1+direction*stop*reward/100),executionAllowed:false,mode:"PAPER_ONLY"};
+}
+export function summarizePaperJournal(positions=[]) {
+ if(!Array.isArray(positions))throw new TypeError("INVALID_PAPER_JOURNAL");
+ const closed=positions.filter(p=>p&&p.mode==="PAPER_ONLY"&&p.status==="CLOSED"&&Number.isFinite(Number(p.netPnl))&&Number.isFinite(Number(p.closedAt))).sort((a,b)=>Number(a.closedAt)-Number(b.closedAt)),open=positions.filter(p=>p&&p.mode==="PAPER_ONLY"&&p.status==="OPEN");
+ let realizedNetPnl=0,peak=0,maxDrawdownUsd=0,grossProfit=0,grossLoss=0,wins=0,losses=0;
+ for(const p of closed){const pnl=Number(p.netPnl);realizedNetPnl+=pnl;if(pnl>0){wins++;grossProfit+=pnl}else if(pnl<0){losses++;grossLoss+=Math.abs(pnl)}peak=Math.max(peak,realizedNetPnl);maxDrawdownUsd=Math.max(maxDrawdownUsd,peak-realizedNetPnl)}
+ return {closedTrades:closed.length,openTrades:open.length,wins,losses,realizedNetPnl,winRatePct:closed.length?wins/closed.length*100:null,expectancy:closed.length?realizedNetPnl/closed.length:null,profitFactor:grossLoss>0?grossProfit/grossLoss:null,maxDrawdownUsd,mode:"PAPER_ONLY"};
 }

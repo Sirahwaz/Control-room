@@ -3,9 +3,9 @@
   "schema_version": 1,
   "product_key": "midad-trading",
   "display_name": "MIDAD Trading Intelligence",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "app_id": "ai.midad.trading",
-  "artifact_name": "MIDAD-Trading-Intelligence-v0.1.0",
+  "artifact_name": "MIDAD-Trading-Intelligence-v0.2.0",
   "web_entry": "mobile/web/trading/index.html",
   "product_mode": "midad-trading-terminal",
   "release_channel": "debug",
@@ -27,6 +27,9 @@
   },
   "surfaces": [
     "live-market-terminal",
+    "dex-early-discovery",
+    "paper-risk-budgeting",
+    "paper-performance-analytics",
     "pump-dump-radar",
     "onchain-intelligence",
     "social-osint",
@@ -171,6 +174,7 @@
     }
   },
   "web_assets": [
-    "mobile/web/trading/trading-core.mjs"
+    "mobile/web/trading/trading-core.mjs",
+    "mobile/web/trading/market-intelligence.mjs"
   ]
 }
