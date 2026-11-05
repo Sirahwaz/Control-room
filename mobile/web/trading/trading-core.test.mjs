@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeTicker, isFresh, computeTradePreview, classifyPumpSignal } from "./trading-core.js";
+import { normalizeTicker, isFresh, computeTradePreview, classifyPumpSignal } from "./trading-core.mjs";
 
 test("normalizes a valid Binance ticker and rejects malformed values",()=>{
   const x=normalizeTicker({s:"BTCUSDT",c:"67000",P:"2.5",q:"1000000",E:Date.now()});
