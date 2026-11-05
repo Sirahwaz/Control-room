@@ -97,7 +97,11 @@
         "manifest",
         "build_report",
         "test_report",
-        "learning_report"
+        "learning_report",
+        "factory_x_plan",
+        "factory_x_preflight",
+        "market_data_source_manifest",
+        "security_report"
       ]
     },
     "ui_feedback": {
@@ -167,8 +171,6 @@
     }
   },
   "web_assets": [
-    "mobile/web/mobile-hub.css",
-    "mobile/web/mobile-hub.js",
-    "mobile/web/morph-engine.js"
+    "mobile/web/trading/trading-core.mjs"
   ]
 }
