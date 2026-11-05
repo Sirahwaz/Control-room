@@ -66,7 +66,7 @@ test("rejects malformed CoinEx ticker values and market mismatches",()=>{
 
 test("analyzes timestamped candle trends and rejects stale or sparse histories",()=>{
   const now=3_600_000;
-  const candles=Array.from({length:61},(_,i)=>({openTime:now-(60-i)*60_000,closeTime:now-(59-i)*60_000-1,open:100+i,high:102+i,low:99+i,close:101+i,volume:10+i,quoteVolume:1000+i*100}));
+  const candles=Array.from({length:61},(_,i)=>({openTime:now-(61-i)*60_000,closeTime:now-(60-i)*60_000-1,open:100+i,high:102+i,low:99+i,close:101+i,volume:10+i,quoteVolume:1000+i*100}));
   const trend=analyzeTrend(candles,{now});
   assert.equal(trend.state,"VALID");
   assert.ok(trend.horizons["5m"].returnPct>0);
