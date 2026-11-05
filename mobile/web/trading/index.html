@@ -158,7 +158,7 @@ async function importPaperJournal(file){
 function setFeed(ok,label){$("feedStatus").textContent=label;$("feedStatus").className="pill "+(ok?"live":"warn");$("binanceState").textContent=ok?"LIVE":"STALE / OFFLINE";$("binanceState").className=ok?"positive":"negative";if(ok){$("coinexState").textContent="STANDBY";$("coinexState").className="muted"}}
 async function refreshCoinExFallback(){if(state.fallbackBusy||Date.now()-state.lastFallbackAt<15000)return;state.fallbackBusy=true;state.lastFallbackAt=Date.now();const markets=["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT"];try{const settled=await Promise.allSettled(markets.map(async market=>{const r=await fetch("https://api.coinex.com/v2/spot/ticker?market="+encodeURIComponent(market),{headers:{accept:"application/json"},signal:AbortSignal.timeout(8000)});if(!r.ok)throw new Error("coinex_http_"+r.status);const j=await r.json(),raw=j?.data?.[0];const x=normalizeCoinExTicker(raw,market,Date.now());if(!x)throw new Error("coinex_invalid_ticker");return x}));let count=0;for(const result of settled){if(result.status!=="fulfilled")continue;const x=result.value,old=state.rows.get(x.symbol);if(old?.provider==="binance"&&isFresh(old.timestamp,10000))continue;state.rows.set(x.symbol,x);count++}if(count){state.lastMessage=Date.now();$("coinexState").textContent="ACTIVE · "+count+" PAIRS";$("coinexState").className="positive";if(!state.lastWsMessage||!isFresh(state.lastWsMessage,7000)){setFeed(false,"FALLBACK · COINEX");render()}}else if(!state.lastWsMessage||!isFresh(state.lastWsMessage,7000)){$("coinexState").textContent="NO FRESH QUOTES";$("coinexState").className="negative"}}catch{$("coinexState").textContent="UNAVAILABLE";$("coinexState").className="negative"}finally{state.fallbackBusy=false}}
 function render(){
- const rows=[...state.rows.values()].sort((a,b)=>b.quoteVolume-a.quoteVolume);
+ const rows=[...state.rows.values()].filter(x=>isFresh(x.timestamp,15000)).sort((a,b)=>b.quoteVolume-a.quoteVolume);
  $("symbolCount").textContent=rows.length;
  $("marketRows").innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="mono">'+fmt(x.last)+'</td><td class="'+(x.changePct>=0?"positive":"negative")+'">'+(x.changePct>=0?"+":"")+x.changePct.toFixed(2)+'%</td><td class="mono">'+fmt(x.quoteVolume)+'</td><td class="small">'+(x.provider==="coinex"?"CoinEx":"Binance")+'</td></tr>').join(""):'<tr><td colspan="4">بانتظار البيانات…</td></tr>';
  for(const sym of ["BTCUSDT","ETHUSDT"]){const x=state.rows.get(sym);if(x){$(sym==="BTCUSDT"?"btcPrice":"ethPrice").textContent=fmt(x.last);const el=$(sym==="BTCUSDT"?"btcChange":"ethChange");el.textContent=(x.changePct>=0?"+":"")+x.changePct.toFixed(2)+"% · 24h";el.className=x.changePct>=0?"positive":"negative"}}
@@ -178,7 +178,7 @@ async function refreshTrendHistory(){
   const trend=analyzeTrend(candles,{now:Date.now()});
   return {symbol,trend,closes:candles.map(x=>x.close),source:"BINANCE_PUBLIC_KLINES"};
  }));
- for(const result of settled)if(result.status==="fulfilled")state.trendBySymbol.set(result.value.symbol,result.value);
+ for(let i=0;i<settled.length;i++){const result=settled[i];if(result.status==="fulfilled")state.trendBySymbol.set(result.value.symbol,result.value);else state.trendBySymbol.delete(pairs[i]);}
  state.lastTrendAt=Date.now();
  renderPursuit();
 }
@@ -220,7 +220,7 @@ function connect(){
  const ws=new WebSocket("wss://stream.binance.com:9443/stream?streams="+streams);
  state.socket=ws;setFeed(false,"CONNECTING…");
  ws.onopen=()=>{state.retry=0;setFeed(false,"CONNECTED · WAITING")};
- ws.onmessage=e=>{try{const packet=JSON.parse(e.data),x=normalizeTicker(packet.data);if(!x)return;state.rows.set(x.symbol,x);state.lastMessage=Date.now();state.lastWsMessage=state.lastMessage;if(x.symbol==="BTCUSDT"){state.samples.push(x.last);if(state.samples.length>70)state.samples.shift()}setFeed(true,"LIVE · BINANCE");render()}catch{}};
+ ws.onmessage=e=>{try{const packet=JSON.parse(e.data),x=normalizeTicker(packet.data);if(!x||!isFresh(x.timestamp,15000))return;state.rows.set(x.symbol,x);state.lastMessage=Date.now();state.lastWsMessage=state.lastMessage;if(x.symbol==="BTCUSDT"){state.samples.push(x.last);if(state.samples.length>70)state.samples.shift()}setFeed(true,"LIVE · BINANCE");render()}catch{}};
  ws.onerror=()=>setFeed(false,"FEED ERROR");
  ws.onclose=()=>{setFeed(false,"RECONNECTING…");refreshCoinExFallback();const delay=Math.min(30000,1500*Math.pow(2,state.retry++));setTimeout(connect,delay)};
 }
