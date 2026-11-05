@@ -150,7 +150,7 @@ export function calculatePositionBudget({capital,bucket,stopPct,maxRiskPct=1,fee
  const ledger=allocateCapitalBuckets(capital,allocation);if(bucket==="reserve")throw new TypeError("PROTECTED_BUCKET");if(!Object.hasOwn(ledger,bucket)||!["core","tactical","experimental"].includes(bucket))throw new TypeError("INVALID_CAPITAL_BUCKET");
  const stop=Number(stopPct),risk=Number(maxRiskPct),fee=Number(feePct),slip=Number(slippagePct),base=Number(capital);
  if(![stop,risk,fee,slip].every(Number.isFinite)||stop<=0||stop>100||risk<=0||risk>5||fee<0||fee>5||slip<0||slip>20)throw new TypeError("INVALID_POSITION_RISK");
- const riskBudget=base*risk/100,riskRate=stop/100+(2-stop/100)*(fee+slip)/100,positionNotional=Math.min(ledger[bucket],riskBudget/riskRate);
+ const riskBudget=base*risk/100,riskRate=stop/100+(2+stop/100)*(fee+slip)/100,positionNotional=Math.min(ledger[bucket],riskBudget/riskRate);
  return {bucket,bucketAvailable:ledger[bucket],riskBudget,riskRate,positionNotional,maxLossAtStop:positionNotional*riskRate,executionAllowed:false,mode:"PAPER_BUDGET_ONLY"};
 }
 export function planPaperEntry({symbol,side,price,quoteBudget,feePct=.1,slippagePct=.05,stopPct=1,targetR=2,capital=1000,bucket="tactical",maxRiskPct=1,existingExposure=0}={}) {
