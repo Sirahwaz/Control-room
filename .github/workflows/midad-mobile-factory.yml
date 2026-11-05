@@ -111,6 +111,12 @@ jobs:
         working-directory: mobile
         run: npm install --no-fund --no-audit
 
+      - name: Install Chromium runtime smoke dependency
+        working-directory: mobile
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
       - name: Prepare web surface
         shell: bash
         run: |
@@ -126,6 +132,11 @@ jobs:
             test -f "$asset"
             cp "$asset" mobile/www/
           done <<< "$ASSETS"
+
+
+      - name: Trading UI browser runtime smoke
+        working-directory: mobile
+        run: node factory/trading-ui-smoke.mjs www ../dist
 
       - name: Add Android platform
         working-directory: mobile
@@ -277,7 +288,8 @@ jobs:
             "static_js_syntax": "PASSED",
             "secret_scan": "PASSED",
             "artifact_verification": "PASSED",
-            "runtime_smoke": "PASSED"
+            "runtime_smoke": "PASSED",
+            "browser_runtime_smoke": "PASSED"
           }
           EOF
           cat > dist/learning-report.json <<EOF
@@ -302,4 +314,6 @@ jobs:
             dist/build-report.json
             dist/test-report.json
             dist/runtime-smoke-report.json
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
             dist/learning-report.json
