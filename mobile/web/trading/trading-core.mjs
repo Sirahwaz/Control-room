@@ -172,7 +172,7 @@ const PAPER_JOURNAL_SCHEMA_VERSION = 1;
 const PAPER_JOURNAL_MAX_POSITIONS = 5000;
 
 function normalizePaperJournalPosition(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.mode !== "PAPER_ONLY" || raw.executionAllowed === true) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.mode !== "PAPER_ONLY" || raw.executionAllowed === true || !/^[a-zA-Z0-9_-]{1,80}$/.test(String(raw.id || ""))) {
     throw new TypeError("INVALID_PAPER_BACKUP_POSITION");
   }
   const base = createPaperPosition({
