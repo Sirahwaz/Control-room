@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeTicker, isFresh, computeTradePreview, classifyPumpSignal, createPaperPosition, markPaperPosition, closePaperPosition } from "./trading-core.mjs";
+import { normalizeTicker, normalizeCoinExTicker, isFresh, computeTradePreview, classifyPumpSignal, createPaperPosition, markPaperPosition, closePaperPosition } from "./trading-core.mjs";
 
 test("normalizes a valid Binance ticker and rejects malformed values",()=>{
   const x=normalizeTicker({s:"BTCUSDT",c:"67000",P:"2.5",q:"1000000",E:Date.now()});
@@ -46,4 +46,21 @@ test("paper position marks net PnL after round-trip fees and slippage",()=>{
 test("paper position rejects invalid quantity, price and side",()=>{
   assert.throws(()=>createPaperPosition({id:"p2",symbol:"BTCUSDT",side:"buy",quantity:0,entryPrice:100}),/INVALID_PAPER_POSITION/);
   assert.throws(()=>createPaperPosition({id:"p3",symbol:"BTCUSDT",side:"short",quantity:1,entryPrice:100}),/INVALID_PAPER_POSITION/);
+});
+
+
+test("normalizes CoinEx REST ticker with explicit provider provenance",()=>{
+  const x=normalizeCoinExTicker({market:"BTCUSDT",last:"101000",open:"100000",value:"2500000",ts:1700000000000});
+  assert.equal(x.symbol,"BTCUSDT");
+  assert.equal(x.last,101000);
+  assert.equal(x.changePct,1);
+  assert.equal(x.quoteVolume,2500000);
+  assert.equal(x.provider,"coinex");
+  assert.equal(x.timestamp,1700000000000);
+});
+
+test("rejects malformed CoinEx ticker values and market mismatches",()=>{
+  assert.equal(normalizeCoinExTicker({market:"ETHUSDT",last:"100",open:"90",value:"1"},"BTCUSDT"),null);
+  assert.equal(normalizeCoinExTicker({market:"BTCUSDT",last:"NaN",open:"100",value:"1"}),null);
+  assert.equal(normalizeCoinExTicker({market:"BTCUSDT",last:"100",open:"0",value:"1"}),null);
 });
