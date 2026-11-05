@@ -6,7 +6,7 @@ export function normalizeTicker(raw) {
   const quoteVolume = Number(raw.q ?? raw.quoteVolume ?? raw.turnover24h ?? 0);
   const timestamp = Number(raw.E ?? raw.ts ?? Date.now());
   if (!/^[A-Z0-9]{4,24}$/.test(symbol) || !Number.isFinite(last) || last <= 0 || !Number.isFinite(changePct)) return null;
-  return { symbol, last, changePct, quoteVolume: Number.isFinite(quoteVolume) && quoteVolume >= 0 ? quoteVolume : 0, timestamp };
+  return { symbol, last, changePct, quoteVolume: Number.isFinite(quoteVolume) && quoteVolume >= 0 ? quoteVolume : 0, timestamp, provider: "binance" };
 }
 
 export function normalizeCoinExTicker(raw, expectedMarket = null, receivedAt = Date.now()) {
