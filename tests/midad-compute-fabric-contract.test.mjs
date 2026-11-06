@@ -77,4 +77,6 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
   assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
   assert.match(qemuWorkflow, /QEMU_ESP=1/);
   assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
+  assert.match(qemuWorkflow, /tail -n 120 hakios\\/qemu\\/qemu-debug\\.log/);
+  assert.match(qemuWorkflow, /hakios\\/qemu\\/qemu-debug\\.log/);
 });
