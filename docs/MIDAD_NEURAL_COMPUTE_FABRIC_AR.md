@@ -28,7 +28,7 @@ The repository already contains `.github/workflows/midad-forge.yml` (**MIDAD For
 - Generates a constrained file manifest, builds/tests it in an isolated workspace, uploads artifacts, and publishes a branch/PR after success.
 - This is a bounded **ephemeral Linux worker**, not a persistent server and not yet a general-purpose compute queue.
 
-The last observed scheduled run was `42290607691` on 2026-11-06 20:42 UTC. It completed successfully, but its `prepare`, `build`, and `finalize` jobs were skipped because no run was claimed. The workflow definition says every five minutes; continuous schedule activity is not verified by the recent run history and remains a monitoring item.
+The last observed scheduled run was `42290607691` on 2026-11-06 20:42 UTC. It completed successfully, but its `prepare`, `build`, and `finalize` jobs were skipped because no run was claimed. A read-only query of `midad_forge_runs` returned one `BUILT` row, zero queued/active rows, and a latest update of 2026-10-15. The workflow definition says every five minutes; continuous schedule activity is not verified by the recent run history and remains a monitoring item.
 
 The existing `MIDAD_FABRIC_REGISTRY.md` is a 2026-09-30 inventory snapshot and its function versions are stale relative to the live Supabase inventory. The live function list and current function source were used for this audit. `MIDAD_PROVIDER_ADAPTER_CONTRACT.md` describes financial venues (exchange/wallet/payment/chain/mining), not compute providers; it must not be repurposed as a compute contract.
 
