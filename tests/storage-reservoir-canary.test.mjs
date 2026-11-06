@@ -29,6 +29,12 @@ test("Canary action requires a second confirmation and reports the verified back
   assert.match(command, /api\("run_archive_canary"/, "the frontend should call the existing Control Room route");
   assert.match(command, /checksum_match/, "the UI should only describe a round-trip as verified when checksum matches");
   assert.match(command, /aes_gcm_decryption_verified/, "the UI should surface decryption verification");
+  const verification = command.match(/const verified=([^;]+);/);
+  assert.ok(verification, "the UI should define an explicit verification predicate");
+  const stateResolution = command.match(/const canaryState=([^;]+);/);
+  assert.ok(stateResolution, "the UI should normalize wrapper and nested state");
+  assert.match(stateResolution[1], /c\.state\|\|j\.state/, "the UI should read state from the top-level Control Room wrapper when absent in archive_canary");
+  assert.match(verification[1], /canaryState/, "the verification predicate should use the normalized state");
 });
 
 test("Canary UI never contains archive credentials or privileged database keys", () => {
