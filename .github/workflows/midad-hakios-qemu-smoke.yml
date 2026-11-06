@@ -177,6 +177,12 @@ jobs:
           fi
           grep -F '== XNULOADER v3 ==' qemu/qemu-u-boot.log
           grep -F 'Hello from user space on Darwin!' qemu/qemu-u-boot.log
+          grep -F 'kernel returned: log at' qemu/qemu-u-boot.log
+          grep -E 'returned [0-9]+ 0' qemu/qemu-u-boot.log
+          if grep -E 'EARLY KERNEL EXCEPTION|THE KERNEL HUNG' qemu/qemu-u-boot.log; then
+            echo "::error::HakiOS did not complete the expected return-to-loader smoke"
+            exit 1
+          fi
 
       - name: Upload U-Boot boot diagnostics
         if: always()
