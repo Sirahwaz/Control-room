@@ -132,6 +132,8 @@ Official references:
 
 ## 7. Current state
 
+- **Northflank Sandbox — PENDING:** صفحة الأسعار الرسمية تعلن 2 services و2 jobs و1 database، رصيد موارد يصل إلى `$20/month`، تشغيل Always-on، وتقول No card needed ([pricing](https://northflank.com/pricing)). لكن وثائق الفوترة الرسمية تقول إن جميع المستخدمين يجب أن يضيفوا payment method قبل إنشاء الموارد ([billing docs](https://northflank.com/docs/v1/application/billing/pricing-on-northflank)). لذلك لا يُعتمد حالياً كمضيف zero-card ولا ننشئ حساباً/موارد قبل حسم التناقض.
+
 **VERIFIED:** GitHub source access; current branch baseline; MNCF contract, MIDAD FIX Contract and Control Room Verify passed on PR head `74102ad`; existing MIDAD control-plane functions; Supabase project metadata; no Railway projects returned; HakiOS Makefile exposes `qemu-open`.
 
 **FAILED / INVESTIGATING:** The `loader-device` and `uefi-esp` lanes both reached AArch64 UEFI and raised `Synchronous Exception at 0x00000000A10021A8` before `XNULOADER v3`. The latest corrected run verified the matched AAVMF pair is 67,108,864 bytes per image and still reproduced the same exception on the ESP lane; this rules out the prior mixed-image/size issue as the root cause, not all firmware faults. A third U-Boot path is now added to CI to bypass EDK2/AAVMF; its build and QEMU boot result are pending. Do not report HakiOS as booted until a CI lane emits the loader and kernel banners (and the U-Boot lane also reaches the user-space hello).
