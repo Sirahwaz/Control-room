@@ -1,0 +1,6 @@
+diff --git a/devices/qemu/u-boot/files/configs/hakios_qemu_defconfig b/devices/qemu/u-boot/files/configs/hakios_qemu_defconfig
+--- a/devices/qemu/u-boot/files/configs/hakios_qemu_defconfig
++++ b/devices/qemu/u-boot/files/configs/hakios_qemu_defconfig
+@@ -8,1 +8,1 @@
+-CONFIG_BOOTCOMMAND="hakios load 0x50000000 && run hakios_start"
++CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"
