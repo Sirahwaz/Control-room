@@ -64,6 +64,10 @@ test('external technologies are classified without replacing the production stac
   assert.equal(review.candidates.tiny11builder.adoption, 'excluded_from_linux_compute');
   assert.equal(review.candidates.fuchsia.adoption, 'patterns_only_not_production_kernel');
   assert.equal(review.candidates.appwrite.adoption, 'not_deployed_not_a_supabase_replacement');
+  assert.equal(review.candidates.northflank.adoption, 'pending_conflicting_card_requirement');
+  assert.equal(review.candidates.northflank.production_status, 'not_approved');
+  assert.equal(review.candidates.northflank.advertised_limits.always_on, true);
+  assert.equal(review.candidates.northflank.advertised_limits.no_card_claim, true);
 });
 
 const qemuWorkflow = fs.readFileSync(
