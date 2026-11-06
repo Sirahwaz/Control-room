@@ -42,7 +42,7 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 ## 4. HakiOS boundary
 
 - Upstream: `https://github.com/oosexgang/hakios-xnu-kernel`.
-- First candidate: `make qemu-open`, the Apple-payload-free open-kernel QEMU path.
+- First candidate: `make qemu-open`, the Apple-payload-free open-kernel QEMU path. The initial CI smoke uses the upstream prebuilt kernel/loader/hello artifacts pinned to commit `63fc2b4633bac3af8e57dadab9f5a8d4cb940438`; it is explicitly not a source rebuild.
 - Do not start with phone flashing, firmware extraction, persistent disk writes, or a full Darwin guest.
 - QEMU guest networking and remote display remain disabled by default.
 - HakiOS output is research evidence, not production service capacity.
@@ -63,7 +63,8 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 - [x] Preserve existing MIDAD control-plane integrations and production branch.
 - [x] Add a machine-readable zero-budget topology contract on a feature branch.
 - [ ] Pass the MNCF contract test in GitHub Actions.
-- [ ] Validate an isolated `qemu-open` build on an available ephemeral Linux runner before attempting execution.
+- [ ] Validate an isolated prebuilt `qemu-open` boot smoke on an available ephemeral Linux runner.
+- [ ] Validate a full source rebuild separately; it requires the HakiOS Linux toolchain and SDK setup.
 - [ ] Identify and verify a persistent free Linux host; do not infer one from CI.
 - [ ] Implement a provider adapter and worker registration only after the host and existing queue/API contracts are verified.
 - [ ] Run isolated worker smoke tests, resource-limit tests, restart/recovery tests and artifact-integrity checks.
@@ -73,6 +74,6 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 
 **VERIFIED:** GitHub source access; current branch baseline; existing MIDAD control-plane functions; Supabase project metadata; no Railway projects returned; HakiOS Makefile exposes `qemu-open`.
 
-**PENDING:** CI execution of the new contract; HakiOS QEMU build feasibility; persistent free Linux host discovery; provider adapter contract against a real host.
+**PENDING:** HakiOS prebuilt QEMU boot smoke; full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host.
 
 **BLOCKED:** Always-on online compute and remote administration until a persistent free host is verified. No production deployment has been performed.
