@@ -50,7 +50,7 @@
         "network_exposure": "none_by_default",
         "purpose": "kernel-build-and-boot-research",
         "artifact_integrity_check": "grep prebuilt entries from prebuilt/SHA256SUMS and verify with sha256sum",
-        "firmware_vars_strategy": "copy-and-zero-extend-to-code-image-size",
+        "firmware_flash_strategy": "copy-and-zero-extend-code-and-vars-images-to-64MiB",
         "ci_workflow": ".github/workflows/midad-hakios-qemu-smoke.yml"
       }
     }
