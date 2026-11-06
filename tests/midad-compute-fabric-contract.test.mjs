@@ -87,6 +87,17 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
   assert.ok(qemuWorkflow.includes('uefi/u-boot/build.sh qemu'));
   assert.ok(qemuWorkflow.includes('qemu/run-u-boot.sh 150'));
   assert.ok(qemuWorkflow.includes('Hello from user space on Darwin!'));
+  const ubootBootCommandPatch = fs.readFileSync(
+    new URL('../compute/mncf/patches/hakios-qemu-bootcmd.patch', import.meta.url),
+    'utf8'
+  );
+  assert.ok(qemuWorkflow.includes('git apply ../compute/mncf/patches/hakios-qemu-bootcmd.patch'));
+  assert.match(ubootBootCommandPatch, /-CONFIG_BOOTCOMMAND="hakios load 0x50000000 && run hakios_start"/);
+  assert.match(ubootBootCommandPatch, /+CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"/);
+  assert.equal(
+    manifest.layers.hakios_lab.qemu.uboot_path.boot_command_override.ci_override,
+    'hakios load 0x50000000 && hakios boot'
+  );
   assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
   assert.match(qemuWorkflow, /QEMU_ESP=1/);
   assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
