@@ -69,4 +69,8 @@ test('external technologies are classified without replacing the production stac
   assert.equal(openworld.production_eligible, false);
   assert.equal(openworld.paid_resources_allowed, false);
   assert.ok(openworld.forbidden_workloads.includes('credentials'));
+  assert.equal(openworld.verified_public_facts.no_card, true);
+  assert.equal(openworld.verified_public_facts.authentication, 'Discord');
+  assert.equal(openworld.verified_public_facts.retention_conflict_unresolved, true);
+  assert.equal(openworld.enabled, false);
 });
