@@ -143,6 +143,16 @@ jobs:
         working-directory: hakios
         run: python3 tools/hakios-device.py sync hakios-uefi
 
+      - name: Apply minimal MIDAD QEMU boot-command compatibility patch
+        working-directory: hakios
+        run: |
+          git apply ../compute/mncf/patches/hakios-qemu-bootcmd.patch
+          grep -F 'CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"' devices/qemu/u-boot/files/configs/hakios_qemu_defconfig
+          if grep -F 'hakios_start' devices/qemu/u-boot/files/configs/hakios_qemu_defconfig; then
+            echo "::error::Undefined hakios_start reference remains in QEMU boot command"
+            exit 1
+          fi
+
       - name: Build HakiOS-patched U-Boot for QEMU
         working-directory: hakios
         env:
