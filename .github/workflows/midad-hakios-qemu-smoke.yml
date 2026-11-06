@@ -5,11 +5,9 @@ on:
     branches:
       - feat/midad-compute-fabric-zero-budget
     paths:
-      - 'compute/mncf/**'
       - '.github/workflows/midad-hakios-qemu-smoke.yml'
   pull_request:
     paths:
-      - 'compute/mncf/**'
       - '.github/workflows/midad-hakios-qemu-smoke.yml'
 
 permissions:
