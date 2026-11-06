@@ -70,7 +70,13 @@
           "source_repository": "oosexgang/hakios-uefi",
           "source_revision": "1c6522893266157506c767e2ca427053ed3634a8",
           "requires_edk2": false,
-          "research_only": true
+          "research_only": true,
+          "boot_command_override": {
+            "upstream": "hakios load 0x50000000 && run hakios_start",
+            "ci_override": "hakios load 0x50000000 && hakios boot",
+            "reason": "The pinned defconfig references hakios_start, but no environment variable defines it; the pinned U-Boot patch implements an explicit hakios boot subcommand.",
+            "scope": "MIDAD CI-only patch to the ephemeral HakiOS checkout; upstream repository remains unchanged."
+          }
         }
       }
     }
