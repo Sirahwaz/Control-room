@@ -74,6 +74,10 @@ const qemuWorkflow = fs.readFileSync(
   new URL('../.github/workflows/midad-hakios-qemu-smoke.yml', import.meta.url),
   'utf8'
 );
+const forgeWorkflow = fs.readFileSync(
+  new URL('../.github/workflows/midad-forge.yml', import.meta.url),
+  'utf8'
+);
 
 test('HakiOS QEMU smoke compares both documented payload delivery paths in parallel', () => {
   assert.equal(manifest.layers.hakios_lab.qemu.boot_path_strategy, 'parallel-differential-plus-uboot');
@@ -116,3 +120,32 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
   assert.ok(qemuWorkflow.includes('tail -n 120 qemu/qemu-debug.log'));
   assert.ok(qemuWorkflow.includes('hakios/qemu/qemu-debug.log'));
 });
+
+test('Linux compute reuses the existing Forge queue through the bounded worker runtime', () => {
+  const linux = manifest.layers.linux_compute;
+  assert.equal(linux.runtime_contract, 'compute/mncf/runtime/worker.mjs');
+  assert.equal(linux.orchestration.edge_function, 'midad_forge');
+  assert.equal(linux.orchestration.coordinator, 'midad_forge_coordinator');
+  assert.equal(linux.orchestration.new_queue_created, false);
+  assert.equal(linux.orchestration.database_schema_changed, false);
+  assert.equal(linux.runner_adapter.persistent, false);
+  assert.equal(linux.runner_adapter.job_timeout_minutes, 15);
+  assert.equal(linux.runner_adapter.permissions.id_token_permission, false);
+  assert.equal(linux.execution_policy.npm_lifecycle_scripts, 'disabled');
+  assert.deepEqual(linux.execution_policy.allowed_npm_scripts, ['lint', 'test', 'build']);
+  assert.equal(linux.execution_policy.network_egress, 'not_isolated_in_this_iteration');
+  assert.ok(forgeWorkflow.includes('node compute/mncf/runtime/worker.mjs --manifest forge.json --output forge-output'));
+  assert.ok(forgeWorkflow.includes('timeout-minutes: 15'));
+  assert.ok(forgeWorkflow.includes('persist-credentials: false'));
+  assert.ok(!forgeWorkflow.includes('npm run lint --if-present'));
+  assert.ok(contractWorkflowForRuntime());
+});
+
+function contractWorkflowForRuntime() {
+  const text = fs.readFileSync(
+    new URL('../.github/workflows/midad-compute-fabric-contract.yml', import.meta.url),
+    'utf8'
+  );
+  return text.includes('node --test tests/midad-linux-worker.test.mjs') &&
+    text.includes('node --check compute/mncf/runtime/worker.mjs');
+}
