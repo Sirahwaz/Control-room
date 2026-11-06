@@ -154,6 +154,23 @@
         "role": "optional_backend_candidate",
         "adoption": "not_deployed_not_a_supabase_replacement",
         "reason": "self_hosted_requires_at_least_2_CPU_4GB_RAM_2GB_swap_and_Docker; free_cloud_projects_pause_after_7_days_inactive; avoid_duplicate_backend_until_host_and_migration_need_verified"
+      },
+      "northflank": {
+        "role": "optional_zero_budget_managed_container_host",
+        "plan": "Sandbox",
+        "official_pricing_url": "https://northflank.com/pricing",
+        "official_billing_docs_url": "https://northflank.com/docs/v1/application/billing/pricing-on-northflank",
+        "advertised_limits": {
+          "services": 2,
+          "jobs": 2,
+          "databases": 1,
+          "monthly_resource_allowance_usd": 20,
+          "always_on": true,
+          "no_card_claim": true
+        },
+        "adoption": "pending_conflicting_card_requirement",
+        "production_status": "not_approved",
+        "reason": "Pricing page advertises a no-card always-on Sandbox, but official billing documentation says all users must add a payment method before creating resources. No account/resource creation is authorized or verified; do not assume a no-card path."
       }
     }
   }
