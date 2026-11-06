@@ -58,3 +58,15 @@ test('manifest contains no credentials or secret material', () => {
   const serialized = JSON.stringify(manifest);
   assert.doesNotMatch(serialized, /(api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*["'][^"']+/i);
 });
+test('external technologies are classified without replacing the production stack', () => {
+  const review = manifest.external_technology_review;
+  assert.equal(review.candidates.weaver.adoption, 'not_in_server_runtime');
+  assert.equal(review.candidates.tiny11builder.adoption, 'excluded_from_linux_compute');
+  assert.equal(review.candidates.fuchsia.adoption, 'patterns_only_not_production_kernel');
+  assert.equal(review.candidates.appwrite.adoption, 'not_deployed_not_a_supabase_replacement');
+  const openworld = manifest.providers.find(provider => provider.id === 'openworld-vps-sandbox');
+  assert.equal(openworld.enabled, false);
+  assert.equal(openworld.production_eligible, false);
+  assert.equal(openworld.paid_resources_allowed, false);
+  assert.ok(openworld.forbidden_workloads.includes('credentials'));
+});
