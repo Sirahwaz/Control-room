@@ -80,6 +80,7 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
   assert.ok(qemuWorkflow.includes('/usr/share/AAVMF/AAVMF_CODE.fd'));
   assert.ok(qemuWorkflow.includes('/usr/share/AAVMF/AAVMF_VARS.fd'));
   assert.ok(qemuWorkflow.includes('test "$EFI_BYTES" -eq "$VARS_BYTES"'));
+  assert.ok(qemuWorkflow.includes('stat -L -c %s "$EFI"'));
   assert.ok(!qemuWorkflow.includes('truncate -s 64M'));
   assert.equal(manifest.layers.hakios_lab.qemu.firmware_pairing_strategy, 'use-matched-aavmf-code-and-vars-images-with-equal-size-no-padding');
   assert.ok(qemuWorkflow.includes('tail -n 120 qemu/qemu-debug.log'));
