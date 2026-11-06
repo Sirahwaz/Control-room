@@ -21,6 +21,7 @@ test('Linux production compute is separate from the HakiOS research guest', () =
   assert.equal(manifest.layers.hakios_lab.source_ref, '63fc2b4633bac3af8e57dadab9f5a8d4cb940438');
   assert.equal(manifest.layers.hakios_lab.qemu.smoke_mode, 'prebuilt-qemu-boot');
   assert.equal(manifest.layers.hakios_lab.qemu.full_source_build, false);
+  assert.equal(manifest.layers.hakios_lab.qemu.ci_workflow, '.github/workflows/midad-hakios-qemu-smoke.yml');
 });
 
 test('only verified ephemeral CI compute is enabled by default', () => {
