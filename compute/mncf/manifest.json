@@ -80,18 +80,20 @@
     },
     {
       "id": "openworld-vps-sandbox",
-      "kind": "community_free_vps",
+      "kind": "community_linux_container_host",
       "enabled": false,
       "persistence": "unverified",
       "paid_resources_allowed": false,
-      "approved_scope": "preflight_and_disposable_secret_free_sandbox_only",
+      "approved_scope": "disposable_non_sensitive_linux_preflight_only_until_isolation_and_limits_are_verified",
       "forbidden_workloads": [
         "production_data",
         "credentials",
         "wallets",
         "trading",
         "customer_data",
-        "public_control_plane"
+        "public_control_plane",
+        "untrusted_code",
+        "docker_daemon_or_privileged_containers"
       ],
       "activation_gate": "user_confirms_existing_or_new_Discord_auth_then_verify_dashboard_terms_resource_limits_and_resolve_7_vs_30_day_retention_conflict",
       "production_eligible": false,
@@ -106,8 +108,12 @@
         "uptime_guarantee": false,
         "retention_terms_days": 7,
         "retention_privacy_policy_days": 30,
-        "retention_conflict_unresolved": true
-      }
+        "retention_conflict_unresolved": true,
+        "separate_vm_kernel_guaranteed": false,
+        "resource_quotas_published": false
+      },
+      "isolation": "containerized_shared_kernel_not_verified_as_full_vm",
+      "resource_quotas": "not_published"
     }
   ],
   "network": {
