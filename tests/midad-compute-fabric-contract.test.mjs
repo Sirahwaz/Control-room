@@ -92,8 +92,8 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
     'utf8'
   );
   assert.ok(qemuWorkflow.includes('git apply ../compute/mncf/patches/hakios-qemu-bootcmd.patch'));
-  assert.match(ubootBootCommandPatch, /-CONFIG_BOOTCOMMAND="hakios load 0x50000000 && run hakios_start"/);
-  assert.match(ubootBootCommandPatch, /+CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"/);
+  assert.ok(ubootBootCommandPatch.includes('-CONFIG_BOOTCOMMAND="hakios load 0x50000000 && run hakios_start"'));
+  assert.ok(ubootBootCommandPatch.includes('+CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"'));
   assert.equal(
     manifest.layers.hakios_lab.qemu.uboot_path.boot_command_override.ci_override,
     'hakios load 0x50000000 && hakios boot'
