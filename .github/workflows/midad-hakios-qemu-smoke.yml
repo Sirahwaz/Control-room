@@ -15,6 +15,11 @@ permissions:
 
 jobs:
   qemu-open:
+    name: qemu-open (${{ matrix.boot_path }})
+    strategy:
+      fail-fast: false
+      matrix:
+        boot_path: [loader-device, uefi-esp]
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -68,11 +73,18 @@ jobs:
           stat -c "QEMU_EFI_BYTES=%s" "$EFI_PADDED"
           stat -c "QEMU_VARS_BYTES=%s" "$VARS_PADDED"
           set +e
-          QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 > qemu-open.log 2>&1
+          if [ "${{ matrix.boot_path }}" = "uefi-esp" ]; then
+            # Differential path: UEFI loads the payload from the ESP file; no QEMU loader device.
+            QEMU_ESP=1 QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+          else
+            # Baseline path: QEMU's loader device places the payload at 0xF0000000.
+            QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+          fi
           status=$?
           set -e
           if [ "$status" -ne 124 ] && [ "$status" -ne 0 ]; then
             cat qemu-open.log
+            if [ -f qemu-debug.log ]; then tail -n 120 qemu-debug.log; fi
             exit "$status"
           fi
           cat qemu-open.log
@@ -83,7 +95,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hakios-qemu-open-smoke-log
-          path: hakios/qemu-open.log
+          name: hakios-qemu-${{ matrix.boot_path }}-diagnostics
+          path: |
+            hakios/qemu-open.log
+            hakios/qemu-debug.log
           if-no-files-found: ignore
           retention-days: 7
