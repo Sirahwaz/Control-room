@@ -51,16 +51,27 @@
         "purpose": "kernel-build-and-boot-research",
         "artifact_integrity_check": "grep prebuilt entries from prebuilt/SHA256SUMS and verify with sha256sum",
         "ci_workflow": ".github/workflows/midad-hakios-qemu-smoke.yml",
-        "boot_path_strategy": "parallel-differential",
+        "boot_path_strategy": "parallel-differential-plus-uboot",
         "boot_paths": [
           "loader-device",
-          "uefi-esp"
+          "uefi-esp",
+          "u-boot"
         ],
         "diagnostic_qemu_flags": [
           "guest_errors",
           "cpu_reset"
         ],
-        "firmware_pairing_strategy": "use-matched-aavmf-code-and-vars-images-with-equal-size-no-padding"
+        "firmware_pairing_strategy": "use-matched-aavmf-code-and-vars-images-with-equal-size-no-padding",
+        "uboot_path": {
+          "firmware": "U-Boot v2026.07 with HakiOS patch",
+          "build_command": "uefi/u-boot/build.sh qemu",
+          "runner": "qemu/run-u-boot.sh",
+          "payload_transport": "HKUB container at 0x50000000; payload at 0xF0000000",
+          "source_repository": "oosexgang/hakios-uefi",
+          "source_revision": "1c6522893266157506c767e2ca427053ed3634a8",
+          "requires_edk2": false,
+          "research_only": true
+        }
       }
     }
   },
