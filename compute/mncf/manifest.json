@@ -93,8 +93,21 @@
         "customer_data",
         "public_control_plane"
       ],
-      "activation_gate": "verify_terms_and_limits_then_create_or_access_a_temporary_instance_with_no_secrets",
-      "production_eligible": false
+      "activation_gate": "user_confirms_existing_or_new_Discord_auth_then_verify_dashboard_terms_resource_limits_and_resolve_7_vs_30_day_retention_conflict",
+      "production_eligible": false,
+      "verified_public_facts": {
+        "no_card": true,
+        "authentication": "Discord",
+        "renewal_days": 7,
+        "renewal_interval_hours": 24,
+        "public_ipv6": true,
+        "nat_ipv4": true,
+        "root_ssh": true,
+        "uptime_guarantee": false,
+        "retention_terms_days": 7,
+        "retention_privacy_policy_days": 30,
+        "retention_conflict_unresolved": true
+      }
     }
   ],
   "network": {
