@@ -19,6 +19,21 @@
 - Supabase project metadata and a clean Health Advisor do not prove that database writes are safe. The prior disk/read-only incident remains a reason not to use Supabase as a new compute queue or state store until a separately authorized write-path check is performed.
 - No persistent, free Linux host has been verified through the currently connected hosting accounts.
 
+## 1.1 Existing Linux worker discovered
+
+The repository already contains `.github/workflows/midad-forge.yml` (**MIDAD Forge Worker**):
+- Scheduled every five minutes and also manually dispatchable.
+- Runs on `ubuntu-latest`; uses GitHub OIDC with audience `https://midad-ai`.
+- Claims work from the existing `midad_forge_runs` queue and records events in `midad_forge_events`.
+- Generates a constrained file manifest, builds/tests it in an isolated workspace, uploads artifacts, and publishes a branch/PR after success.
+- This is a bounded **ephemeral Linux worker**, not a persistent server and not yet a general-purpose compute queue.
+
+The last observed scheduled run was `42290607691` on 2026-11-06 20:42 UTC. It completed successfully, but its `prepare`, `build`, and `finalize` jobs were skipped because no run was claimed. The workflow definition says every five minutes; continuous schedule activity is not verified by the recent run history and remains a monitoring item.
+
+The existing `MIDAD_FABRIC_REGISTRY.md` is a 2026-09-30 inventory snapshot and its function versions are stale relative to the live Supabase inventory. The live function list and current function source were used for this audit. `MIDAD_PROVIDER_ADAPTER_CONTRACT.md` describes financial venues (exchange/wallet/payment/chain/mining), not compute providers; it must not be repurposed as a compute contract.
+
+**Integration decision:** preserve the Forge worker and its OIDC boundary. MNCF may add a separate compute-job contract and worker type later, but only after the persistent host and current queue/API contracts are verified. Do not change the existing Forge queue schema or worker workflow as part of this foundation.
+
 ## 2. Target architecture
 
 | Layer | Responsibility | Baseline |
