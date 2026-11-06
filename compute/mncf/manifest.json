@@ -41,11 +41,15 @@
       "role": "isolated_research_guest",
       "production_kernel": false,
       "source_repository": "oosexgang/hakios-xnu-kernel",
+      "source_ref": "63fc2b4633bac3af8e57dadab9f5a8d4cb940438",
       "qemu": {
         "target": "qemu-open",
+        "smoke_mode": "prebuilt-qemu-boot",
+        "full_source_build": false,
         "requires_apple_payload": false,
         "network_exposure": "none_by_default",
-        "purpose": "kernel-build-and-boot-research"
+        "purpose": "kernel-build-and-boot-research",
+        "artifact_integrity_check": "sha256sum -c prebuilt/SHA256SUMS"
       }
     }
   },
@@ -59,7 +63,8 @@
       "permitted_workloads": [
         "contract-tests",
         "static-validation",
-        "reproducible-build-checks"
+        "reproducible-build-checks",
+        "hakios-prebuilt-qemu-boot-smoke"
       ],
       "not_a_persistent_server": true
     },
@@ -92,7 +97,7 @@
   },
   "gates": {
     "persistent_linux_node": "blocked_pending_verified_free_host",
-    "hakios_qemu_execution": "pending_ci_resource_validation",
+    "hakios_qemu_execution": "pending_prebuilt_qemu_smoke",
     "remote_access": "blocked_until_authenticated_overlay_and_host_are_verified",
     "production_cutover": "not_authorized_by_this_manifest"
   }
