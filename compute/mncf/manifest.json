@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "fabric_id": "midad-neural-compute-fabric",
+  "updated_at": "2026-11-07",
+  "scope": {
+    "mode": "hybrid",
+    "principles": [
+      "audit-preserve-repair-integrate-upgrade",
+      "provider-agnostic",
+      "linux-first-production",
+      "isolated-hakios-research",
+      "evidence-before-capacity-claims"
+    ]
+  },
+  "budget": {
+    "mode": "zero",
+    "allow_paid_resources": false,
+    "require_explicit_approval_for_any_cost": true
+  },
+  "layers": {
+    "control_plane": {
+      "role": "existing_midad_control_plane",
+      "source_repository": "Sirahwaz/Control-room",
+      "status": "existing",
+      "integrations": [
+        "midad_orchestrator",
+        "midad_forge",
+        "midad_forge_coordinator",
+        "midad_bot_fabric"
+      ]
+    },
+    "linux_compute": {
+      "role": "production_compute",
+      "status": "capacity_not_yet_provisioned",
+      "os_family": "Linux",
+      "runtime": "container-ready",
+      "persistent_server_required_for_online_service": true,
+      "do_not_claim_persistent_capacity_from_ci": true
+    },
+    "hakios_lab": {
+      "role": "isolated_research_guest",
+      "production_kernel": false,
+      "source_repository": "oosexgang/hakios-xnu-kernel",
+      "qemu": {
+        "target": "qemu-open",
+        "requires_apple_payload": false,
+        "network_exposure": "none_by_default",
+        "purpose": "kernel-build-and-boot-research"
+      }
+    }
+  },
+  "providers": [
+    {
+      "id": "github-actions-linux",
+      "kind": "managed_ci_runner",
+      "enabled": true,
+      "persistence": "ephemeral",
+      "paid_resources_allowed": false,
+      "permitted_workloads": [
+        "contract-tests",
+        "static-validation",
+        "reproducible-build-checks"
+      ],
+      "not_a_persistent_server": true
+    },
+    {
+      "id": "self-hosted-linux",
+      "kind": "self_hosted_worker",
+      "enabled": false,
+      "persistence": "persistent",
+      "paid_resources_allowed": false,
+      "activation_gate": "verify-free-host-ownership-capacity-and-secure-access"
+    }
+  ],
+  "network": {
+    "publicly_exposed_ports": [],
+    "remote_access_requires_authenticated_overlay": true,
+    "direct_public_ssh": false,
+    "direct_public_vnc": false,
+    "guest_to_control_plane_default": "deny"
+  },
+  "integrations": {
+    "existing_control_plane": [
+      "midad_orchestrator",
+      "midad_forge",
+      "midad_forge_coordinator",
+      "midad_bot_fabric"
+    ],
+    "create_replacement_orchestrator": false,
+    "create_new_database_queue": false,
+    "supabase_write_path_verified": false
+  },
+  "gates": {
+    "persistent_linux_node": "blocked_pending_verified_free_host",
+    "hakios_qemu_execution": "pending_ci_resource_validation",
+    "remote_access": "blocked_until_authenticated_overlay_and_host_are_verified",
+    "production_cutover": "not_authorized_by_this_manifest"
+  }
+}
