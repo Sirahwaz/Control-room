@@ -39,6 +39,24 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 4. Do not create a new paid resource, subscription, cloud instance, or external account.
 5. If no persistent free host is found, the online long-running compute objective remains blocked; CI can still validate code and build artifacts.
 
+## 3.1 Provider screening (2026-11-07)
+
+| Candidate | Verified property | Decision |
+|---|---|---|
+| GitHub Actions | Public-repository CI minutes are free; runner is ephemeral | Adopt for bounded builds/tests only |
+| GitHub Codespaces | Personal Free quota is 120 core-hours and 15 GB-month storage; idle codespaces stop automatically | Development fallback, not an always-on worker |
+| Openworld VPS | No-card community VPS; free instance renews every 7 days and can be suspended; its terms do not guarantee uninterrupted availability | Not trusted for production; at most a disposable, secret-free lab after independent trust review |
+| ZenDevz | Official site states early alpha, Bangladesh-only, and not for production; peer-node operators host workload data | Exclude from MIDAD |
+| Oracle Cloud Always Free | Persistent compute exists, but signup requires card verification | Excluded from the zero-budget/no-card execution path |
+| Cloudflare Workers | Free plan is a serverless JS/Wasm runtime with strict per-invocation limits, not a Linux VM; Containers are not free | Potential edge/API layer only, not the Linux compute node |
+
+Provider evidence:
+- GitHub plan allowances: https://github.com/pricing and https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
+- Openworld free VPS FAQ and terms: https://openworld.eu.org/faq and https://openworld.eu.org/tos
+- ZenDevz production and region limitations: https://www.zendevz.com/
+- Oracle signup verification: https://www.oracle.com/cloud/free/faq/
+- Cloudflare Workers limits and Containers pricing: https://developers.cloudflare.com/workers/platform/limits/ and https://developers.cloudflare.com/containers/platform/pricing/
+
 ## 4. HakiOS boundary
 
 - Upstream: `https://github.com/oosexgang/hakios-xnu-kernel`.
