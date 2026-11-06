@@ -77,6 +77,37 @@
             "reason": "The pinned defconfig references hakios_start, but no environment variable defines it; the pinned U-Boot patch implements an explicit hakios boot subcommand.",
             "scope": "MIDAD CI-only patch to the ephemeral HakiOS checkout; upstream repository remains unchanged."
           }
+        },
+        "boot_path_results": {
+          "u-boot": {
+            "status": "verified",
+            "result": "loader-kernel-userland-and-return-to-loader",
+            "run_id": 42312414610,
+            "job_id": 128216829054,
+            "evidence": [
+              "== XNULOADER v3 ==",
+              "platform qemu-virt",
+              "Hello from user space on Darwin!",
+              "kernel returned: log at",
+              "returned 21713 0"
+            ],
+            "termination": {
+              "observed": "PID 1 (launchd test payload) exits with status 0; XNU records initproc-failed panic; XNULOADER captures and returns the kernel log.",
+              "classification": "expected_one_shot_research_payload_exit_not_a_stable_os_session"
+            },
+            "stable_os_session_verified": false,
+            "full_source_build_verified": false
+          },
+          "uefi-esp": {
+            "status": "failed-before-loader",
+            "exception": "Synchronous Exception at 0x00000000A10021A8",
+            "run_id": 42311648171
+          },
+          "loader-device": {
+            "status": "failed-before-loader",
+            "exception": "Synchronous Exception at 0x00000000A10021A8",
+            "run_id": 42311648171
+          }
         }
       }
     }
