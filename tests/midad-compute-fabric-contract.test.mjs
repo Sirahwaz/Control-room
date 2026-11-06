@@ -72,8 +72,17 @@ const qemuWorkflow = fs.readFileSync(
 );
 
 test('HakiOS QEMU smoke compares both documented payload delivery paths in parallel', () => {
-  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_strategy, 'parallel-differential');
-  assert.deepEqual(manifest.layers.hakios_lab.qemu.boot_paths, ['loader-device', 'uefi-esp']);
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_strategy, 'parallel-differential-plus-uboot');
+  assert.deepEqual(manifest.layers.hakios_lab.qemu.boot_paths, ['loader-device', 'uefi-esp', 'u-boot']);
+  assert.equal(manifest.layers.hakios_lab.qemu.uboot_path.requires_edk2, false);
+  assert.equal(manifest.layers.hakios_lab.qemu.uboot_path.source_revision, '1c6522893266157506c767e2ca427053ed3634a8');
+  assert.equal(manifest.layers.hakios_lab.qemu.uboot_path.research_only, true);
+  assert.ok(qemuWorkflow.includes('qemu-uboot:'));
+  assert.ok(qemuWorkflow.includes('tools/hakios-device.py sync hakios-uefi'));
+  assert.ok(qemuWorkflow.includes('uefi/u-boot/apply.sh qemu'));
+  assert.ok(qemuWorkflow.includes('uefi/u-boot/build.sh qemu'));
+  assert.ok(qemuWorkflow.includes('qemu/run-u-boot.sh 150'));
+  assert.ok(qemuWorkflow.includes('Hello from user space on Darwin!'));
   assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
   assert.match(qemuWorkflow, /QEMU_ESP=1/);
   assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
