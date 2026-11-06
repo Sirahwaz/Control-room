@@ -139,6 +139,8 @@ The approval does **not** authorize production workloads, credential entry, wall
 
 **VERIFIED:** GitHub source access; current branch baseline; existing MIDAD control-plane functions; Supabase project metadata; no Railway projects returned; HakiOS Makefile exposes `qemu-open`.
 
-**PENDING:** HakiOS prebuilt QEMU boot smoke; full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host.
+**FAILED / INVESTIGATING:** First HakiOS prebuilt QEMU smoke reached AArch64 UEFI firmware, started the `UEFI Misc Device`, then raised `Synchronous Exception at 0x00000000A10021A8` before the expected `XNULOADER v3` banner. The kernel boot itself is therefore not yet verified; this currently points to the UEFI/loader handoff or QEMU machine/firmware compatibility, not proven kernel failure. A bounded rerun is in progress; do not report HakiOS as booted.
+
+**PENDING:** full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host; a controlled, non-sensitive Openworld container preflight after user authentication and resource/isolation review.
 
 **BLOCKED:** Always-on online compute and remote administration until a persistent free host is verified. No production deployment has been performed.
