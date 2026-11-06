@@ -1,0 +1,36 @@
+name: MIDAD Compute Fabric Contract
+
+on:
+  push:
+    branches:
+      - feat/midad-compute-fabric-zero-budget
+    paths:
+      - 'compute/mncf/**'
+      - 'tests/midad-compute-fabric-contract.test.mjs'
+      - '.github/workflows/midad-compute-fabric-contract.yml'
+  pull_request:
+    paths:
+      - 'compute/mncf/**'
+      - 'tests/midad-compute-fabric-contract.test.mjs'
+      - '.github/workflows/midad-compute-fabric-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate manifest JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('compute/mncf/manifest.json','utf8')); console.log('MNCF_MANIFEST_JSON_OK')"
+      - name: MNCF architecture contract tests
+        run: node --test tests/midad-compute-fabric-contract.test.mjs
+      - name: Diff whitespace validation
+        run: git diff --check
