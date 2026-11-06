@@ -51,6 +51,6 @@ test("Event Spine captures metadata only for 10 sources and does not copy or pur
     "engine_runs", "midad_learning_events", "midad_osint_events", "midad_bot_outbox"
   ]) assert.ok(spine.includes("'" + table + "'"), "missing Event Spine source " + table);
   assert.match(spine, /on conflict \(event_key\) do nothing/i);
-  assert.doesNotMatch(spine, /delete\\s+from|truncate\\s+table|drop\\s+table/i);
+  assert.doesNotMatch(spine, /delete\s+from|truncate\s+table|drop\s+table/i);
   assert.doesNotMatch(spine, /row_data->>'payload'|row_data->>'address'|row_data->>'amount'/i);
 });
