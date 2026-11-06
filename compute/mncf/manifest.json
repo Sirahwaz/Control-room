@@ -50,7 +50,6 @@
         "network_exposure": "none_by_default",
         "purpose": "kernel-build-and-boot-research",
         "artifact_integrity_check": "grep prebuilt entries from prebuilt/SHA256SUMS and verify with sha256sum",
-        "firmware_flash_strategy": "copy-and-zero-extend-code-and-vars-images-to-64MiB",
         "ci_workflow": ".github/workflows/midad-hakios-qemu-smoke.yml",
         "boot_path_strategy": "parallel-differential",
         "boot_paths": [
@@ -60,7 +59,8 @@
         "diagnostic_qemu_flags": [
           "guest_errors",
           "cpu_reset"
-        ]
+        ],
+        "firmware_pairing_strategy": "use-matched-aavmf-code-and-vars-images-with-equal-size-no-padding"
       }
     }
   },
