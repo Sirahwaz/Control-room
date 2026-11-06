@@ -72,6 +72,38 @@ Provider evidence:
 - Oracle signup verification: https://www.oracle.com/cloud/free/faq/
 - Cloudflare Workers limits and Containers pricing: https://developers.cloudflare.com/workers/platform/limits/ and https://developers.cloudflare.com/containers/platform/pricing/
 
+## 3.2 External technology review (2026-11-07)
+
+The four user-proposed resources were inspected at source/documentation level. They are not interchangeable; each belongs to a different layer.
+
+| Resource | What it actually provides | MNCF decision |
+|---|---|---|
+| [Weaver](https://github.com/KeoneSomers/Weaver) | Native Zig/libgit2 desktop Git client for Windows/macOS/Linux. MIT licensed. Has JSON-lines local executable extensions, but declared permissions are not an OS sandbox. | Keep as an optional developer workstation tool only. It is not a headless server, remote worker, orchestration engine or replacement for GitHub Actions. Do not install on the Linux server. |
+| [Tiny11 Builder](https://github.com/ntdevlabs/tiny11builder) | WinUI/.NET tool to customize Windows 11 client installation media using DISM/Windows tooling. Requires Windows host and administrator approval. Windows Server is unsupported. Tiny11 Core removes servicing/recovery and disables Defender; upstream explicitly recommends isolated VM testing. | Exclude from Linux production compute. Consider only if a separate Windows 11 disposable VM image-lab becomes a real requirement. Do not use Core as a server image. Upstream NOTICE states no standalone license is assigned to the upstream material; do not redistribute or bundle without resolving permissions. |
+| [Fuchsia](https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main) | A separate modular OS built around Zircon microkernel and a capability-based component model; drivers and other services run in isolated user-space components. | Research reference for least-privilege component boundaries, lifecycle management, capability-based service access and modular updates. Do not replace Linux with Fuchsia or port production MIDAD services to Zircon at this stage. |
+| [Appwrite](https://appwrite.io/) | Open-source backend platform: Auth, database, storage, functions, messaging, realtime and hosting; supports cloud and Docker self-hosting. | Retain as a future optional backend adapter, not a current deployment and not a Supabase replacement. Self-hosting needs at least 2 CPU, 4 GB RAM, 2 GB swap and Docker Compose; current default stack is 16 containers. Appwrite Cloud Free pauses inactive projects after 7 days, so it is not an always-on compute host. |
+
+### Integration implications
+
+- **Weaver:** no action for the production plane. If the user later has a desktop Linux/Windows workstation, it may provide a convenient Git UI. Its external extension process executes with the user's normal OS permissions; the declared extension permissions are for review, not sandbox enforcement. This is not an agent isolation boundary.
+- **Tiny11:** no action. It does not produce Linux images and does not support Windows Server. A future Windows desktop test lab would be a separate optional project.
+- **Fuchsia:** borrow architecture principles only: capability-based access, isolated components, user-space services, independent updates and explicit lifecycle management. MNCF's actual production worker remains Linux containers.
+- **Appwrite:** do not create a second backend now. Existing MIDAD already has Supabase functions, auth/data integrations and queues; migration would create data duplication and operational cost. Revisit only with a verified host, migration plan, schema/API parity, export/restore test and a concrete Supabase blocker.
+
+Official references:
+- Weaver extension model and security: https://github.com/KeoneSomers/Weaver/blob/main/docs/extensions.md
+- Tiny11 requirements, limitations and attribution: https://github.com/ntdevlabs/tiny11builder/blob/winui-preview/docs/usage.md and https://github.com/ntdevlabs/tiny11builder/blob/winui-preview/NOTICE.md
+- Fuchsia architecture: https://fuchsia.dev/fuchsia-src/get-started/learn/intro/architecture
+- Appwrite self-hosting requirements: https://appwrite.io/docs/advanced/self-hosting/installation
+- Appwrite free-plan inactivity policy: https://appwrite.io/changelog/entry/2026-02-20-1
+- Appwrite Cloud pricing/limits: https://appwrite.io/pricing
+
+## 3.3 Openworld sandbox approval boundary
+
+The user approved a trial of Openworld strictly as a temporary, disposable, secret-free Linux sandbox. The approval does **not** authorize production workloads, credential entry, wallet/trading activity, customer data, public MIDAD control-plane exposure, paid upgrades or persistent reliance on this provider.
+
+Before any instance is activated, verify the provider's current terms, renewal/suspension rules, actual CPU/RAM/disk, region, network policy, root access, data retention and deletion process. Keep the provider disabled in the production manifest until those checks pass. If the only route requires a new account, personal information, or accepting terms not already authorized, pause and ask the user.
+
 ## 4. HakiOS boundary
 
 - Upstream: `https://github.com/oosexgang/hakios-xnu-kernel`.
