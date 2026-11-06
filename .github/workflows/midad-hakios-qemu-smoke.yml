@@ -56,29 +56,28 @@ jobs:
         working-directory: hakios
         shell: bash
         run: |
-          EFI="$(find /usr/share -type f -name QEMU_EFI.fd -print -quit)"
-          VARS="$(find /usr/share -type f -name QEMU_VARS.fd -print -quit)"
-          if [ -z "$EFI" ]; then EFI="$(find /usr/share -type f -name AAVMF_CODE.fd -print -quit)"; fi
-          if [ -z "$VARS" ]; then VARS="$(find /usr/share -type f -name AAVMF_VARS.fd -print -quit)"; fi
-          test -n "$EFI" && test -n "$VARS"
-          # AAVMF firmware CODE is 64 MiB while the packaged VARS template can be 2 MiB;
-          # QEMU pflash devices must have matching sizes. Preserve the template and zero-extend its copy.
-          EFI_PADDED="$RUNNER_TEMP/qemu-code-64m.fd"
-          VARS_PADDED="$RUNNER_TEMP/qemu-vars-64m.fd"
-          cp "$EFI" "$EFI_PADDED"
-          cp "$VARS" "$VARS_PADDED"
-          # QEMU virt exposes 64 MiB pflash devices; Ubuntu packages ship 2 MiB AAVMF templates.
-          truncate -s 64M "$EFI_PADDED"
-          truncate -s 64M "$VARS_PADDED"
-          stat -c "QEMU_EFI_BYTES=%s" "$EFI_PADDED"
-          stat -c "QEMU_VARS_BYTES=%s" "$VARS_PADDED"
+          # Use the matched AAVMF firmware CODE + VARS pair from Ubuntu's qemu-efi-aarch64 package.
+          # Never pair the compact standalone QEMU_EFI.fd with an unrelated AAVMF VARS template.
+          EFI="/usr/share/AAVMF/AAVMF_CODE.fd"
+          VARS="/usr/share/AAVMF/AAVMF_VARS.fd"
+          test -s "$EFI" && test -s "$VARS"
+          EFI_BYTES="$(stat -c %s "$EFI")"
+          VARS_BYTES="$(stat -c %s "$VARS")"
+          echo "QEMU_EFI_PATH=$EFI"
+          echo "QEMU_VARS_PATH=$VARS"
+          echo "QEMU_EFI_BYTES=$EFI_BYTES"
+          echo "QEMU_VARS_BYTES=$VARS_BYTES"
+          test "$EFI_BYTES" -eq "$VARS_BYTES" || {
+            echo "::error::AAVMF CODE/VARS firmware size mismatch; refusing mixed firmware images"
+            exit 1
+          }
           set +e
           if [ "${{ matrix.boot_path }}" = "uefi-esp" ]; then
             # Differential path: UEFI loads the payload from the ESP file; no QEMU loader device.
-            QEMU_ESP=1 QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+            QEMU_ESP=1 QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
           else
             # Baseline path: QEMU's loader device places the payload at 0xF0000000.
-            QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+            QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
           fi
           status=$?
           set -e
