@@ -53,8 +53,10 @@ jobs:
         working-directory: hakios
         shell: bash
         run: |
-          EFI="$(find /usr/share -type f \\( -name QEMU_EFI.fd -o -name AAVMF_CODE.fd \\) -print -quit)"
-          VARS="$(find /usr/share -type f \\( -name QEMU_VARS.fd -o -name AAVMF_VARS.fd \\) -print -quit)"
+          EFI="$(find /usr/share -type f -name QEMU_EFI.fd -print -quit)"
+          VARS="$(find /usr/share -type f -name QEMU_VARS.fd -print -quit)"
+          if [ -z "$EFI" ]; then EFI="$(find /usr/share -type f -name AAVMF_CODE.fd -print -quit)"; fi
+          if [ -z "$VARS" ]; then VARS="$(find /usr/share -type f -name AAVMF_VARS.fd -print -quit)"; fi
           test -n "$EFI" && test -n "$VARS"
           set +e
           QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 > qemu-open.log 2>&1
@@ -73,6 +75,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hakios-qemu-open-smoke-log
-          path: hakios/qemu/qemu-open.log
+          path: hakios/qemu-open.log
           if-no-files-found: ignore
           retention-days: 7
