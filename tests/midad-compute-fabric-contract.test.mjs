@@ -87,6 +87,12 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
   assert.ok(qemuWorkflow.includes('uefi/u-boot/build.sh qemu'));
   assert.ok(qemuWorkflow.includes('qemu/run-u-boot.sh 150'));
   assert.ok(qemuWorkflow.includes('Hello from user space on Darwin!'));
+  assert.ok(qemuWorkflow.includes("grep -F 'kernel returned: log at'"));
+  assert.ok(qemuWorkflow.includes("grep -E 'returned [0-9]+ 0'"));
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_results['u-boot'].status, 'verified');
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_results['u-boot'].stable_os_session_verified, false);
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_results['uefi-esp'].status, 'failed-before-loader');
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_results['loader-device'].status, 'failed-before-loader');
   const ubootBootCommandPatch = fs.readFileSync(
     new URL('../compute/mncf/patches/hakios-qemu-bootcmd.patch', import.meta.url),
     'utf8'
