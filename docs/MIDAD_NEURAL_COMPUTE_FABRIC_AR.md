@@ -60,14 +60,12 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 |---|---|---|
 | GitHub Actions | Public-repository CI minutes are free; runner is ephemeral | Adopt for bounded builds/tests only |
 | GitHub Codespaces | Personal Free quota is 120 core-hours and 15 GB-month storage; idle codespaces stop automatically | Development fallback, not an always-on worker |
-
 | ZenDevz | Official site states early alpha, Bangladesh-only, and not for production; peer-node operators host workload data | Exclude from MIDAD |
 | Oracle Cloud Always Free | Persistent compute exists, but signup requires card verification | Excluded from the zero-budget/no-card execution path |
 | Cloudflare Workers | Free plan is a serverless JS/Wasm runtime with strict per-invocation limits, not a Linux VM; Containers are not free | Potential edge/API layer only, not the Linux compute node |
 
 Provider evidence:
 - GitHub plan allowances: https://github.com/pricing and https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
--  free VPS FAQ and terms: https://openworld.eu.org/faq and https://openworld.eu.org/tos
 - ZenDevz production and region limitations: https://www.zendevz.com/
 - Oracle signup verification: https://www.oracle.com/cloud/free/faq/
 - Cloudflare Workers limits and Containers pricing: https://developers.cloudflare.com/workers/platform/limits/ and https://developers.cloudflare.com/containers/platform/pricing/
