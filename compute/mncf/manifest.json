@@ -49,7 +49,8 @@
         "requires_apple_payload": false,
         "network_exposure": "none_by_default",
         "purpose": "kernel-build-and-boot-research",
-        "artifact_integrity_check": "sha256sum -c prebuilt/SHA256SUMS"
+        "artifact_integrity_check": "grep prebuilt entries from prebuilt/SHA256SUMS and verify with sha256sum",
+        "ci_workflow": ".github/workflows/midad-hakios-qemu-smoke.yml"
       }
     }
   },
