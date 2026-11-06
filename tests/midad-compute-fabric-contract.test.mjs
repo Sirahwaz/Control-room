@@ -18,6 +18,9 @@ test('Linux production compute is separate from the HakiOS research guest', () =
   assert.equal(manifest.layers.hakios_lab.production_kernel, false);
   assert.equal(manifest.layers.hakios_lab.qemu.target, 'qemu-open');
   assert.equal(manifest.layers.hakios_lab.qemu.requires_apple_payload, false);
+  assert.equal(manifest.layers.hakios_lab.source_ref, '63fc2b4633bac3af8e57dadab9f5a8d4cb940438');
+  assert.equal(manifest.layers.hakios_lab.qemu.smoke_mode, 'prebuilt-qemu-boot');
+  assert.equal(manifest.layers.hakios_lab.qemu.full_source_build, false);
 });
 
 test('only verified ephemeral CI compute is enabled by default', () => {
@@ -25,6 +28,7 @@ test('only verified ephemeral CI compute is enabled by default', () => {
   assert.deepEqual(enabled.map(provider => provider.id), ['github-actions-linux']);
   assert.equal(enabled[0].persistence, 'ephemeral');
   assert.equal(enabled[0].paid_resources_allowed, false);
+  assert.ok(enabled[0].permitted_workloads.includes('hakios-prebuilt-qemu-boot-smoke'));
   assert.equal(
     manifest.providers.find(provider => provider.id === 'self-hosted-linux').enabled,
     false
