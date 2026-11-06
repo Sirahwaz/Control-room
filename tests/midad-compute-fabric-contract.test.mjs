@@ -65,3 +65,16 @@ test('external technologies are classified without replacing the production stac
   assert.equal(review.candidates.fuchsia.adoption, 'patterns_only_not_production_kernel');
   assert.equal(review.candidates.appwrite.adoption, 'not_deployed_not_a_supabase_replacement');
 });
+
+const qemuWorkflow = fs.readFileSync(
+  new URL('../.github/workflows/midad-hakios-qemu-smoke.yml', import.meta.url),
+  'utf8'
+);
+
+test('HakiOS QEMU smoke compares both documented payload delivery paths in parallel', () => {
+  assert.equal(manifest.layers.hakios_lab.qemu.boot_path_strategy, 'parallel-differential');
+  assert.deepEqual(manifest.layers.hakios_lab.qemu.boot_paths, ['loader-device', 'uefi-esp']);
+  assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
+  assert.match(qemuWorkflow, /QEMU_ESP=1/);
+  assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
+});
