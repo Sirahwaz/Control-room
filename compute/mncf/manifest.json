@@ -77,6 +77,24 @@
       "persistence": "persistent",
       "paid_resources_allowed": false,
       "activation_gate": "verify-free-host-ownership-capacity-and-secure-access"
+    },
+    {
+      "id": "openworld-vps-sandbox",
+      "kind": "community_free_vps",
+      "enabled": false,
+      "persistence": "unverified",
+      "paid_resources_allowed": false,
+      "approved_scope": "preflight_and_disposable_secret_free_sandbox_only",
+      "forbidden_workloads": [
+        "production_data",
+        "credentials",
+        "wallets",
+        "trading",
+        "customer_data",
+        "public_control_plane"
+      ],
+      "activation_gate": "verify_terms_and_limits_then_create_or_access_a_temporary_instance_with_no_secrets",
+      "production_eligible": false
     }
   ],
   "network": {
@@ -102,5 +120,39 @@
     "hakios_qemu_execution": "pending_prebuilt_qemu_smoke",
     "remote_access": "blocked_until_authenticated_overlay_and_host_are_verified",
     "production_cutover": "not_authorized_by_this_manifest"
+  },
+  "external_technology_review": {
+    "reviewed_at": "2026-11-07",
+    "policy": "evaluate-as-reusable-components; do-not-rebuild-existing-MIDAD-systems",
+    "candidates": {
+      "weaver": {
+        "repository": "KeoneSomers/Weaver",
+        "source_ref": "a80f74093118602d69b3d741b9e96dfda046cfb5",
+        "license": "MIT",
+        "role": "optional_native_git_desktop_client",
+        "adoption": "not_in_server_runtime",
+        "reason": "desktop_Git_GUI_not_headless_worker; extension_commands_are_local_processes_not_an_OS_sandbox"
+      },
+      "tiny11builder": {
+        "repository": "ntdevlabs/tiny11builder",
+        "source_ref": "38f7ab6b1f177098c026a19b73ec84bca9c4b874",
+        "role": "optional_windows_11_image_lab",
+        "adoption": "excluded_from_linux_compute",
+        "reason": "Windows_client_image_builder; Windows_Server_unsupported; Core_removes_servicing_recovery_and_Defender; upstream_notice_says_no_standalone_license"
+      },
+      "fuchsia": {
+        "repository": "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main",
+        "role": "architecture_research_reference",
+        "adoption": "patterns_only_not_production_kernel",
+        "reason": "Zircon_microkernel_and_capability_component_model; not_Linux_and_not_a_drop_in_server_distribution"
+      },
+      "appwrite": {
+        "repository": "appwrite/appwrite",
+        "source_ref": "2.7.1",
+        "role": "optional_backend_candidate",
+        "adoption": "not_deployed_not_a_supabase_replacement",
+        "reason": "self_hosted_requires_at_least_2_CPU_4GB_RAM_2GB_swap_and_Docker; free_cloud_projects_pause_after_7_days_inactive; avoid_duplicate_backend_until_host_and_migration_need_verified"
+      }
+    }
   }
 }
