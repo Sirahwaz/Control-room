@@ -7,6 +7,8 @@ on:
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
+      - 'tests/midad-linux-worker.test.mjs'
+      - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
   pull_request:
     paths:
@@ -32,5 +34,9 @@ jobs:
         run: node -e "JSON.parse(require('fs').readFileSync('compute/mncf/manifest.json','utf8')); console.log('MNCF_MANIFEST_JSON_OK')"
       - name: MNCF architecture contract tests
         run: node --test tests/midad-compute-fabric-contract.test.mjs
+      - name: MIDAD Linux Worker runtime safety tests
+        run: node --test tests/midad-linux-worker.test.mjs
+      - name: Validate MIDAD Linux Worker runtime syntax
+        run: node --check compute/mncf/runtime/worker.mjs
       - name: Diff whitespace validation
         run: git diff --check
