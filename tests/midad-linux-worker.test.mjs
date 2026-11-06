@@ -88,6 +88,34 @@ test('records failed commands, keeps diagnostics, and returns a failed result', 
   await fs.rm(root, { recursive: true, force: true });
 });
 
+test('executes a real no-dependency npm build with lifecycle scripts disabled and packages the output', async () => {
+  const root = await fixture();
+  const packageJson = {
+    private: true,
+    scripts: {
+      preinstall: "node -e \"require('fs').writeFileSync('preinstall-ran','yes')\"",
+      postinstall: "node -e \"require('fs').writeFileSync('postinstall-ran','yes')\"",
+      lint: "node -e \"require('fs').writeFileSync('lint.ok','yes')\"",
+      test: "node -e \"require('fs').writeFileSync('test.ok','yes')\"",
+      build: "node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/index.html','ready')\""
+    }
+  };
+  await fs.writeFile(path.join(root, target, 'package.json'), JSON.stringify(packageJson));
+  const result = await runForgeBuild({ root });
+  assert.equal(result.ok, true);
+  const workspace = path.join(root, target);
+  assert.equal(await fs.readFile(path.join(workspace, 'lint.ok'), 'utf8'), 'yes');
+  assert.equal(await fs.readFile(path.join(workspace, 'test.ok'), 'utf8'), 'yes');
+  assert.equal(await fs.readFile(path.join(workspace, 'dist/index.html'), 'utf8'), 'ready');
+  await assert.rejects(() => fs.stat(path.join(workspace, 'preinstall-ran')));
+  await assert.rejects(() => fs.stat(path.join(workspace, 'postinstall-ran')));
+  assert.equal(await fs.readFile(path.join(root, 'forge-output', target, 'dist/index.html'), 'utf8'), 'ready');
+  for (const name of ['install', 'lint', 'test', 'build']) {
+    assert.ok((await fs.stat(path.join(root, 'forge-output', 'forge-logs', name + '.log'))).isFile());
+  }
+  await fs.rm(root, { recursive: true, force: true });
+});
+
 test('rejects symlinks in generated workspaces before executing package code', async () => {
   const root = await fixture();
   await fs.symlink('/etc/passwd', path.join(root, target, 'outside-link'));
