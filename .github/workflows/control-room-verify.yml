@@ -30,6 +30,9 @@ jobs:
       - name: Storage Governor Control Room regression
         run: node --test tests/storage-governor-ui.test.mjs
 
+      - name: Storage Governor migration safety contract
+        run: node --test tests/storage-governor-migrations.test.mjs
+
       - name: Required UI assets
         run: node -e "const fs=require('fs'); const h=fs.readFileSync('index.html','utf8'); for(const x of ['midad-control-v2.css','midad-control-v2.js','telegram-web-app.js']) if(!h.includes(x)) throw new Error('Missing '+x); for(const x of ['iaitrader.html','iaitrader.css','iaitrader.js']) if(!fs.existsSync(x)) throw new Error('Missing '+x); console.log('UI_ASSETS_OK');"
 
