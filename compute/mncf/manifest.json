@@ -31,11 +31,70 @@
     },
     "linux_compute": {
       "role": "production_compute",
-      "status": "capacity_not_yet_provisioned",
+      "status": "ephemeral_runtime_implemented_persistent_host_pending",
       "os_family": "Linux",
-      "runtime": "container-ready",
+      "runtime": "node24-bounded-linux-worker",
       "persistent_server_required_for_online_service": true,
-      "do_not_claim_persistent_capacity_from_ci": true
+      "do_not_claim_persistent_capacity_from_ci": true,
+      "runtime_contract": "compute/mncf/runtime/worker.mjs",
+      "orchestration": {
+        "mode": "reuse-existing-midad-forge",
+        "edge_function": "midad_forge",
+        "coordinator": "midad_forge_coordinator",
+        "existing_tables": [
+          "midad_forge_projects",
+          "midad_forge_runs",
+          "midad_forge_events"
+        ],
+        "new_queue_created": false,
+        "database_schema_changed": false,
+        "live_edge_functions_changed": false
+      },
+      "runner_adapter": {
+        "provider": "github-actions-linux",
+        "workflow": ".github/workflows/midad-forge.yml",
+        "job": "build",
+        "node_version": 24,
+        "job_timeout_minutes": 15,
+        "persistent": false,
+        "permissions": {
+          "contents": "read",
+          "checkout_credentials_persisted": false,
+          "id_token_permission": false,
+          "pull_request_write_permission": false
+        }
+      },
+      "execution_policy": {
+        "max_manifest_files": 32,
+        "max_source_file_bytes": 60000,
+        "max_manifest_bytes": 2000000,
+        "allowed_npm_scripts": [
+          "lint",
+          "test",
+          "build"
+        ],
+        "npm_lifecycle_scripts": "disabled",
+        "install_flags": [
+          "--ignore-scripts",
+          "--no-audit",
+          "--no-fund"
+        ],
+        "command_timeout_seconds": 180,
+        "output_log_limit_bytes": 512000,
+        "max_artifact_files": 3000,
+        "max_artifact_file_bytes": 5000000,
+        "max_artifact_bytes": 30000000,
+        "reject_path_traversal": true,
+        "reject_symlinks": true,
+        "reject_credentials_and_private_key_files": true,
+        "child_process_environment": "minimal-no-github-or-supabase-secrets",
+        "network_egress": "not_isolated_in_this_iteration"
+      },
+      "capacity_boundary": {
+        "persistent_host": "not_provisioned",
+        "production_online_service": "blocked_pending_verified_free_linux_host",
+        "do_not_infer_persistence_from_github_actions": true
+      }
     },
     "hakios_lab": {
       "role": "isolated_research_guest",
@@ -123,7 +182,8 @@
         "contract-tests",
         "static-validation",
         "reproducible-build-checks",
-        "hakios-prebuilt-qemu-boot-smoke"
+        "hakios-prebuilt-qemu-boot-smoke",
+        "midad-forge-builds"
       ],
       "not_a_persistent_server": true
     },
