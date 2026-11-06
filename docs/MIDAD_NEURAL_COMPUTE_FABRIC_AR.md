@@ -100,9 +100,9 @@ Official references:
 
 ## 3.3 Openworld sandbox approval boundary
 
-The user approved a trial of Openworld strictly as a temporary, disposable, secret-free Linux sandbox. The approval does **not** authorize production workloads, credential entry, wallet/trading activity, customer data, public MIDAD control-plane exposure, paid upgrades or persistent reliance on this provider.
+The user approved a trial of Openworld strictly as a temporary, disposable, secret-free Linux sandbox. Public provider pages confirm: no card required, Discord-based access, root SSH, NAT IPv4 plus public IPv6, Linux containers with systemd, and 7-day free VPS periods that require renewal once per 24 hours or are auto-suspended. The Terms of Service do not guarantee uninterrupted availability and permit suspension; the acceptable-use policy prohibits excessive CPU cryptocurrency mining and network abuse. The Terms state deletion may occur within 7 days after termination, while the Privacy Policy says up to 30 days; this retention inconsistency is unresolved.
 
-Before any instance is activated, verify the provider's current terms, renewal/suspension rules, actual CPU/RAM/disk, region, network policy, root access, data retention and deletion process. Keep the provider disabled in the production manifest until those checks pass. If the only route requires a new account, personal information, or accepting terms not already authorized, pause and ask the user.
+The approval does **not** authorize production workloads, credential entry, wallet/trading activity, customer data, public MIDAD control-plane exposure, paid upgrades or persistent reliance on this provider. Because access is Discord-based and no existing authenticated account/session has been verified, do not create a new account or perform OAuth without the user's explicit confirmation. Before any instance is activated, verify the current CPU/RAM/disk, region, network policy, root access, retention/deletion process and actual dashboard terms. Keep the provider disabled in the production manifest until those checks pass.
 
 ## 4. HakiOS boundary
 
