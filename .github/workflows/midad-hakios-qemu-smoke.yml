@@ -1,0 +1,78 @@
+name: MIDAD HakiOS QEMU Smoke
+
+on:
+  push:
+    branches:
+      - feat/midad-compute-fabric-zero-budget
+    paths:
+      - 'compute/mncf/**'
+      - '.github/workflows/midad-hakios-qemu-smoke.yml'
+  pull_request:
+    paths:
+      - 'compute/mncf/**'
+      - '.github/workflows/midad-hakios-qemu-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qemu-open:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout MIDAD control repository
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned HakiOS source and prebuilt research artifacts
+        uses: actions/checkout@v4
+        with:
+          repository: oosexgang/hakios-xnu-kernel
+          ref: 63fc2b4633bac3af8e57dadab9f5a8d4cb940438
+          path: hakios
+
+      - name: Install QEMU and AArch64 UEFI firmware
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm qemu-efi-aarch64
+
+      - name: Verify upstream prebuilt artifact integrity
+        working-directory: hakios
+        run: sha256sum -c prebuilt/SHA256SUMS
+
+      - name: Assemble Apple-free open-kernel payload
+        working-directory: hakios
+        shell: bash
+        run: |
+          ARGS="$(python3 tools/hakios-config.py args --defconfig defconfig)"
+          python3 xnuloader/mkpayload.py -o qemu/payload.bin \
+            kernel=prebuilt/hakios-kernel \
+            ramdisk=prebuilt/userland/hello \
+            --cmdline "$ARGS"
+
+      - name: Boot HakiOS open kernel under QEMU (bounded smoke)
+        working-directory: hakios
+        shell: bash
+        run: |
+          EFI="$(find /usr/share -type f \\( -name QEMU_EFI.fd -o -name AAVMF_CODE.fd \\) -print -quit)"
+          VARS="$(find /usr/share -type f \\( -name QEMU_VARS.fd -o -name AAVMF_VARS.fd \\) -print -quit)"
+          test -n "$EFI" && test -n "$VARS"
+          set +e
+          QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 > qemu-open.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ] && [ "$status" -ne 0 ]; then
+            cat qemu-open.log
+            exit "$status"
+          fi
+          cat qemu-open.log
+          grep -F 'XNULOADER v3' qemu-open.log
+          grep -F 'hakios-kernel: version' qemu-open.log
+
+      - name: Upload bounded boot log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakios-qemu-open-smoke-log
+          path: hakios/qemu/qemu-open.log
+          if-no-files-found: ignore
+          retention-days: 7
