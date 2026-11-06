@@ -11,6 +11,7 @@ const foundation = read("20261106195218_midad_data_reservoir_storage_governor_fo
 const indexes = read("20261106195312_midad_data_reservoir_fk_indexes_v1.sql");
 const thresholds = read("20261106195421_midad_storage_governor_threshold_contract_tests_v1.sql");
 const spine = read("20261106195713_midad_event_spine_capture_triggers_v1.sql");
+const denyPolicies = read("20261106201000_midad_storage_private_explicit_deny_policies_v1.sql");
 
 test("Data Reservoir migration creates isolated private storage, event and archive tables", () => {
   for (const table of [
@@ -40,6 +41,14 @@ test("Storage Governor uses inclusive 70/85/95 thresholds and read-only emergenc
   assert.match(thresholds, />= 0\.95/);
   assert.match(thresholds, /when coalesce\(p_read_only,false\) then 'EMERGENCY'/);
   assert.match(thresholds, /test failed: emergency threshold is inclusive/);
+});
+
+
+test("Private Reservoir tables explicitly deny API roles while preserving backend role access", () => {
+  assert.match(denyPolicies, /create policy/i);
+  assert.match(denyPolicies, /for all to anon, authenticated using \(false\) with check \(false\)/i);
+  assert.match(denyPolicies, /has_schema_privilege\('service_role','midad_private','USAGE'\)/i);
+  assert.match(denyPolicies, /public roles must not have private schema usage/i);
 });
 
 test("Event Spine captures metadata only for 10 sources and does not copy or purge source rows", () => {
