@@ -32,7 +32,7 @@ The last observed scheduled run was `42290607691` on 2026-11-06 20:42 UTC. It co
 
 The existing `MIDAD_FABRIC_REGISTRY.md` is a 2026-09-30 inventory snapshot and its function versions are stale relative to the live Supabase inventory. The live function list and current function source were used for this audit. `MIDAD_PROVIDER_ADAPTER_CONTRACT.md` describes financial venues (exchange/wallet/payment/chain/mining), not compute providers; it must not be repurposed as a compute contract.
 
-**Integration decision:** preserve the Forge worker and its OIDC boundary. MNCF may add a separate compute-job contract and worker type later, but only after the persistent host and current queue/API contracts are verified. Do not change the existing Forge queue schema or worker workflow as part of this foundation.
+**Integration decision:** preserve the Forge worker and its OIDC boundary. MNCF now provides `compute/mncf/runtime/worker.mjs`, a bounded Node 24 worker invoked by the existing Forge build job. It reuses `midad_forge` and the existing Forge tables; no queue, schema, or live Edge Function was added or changed. The build job is `contents: read`, checkout credentials are not persisted, it has no OIDC permission, and it executes with a minimal child-process environment. npm lifecycle scripts are disabled; only `lint`, `test`, and `build` scripts are allowlisted. Each command is bounded to 180 seconds, and source/artifact sizes are capped. Path traversal, symlinks, credential-like file names and key/certificate files are rejected. Network egress is not isolated in this iteration, so this is a credential-reduced ephemeral build worker, not a complete hostile-code sandbox or persistent server.
 
 ## 2. Target architecture
 
@@ -125,8 +125,8 @@ Official references:
 - [x] Baseline MNCF contract passed on PR head `74102ad`; [ ] re-verify the latest firmware-pair assertions on the current head.
 - [ ] Complete the parallel `loader-device` vs `uefi-esp` QEMU smoke and verify both `XNULOADER v3` and the kernel banner.
 - [ ] Validate a full source rebuild separately; it requires the HakiOS Linux toolchain and SDK setup.
-- [ ] Identify and verify a persistent free Linux host; do not infer one from CI.
-- [ ] Implement a provider adapter and worker registration only after the host and existing queue/API contracts are verified.
+- [ ] Identify and verify a persistent free Linux host; do not infer one from CI. The bounded Forge runtime is now implemented, but its GitHub runner remains ephemeral.
+- [x] Implement the ephemeral GitHub Actions worker adapter using the existing Forge queue and API contract; persistent host discovery remains pending.
 - [ ] Run isolated worker smoke tests, resource-limit tests, restart/recovery tests and artifact-integrity checks.
 - [ ] Consider production integration only after evidence and a separate approval gate.
 
