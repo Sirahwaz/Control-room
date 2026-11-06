@@ -1,6 +1,6 @@
 # MIDAD Neural Compute Fabric (MNCF)
 
-**Status:** foundation contract committed to an isolated feature branch; no production deployment has occurred.  
+**Status:** foundation contract committed to an isolated feature branch; no production deployment has occurred.
 **Scope:** Hybrid compute · zero budget · Linux-first production · HakiOS research guest.
 
 ## 1. Verified baseline (2026-11-07)
@@ -60,14 +60,14 @@ Linux remains the production compute OS. HakiOS is not a Linux replacement, a ge
 |---|---|---|
 | GitHub Actions | Public-repository CI minutes are free; runner is ephemeral | Adopt for bounded builds/tests only |
 | GitHub Codespaces | Personal Free quota is 120 core-hours and 15 GB-month storage; idle codespaces stop automatically | Development fallback, not an always-on worker |
-| Openworld VPS | No-card community VPS; free instance renews every 7 days and can be suspended; its terms do not guarantee uninterrupted availability | Not trusted for production; at most a disposable, secret-free lab after independent trust review |
+
 | ZenDevz | Official site states early alpha, Bangladesh-only, and not for production; peer-node operators host workload data | Exclude from MIDAD |
 | Oracle Cloud Always Free | Persistent compute exists, but signup requires card verification | Excluded from the zero-budget/no-card execution path |
 | Cloudflare Workers | Free plan is a serverless JS/Wasm runtime with strict per-invocation limits, not a Linux VM; Containers are not free | Potential edge/API layer only, not the Linux compute node |
 
 Provider evidence:
 - GitHub plan allowances: https://github.com/pricing and https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
-- Openworld free VPS FAQ and terms: https://openworld.eu.org/faq and https://openworld.eu.org/tos
+-  free VPS FAQ and terms: https://openworld.eu.org/faq and https://openworld.eu.org/tos
 - ZenDevz production and region limitations: https://www.zendevz.com/
 - Oracle signup verification: https://www.oracle.com/cloud/free/faq/
 - Cloudflare Workers limits and Containers pricing: https://developers.cloudflare.com/workers/platform/limits/ and https://developers.cloudflare.com/containers/platform/pricing/
@@ -97,12 +97,6 @@ Official references:
 - Appwrite self-hosting requirements: https://appwrite.io/docs/advanced/self-hosting/installation
 - Appwrite free-plan inactivity policy: https://appwrite.io/changelog/entry/2026-02-20-1
 - Appwrite Cloud pricing/limits: https://appwrite.io/pricing
-
-## 3.3 Openworld sandbox approval boundary
-
-The user approved a trial of Openworld strictly as a temporary, disposable, secret-free Linux sandbox. Public provider pages confirm: no card required, Discord-based access, root SSH, NAT IPv4 plus public IPv6, Linux container instances with systemd, and 7-day free periods that require renewal once per 24 hours or are auto-suspended. The provider explicitly describes these as containerized instances; it does not promise a separate VM kernel or full VM isolation. CPU/RAM/disk/bandwidth quotas are not published. The Terms of Service do not guarantee uninterrupted availability and permit suspension; the acceptable-use policy prohibits excessive CPU cryptocurrency mining and network abuse. The Terms say terminated-account data may be retained for up to 7 days; the Privacy Policy says personal data may be retained up to 30 days after account deletion (different scopes; exact deletion behavior needs clarification).
-
-The approval does **not** authorize production workloads, credential entry, wallet/trading activity, customer data, public MIDAD control-plane exposure, paid upgrades or persistent reliance on this provider. Because access is Discord-based and no existing authenticated account/session has been verified, do not create a new account or perform OAuth without the user's explicit confirmation. Before any instance is activated, verify the current CPU/RAM/disk, region, network policy, root access, retention/deletion process and actual dashboard terms. Keep the provider disabled in the production manifest until those checks pass.
 
 ## 4. HakiOS boundary
 
@@ -141,6 +135,6 @@ The approval does **not** authorize production workloads, credential entry, wall
 
 **FAILED / INVESTIGATING:** First HakiOS prebuilt QEMU smoke reached AArch64 UEFI firmware, started the `UEFI Misc Device`, then raised `Synchronous Exception at 0x00000000A10021A8` before the expected `XNULOADER v3` banner. The kernel boot itself is therefore not yet verified; this currently points to the UEFI/loader handoff or QEMU machine/firmware compatibility, not proven kernel failure. A bounded rerun is in progress; do not report HakiOS as booted.
 
-**PENDING:** full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host; a controlled, non-sensitive Openworld container preflight after user authentication and resource/isolation review.
+**PENDING:** full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host.
 
 **BLOCKED:** Always-on online compute and remote administration until a persistent free host is verified. No production deployment has been performed.
