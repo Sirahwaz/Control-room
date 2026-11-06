@@ -60,13 +60,17 @@ jobs:
           test -n "$EFI" && test -n "$VARS"
           # AAVMF firmware CODE is 64 MiB while the packaged VARS template can be 2 MiB;
           # QEMU pflash devices must have matching sizes. Preserve the template and zero-extend its copy.
-          VARS_PADDED="$RUNNER_TEMP/qemu-vars-$(stat -c%s "$EFI").fd"
+          EFI_PADDED="$RUNNER_TEMP/qemu-code-64m.fd"
+          VARS_PADDED="$RUNNER_TEMP/qemu-vars-64m.fd"
+          cp "$EFI" "$EFI_PADDED"
           cp "$VARS" "$VARS_PADDED"
-          truncate -s "$(stat -c%s "$EFI")" "$VARS_PADDED"
-          stat -c "QEMU_EFI_BYTES=%s" "$EFI"
+          # QEMU virt exposes 64 MiB pflash devices; Ubuntu packages ship 2 MiB AAVMF templates.
+          truncate -s 64M "$EFI_PADDED"
+          truncate -s 64M "$VARS_PADDED"
+          stat -c "QEMU_EFI_BYTES=%s" "$EFI_PADDED"
           stat -c "QEMU_VARS_BYTES=%s" "$VARS_PADDED"
           set +e
-          QEMU_EFI="$EFI" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 > qemu-open.log 2>&1
+          QEMU_EFI="$EFI_PADDED" QEMU_VARS="$VARS_PADDED" QEMU_MEM=2G bash qemu/run.sh 120 > qemu-open.log 2>&1
           status=$?
           set -e
           if [ "$status" -ne 124 ] && [ "$status" -ne 0 ]; then
