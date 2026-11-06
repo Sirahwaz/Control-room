@@ -14,6 +14,8 @@ on:
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
+      - 'tests/midad-linux-worker.test.mjs'
+      - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
 
 permissions:
