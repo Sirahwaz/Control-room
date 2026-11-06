@@ -13,11 +13,12 @@ function section(start, end) {
 }
 
 test("More/System exposes the live Data Reservoir snapshot and explicit canary control", () => {
-  const view = section("function moreView()", "function aiFormat(");
+  const view = section("function storageReservoirView()", "function archiveCanaryResultView(");
   assert.match(view, /S\.data\?\.storage/, "storage data should come from the authenticated dashboard response");
   assert.match(view, /data-cmd="runArchiveCanary"/, "the canary must be a deliberate operator action");
   assert.match(view, /database_mib/, "database size should be visible");
   assert.match(view, /archive_status/, "external archive connection state should be visible");
+  assert.match(section("function moreView()", "function aiFormat("), /storageReservoirView\(\)/, "the status panel should be mounted in More/System");
 });
 
 test("Canary action requires a second confirmation and reports the verified backend result", () => {
