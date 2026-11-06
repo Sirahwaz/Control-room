@@ -100,6 +100,7 @@ Official references:
 
 - Upstream: `https://github.com/oosexgang/hakios-xnu-kernel`.
 - First candidate: `make qemu-open`, the Apple-payload-free open-kernel QEMU path. The initial CI smoke uses the upstream prebuilt kernel/loader/hello artifacts pinned to commit `63fc2b4633bac3af8e57dadab9f5a8d4cb940438`; it is explicitly not a source rebuild.
+- Boot diagnosis now runs two independent paths in parallel: `loader-device` (payload injected at `0xF0000000`) and `uefi-esp` (`QEMU_ESP=1`, payload read from `\\EFI\\hakios\\payload.bin` without a QEMU loader device). The upstream [UEFI boot notes](https://github.com/oosexgang/hakios-xnu-kernel/blob/63fc2b4633bac3af8e57dadab9f5a8d4cb940438/docs/uefi-boot.md) document and report testing both handoff methods; CI captures serial output plus bounded `guest_errors,cpu_reset` diagnostics for each lane.
 - Do not start with phone flashing, firmware extraction, persistent disk writes, or a full Darwin guest.
 - QEMU guest networking and remote display remain disabled by default.
 - HakiOS output is research evidence, not production service capacity.
@@ -119,8 +120,8 @@ Official references:
 - [x] Audit connected GitHub, Supabase and Railway resources.
 - [x] Preserve existing MIDAD control-plane integrations and production branch.
 - [x] Add a machine-readable zero-budget topology contract on a feature branch.
-- [ ] Pass the MNCF contract test in GitHub Actions.
-- [ ] Validate an isolated prebuilt `qemu-open` boot smoke on an available ephemeral Linux runner.
+- [x] Pass the MNCF contract test in GitHub Actions on the current PR head.
+- [ ] Complete the parallel `loader-device` vs `uefi-esp` QEMU smoke and verify both `XNULOADER v3` and the kernel banner.
 - [ ] Validate a full source rebuild separately; it requires the HakiOS Linux toolchain and SDK setup.
 - [ ] Identify and verify a persistent free Linux host; do not infer one from CI.
 - [ ] Implement a provider adapter and worker registration only after the host and existing queue/API contracts are verified.
@@ -129,9 +130,9 @@ Official references:
 
 ## 7. Current state
 
-**VERIFIED:** GitHub source access; current branch baseline; existing MIDAD control-plane functions; Supabase project metadata; no Railway projects returned; HakiOS Makefile exposes `qemu-open`.
+**VERIFIED:** GitHub source access; current branch baseline; MNCF contract, MIDAD FIX Contract and Control Room Verify passed on PR head `74102ad`; existing MIDAD control-plane functions; Supabase project metadata; no Railway projects returned; HakiOS Makefile exposes `qemu-open`.
 
-**FAILED / INVESTIGATING:** First HakiOS prebuilt QEMU smoke reached AArch64 UEFI firmware, started the `UEFI Misc Device`, then raised `Synchronous Exception at 0x00000000A10021A8` before the expected `XNULOADER v3` banner. The kernel boot itself is therefore not yet verified; this currently points to the UEFI/loader handoff or QEMU machine/firmware compatibility, not proven kernel failure. A bounded rerun is in progress; do not report HakiOS as booted.
+**FAILED / INVESTIGATING:** The initial `loader-device` smoke reached AArch64 UEFI, started `UEFI Misc Device`, then raised `Synchronous Exception at 0x00000000A10021A8` before `XNULOADER v3`. This localizes the failure before the kernel banner, but does not prove a kernel fault. The new parallel `loader-device`/`uefi-esp` differential run is pending; do not report HakiOS as booted until a lane emits both loader and kernel banners.
 
 **PENDING:** full source rebuild feasibility; persistent free Linux host discovery; provider adapter contract against a real host.
 
