@@ -19,7 +19,7 @@ test("Control Room cockpit renders the authenticated Storage Governor snapshot",
 test("Storage Governor UI distinguishes unknown project quota from database size", () => {
   assert.match(ui, /project_quota_bytes/);
   assert.match(ui, /quota_usage_pct/);
-  assert.match(ui, /quota.*غير متاحة|الحصة.*غير محددة|quota.*unknown/i);
+  assert.match(ui, /quota.*غير متاحة|الحصة.*غير متاحة|الحصة.*غير محددة|quota.*unknown/i);
 });
 
 test("Storage status remains read-only and never ships backend credentials to the browser", () => {
