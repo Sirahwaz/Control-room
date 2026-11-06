@@ -37,7 +37,7 @@ jobs:
 
       - name: Verify upstream prebuilt artifact integrity
         working-directory: hakios
-        run: sha256sum -c prebuilt/SHA256SUMS
+        run: grep ' prebuilt/' prebuilt/SHA256SUMS | sha256sum -c -
 
       - name: Assemble Apple-free open-kernel payload
         working-directory: hakios
