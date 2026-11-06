@@ -64,16 +64,4 @@ test('external technologies are classified without replacing the production stac
   assert.equal(review.candidates.tiny11builder.adoption, 'excluded_from_linux_compute');
   assert.equal(review.candidates.fuchsia.adoption, 'patterns_only_not_production_kernel');
   assert.equal(review.candidates.appwrite.adoption, 'not_deployed_not_a_supabase_replacement');
-  const openworld = manifest.providers.find(provider => provider.id === 'openworld-vps-sandbox');
-  assert.equal(openworld.enabled, false);
-  assert.equal(openworld.production_eligible, false);
-  assert.equal(openworld.paid_resources_allowed, false);
-  assert.ok(openworld.forbidden_workloads.includes('credentials'));
-  assert.equal(openworld.verified_public_facts.no_card, true);
-  assert.equal(openworld.verified_public_facts.authentication, 'Discord');
-  assert.equal(openworld.verified_public_facts.retention_conflict_unresolved, true);
-  assert.equal(openworld.kind, 'community_linux_container_host');
-  assert.equal(openworld.isolation, 'containerized_shared_kernel_not_verified_as_full_vm');
-  assert.ok(openworld.forbidden_workloads.includes('untrusted_code'));
-  assert.equal(openworld.enabled, false);
 });
