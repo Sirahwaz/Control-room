@@ -12,7 +12,7 @@ function hasFreshZeroPriceProof(metadata, now) {
   const age = now - verifiedAt;
   return age >= 0 && age <= MAX_PRICE_PROOF_AGE_MS;
 }
-export function buildOpenRouterRequestPolicy({routeMetadata = {},budgetClass = "free",configuredModel = "",requestedModel,dataClass,now = Date.now()} = {}) {
+export function buildOpenRouterRequestPolicy({routeMetadata = {},budgetClass = "free",configuredModel = "",requestedModel = undefined,dataClass = undefined,now = Date.now()} = {}) {
   const model = String(configuredModel || "").trim();
   const requestModel = typeof requestedModel === "string" ? requestedModel.trim() : "";
   if (String(budgetClass || "").trim().toLowerCase() !== "free") return {ok:false,error:"openrouter_paid_budget_disabled"};
