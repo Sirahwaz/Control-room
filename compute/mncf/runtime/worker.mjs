@@ -213,7 +213,7 @@ export async function runForgeBuild({ root = process.cwd(), manifestPath = 'forg
       source_manifest_sha256: createHash('sha256').update(manifestText, 'utf8').digest('hex'),
       files: artifactFiles
     };
-    const artifactManifestText = JSON.stringify(artifactManifest, null, 2) + '\\n';
+    const artifactManifestText = JSON.stringify(artifactManifest, null, 2) + '\n';
     await fs.writeFile(path.join(out, 'forge-artifact-manifest.json'), artifactManifestText);
     report.artifact = {
       files: inventory.files, bytes: inventory.bytes, target_dir: m.target_dir,
