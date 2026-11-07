@@ -127,3 +127,37 @@ test('rejects symlinks in generated workspaces before executing package code', a
   assert.equal(called, false);
   await fs.rm(root, { recursive: true, force: true });
 });
+
+
+test('emits a verifiable SHA-256 artifact manifest for every packaged file', async () => {
+  const { createHash } = await import('node:crypto');
+  const root = await fixture();
+  const result = await runForgeBuild({
+    root,
+    commandRunner: async () => ({ exitCode: 0, timedOut: false, durationMs: 1 })
+  });
+  assert.equal(result.ok, true);
+  const output = path.join(root, 'forge-output');
+  const provenanceText = await fs.readFile(path.join(output, 'forge-artifact-manifest.json'), 'utf8');
+  const provenance = JSON.parse(provenanceText);
+  const sourceManifest = await fs.readFile(path.join(root, 'forge.json'));
+  assert.equal(provenance.schema_version, 1);
+  assert.equal(provenance.algorithm, 'sha256');
+  assert.equal(
+    provenance.source_manifest_sha256,
+    createHash('sha256').update(sourceManifest).digest('hex')
+  );
+  assert.deepEqual(provenance.files.map(file => file.path).sort(), ['index.html', 'package.json']);
+  for (const file of provenance.files) {
+    const bytes = await fs.readFile(path.join(output, target, file.path));
+    assert.equal(file.bytes, bytes.length);
+    assert.equal(file.sha256, createHash('sha256').update(bytes).digest('hex'));
+  }
+  const report = JSON.parse(await fs.readFile(path.join(output, 'forge-build-report.json'), 'utf8'));
+  assert.equal(report.artifact.provenance_file, 'forge-artifact-manifest.json');
+  assert.equal(
+    report.artifact.provenance_sha256,
+    createHash('sha256').update(provenanceText).digest('hex')
+  );
+  await fs.rm(root, { recursive: true, force: true });
+});
