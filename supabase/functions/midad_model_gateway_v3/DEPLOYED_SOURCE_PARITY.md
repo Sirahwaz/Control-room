@@ -3,7 +3,7 @@
 - Supabase project: `froegigfmpmvtecztfbf`
 - Function: `midad_model_gateway_v3`
 - Deployed version observed: `31`
-- Deployed source SHA-256: `0279a1a37e64695abc7da1af3c94512cdc96318d165e5f669ff652d5b56c98c5`
+- Deployed source SHA-256: `0279a1a37e64695abc7da1af3c94512cdc96318d165e5f669ff652d5d56c98c5`
 - Snapshot captured: 2026-11-08
 - Branch: `fix/live-model-gateway-parity-20261108`
 
