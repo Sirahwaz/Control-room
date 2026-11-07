@@ -5,7 +5,7 @@ import { evaluateGeminiRequestPolicy } from "./gemini-request-policy.mjs";
 import { resolveAutoPromotableRouteTaskClass } from "./model-promotion-policy.mjs";
 
 const NOW = Date.parse("2026-11-08T12:00:00.000Z");
-const baseRoute = { privacy_profile: "sanitized_safety_retention", provider_only: ["stealth"] };
+const baseRoute = { privacy_profile: "sanitized_safety_retention", provider_only: ["stealth"], price_input_per_token: "0", price_output_per_token: "0", free_price_verified_at: new Date(NOW - 60 * 60 * 1000).toISOString() };
 
 test("Safety Retention permits public/sanitized only and never claims ZDR", () => {
   for (const dataClass of ["public", "sanitized"]) {
