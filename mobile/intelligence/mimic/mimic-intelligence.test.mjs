@@ -42,6 +42,22 @@ test("deduplicates hashes and separates failed transactions from successful acti
   assert.equal(fp.metrics.outgoingTransactions,1);
 });
 
+
+test("interprets Etherscan isError and txreceipt_status with their opposite success semantics", () => {
+  const successFromReceipt = tx(44,{timeStamp:1794130000,isError:undefined,txreceipt_status:"1"});
+  const failureFromReceipt = tx(45,{timeStamp:1794130100,isError:undefined,txreceipt_status:"0"});
+  const successFromIsError = tx(46,{timeStamp:1794130200,isError:"0",txreceipt_status:"0"});
+  const failureFromIsError = tx(47,{timeStamp:1794130300,isError:"1",txreceipt_status:"1"});
+  const fp = fingerprintPublicWalletActivity({
+    walletAddress:WALLET,
+    chainId:"1",
+    transactions:[successFromReceipt,failureFromReceipt,successFromIsError,failureFromIsError],
+    observedAt:NOW
+  });
+  assert.equal(fp.sample.successfulTransactions,2);
+  assert.equal(fp.sample.failedTransactions,2);
+});
+
 test("ignores unrelated or malformed public transactions", () => {
   const fp = fingerprintPublicWalletActivity({walletAddress:WALLET,chainId:"1",transactions:[
     tx(6,{from:OTHER,to:CONTRACT}),
