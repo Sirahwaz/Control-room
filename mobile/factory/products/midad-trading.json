@@ -1,0 +1,180 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "midad-trading",
+  "display_name": "MIDAD Trading Intelligence",
+  "version": "0.2.1",
+  "app_id": "ai.midad.trading",
+  "artifact_name": "MIDAD-Trading-Intelligence-v0.2.1",
+  "web_entry": "mobile/web/trading/index.html",
+  "product_mode": "midad-trading-terminal",
+  "release_channel": "debug",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": true,
+    "native_back_navigation": true,
+    "in_app_browser": true,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": true,
+    "multimodal_reasoning": true,
+    "event_bus": true,
+    "trust_boundary_ui": true,
+    "proactive_execution": true,
+    "adaptive_recovery": true
+  },
+  "surfaces": [
+    "live-market-terminal",
+    "dex-early-discovery",
+    "paper-risk-budgeting",
+    "paper-performance-analytics",
+    "pump-dump-radar",
+    "onchain-intelligence",
+    "social-osint",
+    "manual-trade-ticket",
+    "paper-trading",
+    "strategy-lab",
+    "risk-governor",
+    "portfolio-analytics",
+    "trade-journal"
+  ],
+  "target_markets": [
+    "global_remote_crypto",
+    "north_america",
+    "europe_uk",
+    "arab_gcc",
+    "arab_levant",
+    "arab_north_africa",
+    "east_southeast_asia",
+    "south_asia",
+    "latin_america"
+  ],
+  "monetization_models": [
+    "subscription",
+    "one_time",
+    "white_label",
+    "b2b_license",
+    "custom_build",
+    "lead_generation"
+  ],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "trading-intelligence-terminal",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": [
+        "global",
+        "product",
+        "tenant"
+      ],
+      "decision_policy": "evidence_weighted",
+      "feedback_required": true
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "supabase",
+      "offline_first": true,
+      "sync_strategy": "outbox_then_reconcile"
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "learning_report",
+        "factory_x_plan",
+        "factory_x_preflight",
+        "market_data_source_manifest",
+        "security_report"
+      ]
+    },
+    "ui_feedback": {
+      "enabled": true,
+      "provider": "agentation",
+      "scope": "development_and_ci_only",
+      "mode": "same_origin_webview_preview_to_mcp",
+      "api_key_required": false,
+      "not_in_release_apk": true,
+      "endpoint": "http://127.0.0.1:4747",
+      "runtime_requirements": {
+        "node_minimum": 20,
+        "node_recommended": 24,
+        "react_minimum": 18
+      },
+      "supported_surfaces": [
+        "react_dom",
+        "capacitor_webview_dom_preview",
+        "same_origin_iframe"
+      ],
+      "unsupported_surfaces": [
+        "native_android_views",
+        "jetpack_compose",
+        "android_xml_views"
+      ],
+      "ci": {
+        "workflow": ".github/workflows/agentation-e2e.yml",
+        "prepare_preview": "mobile/factory/agentation/prepare-preview.mjs",
+        "required_mcp_tool": "agentation_get_all_pending",
+        "gate_factory_build": true,
+        "target_product": "selected_factory_manifest_web_entry"
+      },
+      "remote_hosting": {
+        "configured": false,
+        "requirements": [
+          "public_https_endpoint",
+          "authentication_and_access_control",
+          "persistent_storage",
+          "owner_approved_hosting_and_cost"
+        ]
+      },
+      "safety": {
+        "production_bundle": false,
+        "expose_port_4747": false,
+        "commit_secrets": false
+      }
+    },
+    "trading": {
+      "default_mode": "paper",
+      "live_execution": "disabled",
+      "order_submission_owner": "single_server_side_executor_only",
+      "requires_human_approval": true,
+      "withdrawals": false,
+      "leverage": false,
+      "max_repair_attempts_per_incident": 3,
+      "required_evidence": [
+        "live_market_timestamp",
+        "source_health",
+        "fee_estimate",
+        "slippage_estimate",
+        "liquidity_check",
+        "risk_check",
+        "idempotent_order_status"
+      ],
+      "pump_dump_policy": "detect_public_market_events_not_private_persons",
+      "profit_claim_policy": "realized_net_pnl_only"
+    }
+  },
+  "web_assets": [
+    "mobile/web/trading/trading-core.mjs",
+    "mobile/web/trading/market-intelligence.mjs"
+  ]
+}
