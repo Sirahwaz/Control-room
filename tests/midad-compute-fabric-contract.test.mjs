@@ -154,6 +154,7 @@ test('Forge preserves build diagnostics and submits artifact provenance in the c
   );
   assert.ok(preserveReport >= 0 && preserveReport < cleanup);
   assert.ok(preserveManifest >= 0 && preserveManifest < cleanup);
+  assert.match(forgeWorkflow, /- name: Download Forge artifact\n        if: always\(\)/);
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-build-report.json"'));
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json"'));
   assert.ok(forgeWorkflow.includes("'. + {artifact_manifest:$artifact_manifest}'"));
