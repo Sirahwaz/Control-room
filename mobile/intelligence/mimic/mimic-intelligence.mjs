@@ -27,8 +27,17 @@ function median(values) {
 }
 
 function isFailed(tx) {
-  const value = String(tx?.isError ?? tx?.txreceipt_status ?? "0").toLowerCase();
-  return value === "1" || value === "true" || value === "failed";
+  const isError = tx?.isError;
+  if (isError !== undefined && isError !== null && String(isError).trim() !== "") {
+    const value = String(isError).trim().toLowerCase();
+    return value === "1" || value === "true" || value === "failed";
+  }
+  const receiptStatus = tx?.txreceipt_status;
+  if (receiptStatus !== undefined && receiptStatus !== null && String(receiptStatus).trim() !== "") {
+    const value = String(receiptStatus).trim().toLowerCase();
+    return value === "0" || value === "false" || value === "failed";
+  }
+  return false;
 }
 
 function isContractCall(tx) {
