@@ -2,10 +2,10 @@ const PUBLIC_SOURCE_SCOPES = new Set(["public_market_data","public_chain_data","
 const SANITIZATION_METHODS = new Set(["credential_redaction","pii_redaction","allowlisted_fields","aggregation_only"]);
 const SENSITIVE_PATTERNS = [
   /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i,
-  /\\b(?:sk-[a-z0-9_-]{16,}|AIza[a-z0-9_-]{20,})\\b/i,
-  /\\bbearer\\s+[a-z0-9._~+\\/-]{16,}/i,
-  /\\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret|private[_-]?key|mnemonic|seed[_ -]?phrase)\\s*[:=]\\s*["']?[^\\s,"']{8,}/i,
-  /\\b(?:seed|recovery|mnemonic)\\s*(?:phrase|words)?\\s*[:=]\\s*(?:[a-z]{3,}\\s+){2,}[a-z]{3,}/i
+  /\b(?:sk-[a-z0-9_-]{16,}|AIza[a-z0-9_-]{20,})\b/i,
+  /\bbearer\s+[a-z0-9._~+\/-]{16,}/i,
+  /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret|private[_-]?key|mnemonic|seed[_ -]?phrase)\s*[:=]\s*["']?[^\s,"']{8,}/i,
+  /\b(?:seed|recovery|mnemonic)\s*(?:phrase|words)?\s*[:=]\s*(?:[a-z]{3,}\s+){2,}[a-z]{3,}/i
 ];
 
 /**
