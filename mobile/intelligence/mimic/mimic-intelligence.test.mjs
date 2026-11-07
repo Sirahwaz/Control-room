@@ -8,8 +8,11 @@ const CONTRACT = "0x3333333333333333333333333333333333333333";
 const HASH = n => "0x" + String(n).padStart(64, "0");
 const NOW = Date.parse("2026-11-08T12:00:00.000Z");
 
-function tx(n, {from=WALLET,to=OTHER,timeStamp=1794139200,input="0x",isError="0"}={}) {
-  return {hash:HASH(n),from,to,timeStamp:String(timeStamp),input,isError};
+function tx(n, {from=WALLET,to=OTHER,timeStamp=1794139200,input="0x",isError,txreceipt_status}={}) {
+  const row = {hash:HASH(n),from,to,timeStamp:String(timeStamp),input};
+  if (isError !== undefined) row.isError = isError;
+  if (txreceipt_status !== undefined) row.txreceipt_status = txreceipt_status;
+  return row;
 }
 
 test("requires valid public EVM wallet and numeric chain ID", () => {
