@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -136,7 +137,7 @@ export async function runCommand({ command, args, cwd, env, timeoutMs = POLICY.c
   });
 }
 
-async function copyTree(src, dest, rel = '', count = { files: 0, bytes: 0 }) {
+async function copyTree(src, dest, rel = '', count = { files: 0, bytes: 0, entries: [] }) {
   for (const e of await fs.readdir(src, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name === '.git') continue;
     const name = rel ? rel + '/' + e.name : e.name;
@@ -152,6 +153,8 @@ async function copyTree(src, dest, rel = '', count = { files: 0, bytes: 0 }) {
       count.files++; count.bytes += st.size;
       need(count.files <= POLICY.maxArtifactFiles && count.bytes <= POLICY.maxArtifactBytes, 'artifact_size_exceeded');
       await fs.copyFile(from, to);
+      const bytes = await fs.readFile(to);
+      count.entries.push({ path: name, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') });
     }
   }
   return count;
@@ -203,7 +206,20 @@ export async function runForgeBuild({ root = process.cwd(), manifestPath = 'forg
     const artifactTarget = path.join(out, m.target_dir);
     await fs.mkdir(artifactTarget, { recursive: true });
     const inventory = await copyTree(workspace, artifactTarget);
-    report.artifact = { files: inventory.files, bytes: inventory.bytes, target_dir: m.target_dir };
+    const artifactFiles = inventory.entries.sort((a, b) => a.path.localeCompare(b.path));
+    const artifactManifest = {
+      schema_version: 1, algorithm: 'sha256', runtime: report.runtime,
+      runtime_version: report.version, run_id: report.run_id, target_dir: m.target_dir,
+      source_manifest_sha256: createHash('sha256').update(manifestText, 'utf8').digest('hex'),
+      files: artifactFiles
+    };
+    const artifactManifestText = JSON.stringify(artifactManifest, null, 2) + '\n';
+    await fs.writeFile(path.join(out, 'forge-artifact-manifest.json'), artifactManifestText);
+    report.artifact = {
+      files: inventory.files, bytes: inventory.bytes, target_dir: m.target_dir,
+      provenance_file: 'forge-artifact-manifest.json',
+      provenance_sha256: createHash('sha256').update(artifactManifestText, 'utf8').digest('hex')
+    };
     await fs.copyFile(manifestFile, path.join(out, 'forge.json'));
     await fs.writeFile(path.join(out, 'forge-build-report.json'), JSON.stringify(report, null, 2) + '\n');
     return { ok: report.ok, report, outputDir: out };

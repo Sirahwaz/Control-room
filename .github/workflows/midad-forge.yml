@@ -138,12 +138,24 @@ jobs:
 
       # Download only after checkout: checkout's clean step otherwise deletes forge-output.
       - name: Download Forge artifact
-        if: needs.build.result == 'success'
+        if: always()
         uses: actions/download-artifact@v4
         with:
           name: midad-forge-build
           path: forge-output
         continue-on-error: true
+
+      - name: Preserve Forge build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f forge-output/forge-build-report.json ]; then
+            cp forge-output/forge-build-report.json "$RUNNER_TEMP/midad-forge-build-report.json"
+          fi
+          if [ -f forge-output/forge-artifact-manifest.json ]; then
+            cp forge-output/forge-artifact-manifest.json "$RUNNER_TEMP/midad-forge-artifact-manifest.json"
+          fi
 
       - name: Publish branch and pull request
         if: needs.build.result == 'success'
@@ -229,6 +241,9 @@ jobs:
             pr_url=""
           fi
           report='{}'
-          if [ -f forge-output/forge-build-report.json ]; then report="$(cat forge-output/forge-build-report.json)"; fi
+          if [ -f "$RUNNER_TEMP/midad-forge-build-report.json" ]; then report="$(cat "$RUNNER_TEMP/midad-forge-build-report.json")"; fi
+          artifact_manifest='{}'
+          if [ -f "$RUNNER_TEMP/midad-forge-artifact-manifest.json" ]; then artifact_manifest="$(cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json")"; fi
+          report="$(jq --argjson artifact_manifest "$artifact_manifest" '. + {artifact_manifest:$artifact_manifest}' <<<"$report")"
           body="$(jq -n             --arg action "complete"             --arg run_id "${{ needs.claim.outputs.run_id }}"             --arg status "$status"             --arg commit_sha "$commit_sha"             --arg pr_url "$pr_url"             --argjson build_report "$report"             '{action:$action,run_id:$run_id,status:$status,commit_sha:($commit_sha|if .=="" then null else . end),pr_url:($pr_url|if .=="" then null else . end),build_report:$build_report}')"
           curl -fsSL -X POST             -H "Authorization: bearer ${token}"             -H "Content-Type: application/json"             "${MIDAD_SUPABASE_URL}${MIDAD_FORGE_FUNCTION}"             -d "${body}"
