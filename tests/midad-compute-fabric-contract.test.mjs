@@ -141,6 +141,25 @@ test('Linux compute reuses the existing Forge queue through the bounded worker r
   assert.ok(contractWorkflowForRuntime());
 });
 
+
+test('Forge preserves build diagnostics and submits artifact provenance in the completion report', () => {
+  const preserveReport = forgeWorkflow.indexOf(
+    'cp forge-output/forge-build-report.json "$RUNNER_TEMP/midad-forge-build-report.json"'
+  );
+  const preserveManifest = forgeWorkflow.indexOf(
+    'cp forge-output/forge-artifact-manifest.json "$RUNNER_TEMP/midad-forge-artifact-manifest.json"'
+  );
+  const cleanup = forgeWorkflow.indexOf(
+    'rm -f forge-output/forge.json forge-output/forge-build-report.json'
+  );
+  assert.ok(preserveReport >= 0 && preserveReport < cleanup);
+  assert.ok(preserveManifest >= 0 && preserveManifest < cleanup);
+  assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-build-report.json"'));
+  assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json"'));
+  assert.ok(forgeWorkflow.includes("'. + {artifact_manifest:$artifact_manifest}'"));
+  assert.ok(forgeWorkflow.includes('build_report:$build_report'));
+});
+
 function contractWorkflowForRuntime() {
   const text = fs.readFileSync(
     new URL('../.github/workflows/midad-compute-fabric-contract.yml', import.meta.url),
