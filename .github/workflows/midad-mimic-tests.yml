@@ -20,4 +20,4 @@ jobs:
         with:
           node-version: 24
       - name: MIMIC public wallet fingerprint tests
-        run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs
+        run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs mobile/intelligence/mimic/chain-intelligence-adapter.test.mjs
