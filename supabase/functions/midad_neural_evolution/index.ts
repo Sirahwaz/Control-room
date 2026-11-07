@@ -16,13 +16,15 @@ Deno.serve(async(req)=>{
       admin.from("midad_hypotheses").select("status,confidence,novelty_score,falsification_score,created_at,updated_at").order("created_at",{ascending:false}).limit(500),
       admin.from("midad_learning_events").select("event_type,reward,confidence,created_at").order("created_at",{ascending:false}).limit(1000),
       admin.from("midad_model_feedback").select("signal_type,source,horizon_minutes,sample_size,hit_rate,recommended_weight,confidence,generated_at").order("generated_at",{ascending:false}).limit(200),
-      admin.from("midad_factory_learning").select("scope,tenant_key,product_key,decision_key,evidence,chosen_action,alternatives,outcome,reward,confidence,sample_size,validity_until,created_at").order("updated_at",{ascending:false}).limit(2000),
-      admin.from("midad_research_runs").select("id,status,source_count,finding_count,created_at").order("created_at",{ascending:false}).limit(100)
+      admin.from("midad_research_runs").select("id,status,source_count,finding_count,created_at").order("created_at",{ascending:false}).limit(100),
+      admin.from("midad_factory_learning").select("scope,tenant_key,product_key,decision_key,evidence,chosen_action,alternatives,outcome,reward,confidence,sample_size,validity_until,created_at").order("updated_at",{ascending:false}).limit(2000)
     ]);
+    const sourceReadError=nodes.error||edges.error||hyp.error||learn.error||fb.error||runs.error||factoryLearn.error;
+    if(sourceReadError)throw new Error("neural_evolution_source_read_failed:"+(sourceReadError.code||"unknown"));
     const now=Date.now();
     const refreshTimestamp=new Date(now).toISOString();
     const freshnessUpdates=buildFreshnessUpdates(nodes.data||[],now);
-    const refreshResults=await mapInBatches(freshnessUpdates,DEFAULT_BATCH_SIZE,async(update)=>{
+    const refreshResults=await mapInBatches(freshnessUpdates,DEFAULT_BATCH_SIZE,async(update: { id: string; freshness_score: number })=>{
       const result=await admin.from("midad_knowledge_nodes")
         .update({freshness_score:update.freshness_score,updated_at:refreshTimestamp})
         .eq("id",update.id);
