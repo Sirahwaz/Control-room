@@ -44,7 +44,7 @@ test("OpenRouter refuses paid budgets and caller model overrides", () => {
 });
 
 test("Non-free model requires fresh zero input/output price proof", () => {
-  const base={routeMetadata:baseRoute,budgetClass:"free",configuredModel:"stealth/model",dataClass:"public",now:NOW};
+  const base={routeMetadata:{privacy_profile:"sanitized_safety_retention",provider_only:["stealth"]},budgetClass:"free",configuredModel:"stealth/model",dataClass:"public",now:NOW};
   assert.equal(buildOpenRouterRequestPolicy(base).error,"openrouter_free_price_proof_missing_or_stale");
   const stale=buildOpenRouterRequestPolicy({...base,routeMetadata:{...baseRoute,price_input_per_token:"0",price_output_per_token:"0",free_price_verified_at:new Date(NOW-25*3600000).toISOString()}});
   assert.equal(stale.error,"openrouter_free_price_proof_missing_or_stale");
