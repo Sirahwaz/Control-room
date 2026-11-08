@@ -15,10 +15,14 @@ function fixture(root) {
   fs.mkdirSync(path.join(root, 'assets', 'ui'), { recursive: true });
   fs.mkdirSync(path.join(root, 'pwa'), { recursive: true });
   fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'architecture', 'governance'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'tools', 'architecture-governance'), { recursive: true });
   fs.writeFileSync(path.join(root, 'index.html'), '<html></html>');
   fs.writeFileSync(path.join(root, 'assets', 'ui', 'app.js'), 'console.log("ui");');
   fs.writeFileSync(path.join(root, 'pwa', 'worker.js'), 'self.addEventListener("fetch", () => {});');
   fs.writeFileSync(path.join(root, '.github', 'workflows', 'verify.yml'), 'name: verify');
+  fs.writeFileSync(path.join(root, 'architecture', 'governance', 'manifest.json'), '{}');
+  fs.writeFileSync(path.join(root, 'tools', 'architecture-governance', 'cli.mjs'), '/* cli */');
   return {
     schemaVersion: 1,
     auditDate: '2026-11-08',
@@ -33,6 +37,9 @@ function fixture(root) {
       { id: 'control-room-ui', repository: 'control-room', domain: 'control-plane', kind: 'runtime', paths: ['assets/ui/'], status: 'active' },
       { id: 'pwa-runtime', repository: 'control-room', domain: 'pwa', kind: 'runtime', paths: ['pwa/'], status: 'active' },
       { id: 'github-workflows', repository: 'control-room', domain: 'ci-cd', kind: 'automation', paths: ['.github/workflows/'], status: 'active' },
+      { id: 'governance-registry', repository: 'control-room', domain: 'architecture-governance', kind: 'registry', paths: ['architecture/governance/'], status: 'active' },
+      { id: 'developer-tools', repository: 'control-room', domain: 'developer-tooling', kind: 'tooling', paths: ['tools/'], status: 'active' },
+      { id: 'architecture-governance-tooling', repository: 'control-room', domain: 'architecture-governance', kind: 'tooling', paths: ['tools/architecture-governance/'], status: 'active' },
       { id: 'genesis0-bridge', repository: 'genesis0', domain: 'research-integration', kind: 'adapter', paths: ['integrations/midad_agi_lab_bridge.py'], status: 'active' },
     ],
     dependencies: [
@@ -41,7 +48,7 @@ function fixture(root) {
       { from: 'genesis0-bridge', to: 'control-room-entry', relationship: 'optional-integration', evidence: [{ repository: 'genesis0', path: 'integrations/midad_agi_lab_bridge.py', note: 'Bounded handoff adapter.' }] },
     ],
     policy: {
-      managedRoots: ['assets/', 'pwa/', '.github/workflows/'],
+      managedRoots: ['assets/', 'pwa/', '.github/workflows/', 'architecture/governance/'],
       rootAssetExtensions: ['.html', '.js', '.css', '.mjs', '.webmanifest'],
     },
   };
@@ -54,9 +61,10 @@ test('accepts a well-formed registry and dependency graph with existing local ev
     const result = validateManifest(manifest, { root });
     assert.equal(result.valid, true, JSON.stringify(result.errors));
     assert.equal(result.repositoryCount, 2);
-    assert.equal(result.moduleCount, 5);
+    assert.equal(result.moduleCount, 8);
     assert.equal(result.dependencyCount, 3);
-    assert.ok(result.moduleHealth.every(module => module.status === 'VERIFIED'));
+    assert.ok(result.moduleHealth.filter(module => module.repository === 'control-room').every(module => module.status === 'VERIFIED'));
+    assert.equal(result.moduleHealth.find(module => module.repository === 'genesis0').status, 'NOT_CHECKED_EXTERNAL');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -163,5 +171,29 @@ test('flags files added to a managed domain without a registered module owner', 
     const result = auditWorkspace(root, manifest);
     assert.equal(result.status, 'FAILED');
     assert.ok(result.findings.some(x => x.code === 'UNOWNED_MANAGED_PATH' && x.path === 'assets/unowned/feature.js'));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
+test('records pull request head and base revisions in provenance without changing the checkout SHA', () => {
+  const record = createProvenanceRecord({
+    GITHUB_REPOSITORY: 'Sirahwaz/Control-room',
+    GITHUB_SHA: 'a'.repeat(40),
+    MIDAD_GOVERNANCE_PR_HEAD_SHA: 'b'.repeat(40),
+    MIDAD_GOVERNANCE_PR_BASE_SHA: 'c'.repeat(40),
+    MIDAD_GOVERNANCE_PR_NUMBER: '200',
+  }, 'manifest');
+  assert.equal(record.commitSha, 'a'.repeat(40));
+  assert.equal(record.sourceHeadSha, 'b'.repeat(40));
+  assert.equal(record.baseSha, 'c'.repeat(40));
+  assert.equal(record.pullRequestNumber, 200);
+});
+
+test('prefers the most specific module owner over a broad parent module path', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-specificity-'));
+  try {
+    const manifest = fixture(root);
+    const result = analyzeImpact(['tools/architecture-governance/cli.mjs'], manifest);
+    assert.deepEqual(result.directlyChangedModules, ['architecture-governance-tooling']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
