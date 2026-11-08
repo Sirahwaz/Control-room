@@ -33,7 +33,7 @@ jobs:
       - name: Set up Go for pinned security scanners
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26.10"
+          go-version: "1.27.3"
           check-latest: false
 
       - name: Install pinned Semgrep Community Edition
@@ -49,7 +49,7 @@ jobs:
         run: |
           set +e
           mkdir -p "$HOME/go/bin"
-          go install github.com/gitleaks/gitleaks/v8@v8.30.1
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
           GITLEAKS_INSTALL_STATUS=$?
           go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.0
           OSV_INSTALL_STATUS=$?
