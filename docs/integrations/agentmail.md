@@ -16,7 +16,7 @@ Set these through Supabase Edge Function Secrets, never GitHub or browser code:
 
 ## Endpoints
 - `GET /functions/v1/midad_agentmail_gateway/health`: reports whether secrets are configured; never returns secret values.
-- `POST /functions/v1/midad_agentmail_gateway/webhook`: verifies Svix signature against the exact raw request body before parsing. Only eligible `message.received` events enter MIDAD.
+- `POST /functions/v1/midad_agentmail_gateway/webhook`: verifies Svix signature against the exact raw request body before parsing. Eligible `message.received` events enter MIDAD. If Agent Armor is enabled in Monitor mode, `message.received` is held while its scan is pending and `message.security.completed` triggers an authenticated message fetch; only a `complete/clear` verdict is forwarded. Review and unavailable verdicts are not processed.
 - `POST /functions/v1/midad_agentmail_gateway/inboxes`: admin-key protected, idempotently provisions an inbox using AgentMail `client_id`.
 
 ## Inbound controls
@@ -32,7 +32,7 @@ Set these through Supabase Edge Function Secrets, never GitHub or browser code:
 2. Set the required Edge Function secrets.
 3. Deploy `midad_agentmail_gateway` with JWT verification disabled only for the webhook endpoint; Svix verification is mandatory there, while admin routes require the separate admin key.
 4. Create one inbox with deterministic `client_id`.
-5. Register an AgentMail webhook for `message.received` and store its Svix secret.
+5. Register an AgentMail webhook for both `message.received` and `message.security.completed`, then store its Svix secret.
 6. Verify health, signature rejection, duplicate delivery, and inbound draft creation before enabling live use.
 
 ## Free-tier guardrails
