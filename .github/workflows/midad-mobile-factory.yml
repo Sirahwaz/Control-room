@@ -167,6 +167,9 @@ jobs:
       - name: Validate Android runtime smoke script
         run: bash -n mobile/factory/android-runtime-smoke.sh
 
+      - name: Android signing contract tests
+        run: node --test mobile/factory/signing-contract.test.mjs
+
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product_key }}"
 
