@@ -186,6 +186,36 @@ test('Semgrep report is marked partial when the scanner reports rule or collecti
     assert.equal(semgrep.exitCode, 0);
     assert.equal(semgrep.reportedErrorCount, 1);
     assert.equal(semgrep.status, 'REPORT_PARSED_WITH_ERRORS');
+    assert.equal(report.coverageState, 'PARTIAL');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('overall scanner coverage is COMPLETE only when all four reports parse without errors', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-msav-complete-coverage-'));
+  try {
+    const fixtures = {
+      'semgrep.json': { results: [], errors: [] },
+      'gitleaks.sarif': { runs: [{ results: [] }] },
+      'osv.json': { results: [] },
+      'trivy.json': { Results: [] },
+    };
+    for (const [filename, data] of Object.entries(fixtures)) {
+      fs.writeFileSync(path.join(directory, filename), JSON.stringify(data));
+    }
+    for (const name of ['semgrep', 'gitleaks', 'osv-scanner', 'trivy']) {
+      fs.writeFileSync(path.join(directory, name + '.exit'), '0\n');
+    }
+    const report = buildSanitizedReport({
+      inputDirectory: directory,
+      workspaceRoot: WORKSPACE,
+      repository: 'Sirahwaz/Control-room',
+      commitSha: 'c'.repeat(40),
+    });
+    assert.equal(report.coverageState, 'COMPLETE');
+    assert.equal(report.findingCount, 0);
+    assert.ok(report.scanners.every(scanner => scanner.status === 'REPORT_PARSED'));
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
