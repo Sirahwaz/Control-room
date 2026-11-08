@@ -22,3 +22,11 @@ This module is a deterministic, read-only feature extractor for public EVM walle
 
 ## Verification
 The Node tests validate EVM address and chain input, transaction normalization, deduplication, failure separation, token-contract diversity without retaining transfer amounts, sample caps, and no-execution invariants.
+
+
+## Trading Android integration (PR #196)
+The client adapter calls only the existing `midad_chain_intelligence` v42 `profile` action. It sends at most one page of 50 records, accepts a partial token-transfer feed only as a visible warning, and rejects an unverified normal transaction feed. The UI requires a manual scan; it does not poll or run in the background.
+
+The mobile bundle contains only the Supabase publishable key and the legacy `anon` JWT required by the current Edge Gateway `verify_jwt` setting. Both are public client credentials; no `service_role`, Etherscan API key, exchange credential, or wallet secret is included. The UI applies a local cooldown to prevent accidental repeated requests. This is an operator guard, not a server-side abuse-control mechanism; the endpoint is public-data-only and should remain read-only.
+
+The profile response is reduced to the descriptive fingerprint; raw transactions, native balances, token amounts, private identity, and trading actions are not exposed in the UI.

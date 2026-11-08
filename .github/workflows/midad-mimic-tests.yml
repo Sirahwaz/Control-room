@@ -3,11 +3,17 @@ on:
   pull_request:
     paths:
       - "mobile/intelligence/mimic/**"
+      - "mobile/web/trading/**"
+      - "mobile/factory/products/midad-trading.json"
+      - "mobile/factory/trading-ui-smoke.mjs"
       - ".github/workflows/midad-mimic-tests.yml"
   push:
     branches: [main]
     paths:
       - "mobile/intelligence/mimic/**"
+      - "mobile/web/trading/**"
+      - "mobile/factory/products/midad-trading.json"
+      - "mobile/factory/trading-ui-smoke.mjs"
       - ".github/workflows/midad-mimic-tests.yml"
 permissions:
   contents: read
@@ -20,4 +26,113 @@ jobs:
         with:
           node-version: 24
       - name: MIMIC public wallet fingerprint tests
-        run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs mobile/intelligence/mimic/chain-intelligence-adapter.test.mjs
+        run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs mobile/intelligence/mimic/chain-intelligence-adapter.test.mjs mobile/intelligence/mimic/mimic-client.test.mjs
+
+      - name: Install existing mobile dependencies
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium browser smoke dependency
+        working-directory: mobile
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      - name: Prepare selected Trading product web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs midad-trading
+          WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
+          test -f "$WEB_ENTRY"
+          rm -rf mobile/www dist
+          mkdir -p mobile/www/site dist
+          cp "$WEB_ENTRY" mobile/www/index.html
+          ASSETS="$(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)"
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            test -f "$asset"
+            cp "$asset" mobile/www/
+          done <<< "$ASSETS"
+
+      - name: Trading Android WebView browser runtime smoke
+        working-directory: mobile
+        run: node factory/trading-ui-smoke.mjs www ../dist
+
+      - name: Setup Java 21 for Android debug build
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android SDK for Trading APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Add and sync Trading Android platform
+        working-directory: mobile
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Trading Factory security and quality gate
+        run: node mobile/factory/quality-gate.mjs midad-trading
+
+      - name: Build MIMIC-integrated Trading debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify Trading APK package and integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          PACKAGE="$("$AAPT" dump badging "$APK" | awk -F"'" '/^package: name=/ {print $2; exit}')"
+          test "$PACKAGE" = "ai.midad.trading"
+          mkdir -p dist
+          sha256sum "$APK" | tee dist/MIDAD-Trading-Intelligence-v0.2.1-debug.apk.sha256
+          echo "TRADING_APK_PACKAGE_VERIFIED=$PACKAGE"
+
+      - name: Install and launch MIMIC-integrated Trading APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "ai.midad.trading" "mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+
+      - name: Upload MIMIC-integrated Trading Android debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDAD-Trading-Intelligence-v0.2.1-mimic-debug
+          path: |
+            mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            dist/MIDAD-Trading-Intelligence-v0.2.1-debug.apk.sha256
+            dist/runtime-smoke-report.json
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
+          if-no-files-found: error
+
+      - name: Upload MIMIC and Trading browser smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-trading-mimic-browser-smoke
+          path: |
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
+          if-no-files-found: ignore

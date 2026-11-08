@@ -40,7 +40,7 @@ input,select{width:100%;background:#081522;border:1px solid #284257;color:var(--
 </div>
 
 <nav class="tabs" aria-label="Trading sections">
-<button class="active" data-view="market">السوق</button><button data-view="radar">Pump Radar</button><button data-view="dex-discovery">DEX Discovery</button><button data-view="trade">التداول</button><button data-view="portfolio">المحفظة</button><button data-view="lab">الاستراتيجيات</button>
+<button class="active" data-view="market">السوق</button><button data-view="radar">Pump Radar</button><button data-view="dex-discovery">DEX Discovery</button><button data-view="mimic">MIMIC</button><button data-view="trade">التداول</button><button data-view="portfolio">المحفظة</button><button data-view="lab">الاستراتيجيات</button>
 </nav>
 
 <section id="market" class="view active">
@@ -57,7 +57,21 @@ input,select{width:100%;background:#081522;border:1px solid #284257;color:var(--
 </section>
 
 <section id="dex-discovery" class="view"><div class="panel"><div class="section-head"><h2>DEX Early Discovery · اكتشاف مبكر</h2><div class="toolbar"><span id="dexStatus" class="pill warn">NOT SCANNED</span><button class="btn primary" id="dexRefreshBtn">فحص المصادر</button></div></div><p class="muted small">اكتشاف الرموز العامة عبر DexScreener ومقارنة السعر والسيولة مع GeckoTerminal. الظهور في Boosts قد يعني ترويجاً مدفوعاً ولا يعني الجودة أو الأمان. بيانات الحائزين وصلاحيات العقد ومحاكاة البيع غير متاحة؛ لذلك المرشح WATCH أو REJECT فقط.</p><div id="dexRows" class="empty">لم يبدأ الفحص.</div><div id="dexEvidence" class="small muted" style="margin-top:8px">العقد والحائزون والخروج UNKNOWN.</div></div></section>
-<section id="trade" class="view">
+<section id="mimic" class="view">
+ <div class="panel">
+  <div class="section-head"><h2>MIMIC · Public Wallet Behaviour</h2><span id="mimicStatus" class="pill warn">MANUAL SCAN ONLY</span></div>
+  <p class="muted small">تحليل وصفي لنشاط عنوان EVM عام من خلال MIDAD Chain Intelligence v42. لا يتصل بمحفظة، ولا يوقّع، ولا يتبع الصفقات، ولا يرسل أوامر.</p>
+  <div class="form-grid">
+   <div class="field"><label for="mimicWallet">Public EVM wallet address</label><input id="mimicWallet" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x…"></div>
+   <div class="field"><label for="mimicChainId">Chain ID</label><input id="mimicChainId" inputmode="numeric" value="1" placeholder="1"></div>
+  </div>
+  <div class="toolbar" style="margin-top:12px"><button class="btn primary" id="mimicScanBtn">تحليل يدوي · Analyze</button><span class="pill">PUBLIC DATA · READ ONLY</span></div>
+  <div id="mimicMessage" class="empty" role="status" aria-live="polite" style="margin-top:12px">أدخل عنواناً عاماً واضغط تحليل. لا يوجد فحص تلقائي أو دوري.</div>
+  <div id="mimicResult" style="margin-top:12px"></div>
+  <div class="notice" style="margin-top:12px">النتائج تصف أنماط نشاط عامة فقط؛ لا تثبت هوية المالك أو الملكية المشتركة أو الربحية أو الأداء المستقبلي. لا يوجد Copy Trading أو Auto-follow أو تنفيذ مالي. حدّ الطلب المحلي لا يغني عن Rate Limiting على الخادم.</div>
+ </div>
+</section>
+
  <div class="panel"><div class="section-head"><h2>Manual Trade Ticket</h2><span class="pill warn">PREVIEW ONLY</span></div><div class="form-grid">
  <div class="field"><label>Symbol</label><select id="tradeSymbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option><option>BNBUSDT</option><option>XRPUSDT</option><option>DOGEUSDT</option></select></div>
  <div class="field"><label>Side</label><select id="tradeSide"><option value="buy">BUY</option><option value="sell">SELL</option></select></div>
@@ -86,8 +100,10 @@ input,select{width:100%;background:#081522;border:1px solid #284257;color:var(--
 <script type="module">
 import { normalizeTicker, normalizeCoinExTicker, isFresh, computeTradePreview, createPaperPosition, markPaperPosition, closePaperPosition, analyzeTrend, evaluateCandidate, allocateCapitalBuckets, calculatePositionBudget, planPaperEntry, summarizePaperJournal, createPaperJournalBackup, restorePaperJournalBackup } from "./trading-core.mjs";
 import { fetchDexRadar } from "./market-intelligence.mjs";
+import { fetchPublicWalletFingerprint } from "./mimic-client.mjs";
+import { MIDAD_MIMIC_PUBLIC_CONFIG } from "./mimic-public-config.mjs";
 const symbols=["btcusdt","ethusdt","solusdt","bnbusdt","xrpusdt","dogeusdt","adausdt","linkusdt","avaxusdt","ltcusdt","pepeusdt","suiusdt"];
-const state={socket:null,rows:new Map(),samples:[],trendBySymbol:new Map(),lastTrendAt:0,lastMessage:0,retry:0,lastWsMessage:0,lastFallbackAt:0,fallbackBusy:false,pendingPaper:null,paperPositions:loadPaperPositions()};
+const state={socket:null,rows:new Map(),samples:[],trendBySymbol:new Map(),lastTrendAt:0,lastMessage:0,retry:0,lastWsMessage:0,lastFallbackAt:0,fallbackBusy:false,pendingPaper:null,mimicBusy:false,mimicLastScanAt:0,paperPositions:loadPaperPositions()};
 function loadPaperPositions(){try{const x=JSON.parse(localStorage.getItem("midad.paper.positions.v1")||"[]");if(!Array.isArray(x))return [];return x.filter(p=>p&&p.mode==="PAPER_ONLY"&&/^[A-Z0-9]{4,24}$/.test(String(p.symbol||""))&&["buy","sell"].includes(p.side)&&/^[a-zA-Z0-9_-]{1,80}$/.test(String(p.id||""))&&Number.isFinite(Number(p.quantity))&&Number(p.quantity)>0&&Number.isFinite(Number(p.entryPrice))&&Number(p.entryPrice)>0&&["OPEN","CLOSED"].includes(p.status)&&(p.status!=="CLOSED"||Number.isFinite(Number(p.netPnl))))}catch{return []}}
 function savePaperPositions(){try{localStorage.setItem("midad.paper.positions.v1",JSON.stringify(state.paperPositions))}catch{$("paperBackupStatus").textContent="تعذر حفظ سجل Paper محلياً؛ صدّر نسخة احتياطية الآن."}}
 
@@ -248,6 +264,73 @@ $("openPaperBtn").addEventListener("click",()=>{
  }catch(e){alert(e.message)}
 });
 $("lockBtn").addEventListener("click",()=>alert("الحماية مفعّلة. لا يوجد مسار أوامر حقيقية في هذا الإصدار."));
+
+function renderMimicResult(result){
+ const root=$("mimicResult");root.replaceChildren();
+ const fp=result.fingerprint,metrics=fp.metrics,sample=fp.sample;
+ const rows=[
+  ["Sample quality",sample.sampleQuality],
+  ["Valid unique transactions",sample.validUniqueTransactions],
+  ["Successful / failed",sample.successfulTransactions+" / "+sample.failedTransactions],
+  ["Incoming / outgoing",metrics.incomingTransactions+" / "+metrics.outgoingTransactions],
+  ["Unique counterparties",metrics.uniqueCounterparties],
+  ["Top counterparty share",(metrics.topCounterpartyShare*100).toFixed(2)+"%"],
+  ["Contract interaction",(metrics.contractInteractionRate*100).toFixed(2)+"%"],
+  ["Active days",fp.window.activeDays],
+  ["Median interval (sec)",metrics.medianIntertransactionSeconds??"—"],
+  ["Token contracts",sample.uniqueTokenContracts]
+ ];
+ const card=document.createElement("div");card.className="panel";
+ const heading=document.createElement("div");heading.className="section-head";
+ const title=document.createElement("h3");title.textContent="VERIFIED · "+fp.chainId+" · "+fp.walletAddress;
+ const source=document.createElement("span");source.className="pill";source.textContent=result.source;
+ heading.append(title,source);card.append(heading);
+ for(const [label,value] of rows){
+  const row=document.createElement("div");row.className="signal";
+  const left=document.createElement("span");left.textContent=label;
+  const right=document.createElement("b");right.textContent=String(value);
+  row.append(left,right);card.append(row);
+ }
+ const note=document.createElement("p");note.className="small muted";
+ note.textContent="Similarity is a bounded feature comparison only; it is not identity attribution, return prediction or a trading signal.";
+ card.append(note);
+ if(result.warnings.length){
+  const warnings=document.createElement("div");warnings.className="notice";
+  warnings.textContent="Warnings: "+result.warnings.join(", ");card.append(warnings);
+ }
+ root.append(card);
+}
+async function runMimicScan(){
+ const button=$("mimicScanBtn"),message=$("mimicMessage"),status=$("mimicStatus");
+ if(state.mimicBusy)return;
+ const wait=30000-(Date.now()-state.mimicLastScanAt);
+ if(state.mimicLastScanAt&&wait>0){
+  message.textContent="يرجى الانتظار "+Math.ceil(wait/1000)+" ثانية قبل الطلب التالي على هذا الجهاز.";
+  return;
+ }
+ state.mimicBusy=true;state.mimicLastScanAt=Date.now();button.disabled=true;
+ status.textContent="REQUESTING · READ ONLY";status.className="pill warn";
+ message.textContent="يتم جلب عينة عامة محدودة من المصدر الحالي…";
+ $("mimicResult").replaceChildren();
+ try{
+  const result=await fetchPublicWalletFingerprint({
+   walletAddress:$("mimicWallet").value,
+   chainId:$("mimicChainId").value,
+   config:MIDAD_MIMIC_PUBLIC_CONFIG
+  });
+  renderMimicResult(result);
+  status.textContent="VERIFIED";status.className="pill live";
+  message.textContent="اكتمل التحليل الوصفي. لا توجد أي عملية تداول أو توقيع.";
+ }catch(error){
+  status.textContent="BLOCKED";status.className="pill warn";
+  const known=String(error?.message||"MIMIC_REQUEST_FAILED");
+  message.textContent="لم يكتمل التحليل: "+known+". لم يُنفّذ أي إجراء مالي.";
+ }finally{
+  state.mimicBusy=false;button.disabled=false;
+ }
+}
+
+$("mimicScanBtn").addEventListener("click",runMimicScan);
 
 $("dexRefreshBtn").addEventListener("click",refreshDexRadar);
 $("paperExportBtn").addEventListener("click",exportPaperJournal);

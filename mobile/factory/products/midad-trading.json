@@ -175,6 +175,10 @@
   },
   "web_assets": [
     "mobile/web/trading/trading-core.mjs",
-    "mobile/web/trading/market-intelligence.mjs"
+    "mobile/web/trading/market-intelligence.mjs",
+    "mobile/intelligence/mimic/mimic-intelligence.mjs",
+    "mobile/intelligence/mimic/chain-intelligence-adapter.mjs",
+    "mobile/intelligence/mimic/mimic-client.mjs",
+    "mobile/web/trading/mimic-public-config.mjs"
   ]
 }
