@@ -97,10 +97,13 @@ jobs:
             --output-file /out/osv.json
 
           run_scanner trivy docker docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/work,readonly" \
             --mount "type=bind,src=$RAW,dst=/out" \
-            --mount "type=bind,src=$RUNNER_TEMP/msav-trivy-cache,dst=/root/.cache" \
+            --mount "type=bind,src=$RUNNER_TEMP/msav-trivy-cache,dst=/cache" \
             aquasec/trivy:0.76.2 fs \
+            --cache-dir /cache \
             --scanners vuln,misconfig \
             --format json \
             --output /out/trivy.json \
