@@ -49,7 +49,7 @@ function headerRecord(headers: Headers): Record<string, string> {
   return result;
 }
 
-async function verifyWebhook(req: Request, rawBody: string): Promise<AgentMailEvent | null> {
+function verifyWebhook(req: Request, rawBody: string): AgentMailEvent | null {
   const secret = Deno.env.get("AGENTMAIL_WEBHOOK_SECRET") || "";
   if (!secret) return null;
   try {
@@ -209,7 +209,7 @@ async function main(req: Request) {
 
   if (url.pathname.endsWith("/webhook")) {
     const rawBody = await req.text();
-    const event = await verifyWebhook(req, rawBody);
+    const event = verifyWebhook(req, rawBody);
     if (!event) return json({ ok: false, error: "invalid_webhook_signature" }, 401);
     try {
       if (!["message.received", "message.security.completed"].includes(String(event.event_type))) {
