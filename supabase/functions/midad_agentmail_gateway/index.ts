@@ -151,6 +151,8 @@ async function processInbound(event: AgentMailEvent) {
     const text = normalized.text || (normalized.body_url_present
       ? "[Email body omitted by AgentMail webhook; retrieve via the authenticated message API]"
       : "[Email contained no extracted plain-text body]");
+    const senderMatch = normalized.from.match(/<([^<>]+)>/);
+    const senderEmail = String(senderMatch?.[1] || normalized.from).trim().toLowerCase();
     const response = await fetch(supabaseUrl + "/functions/v1/midad_client_gateway", {
       method: "POST",
       headers: {
@@ -164,6 +166,7 @@ async function processInbound(event: AgentMailEvent) {
         external_message_id: normalized.message_id,
         external_thread_id: normalized.thread_id,
         inbox_id: normalized.inbox_id,
+        external_customer_ref: senderEmail,
         client_name: normalized.from,
         contact: normalized.from,
         topic: normalized.subject,
