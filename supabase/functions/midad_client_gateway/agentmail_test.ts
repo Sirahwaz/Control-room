@@ -1,4 +1,4 @@
-import { normalizeReceivedEvent } from "./index.ts";
+import { normalizeReceivedEvent } from "./agentmail.ts";
 
 Deno.test("accepts a verified ordinary inbound message", () => {
   const result = normalizeReceivedEvent({

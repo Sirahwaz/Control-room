@@ -201,7 +201,7 @@ async function processInbound(event: AgentMailEvent) {
   }
 }
 
-async function main(req: Request) {
+export async function handleAgentMailRequest(req: Request) {
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname.endsWith("/health")) {
     return json({
@@ -280,5 +280,3 @@ async function main(req: Request) {
 
   return json({ ok: false, error: "not_found" }, 404);
 }
-
-if (import.meta.main) Deno.serve(main);
