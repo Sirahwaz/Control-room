@@ -22,6 +22,11 @@ class BrowserUserApiContractTests(unittest.TestCase):
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", mcp)
         self.assertNotIn("MIDAD_INGEST_KEY", mcp)
 
+    def test_bearer_authorization_strips_whitespace_prefix(self):
+        # Both MCP and user_bridge paths must parse a standard HTTP Bearer header.
+        self.assertEqual(self.source.count(r'replace(/^Bearer\s+/i, "")'), 2)
+        self.assertNotIn(r'replace(/^Bearer\\s+/i, "")', self.source)
+
     def test_custom_session_is_hashed_and_age_checked(self):
         self.assertIn('control_room_sessions', self.source)
         self.assertIn('token_hash', self.source)
