@@ -224,6 +224,47 @@ def cgminer_command(host: str, port: int, command: str, timeout: float = DEFAULT
     return json.loads(raw)
 
 
+def is_valid_restart_approval(command: Any, now: datetime | None = None) -> bool:
+    """Fail closed unless this exact restart carries a current cloud approval."""
+    if not isinstance(command, dict):
+        return False
+    if str(command.get("operation") or "").strip().lower() != "restart":
+        return False
+    if not str(command.get("action_id") or "").strip():
+        return False
+
+    approval = command.get("approval")
+    safety = command.get("safety")
+    if not isinstance(approval, dict) or not isinstance(safety, dict):
+        return False
+    if not str(approval.get("id") or "").strip():
+        return False
+    if str(approval.get("status") or "").strip().lower() != "approved":
+        return False
+    if safety.get("cloud_approval") is not True:
+        return False
+    if safety.get("local_policy_required") is not True:
+        return False
+
+    expires_at = approval.get("expires_at")
+    if expires_at is not None:
+        if not isinstance(expires_at, str) or not expires_at.strip():
+            return False
+        try:
+            expiry = datetime.fromisoformat(expires_at.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        # An offset-less expiry is ambiguous and must not authorize a restart.
+        if expiry.tzinfo is None or expiry.utcoffset() is None:
+            return False
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None or current.utcoffset() is None:
+            return False
+        if expiry.astimezone(timezone.utc) <= current.astimezone(timezone.utc):
+            return False
+    return True
+
+
 def handle_repairs(cfg: dict[str, Any], repair_url: str, repair_key: str) -> None:
     node_id = str(cfg.get("node_id") or os.uname().nodename)
     queue = post_repair(repair_url, repair_key, node_id, {"mode": "poll", "node_id": node_id})
@@ -247,6 +288,16 @@ def handle_repairs(cfg: dict[str, Any], repair_url: str, repair_key: str) -> Non
                     "result": {"operation": "diagnostic", "worker_id": worker_id, "error": str(exc)}
                 })
         elif operation == "restart":
+            if not is_valid_restart_approval(cmd):
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "blocked",
+                    "result": {
+                        "operation": "restart",
+                        "worker_id": worker_id,
+                        "reason": "restart_requires_current_per_action_approval",
+                    },
+                })
+                continue
             if os.environ.get("MIDAD_ALLOW_RESTART", "").strip().lower() not in {"1", "true", "yes"}:
                 post_repair(repair_url, repair_key, node_id, {
                     "mode": "ack", "action_id": action_id, "state": "blocked",
