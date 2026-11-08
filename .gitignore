@@ -1,0 +1,37 @@
+# Operating-system noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+!.**/.env.example
+
+# JavaScript / Node tool caches
+**/node_modules/
+.npm/
+.turbo/
+.eslintcache
+
+# Python caches and local environments
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+
+# Test coverage and browser-run artifacts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Local logs and temporary editor files
+*.log
+*.tmp
+*.swp
+*.swo
