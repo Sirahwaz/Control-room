@@ -119,8 +119,6 @@ async function processInbound(event: AgentMailEvent) {
     inbox_id: normalized.inbox_id,
     message_id: normalized.message_id,
     thread_id: normalized.thread_id || null,
-    sender: normalized.from || null,
-    subject: normalized.subject || null,
     status: "processing",
     metadata: {
       labels: normalized.labels,
