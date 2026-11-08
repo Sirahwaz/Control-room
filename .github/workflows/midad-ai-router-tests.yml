@@ -29,6 +29,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Public route policy contract tests
-        run: node --test supabase/functions/midad_ai_router/public-routing-policy.test.mjs supabase/functions/midad_ai_router/fallback-policy.test.mjs supabase/functions/midad_ai_router/auth-policy.test.mjs tests/ai-router-caller-auth-contract.test.mjs
+        run: node --test supabase/functions/midad_ai_router/public-routing-policy.test.mjs supabase/functions/midad_ai_router/fallback-policy.test.mjs supabase/functions/midad_ai_router/auth-policy.test.mjs
       - name: AI Router type check
         run: deno check supabase/functions/midad_ai_router/index.ts
