@@ -114,7 +114,6 @@ jobs:
 
       - name: Run MSAV sanitizer contract tests
         id: sanitizer-tests
-        continue-on-error: true
         run: |
           node --test tests/msav-security-scanning.test.mjs tests/msav-security-workflow.test.mjs
 
