@@ -198,20 +198,31 @@ A gate is VERIFIED only when its acceptance evidence exists. Do not promote a do
 
 ### MSAV-1 execution evidence — 2026-11-08
 
-The MSAV-1 workflow executed on the feature branch in GitHub Actions. The most recent completed baseline run before the Semgrep-status refinement produced the following sanitized result:
+Latest verified run: [MSAV-1 GitHub Actions run #42521627723](https://github.com/Sirahwaz/Control-room/actions/runs/42521627723). The run completed successfully and produced a sanitized artifact (7-day retention). The overall assessment remains **PARTIAL** because Semgrep reported internal collection/rule errors and Gitleaks observations still require human triage.
 
 | Scanner | Version | Exit | Normalized observations | State / limitation |
 |---|---:|---:|---:|---|
-| Semgrep CE | 1.184.0 | 0 | 8 (2 ERROR, 6 WARNING) | 4 scanner/rule errors were also reported; treat coverage as PARTIAL, not a clean scan |
-| Gitleaks | 8.30.1 | 0 | 86 secret-pattern matches | 50 distinct path/rule/line locations after deduplicating 36 repeated entries; each match requires triage before calling it a secret |
-| OSV-Scanner | 2.7.0 | 0 | 0 known advisories returned | Lockfiles/dependency sources found by this run only; not a general guarantee of dependency safety |
-| Trivy | 0.76.2 | 0 | 3 LOW misconfiguration observations | All three were DS-0026 missing Docker HEALTHCHECK observations; evaluate service-appropriate probes before changing images |
+| Semgrep CE | 1.184.0 | 0 | 6 WARNING | 4 scanner/rule errors; report state `REPORT_PARSED_WITH_ERRORS`; coverage remains PARTIAL |
+| Gitleaks | 8.30.1 | 0 | 86 secret-pattern matches | 21 path/rule groups in the sanitized summary; do not equate matches with confirmed secrets |
+| OSV-Scanner | 2.7.0 | 0 | 0 known advisories returned | Applies only to dependency sources/lockfiles discovered by this run; not a guarantee of dependency safety |
+| Trivy | 0.76.2 | 0 | 3 LOW misconfiguration observations | All are DS-0026 missing Docker HEALTHCHECK observations; evaluate service-specific probes before changing images |
 
-The sanitized artifact contains 97 normalized observations. It contains no raw scanner output, source snippets or secret values. The Gitleaks report includes known non-secret patterns such as public Supabase `anon` client configuration, public token-contract addresses, test fixtures and a static mesh identifier; this does not justify a broad suppression rule. Historical findings whose paths are no longer present in the current checkout remain pending review, because absence from the current tree does not prove that an old value was never exposed.
+The sanitized artifact contains **95 normalized observations**. It contains no raw scanner output, source snippets or secret values. The Semgrep XML finding for the checked-in Android Manifest helper is now suppressed with a path-specific, inline rationale; untrusted APK-derived XML remains protected by the `defusedxml` parser and 2 MiB input ceiling. Remaining Semgrep warnings cover synthetic script fixtures and dynamic URL/request callsites that need contextual review.
 
-The MSAV contract suite was subsequently made blocking and completed with **11/11 tests passing**. A follow-up regression test now requires Semgrep reports with non-zero internal error counts to be labelled `REPORT_PARSED_WITH_ERRORS`; that status refinement is committed but still requires its own post-change CI run before being marked verified.
+The Gitleaks findings include known non-secret patterns such as public Supabase `anon` client configuration, public token-contract addresses, test fixtures and a static mesh identifier. No broad suppression was added. Historical matches and values in current paths remain pending review until their origin, exposure and purpose are established. Zero OSV advisories means only that the scanner found no known advisories in the dependency sources it detected.
 
-Run evidence: [MSAV-1 GitHub Actions run](https://github.com/Sirahwaz/Control-room/actions/runs/42520136431) · [Draft PR #221](https://github.com/Sirahwaz/Control-room/pull/221).
+**Contract verification:** 13/13 Node MSAV contract tests passed; 10/10 Python miner restart-approval tests passed. The contract tests are blocking; scanner execution remains non-blocking and the report records partial coverage explicitly.
+
+**Miner restart control boundary — source and live configuration reviewed read-only:**
+- Active `midad_miner_repair_bridge` requires a valid timestamp and HMAC signature, filters queue rows to `action_state='approved'` and `requires_approval=true`, requires a linked `midad_approvals` row in `approved` state, and rejects expired approvals.
+- Active `midad_miner_microscope` currently proposes `diagnostic` actions only, with `action_state='proposed'` and `requires_approval=true`.
+- The live `midad_miner_repair_actions` queue and approvals matching the miner-repair subject were empty at the read-only inspection time. Both tables have RLS. Client access to repair actions is explicitly denied; the approvals owner policy is constrained by `auth.uid() = user_id`. The key-retrieval RPCs are SECURITY DEFINER but executable only by `service_role`.
+- The local sensor now additionally requires a per-action `approval.id`, `approval.status='approved'`, `safety.cloud_approval=true`, `safety.local_policy_required=true`, and a valid non-expired timezone-aware expiry when one is present. The separate `MIDAD_ALLOW_RESTART` local opt-in remains required and disabled by default.
+- **No restart command was sent or executed.** No Supabase function, policy, grant, secret, or production setting was modified.
+
+RE Lab verification after XML hardening: the dedicated Reverse Engineering Lab unit-test workflow passed, and RE Lab CI compile/policy tests passed. The test run covers valid Manifest parsing, DTD/entity rejection and oversized Manifest rejection.
+
+Run evidence: [MSAV-1 run #42521627723](https://github.com/Sirahwaz/Control-room/actions/runs/42521627723) · [Draft PR #221](https://github.com/Sirahwaz/Control-room/pull/221).
 
 
 ## 9. Current live security baseline — 2026-11-08
