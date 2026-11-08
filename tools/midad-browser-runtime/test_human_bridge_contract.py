@@ -27,7 +27,8 @@ class HumanBridgeContractTests(unittest.TestCase):
         start = self.source.index('if(action==="pair_from_control_room")')
         end = self.source.index('if(action==="pair_complete")', start)
         block = self.source[start:end]
-        self.assertIn('crypto.subtle.digest("SHA-256"', block)
+        self.assertIn('async function sha256(value:string)', self.source)
+        self.assertIn('const sessionHash=await sha256(controlRoomToken);', block)
         self.assertIn('.eq("active",true)', block)
         self.assertIn('30*24*60*60*1000', block)
         self.assertIn('ownerIds.length!==1', block)
