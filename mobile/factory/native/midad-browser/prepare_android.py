@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import shutil
+# nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
+# This helper only parses the repository's checked-in AndroidManifest.xml, never APK or user-supplied XML.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
