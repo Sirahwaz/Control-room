@@ -3,11 +3,17 @@ on:
   pull_request:
     paths:
       - "mobile/intelligence/mimic/**"
+      - "mobile/web/trading/**"
+      - "mobile/factory/products/midad-trading.json"
+      - "mobile/factory/trading-ui-smoke.mjs"
       - ".github/workflows/midad-mimic-tests.yml"
   push:
     branches: [main]
     paths:
       - "mobile/intelligence/mimic/**"
+      - "mobile/web/trading/**"
+      - "mobile/factory/products/midad-trading.json"
+      - "mobile/factory/trading-ui-smoke.mjs"
       - ".github/workflows/midad-mimic-tests.yml"
 permissions:
   contents: read
