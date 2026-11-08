@@ -38,6 +38,9 @@ test('secret and source-bearing scanner output is never uploaded raw', () => {
 
 test('Trivy excludes secret scanning because Gitleaks owns secret detection', () => {
   assert.match(workflow, /--scanners vuln,misconfig/);
+  assert.match(workflow, /--user "\$\(id -u\):\$\(id -g\)"/);
+  assert.match(workflow, /--cache-dir \/cache/);
+  assert.doesNotMatch(workflow, /dst=\/root\/\.cache/);
   assert.doesNotMatch(workflow, /--scanners[^\n]*secret/);
 });
 
