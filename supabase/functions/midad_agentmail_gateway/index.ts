@@ -90,11 +90,14 @@ async function agentMailRequest(path: string, method: string, body?: unknown, id
 }
 
 async function processInbound(event: AgentMailEvent) {
-  if (event.event_type === "message.security.completed") {
-    const message = event.message || {};
-    const inboxId = clip(message.inbox_id, 240);
-    const messageId = clip(message.message_id, 240);
-    if (!inboxId || !messageId) return { ok: true, ignored: true, reason: "security_event_identifiers_missing" };
+  const incoming = event.message || {};
+  const needsAuthenticatedFetch = event.event_type === "message.security.completed" ||
+    (event.event_type === "message.received" && Boolean(incoming.body_url) &&
+      !incoming.extracted_text && !incoming.text);
+  if (needsAuthenticatedFetch) {
+    const inboxId = clip(incoming.inbox_id, 240);
+    const messageId = clip(incoming.message_id, 240);
+    if (!inboxId || !messageId) return { ok: true, ignored: true, reason: "message_identifiers_missing" };
     const fullMessage = await agentMailRequest(
       "/inboxes/" + encodeURIComponent(inboxId) + "/messages/" + encodeURIComponent(messageId),
       "GET",
