@@ -79,7 +79,7 @@ async function sendAgentMail(inboxId:string,to:string,subject:string,text:string
       "content-type":"application/json",
       "Idempotency-Key":idempotencyKey
     },
-    body:JSON.stringify({to,subject:clip(subject,500),text:clip(text,8000)})
+    body:JSON.stringify({to:recipient,subject:clip(subject,500),text:clip(text,8000)})
   });
   const payload=await response.json().catch(()=>({}));
   return {ok:response.ok,message_id:payload?.message_id||null,thread_id:payload?.thread_id||null,error:response.ok?null:"agentmail_send_failed"};
