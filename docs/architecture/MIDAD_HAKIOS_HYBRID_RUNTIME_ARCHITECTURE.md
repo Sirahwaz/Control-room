@@ -1,8 +1,8 @@
 # MIDAD HakiOS Hybrid Runtime Architecture
 
-**Status:** Proposed canonical target architecture; implementation is gated by host inspection and runtime verification.  
+**Status:** Accepted canonical target architecture; this revision makes the Reverse Engineering Lab a first-class engineering intelligence plane. Runtime implementation remains gated by host inspection and verification.  
 **Date:** 2026-11-08  
-**Repository baseline:** `Sirahwaz/Control-room` at `2670dea8aafef0a65deac58ae7e7e9626042793e`  
+**Repository baseline:** `Sirahwaz/Control-room` at `662aa16cb777dfcc1c723ec081a99f0aba55baee`  
 **Governing principle:** Audit → Preserve → Repair → Integrate → Upgrade. “From zero” means resetting the architecture decision and documenting explicit boundaries; it does not mean deleting or rewriting working modules.
 
 ## 1. Executive decision
