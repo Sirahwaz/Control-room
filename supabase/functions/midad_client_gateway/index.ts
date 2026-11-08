@@ -1,11 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { handleAgentMailRequest } from "./agentmail.ts";
 import { selectNegotiableCryptoRoutes, classifyPaymentIntent, classifyClientFallback, paymentIntentCreationDecision, buildPaymentIntentApprovalEvidence, paymentRouteReadinessDecision } from "./negotiation.js";
 
 const H={
   "content-type":"application/json; charset=utf-8",
   "access-control-allow-origin":"*",
-  "access-control-allow-headers":"content-type,authorization,x-midad-ingest-key",
+  "access-control-allow-headers":"content-type,authorization,x-midad-ingest-key,x-midad-agentmail-admin-key",
   "access-control-allow-methods":"POST,OPTIONS"
 };
 
@@ -413,6 +414,7 @@ async function decideApproval(admin:any,userId:string,p:any){
 
 async function main(req:Request){
   if(req.method==="OPTIONS")return new Response("ok",{headers:H});
+  if(new URL(req.url).pathname.includes("/agentmail/"))return handleAgentMailRequest(req);
   if(req.method!=="POST")return json({error:"method_not_allowed"},405);
   const sk=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
   const ik=Deno.env.get("MIDAD_INGEST_KEY")||"";
