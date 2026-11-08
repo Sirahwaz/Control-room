@@ -573,6 +573,17 @@
       ],
       "status": "active",
       "description": "Focused unit tests for governance registry, path ownership, change impact, drift and provenance contracts."
+    },
+    {
+      "id": "midad-re-lab",
+      "repository": "control-room",
+      "domain": "engineering-intelligence",
+      "kind": "authorized-static-and-read-only-analysis-toolkit",
+      "paths": [
+        "tools/midad-re-lab/"
+      ],
+      "status": "active",
+      "description": "Existing authorized APK/DEX/Smali, embedded web bundle and bounded public HTTPS analysis toolkit; planned HakiOS boot-artifact evidence adapters."
     }
   ],
   "dependencies": [
@@ -773,6 +784,42 @@
           "repository": "control-room",
           "path": "service-worker.js",
           "note": "CORE cache list includes Control Room JavaScript/CSS bundles; the service worker is served under the PWA scope."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "midad-re-lab",
+      "relationship": "ci-validation-and-analysis-execution",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/midad-re-lab-ci.yml",
+          "note": "Compiles existing analyzers and runs policy, APK resilience, DEX and web-bundle regression tests."
+        },
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/midad-re-lab.yml",
+          "note": "Runs bounded authorized web-surface and static APK analysis jobs; workflow artifacts are retained for a bounded period."
+        }
+      ]
+    },
+    {
+      "from": "architecture-docs",
+      "to": "midad-re-lab",
+      "relationship": "operating-charter-and-architecture",
+      "impactPropagation": false,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tools/midad-re-lab/README.md",
+          "note": "Defines the lab mission, current analyzer capabilities, authorization boundary, case contract, HakiOS roadmap and integration gates."
+        },
+        {
+          "repository": "control-room",
+          "path": "docs/architecture/MIDAD_HAKIOS_HYBRID_RUNTIME_ARCHITECTURE.md",
+          "note": "Makes Reverse Engineering a first-class engineering intelligence plane and maps the six coordinated tracks."
         }
       ]
     }

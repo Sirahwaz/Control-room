@@ -1,8 +1,8 @@
 # MIDAD HakiOS Hybrid Runtime Architecture
 
-**Status:** Proposed canonical target architecture; implementation is gated by host inspection and runtime verification.  
+**Status:** Accepted canonical target architecture; this revision makes the Reverse Engineering Lab a first-class engineering intelligence plane. Runtime implementation remains gated by host inspection and verification.  
 **Date:** 2026-11-08  
-**Repository baseline:** `Sirahwaz/Control-room` at `2670dea8aafef0a65deac58ae7e7e9626042793e`  
+**Repository baseline:** `Sirahwaz/Control-room` at `662aa16cb777dfcc1c723ec081a99f0aba55baee`  
 **Governing principle:** Audit → Preserve → Repair → Integrate → Upgrade. “From zero” means resetting the architecture decision and documenting explicit boundaries; it does not mean deleting or rewriting working modules.
 
 ## 1. Executive decision
@@ -13,7 +13,8 @@ Adopt a **hybrid, provider-agnostic architecture**:
 2. **Android device / Android environment** is the local edge and human-interaction node: browser UI, operator approval, small local tasks, and durable offline queue. It is not the authoritative 24/7 server.
 3. **HakiOS + QEMU** remains an isolated operating-system research lab until it demonstrates stable boot, a persistent userspace session, storage, and controlled networking. It is not a production server today.
 4. **GitHub Actions Linux** remains an ephemeral build/test provider. It must never be reported as a persistent server.
-5. **Existing MIDAD Control Plane and contracts** remain authoritative: Control Room, current MIDAD orchestration, Browser Gateway, MIDAD Forge and its existing `midad_forge_projects`, `midad_forge_runs`, and `midad_forge_events` tables. Do not create a replacement orchestrator or database queue without demonstrated need.
+5. **MIDAD Reverse Engineering Lab is a first-class Engineering Intelligence Plane**: it inspects authorized APKs, DEX/Smali, embedded web bundles, public read-only web surfaces and—through incremental adapters—HakiOS boot artifacts/logs before engineering changes. Preserve `tools/midad-re-lab/` and its existing workflows; do not create a parallel lab.
+6. **Existing MIDAD Control Plane and contracts** remain authoritative: Control Room, current MIDAD orchestration, Browser Gateway, MIDAD Forge and its existing `midad_forge_projects`, `midad_forge_runs`, and `midad_forge_events` tables. Do not create a replacement orchestrator or database queue without demonstrated need.
 
 This separates where work is controlled, where it executes, where it is tested, and where it is queued while offline.
 
@@ -66,6 +67,19 @@ flowchart TB
     WORKER --> BROWSER
   end
 
+  subgraph INTEL["Engineering Intelligence / Reverse Engineering"]
+    SCOPE["Authorized target scope"]
+    RELAB["Existing MIDAD Reverse Engineering Lab"]
+    APK["APK / DEX / Smali / embedded web analysis"]
+    WEB["Public HTTPS read-only web observer"]
+    REPORT["Hash-bound reports, findings and limitations"]
+    SCOPE --> RELAB
+    RELAB --> APK
+    RELAB --> WEB
+    APK --> REPORT
+    WEB --> REPORT
+  end
+
   subgraph EDGE["Local Android / Offline Edge"]
     APP["MIDAD Android / Browser UI"]
     LQ["Encrypted local job queue"]
@@ -83,6 +97,8 @@ flowchart TB
   CONTROL <--> ONLINE
   EDGE <-->|authenticated sync when online| CONTROL
   EDGE <-->|approved jobs / status| ONLINE
+  INTEL -. "reviewed findings and reproducible test requirements" .-> FORGE
+  INTEL -. "future boot-log/artifact adapter; no guest execution authority" .-> QEMU
   LAB -. "test artifacts only; no production secrets" .-> CONTROL
 ```
 
@@ -102,14 +118,23 @@ flowchart TB
 - The node makes outbound authenticated connections to MIDAD wherever possible. Do not expose browser debugging, VNC, database, or worker-control ports publicly.
 - On the reported 1-vCPU / 512-MiB / 5-GB candidate, begin with supervisor, health reporting, small Node worker and durable spool only. Do not install Chromium, Docker, QEMU, or a full browser stack until measured free memory/storage demonstrate safe headroom.
 
-**C. Local Android / Offline Edge**
+**C. Engineering Intelligence Plane — MIDAD Reverse Engineering Lab**
+- Preserve the existing `tools/midad-re-lab/` analyzers, fixtures, tests and two workflows. This is the mandatory discovery/evidence path before changing unfamiliar systems.
+- Current source-reviewed capabilities: APK intake/hash and manifest/archive analysis; JADX/APKtool decompilation; multi-DEX and Smali summaries; static inspection of embedded HTML/CSS/JS and Capacitor bridges; and a bounded public HTTPS web observer.
+- Keep the distinction between archive-static analysis and browser-assisted page observation. The embedded web-bundle analyzer does not execute JavaScript or make network requests. The web observer renders the authorized target in headless Chromium, permits only GET/HEAD requests to the same public host, blocks cross-host/private-address requests, and does not log in or submit forms.
+- Produce hash-bound findings with tool versions, scope, limitations, confidence and reproducible test cases. Keep secrets, cookies, credentials, wallet material and private source out of reports.
+- The RE Lab currently stores workflow reports as CI artifacts; live Evidence Ledger ingestion and Forge orchestration are future integrations, not existing verified connections.
+- For HakiOS, add read-only adapters incrementally for source/config diffs, checksums, QEMU/U-Boot/UEFI/XNULOADER logs, memory maps and boot-stage classification. Do not execute unknown payloads on the persistent VPS.
+- **Analysis does not authorize action.** A reviewed finding may become a Forge/MNCF engineering task only through existing authorization, idempotency, human approval and evidence contracts.
+
+**D. Local Android / Offline Edge**
 - Keep the native MIDAD Android app and browser surface as the local interface.
 - Store a bounded offline queue with stable job IDs, idempotency keys, timestamps, expiry and state transitions.
 - Use Android platform-protected storage for device-bound secrets. Never store account passwords, raw cookies, wallet keys or service-role keys in queue payloads.
 - Offline work is limited to drafts, local notes, cached read-only data and low-risk preparation. Payments, account creation, credential changes, submissions, publication, and other high-impact actions remain online and require the existing human-approval policy.
 - When connectivity returns, reconcile by idempotency key and server state; never blindly replay an expired or already-completed action.
 
-**D. HakiOS Lab — independent research boundary**
+**E. HakiOS Lab — independent research boundary**
 - Keep HakiOS/QEMU research separate from the online worker.
 - Preserve the existing U-Boot path and its evidence; continue investigating UEFI-ESP and loader-device failures independently.
 - A successful one-shot userspace print is not a stable OS session. Stable PID 1, persistent storage, restart behavior, networking isolation, and recovery must be tested separately.
@@ -156,6 +181,7 @@ Exceptional states: `DEGRADED`, `OFFLINE`, `QUARANTINED`, `FAILED`.
 2. Inspect the actual VPS: OS, architecture, CPU, RAM, disk, filesystem, IPv4/IPv6, systemd, virtualization flags, package state and network reachability. Do not print environment variables, credentials, or private key material.
 3. Inventory the actual Android virtual environment and determine whether it is: (a) Android Emulator in CI, (b) Android running as a guest under QEMU, or (c) a local Android device/app. Record evidence, not assumptions.
 4. Audit existing worker, Gateway and Android app contracts before adding a daemon or queue.
+5. Inventory the existing Reverse Engineering Lab analyzers/workflows and retain a baseline test/report set; use its authorized evidence path before changing unfamiliar APK, browser, kernel or firmware components.
 
 **Exit criteria:** host facts recorded; actual Android/HakiOS topology identified; no production state changed.
 
@@ -208,6 +234,8 @@ Exceptional states: `DEGRADED`, `OFFLINE`, `QUARANTINED`, `FAILED`.
 
 ## 6. Verification gates and capacity policy
 
+The Reverse Engineering Lab is a cross-cutting prerequisite for changes to unfamiliar Android, browser, firmware, loader, kernel and third-party components. Its existing test suite is not a substitute for a live target report; each investigation must record its own authorization, target identity, hashes, methods, evidence, confidence and limitations.
+
 | Gate | Required evidence | Initial state |
 |---|---|---|
 | Persistent Linux host | SSH access verified, OS/resources measured, systemd and storage validated | PENDING |
@@ -216,6 +244,8 @@ Exceptional states: `DEGRADED`, `OFFLINE`, `QUARANTINED`, `FAILED`.
 | Browser job integration | Gateway authorization, safe host/network policy, evidence acknowledgement | PARTIAL / EXISTING COMPONENTS |
 | Android offline edge | On-device persistence + reconnect tests | NOT VERIFIED |
 | HakiOS stable guest | Repeatable persistent userspace session | NOT VERIFIED |
+| Reverse Engineering Lab baseline | Existing analyzer tests; authorized target scope; hash-bound report and limitations | COMPONENTS EXIST / LIVE CASE BASELINE PENDING |
+| HakiOS RE adapters | Reproducible QEMU/U-Boot/UEFI log classification and artifact/config provenance | PLANNED |
 | Android guest inside HakiOS | Guest source, boot path and runtime evidence | NOT VERIFIED |
 | Production cutover | All required gates, rollback and human approval | BLOCKED |
 
@@ -258,3 +288,45 @@ If the host cannot safely support the worker, do not force it. Keep the node dis
 - `docs/architecture/ARCHITECTURE_GOVERNANCE.md`: repository ownership, dependency and evidence governance.
 
 This document records an architecture decision and roadmap. It does not claim that a VPS was inspected, a Linux service was deployed, an Android guest was booted inside HakiOS, or a production cutover occurred.
+
+
+## 10. Reverse Engineering Lab — first-class engineering intelligence
+
+The repository audit found an existing and non-trivial lab at `tools/midad-re-lab/`. It must be preserved and treated as a core part of the HakiOS path, not recreated or replaced.
+
+### Verified source inventory
+
+- `analyze_apk.py`: APK validation and hashing, APKtool/JADX analysis, manifest/component inventory, DEX and embedded web bundle reporting.
+- `dex_intelligence.py`: bounded multi-DEX parsing, class/method summaries, string indicators and Smali metadata.
+- `web_bundle_intelligence.py`: archive-only HTML/CSS/JS inventory, declared/missing asset references, Capacitor/plugin bridge metadata and network/storage/dynamic-execution indicators; its report explicitly marks static-only, no JavaScript execution and no network access.
+- `analyze_web.py`: authorized public HTTPS browser-assisted observation with public-address and same-host checks, GET/HEAD-only request guard, metadata-only forms, and no login, form submission or CAPTCHA/evasion.
+- `.github/workflows/midad-re-lab-ci.yml`: analyzer compilation and policy/resilience/DEX/web-bundle tests.
+- `.github/workflows/midad-re-lab.yml`: optional web-surface analysis, three existing MIDAD APK artifact analysis jobs, and optional authorized external APK analysis. Report artifacts are configured for 14-day retention.
+
+The workflow sources and tests exist. This repository inspection does not establish that all referenced historical artifacts are still downloadable, that a current live analysis report exists, or that reports are written to the production Evidence Ledger.
+
+### Six coordinated engineering tracks
+
+1. **Reverse Engineering / Engineering Intelligence:** identify existing behavior, acquire authorized artifacts, hash inputs, map components/dependencies, capture limitations and build reproducible tests. This track supplies evidence before changes in the other tracks.
+2. **HakiOS OS and boot research:** U-Boot, UEFI, XNULOADER, kernel/userspace, QEMU boot paths, memory maps, guest persistence and diagnostics.
+3. **MNCF / Linux compute:** persistent node, supervisor, durable local spool, bounded workers and recovery.
+4. **Browser Online/Offline Runtime:** Gateway authorization, worker lifecycle, allowlists, owner-session boundaries, safe profiles and evidence acknowledgement.
+5. **Android Local Edge:** native UI, local storage, offline queue, human bridge and reconnect reconciliation.
+6. **MIDAD Control Plane / Evidence:** Control Room, Forge, Gateway, identity, approvals, observability and evidence/event contracts.
+
+### RE Lab evidence-to-engineering boundary
+
+`Authorized scope → hash-bound acquisition → static/controlled observation → findings + limitations → reproducible regression test → approved Forge/MNCF task → isolated HakiOS/Android/browser verification → human acceptance`.
+
+The lab is not a general-purpose exploit runner. Unknown samples and firmware are never executed on the persistent VPS. Dynamic execution must use a disposable, network-restricted, resource-bounded environment. Analysis findings do not grant authorization to modify a system or perform external actions.
+
+### Immediate RE Lab sequence
+
+- **RE-0:** run the existing CI suite; inventory the actual current APK artifacts and target/source revisions; create a baseline report for each authorized target.
+- **RE-1:** standardize a versioned case/report envelope with authorization, hashes, tool versions, findings, evidence references, confidence and explicit partial/failed states.
+- **RE-2:** add read-only HakiOS adapters for QEMU/U-Boot/UEFI logs, source/config diffs, firmware pairing, memory-map and boot-stage diagnosis.
+- **RE-3:** connect reviewed findings to existing Forge/MNCF contracts with idempotency and human-approval tests; do not create another queue.
+- **RE-4:** introduce only necessary isolated dynamic tests after snapshot, resource, network and rollback controls exist.
+- **RE-5:** expose case state and evidence references in Control Room through a read-only, auditable surface.
+
+The detailed operating charter and current tool boundaries are maintained in `tools/midad-re-lab/README.md`.
