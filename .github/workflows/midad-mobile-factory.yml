@@ -187,9 +187,9 @@ jobs:
         env:
           RELEASE_CHANNEL: ${{ steps.product.outputs.release_channel }}
           MIDAD_ANDROID_KEYSTORE_BASE64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_BASE64 }}
-          MIDAD_ANDROID_KEYstore_password: ${{ secrets.MIDAD_ANDROID_KEYstore_password }}
-          MIDAD_ANDROID_key_alias: ${{ secrets.MIDAD_ANDROID_key_alias }}
-          MIDAD_ANDROID_key_password: ${{ secrets.MIDAD_ANDROID_key_password }}
+          MIDAD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          MIDAD_ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          MIDAD_ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
@@ -197,19 +197,19 @@ jobs:
           mkdir -p dist signing
           KEYSTORE="signing/midad-signing.jks"
           HAS_ANY=0
-          for value in "$MIDAD_ANDROID_KEYSTORE_BASE64" "$MIDAD_ANDROID_KEYstore_password" "$MIDAD_ANDROID_key_alias" "$MIDAD_ANDROID_key_password"; do
+          for value in "$MIDAD_ANDROID_KEYSTORE_BASE64" "$MIDAD_ANDROID_KEYSTORE_PASSWORD" "$MIDAD_ANDROID_KEY_ALIAS" "$MIDAD_ANDROID_KEY_PASSWORD"; do
             if [ -n "$value" ]; then HAS_ANY=1; fi
           done
           if [ "$HAS_ANY" -eq 1 ]; then
-            if [ -z "$MIDAD_ANDROID_KEYSTORE_BASE64" ] || [ -z "$MIDAD_ANDROID_KEYstore_password" ] || [ -z "$MIDAD_ANDROID_key_alias" ] || [ -z "$MIDAD_ANDROID_key_password" ]; then
+            if [ -z "$MIDAD_ANDROID_KEYSTORE_BASE64" ] || [ -z "$MIDAD_ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$MIDAD_ANDROID_KEY_ALIAS" ] || [ -z "$MIDAD_ANDROID_KEY_PASSWORD" ]; then
               echo "Persistent Android signing secrets are incomplete; refusing to fall back." >&2
               exit 1
             fi
             printf '%s' "$MIDAD_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
             test -s "$KEYSTORE"
-            store_password="$MIDAD_ANDROID_KEYstore_password"
-            key_password="$MIDAD_ANDROID_key_password"
-            key_alias="$MIDAD_ANDROID_key_alias"
+            store_password="$MIDAD_ANDROID_KEYSTORE_PASSWORD"
+            key_password="$MIDAD_ANDROID_KEY_PASSWORD"
+            key_alias="$MIDAD_ANDROID_KEY_ALIAS"
             keytool -list -keystore "$KEYSTORE" -storepass "$store_password" -alias "$key_alias" >/dev/null
             SIGNING_MODE="persistent"
           else
