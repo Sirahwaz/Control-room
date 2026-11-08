@@ -96,6 +96,11 @@ test("requires HTTPS Supabase host and both non-secret public credentials", asyn
     walletAddress:WALLET, chainId:"1", config:{...config,publishableKey:""},
     fetchImpl: async () => response(profile())
   }), /PUBLISHABLE_KEY_REQUIRED/);
+  await assert.rejects(() => fetchPublicWalletFingerprint({
+    walletAddress:WALLET, chainId:"1",
+    config:{...config,anonJwt:"header.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.signature"},
+    fetchImpl: async () => response(profile())
+  }), /PUBLIC_ANON_JWT_REQUIRED/);
 });
 
 test("reports HTTP failures without leaking response bodies", async () => {
