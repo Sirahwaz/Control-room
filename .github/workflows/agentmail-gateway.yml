@@ -6,7 +6,7 @@ on:
       - "supabase/functions/midad_agentmail_gateway/**"
       - ".github/workflows/agentmail-gateway.yml"
   push:
-    branches: [main]
+    branches: [main, 'feat/**']
     paths:
       - "supabase/functions/midad_agentmail_gateway/**"
       - ".github/workflows/agentmail-gateway.yml"
