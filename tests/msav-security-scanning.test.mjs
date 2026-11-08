@@ -166,3 +166,27 @@ test('OSV scanner exit state is read from the same report key written by the wor
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('Semgrep report is marked partial when the scanner reports rule or collection errors', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-msav-semgrep-errors-'));
+  try {
+    fs.writeFileSync(path.join(directory, 'semgrep.json'), JSON.stringify({
+      results: [],
+      errors: [{ type: 'RuleParseError', message: 'Synthetic invalid rule fixture' }],
+    }));
+    fs.writeFileSync(path.join(directory, 'semgrep.exit'), '0\n');
+    const report = buildSanitizedReport({
+      inputDirectory: directory,
+      workspaceRoot: WORKSPACE,
+      repository: 'Sirahwaz/Control-room',
+      commitSha: 'b'.repeat(40),
+    });
+    const semgrep = report.scanners.find(scanner => scanner.name === 'semgrep');
+    assert.ok(semgrep);
+    assert.equal(semgrep.exitCode, 0);
+    assert.equal(semgrep.reportedErrorCount, 1);
+    assert.equal(semgrep.status, 'REPORT_PARSED_WITH_ERRORS');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
