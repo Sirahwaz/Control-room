@@ -9,13 +9,14 @@ import {
 } from './validator.mjs';
 
 function parseArgs(args) {
-  const options = { manifest: 'architecture/governance/manifest.json', out: null, impactFile: null, provenance: false, help: false };
+  const options = { manifest: 'architecture/governance/manifest.json', out: null, impactFile: null, provenance: false, failOnUnmapped: false, help: false };
   for (let i = 0; i < args.length; i += 1) {
     const value = args[i];
     if (value === '--manifest') options.manifest = args[++i];
     else if (value === '--out') options.out = args[++i];
     else if (value === '--impact-file') options.impactFile = args[++i];
     else if (value === '--provenance') options.provenance = true;
+    else if (value === '--fail-on-unmapped') options.failOnUnmapped = true;
     else if (value === '--help' || value === '-h') options.help = true;
     else throw new Error(`Unknown argument: ${value}`);
   }
@@ -42,6 +43,7 @@ function usage() {
     '  --impact-file <path>  Newline-delimited changed paths to analyze',
     '  --out <directory>     Write health, impact and provenance JSON artifacts',
     '  --provenance          Generate release/run provenance metadata',
+    '  --fail-on-unmapped    Fail when changed paths have no registered owner',
     '  --help                Show this help',
   ].join('\n');
 }
@@ -84,7 +86,8 @@ function main() {
     }
   }
 
-  const status = !validation.valid || audit.errorCount > 0 ? 'FAILED' : audit.status;
+  const impactGatePassed = !options.failOnUnmapped || Boolean(impact && impact.unmappedPaths.length === 0);
+  const status = !validation.valid || audit.errorCount > 0 || !impactGatePassed ? 'FAILED' : audit.status;
   const report = {
     schemaVersion: 1,
     status,
@@ -102,6 +105,7 @@ function main() {
     },
     audit,
     changeImpact: impact,
+    impactGate: { enabled: options.failOnUnmapped, passed: impactGatePassed, unmappedPaths: impact?.unmappedPaths || [] },
   };
 
   let provenance = null;

@@ -249,6 +249,129 @@ function isSecretLikeFile(filePath) {
     || /\.(pem|key|p12|pfx|jks)$/i.test(name);
 }
 
+
+const MAX_SECRET_SCAN_BYTES = 1024 * 1024;
+const SECRET_CONTENT_RULES = [
+  { rule: 'PRIVATE_KEY_MATERIAL', pattern: /-----BEGIN (?:OPENSSH|RSA|EC|DSA|PGP)? ?PRIVATE KEY-----/i },
+  { rule: 'GITHUB_TOKEN', pattern: /\bgh[pousr]_[A-Za-z0-9]{30,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b/ },
+  { rule: 'OPENAI_API_KEY', pattern: /\bsk-(?:proj|or-v1|live)[-_][A-Za-z0-9_-]{24,}\b|\bsk-[A-Za-z0-9]{32,}\b/ },
+  { rule: 'STRIPE_SECRET_KEY', pattern: /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/ },
+  { rule: 'AWS_ACCESS_KEY_ID', pattern: /\bAKIA[0-9A-Z]{16}\b/ },
+  { rule: 'SLACK_TOKEN', pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/ },
+];
+const GENERIC_CREDENTIAL_ASSIGNMENT = /\b(?:[A-Z0-9_]*(?:API[_-]?KEY|ACCESS[_-]?TOKEN|CLIENT[_-]?SECRET|SERVICE[_-]?ROLE[_-]?KEY|PRIVATE[_-]?KEY|PASSWORD|SECRET|TOKEN)[A-Z0-9_]*)\b\s*[:=]\s*["'\x60]([^"'\x60]{24,})["'\x60]/i;
+const PLACEHOLDER_VALUE = /^(?:YOUR|EXAMPLE|PLACEHOLDER|REPLACE|CHANGEME|DUMMY|TEST|REDACTED|XXX|TODO)(?:[_-]|$)/i;
+const TEXT_EXTENSIONS = new Set([
+  '.cjs', '.css', '.csv', '.html', '.ini', '.js', '.json', '.md', '.mjs', '.py',
+  '.sh', '.sql', '.svg', '.toml', '.ts', '.tsx', '.txt', '.webmanifest', '.xml',
+  '.yaml', '.yml', '.env', '.properties',
+]);
+
+export function scanSecretContent(filePath, content) {
+  if (typeof filePath !== 'string' || typeof content !== 'string') throw new TypeError('scanSecretContent requires a path and text content');
+  const findings = [];
+  const lines = content.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const specificMatches = SECRET_CONTENT_RULES.filter(rule => rule.pattern.test(line));
+    for (const rule of specificMatches) {
+      findings.push({ code: 'SECRET_CONTENT', rule: rule.rule, severity: 'error', path: filePath, line: index + 1 });
+    }
+    const assignment = line.match(GENERIC_CREDENTIAL_ASSIGNMENT);
+    if (!specificMatches.length && assignment && !PLACEHOLDER_VALUE.test(assignment[1].trim())) {
+      findings.push({ code: 'SECRET_CONTENT', rule: 'GENERIC_CREDENTIAL_ASSIGNMENT', severity: 'error', path: filePath, line: index + 1 });
+    }
+  }
+  return findings;
+}
+
+function readTextFile(root, filePath, maxBytes = 2 * 1024 * 1024) {
+  const absolute = path.join(root, filePath);
+  const stat = fs.statSync(absolute);
+  if (!stat.isFile() || stat.size > maxBytes) return null;
+  const buffer = fs.readFileSync(absolute);
+  const sample = buffer.subarray(0, Math.min(buffer.length, 8192));
+  if (sample.includes(0)) return null;
+  const extension = path.extname(filePath).toLowerCase();
+  const baseName = path.posix.basename(filePath);
+  if (extension && !TEXT_EXTENSIONS.has(extension) && !baseName.startsWith('.')) return null;
+  return buffer.toString('utf8');
+}
+
+export function auditDuplicateReferences(root, duplicateGroups) {
+  if (!Array.isArray(duplicateGroups)) throw new TypeError('duplicateGroups must be an array');
+  const discovered = walkFiles(root).filter(item => item.code === 'FILE');
+  const results = [];
+  for (const group of duplicateGroups) {
+    const paths = [...new Set((group.paths || []).map(normalizeRelativePath))].sort();
+    const references = [];
+    for (const source of discovered) {
+      if (paths.includes(source.path)) continue;
+      let content;
+      try { content = readTextFile(root, source.path); } catch { continue; }
+      if (content === null) continue;
+      for (const target of paths) {
+        const basename = path.posix.basename(target);
+        let offset = content.indexOf(basename);
+        while (offset >= 0) {
+          const before = offset > 0 ? content[offset - 1] : '';
+          const after = content[offset + basename.length] || '';
+          const beforeIsBoundary = !before || !/[A-Za-z0-9_.-]/.test(before);
+          const afterIsBoundary = !after || !/[A-Za-z0-9_.-]/.test(after);
+          if (beforeIsBoundary && afterIsBoundary) {
+            references.push({ source: source.path, target, line: content.slice(0, offset).split(/\r?\n/).length });
+            break;
+          }
+          offset = content.indexOf(basename, offset + 1);
+        }
+      }
+    }
+    const referencedPaths = [...new Set(references.map(item => item.target))].sort();
+    results.push({
+      paths,
+      referencedPaths,
+      references: references.sort((a, b) => a.source.localeCompare(b.source) || a.target.localeCompare(b.target)),
+      status: referencedPaths.length ? 'INTERNAL_REFERENCES_FOUND' : 'NO_INTERNAL_REFERENCE_FOUND_EXTERNAL_UNVERIFIED',
+      deletionAllowed: false,
+    });
+  }
+  return results;
+}
+
+function detectLicenseIdentifier(content) {
+  if (/Apache License\s+Version 2\.0/i.test(content)) return 'Apache-2.0';
+  if (/MIT License/i.test(content) && /Permission is hereby granted, free of charge/i.test(content)) return 'MIT';
+  if (/BSD 3-Clause License/i.test(content)) return 'BSD-3-Clause';
+  if (/GNU GENERAL PUBLIC LICENSE\s+Version 3/i.test(content)) return 'GPL-3.0-only';
+  if (/GNU GENERAL PUBLIC LICENSE\s+Version 2/i.test(content)) return 'GPL-2.0-only';
+  if (/This is free and unencumbered software released into the public domain/i.test(content)) return 'Unlicense';
+  return 'UNRECOGNIZED';
+}
+
+export function auditLicenses(root, manifest) {
+  const candidates = ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'COPYING', 'COPYING.md', 'UNLICENSE'];
+  const issues = [];
+  const repositories = (manifest.repositories || []).map(repository => {
+    if (repository.id !== manifest.currentRepository) {
+      return { id: repository.id, fullName: repository.fullName, declared: repository.licenseStatus || 'unknown', detected: null, status: 'NOT_CHECKED_EXTERNAL' };
+    }
+    const licensePath = candidates.find(candidate => fs.existsSync(path.join(root, candidate)) && fs.statSync(path.join(root, candidate)).isFile());
+    if (!licensePath) {
+      issues.push(issue('ROOT_LICENSE_MISSING', 'No root-level LICENSE/COPYING file found; do not infer or assign a license without an owner decision.', 'warning'));
+      return { id: repository.id, fullName: repository.fullName, declared: repository.licenseStatus || 'unknown', detected: null, status: 'MISSING_REVIEW_REQUIRED' };
+    }
+    const detected = detectLicenseIdentifier(fs.readFileSync(path.join(root, licensePath), 'utf8'));
+    const declared = repository.licenseStatus || 'unknown';
+    const explicitSpdx = /^[A-Za-z0-9.+-]+$/.test(declared) && !['unknown', 'not_reviewed', 'no_root_license_observed'].includes(declared);
+    const mismatch = explicitSpdx && declared !== detected;
+    if (detected === 'UNRECOGNIZED') issues.push(issue('LICENSE_UNRECOGNIZED', 'Root license file exists but did not match a supported identifier; human review is required.', 'warning', licensePath));
+    if (mismatch) issues.push(issue('LICENSE_DECLARATION_MISMATCH', 'Detected root license does not match the registry declaration.', 'error', licensePath));
+    if (declared === 'no_root_license_observed') issues.push(issue('LICENSE_REGISTRY_STALE', 'A root license file now exists but the registry still says no root license was observed.', 'warning', licensePath));
+    return { id: repository.id, fullName: repository.fullName, declared, detected, licensePath, status: mismatch ? 'FAILED' : detected === 'UNRECOGNIZED' ? 'REVIEW' : 'VERIFIED' };
+  });
+  return { repositories, issues };
+}
+
 function isOwnedByLocalModule(filePath, manifest) {
   return (manifest.modules || []).some(module => module.repository === manifest.currentRepository
     && module.paths?.some(rawPath => {
@@ -280,6 +403,12 @@ export function auditWorkspace(root, manifest) {
     }
     try {
       const stat = fs.statSync(file.absolute);
+      if (stat.size <= MAX_SECRET_SCAN_BYTES) {
+        const content = readTextFile(root, file.path, MAX_SECRET_SCAN_BYTES);
+        if (content !== null) findings.push(...scanSecretContent(file.path, content));
+      } else {
+        findings.push(issue('SECRET_SCAN_SIZE_LIMIT', 'File exceeded the 1 MiB content-scan limit and was not inspected for secrets.', 'warning', file.path));
+      }
       if (stat.size > 0 && stat.size <= MAX_HASH_BYTES) {
         const digest = crypto.createHash('sha256').update(fs.readFileSync(file.absolute)).digest('hex');
         const group = duplicateMap.get(digest) || [];
@@ -287,7 +416,7 @@ export function auditWorkspace(root, manifest) {
         duplicateMap.set(digest, group);
       }
     } catch (error) {
-      findings.push(issue('FILE_READ_FAILED', `Could not inspect file: ${error.message}`, 'warning', file.path));
+      findings.push(issue('FILE_READ_FAILED', \`Could not inspect file: \${error.message}\`, 'warning', file.path));
     }
   }
 
@@ -298,6 +427,9 @@ export function auditWorkspace(root, manifest) {
   for (const group of duplicateGroups) {
     findings.push(issue('DUPLICATE_CONTENT', `Identical file contents detected: ${group.paths.join(', ')}. No files were modified.`, 'warning', group.paths[0]));
   }
+  const duplicateReferenceAudit = auditDuplicateReferences(root, duplicateGroups);
+  const licenseAudit = auditLicenses(root, manifest);
+  findings.push(...licenseAudit.issues);
   findings.sort((a, b) => a.severity.localeCompare(b.severity) || (a.path || '').localeCompare(b.path || '') || a.code.localeCompare(b.code));
   const errors = findings.filter(x => x.severity === 'error');
   const warnings = findings.filter(x => x.severity === 'warning');
@@ -307,6 +439,8 @@ export function auditWorkspace(root, manifest) {
     moduleCount: (manifest.modules || []).filter(x => x.repository === manifest.currentRepository).length,
     findings,
     duplicateGroups,
+    duplicateReferenceAudit,
+    licenseAudit,
     errorCount: errors.length,
     warningCount: warnings.length,
   };

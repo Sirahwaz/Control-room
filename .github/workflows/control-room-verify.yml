@@ -27,6 +27,9 @@ jobs:
       - name: Architecture Governance unit tests
         run: node --test tests/architecture-governance.test.mjs
 
+      - name: Architecture Governance security and license audit contract tests
+        run: node --test tests/architecture-governance.test.mjs
+
       - name: Architecture Governance manifest and workspace validation
         run: node tools/architecture-governance/cli.mjs --manifest architecture/governance/manifest.json
 

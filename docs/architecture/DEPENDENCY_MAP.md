@@ -23,6 +23,7 @@ flowchart LR
 
   ENTRY -->|runtime load| UI
   ENTRY -->|PWA registration| PWA
+  PWA -->|pre-cache| UI
   ENTRY -->|view=revenue route| REV
   UI -->|API client| API
   VROUTE -->|runtime load| VASSETS
@@ -52,6 +53,7 @@ flowchart LR
 | Governance tooling | Governance registry | Manifest consumption | `tools/architecture-governance/cli.mjs` reads `architecture/governance/manifest.json` | Yes |
 | Governance tests | Governance tooling | Contract tests | `tests/architecture-governance.test.mjs` imports the validator and impact/audit functions | Yes |
 | GitHub workflows | Governance tooling and tests | CI execution | `architecture-governance.yml` runs the CLI and test suite | Yes |
+| PWA runtime | Control Room UI bundle | Pre-cache runtime assets | `service-worker.js` CORE list caches the main UI JavaScript/CSS assets | Yes |
 | Architecture docs | Governance registry | Documentation | `ARCHITECTURE_GOVERNANCE.md` describes the registry and validation contract | No |
 
 ## Intentionally isolated projects

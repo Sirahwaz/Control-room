@@ -120,6 +120,7 @@ jobs:
             --manifest architecture/governance/manifest.json \
             --impact-file "$RUNNER_TEMP/midad-changed-paths.txt" \
             --provenance \
+            --fail-on-unmapped \
             --out "$RUNNER_TEMP/midad-architecture-governance"
 
       - name: Upload health, impact and provenance artifacts

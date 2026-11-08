@@ -762,6 +762,19 @@
           "note": "Describes manifest fields, registry use, validation rules and governance operation."
         }
       ]
+    },
+    {
+      "from": "pwa-runtime",
+      "to": "control-room-ui",
+      "relationship": "precache-runtime-assets",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "service-worker.js",
+          "note": "CORE cache list includes Control Room JavaScript/CSS bundles; the service worker is served under the PWA scope."
+        }
+      ]
     }
   ],
   "policy": {
