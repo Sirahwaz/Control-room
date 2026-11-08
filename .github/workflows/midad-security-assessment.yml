@@ -183,3 +183,9 @@ jobs:
           path: ${{ runner.temp }}/msav-public/security-report.json
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Remove runner-local raw scan data
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-trivy-cache"
