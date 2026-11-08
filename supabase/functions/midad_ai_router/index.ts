@@ -3,6 +3,7 @@ import postgres from "npm:postgres@3.4.7";
 import { parseGeminiModels } from "./gemini-catalog.mjs";
 import { hasExecutorProvider, hasGeminiAdvisor, executorProviderLabel, buildOpenRouterCatalogRequest, configuredExecutorProviders } from "./provider-gateway-policy.mjs";
 import { resolveRouterRoutePolicy, shouldAllowRouterFallback } from "./public-routing-policy.mjs";
+import { resolveAIRouterAuthMode } from "./auth-policy.mjs";
 
 const URL = Deno.env.get("SUPABASE_URL") || "";
 const DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
@@ -18,13 +19,15 @@ const json=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:C
 const clip=(x:unknown,n=6000)=>String(x??"").slice(0,n);
 function needDb(){if(!db)throw new Error("supabase_db_url_missing");return db;}
 async function secret(name:string){const d=needDb();const r=await d`select decrypted_secret from vault.decrypted_secrets where name=${name} order by created_at desc limit 1`;return typeof r[0]?.decrypted_secret==="string"?r[0].decrypted_secret:"";}
-async function authOK(req:Request){
- const ingest=req.headers.get("x-midad-ingest-key")||"";
- if(INGEST_KEY&&ingest===INGEST_KEY)return true;
- const supplied=req.headers.get("x-midad-autonomy-key")||"";
- if(!supplied)return false;
- const expected=await secret("midad_autonomy_key");
- return !!expected&&supplied===expected;
+async function authMode(req:Request){
+ const autonomyHeader=req.headers.get("x-midad-autonomy-key")||"";
+ const autonomySecret=autonomyHeader?await secret("midad_autonomy_key"):"";
+ return resolveAIRouterAuthMode({
+  ingestHeader:req.headers.get("x-midad-ingest-key")||"",
+  ingestSecret:INGEST_KEY,
+  autonomyHeader,
+  autonomySecret
+ });
 }
 function taskClass(body:any){
  const explicit=String(body?.task_class||"").trim();
@@ -175,7 +178,7 @@ Deno.serve(async req=>{
   return json({ok:true,state:ready?"CONFIGURED":"PENDING",service:"midad_ai_router",gemini_advisor_configured:geminiConfigured,gemini_model:GEMINI_ADVISOR_MODEL,model_executor_configured:executorProviders.length>0,model_executor_providers:executorProviders,apmix_executor_configured:executorProviders.includes("apmix"),openai_executor_configured:executorProviders.includes("openai"),openrouter_executor_configured:executorProviders.includes("openrouter"),route_configured:routeConfigured,public_sanitized_route_configured:publicSanitizedRouteConfigured,default_model:gateway?.default_model||null,executor_status_check:routeConfigured?(gateway?.http_ok?"VERIFIED":"FAILED"):"PENDING",inference_tested:false,consultation_opt_in:true});
  }
  if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
- try{if(!(await authOK(req)))return json({ok:false,error:"unauthorized"},401)}catch{return json({ok:false,error:"auth_check_failed"},500)}
+ let callerAuthMode="unauthorized";try{callerAuthMode=await authMode(req);if(callerAuthMode==="unauthorized")return json({ok:false,error:"unauthorized"},401)}catch{return json({ok:false,error:"auth_check_failed"},500)}
  const body=await req.json().catch(()=>({}));
  const action=String(body?.action||"chat").toLowerCase();
  if(action==="openrouter_catalog"){
@@ -288,6 +291,7 @@ Deno.serve(async req=>{
   }
  }
  const tc=taskClass(body);
+ if(String(tc).toLowerCase()==="public_sanitized"&&callerAuthMode!=="autonomy")return json({ok:false,state:"BLOCKED",error:"public_sanitized_route_requires_autonomy_identity",stage:"public_sanitized_route_policy",executor_called:false,request_ref:body.request_ref||null},403);
  let routeTaskClass=tc;
  let routePolicy:any=null;
  if(String(tc).toLowerCase()==="public_sanitized"){
