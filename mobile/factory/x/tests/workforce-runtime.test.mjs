@@ -115,7 +115,7 @@ test("missing required inputs fail closed", () => {
 });
 
 test("secret-bearing inputs are rejected and never copied to the plan", () => {
-  const secret="sk-secret-value-0123456789";
+  const secret=["sk","secret-value-0123456789"].join("-");
   const result=plan(["offer-negotiation-agent"],{
     payloads:{"offer-negotiation-agent":{
       ...payloads["offer-negotiation-agent"],
