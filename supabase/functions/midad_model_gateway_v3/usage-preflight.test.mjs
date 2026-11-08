@@ -21,6 +21,9 @@ test("APMIX usage preflight is an authenticated read-only GET", () => {
 });
 
 test("usage is listed as an allowed action without replacing the existing chat path", () => {
-  assert.match(source, /allowed:\["status","models","usage","chat"\]/);
+  const allowedMatch = source.match(/allowed:\s*\[([^\]]+)\]/);
+  assert.ok(allowedMatch, "unsupported-action response declares allowed actions");
+  const allowedActions = [...allowedMatch[1].matchAll(/"([^"]+)"/g)].map(match => match[1]);
+  for (const required of ["status", "models", "usage", "chat"]) assert.ok(allowedActions.includes(required), `missing required action: ${required}`);
   assert.match(source, /if\(action!=="chat"\)/);
 });
