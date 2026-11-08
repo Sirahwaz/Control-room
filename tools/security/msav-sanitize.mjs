@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
@@ -96,24 +97,63 @@ export function sanitizeSemgrep(data, workspaceRoot) {
 }
 
 export function sanitizeGitleaks(data, workspaceRoot) {
-  const runs = Array.isArray(data?.runs) ? data.runs : [];
   const findings = [];
-  for (const run of runs) {
-    const results = Array.isArray(run?.results) ? run.results : [];
-    for (const item of results) {
-      const location = item?.locations?.[0]?.physicalLocation;
-      const file = sanitizeRepositoryPath(location?.artifactLocation?.uri, workspaceRoot);
-      const ruleId = cleanIdentifier(item?.ruleId);
-      if (!file || !ruleId) continue;
-      const startLine = positiveLine(location?.region?.startLine);
-      findings.push({
-        scanner: 'gitleaks',
-        category: 'SECRET',
-        ruleId,
-        severity: cleanSeverity(item?.level),
-        path: file,
-        ...(startLine ? { startLine } : {}),
-      });
+
+  const addJsonFinding = item => {
+    const file = sanitizeRepositoryPath(item?.File || item?.file, workspaceRoot);
+    const ruleId = cleanIdentifier(item?.RuleID || item?.ruleId);
+    if (!file || !ruleId) return;
+
+    const secret = typeof item?.Secret === 'string' ? item.Secret : '';
+    const commitSha = /^[a-f0-9]{40,64}$/i.test(item?.Commit || '') ? item.Commit : null;
+    const startLine = positiveLine(item?.StartLine ?? item?.startLine);
+    const endLine = positiveLine(item?.EndLine ?? item?.endLine);
+    let presentInHead;
+    if (secret) {
+      try {
+        presentInHead = fs.readFileSync(path.resolve(workspaceRoot, file), 'utf8').includes(secret);
+      } catch (error) {
+        presentInHead = error?.code === 'ENOENT' ? false : null;
+      }
+    }
+
+    findings.push({
+      scanner: 'gitleaks',
+      category: 'SECRET',
+      ruleId,
+      severity: 'UNKNOWN',
+      path: file,
+      ...(startLine ? { startLine } : {}),
+      ...(endLine ? { endLine } : {}),
+      ...(commitSha ? { commitSha } : {}),
+      ...(secret ? {
+        secretSha256: createHash('sha256').update(secret, 'utf8').digest('hex'),
+        presentInHead: presentInHead === null ? null : presentInHead,
+      } : {}),
+    });
+  };
+
+  if (Array.isArray(data)) {
+    for (const item of data) addJsonFinding(item);
+  } else {
+    const runs = Array.isArray(data?.runs) ? data.runs : [];
+    for (const run of runs) {
+      const results = Array.isArray(run?.results) ? run.results : [];
+      for (const item of results) {
+        const location = item?.locations?.[0]?.physicalLocation;
+        const file = sanitizeRepositoryPath(location?.artifactLocation?.uri, workspaceRoot);
+        const ruleId = cleanIdentifier(item?.ruleId);
+        if (!file || !ruleId) continue;
+        const startLine = positiveLine(location?.region?.startLine);
+        findings.push({
+          scanner: 'gitleaks',
+          category: 'SECRET',
+          ruleId,
+          severity: cleanSeverity(item?.level),
+          path: file,
+          ...(startLine ? { startLine } : {}),
+        });
+      }
     }
   }
   return { findings, reportedErrorCount: 0 };
@@ -219,7 +259,7 @@ function readExitCode(directory, name) {
 export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository = 'unknown', commitSha = null }) {
   const specs = [
     { name: 'semgrep', filename: 'semgrep.json', sanitize: sanitizeSemgrep },
-    { name: 'gitleaks', filename: 'gitleaks.sarif', sanitize: sanitizeGitleaks },
+    { name: 'gitleaks', filename: 'gitleaks.json', sanitize: sanitizeGitleaks },
     { name: 'osv-scanner', filename: 'osv.json', sanitize: sanitizeOsv, versionKey: 'osvScanner' },
     { name: 'trivy', filename: 'trivy.json', sanitize: sanitizeTrivy },
   ];
