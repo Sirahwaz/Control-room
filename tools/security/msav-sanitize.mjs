@@ -207,7 +207,7 @@ export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository
   const specs = [
     { name: 'semgrep', filename: 'semgrep.json', sanitize: sanitizeSemgrep },
     { name: 'gitleaks', filename: 'gitleaks.sarif', sanitize: sanitizeGitleaks },
-    { name: 'osv-scanner', filename: 'osv.json', sanitize: sanitizeOsv, statusKey: 'osvScanner' },
+    { name: 'osv-scanner', filename: 'osv.json', sanitize: sanitizeOsv, versionKey: 'osvScanner' },
     { name: 'trivy', filename: 'trivy.json', sanitize: sanitizeTrivy },
   ];
   const findings = [];
@@ -215,12 +215,12 @@ export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository
 
   for (const spec of specs) {
     const loaded = readJsonReport(inputDirectory, spec.filename);
-    const exitName = spec.statusKey || spec.name;
+    const exitName = spec.name;
     const exitCode = readExitCode(inputDirectory, exitName);
     if (!loaded.ok) {
       scanners.push({
         name: spec.name,
-        version: TOOL_VERSIONS[spec.statusKey || spec.name],
+        version: TOOL_VERSIONS[spec.versionKey || spec.name],
         status: loaded.errorCode,
         exitCode,
         findings: 0,
