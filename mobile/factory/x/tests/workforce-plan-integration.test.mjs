@@ -10,6 +10,10 @@ test("Factory X planner compiles the three Neural++ workforce roles without disp
   ], {stdio:"pipe"});
   const plan = JSON.parse(readFileSync("mobile/factory/x/runtime-plan.json","utf8"));
   const workforce = plan.workforce;
+  assert.equal("workforce_payloads" in plan.request,false);
+  assert.equal("workforce_approvals" in plan.request,false);
+  assert.equal(plan.workforce_input_manifest["wallet-behavior-agent"].includes("public_wallet_transactions"),true);
+  assert.equal(JSON.stringify(plan).includes("0x"+"1".repeat(64)),false);
   assert.equal(workforce.ok,true);
   assert.equal(workforce.state,"PLAN_COMPILED");
   assert.equal(workforce.executionMode,"PLAN_ONLY_NO_DISPATCH");
