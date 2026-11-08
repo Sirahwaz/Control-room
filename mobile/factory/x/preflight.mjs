@@ -15,7 +15,9 @@ const files=[
   "mobile/factory/x/adapters.registry.json",
   "mobile/factory/x/agent-bindings.registry.json",
   "mobile/factory/x/execution-engine.mjs",
-  "mobile/factory/x/execution-fabric.mjs"
+  "mobile/factory/x/execution-fabric.mjs",
+  "mobile/factory/x/workforce-runtime.mjs",
+  "mobile/factory/x/plan.mjs"
 ];
 for(const f of files){
   if(!fs.existsSync(path.join(root,f))) throw new Error("Missing Factory X file: "+f);
