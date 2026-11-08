@@ -2,6 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { compileWorkforcePlan } from "./workforce-runtime.mjs";
+
 const root = process.cwd();
 const reqPath = process.argv[2];
 if (!reqPath) throw new Error("Usage: node mobile/factory/x/plan.mjs <request.json>");
@@ -12,6 +14,8 @@ const caps = readJson("mobile/factory/x/capabilities.registry.json").capabilitie
 const providers = readJson("mobile/factory/x/providers.registry.json").providers;
 const plugins = readJson("mobile/factory/x/plugins.registry.json").plugins;
 const agents = readJson("mobile/factory/x/agents.registry.json").agents;
+const bindings = readJson("mobile/factory/x/agent-bindings.registry.json").bindings;
+const adapters = readJson("mobile/factory/x/adapters.registry.json").adapters;
 const automations = readJson("mobile/factory/x/automations.registry.json").automations;
 const policy = readJson("mobile/factory/x/selection.policy.json");
 const factoryCfg = readJson("mobile/factory/x/factory-x.config.json");
@@ -76,6 +80,27 @@ const agentPlan = agents.filter(a=>domainSet.has(a.domain)).map(a=>a.id);
 
 const automationPlan = automations.map(a=>a.id);
 
+const workforceAgentIds = Array.isArray(req.workforce_agent_ids) ? req.workforce_agent_ids : [];
+const workforcePlan = workforceAgentIds.length
+  ? compileWorkforcePlan({
+      agentIds: workforceAgentIds,
+      agents,
+      bindings,
+      adapters,
+      payloads: req.workforce_payloads ?? {},
+      approvals: req.workforce_approvals ?? {},
+      maxParallelAgents: factoryCfg.execution.max_parallel_agents
+    })
+  : {
+      ok: true,
+      state: "NOT_REQUESTED",
+      executionMode: "PLAN_ONLY_NO_DISPATCH",
+      dispatchAllowed: false,
+      tasks: [],
+      blockers: [],
+      waves: []
+    };
+
 const result = {
   ok:true,
   factory:"MIDAD Mobile Factory X",
@@ -90,6 +115,7 @@ const result = {
     strategy:factoryCfg.execution.agent_pool_strategy ?? "dynamic_bounded_parallelism"
   },
   automations:automationPlan,
+  workforce:workforcePlan,
   decision_policy:policy.name,
   speed_policy:{
     cached_artifacts:factoryCfg.execution.prefer_cached_artifacts,
@@ -109,6 +135,9 @@ console.log(JSON.stringify({
   provider_tracks:providerPlan.length,
   agents:agentPlan.length,
   automations:automationPlan.length,
+  workforce_roles:workforcePlan.tasks.length,
+  workforce_blockers:workforcePlan.blockers.length,
+  workforce_dispatch_allowed:workforcePlan.dispatchAllowed,
   discovery_required:providerPlan.filter(x=>x.discovery_required).length,
   output:path.relative(root,out)
 }));
