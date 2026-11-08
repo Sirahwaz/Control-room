@@ -1,0 +1,799 @@
+{
+  "schemaVersion": 1,
+  "auditDate": "2026-11-08",
+  "auditBaselineCommit": "aa7650869bdd7f9ae6fd77d6b30488e83ace0046",
+  "currentRepository": "control-room",
+  "canonicalRepository": "control-room",
+  "repositories": [
+    {
+      "id": "control-room",
+      "fullName": "Sirahwaz/Control-room",
+      "visibility": "public",
+      "role": "canonical_application",
+      "status": "active",
+      "defaultBranch": "main",
+      "licenseStatus": "no_root_license_observed",
+      "description": "Main MIDAD Control Room monorepo: user interfaces, Supabase source assets, mobile factory, tools, tests, revenue surfaces, Forge/compute and research.",
+      "boundary": "Canonical MIDAD application source. Keep production and commercial components here; do not copy them to the community repository.",
+      "reviewNote": "Public repository with commercial service descriptions and application source; review intended public exposure and licensing separately. No visibility change is made by this governance layer."
+    },
+    {
+      "id": "midad-intelligence",
+      "fullName": "Sirahwaz/midad-intelligence",
+      "visibility": "private",
+      "role": "specialized_intelligence",
+      "status": "active",
+      "defaultBranch": "main",
+      "licenseStatus": "not_reviewed",
+      "description": "Read-only opportunity scanners, evidence qualification, tests, operational documentation and Vespa configuration.",
+      "boundary": "No customer database, wallet signing, payment execution, trading execution or outbound outreach."
+    },
+    {
+      "id": "midad-genesis0",
+      "fullName": "Sirahwaz/midad-genesis0",
+      "visibility": "private",
+      "role": "independent_research_runtime",
+      "status": "experimental",
+      "defaultBranch": "main",
+      "licenseStatus": "not_reviewed",
+      "description": "Independent experimental DSL/interpreter/runtime, tests, threat model and optional bounded MIDAD handoff adapter.",
+      "boundary": "Runtime remains independent; integration is optional and bounded. No production database, wallet key or privileged host capability."
+    },
+    {
+      "id": "midad-community",
+      "fullName": "Sirahwaz/midad-community",
+      "visibility": "public",
+      "role": "community_demo",
+      "status": "active",
+      "defaultBranch": "main",
+      "licenseStatus": "Apache-2.0",
+      "description": "Static community demonstration and documentation using illustrative synthetic data.",
+      "boundary": "No production APIs, commercial checkout, customer records, wallet operations, trading execution, mining accounts or secrets."
+    },
+    {
+      "id": "profile",
+      "fullName": "Sirahwaz/Sirahwaz",
+      "visibility": "public",
+      "role": "github_profile",
+      "status": "active",
+      "defaultBranch": "main",
+      "licenseStatus": "not_reviewed",
+      "description": "GitHub profile presentation and profile assets.",
+      "boundary": "Personal/profile presentation, not MIDAD runtime source."
+    },
+    {
+      "id": "github-clone",
+      "fullName": "Sirahwaz/GitHub-Clone",
+      "visibility": "public",
+      "role": "independent_educational_demo",
+      "status": "active",
+      "defaultBranch": "main",
+      "licenseStatus": "MIT_claimed_in_readme_license_file_present",
+      "description": "Standalone GitHub-style HTML/CSS/JavaScript learning project.",
+      "boundary": "Independent educational demo; do not merge into MIDAD application source."
+    },
+    {
+      "id": "maleh",
+      "fullName": "Sirahwaz/Maleh",
+      "visibility": "private",
+      "role": "unclassified_repository",
+      "status": "unknown",
+      "defaultBranch": "main",
+      "licenseStatus": "unknown",
+      "description": "Repository metadata reports size 0; no source tree was available in this audit.",
+      "boundary": "Unclassified. Do not link to MIDAD or alter until the owner identifies its purpose."
+    }
+  ],
+  "modules": [
+    {
+      "id": "control-room-entry",
+      "repository": "control-room",
+      "domain": "control-plane",
+      "kind": "entrypoint",
+      "paths": [
+        "index.html"
+      ],
+      "status": "active",
+      "description": "Primary GitHub Pages and Telegram Mini App entrypoint."
+    },
+    {
+      "id": "control-room-ui",
+      "repository": "control-room",
+      "domain": "control-plane",
+      "kind": "runtime-bundle",
+      "paths": [
+        "midad-control-v2.js",
+        "midad-control-v2.css",
+        "midad-cockpit.js",
+        "midad-cockpit.css",
+        "midad-fix-v1.js",
+        "midad-fix-v1.css",
+        "midad-human-bridge-control.js",
+        "midad-live-status.js"
+      ],
+      "status": "active",
+      "description": "Primary Control Room frontend runtime and presentation bundles."
+    },
+    {
+      "id": "browser-agent-surface",
+      "repository": "control-room",
+      "domain": "browser-automation",
+      "kind": "ui-and-bridge",
+      "paths": [
+        "midad-browser.html",
+        "midad-browser.js",
+        "midad-browser.css",
+        "midad-browser-bridge.js"
+      ],
+      "status": "active",
+      "description": "Browser agent UI and browser bridge surface."
+    },
+    {
+      "id": "ai-room-surface",
+      "repository": "control-room",
+      "domain": "multi-agent-control",
+      "kind": "ui",
+      "paths": [
+        "ai-room.html"
+      ],
+      "status": "active",
+      "description": "AI Room multi-agent command surface."
+    },
+    {
+      "id": "iaitrader-surface",
+      "repository": "control-room",
+      "domain": "trading-intelligence",
+      "kind": "ui-bundle",
+      "paths": [
+        "iaitrader.html",
+        "iaitrader.js",
+        "iaitrader.css"
+      ],
+      "status": "active",
+      "description": "iAiTrader interface and its dedicated static assets."
+    },
+    {
+      "id": "viabtc-route",
+      "repository": "control-room",
+      "domain": "mining-monitoring",
+      "kind": "route",
+      "paths": [
+        "viabtc.html"
+      ],
+      "status": "active",
+      "description": "ViaBTC Monitor route."
+    },
+    {
+      "id": "viabtc-ui-bundles",
+      "repository": "control-room",
+      "domain": "mining-monitoring",
+      "kind": "runtime-bundles",
+      "paths": [
+        "viabtc-monitor.css",
+        "viabtc-monitor.js",
+        "viabtc-neuralpp-v1.css",
+        "viabtc-neuralpp-v1.js"
+      ],
+      "status": "active",
+      "description": "Two byte-identical legacy/current ViaBTC asset-name pairs; both retained until URL and reference migration is proven safe."
+    },
+    {
+      "id": "wallet-link-surfaces",
+      "repository": "control-room",
+      "domain": "wallet-connectivity",
+      "kind": "security-sensitive-ui",
+      "paths": [
+        "trust-wallet-link.html",
+        "reown-wallet-connect.html"
+      ],
+      "status": "active",
+      "description": "Non-custodial wallet connection and ownership-proof pages."
+    },
+    {
+      "id": "pwa-runtime",
+      "repository": "control-room",
+      "domain": "pwa",
+      "kind": "runtime",
+      "paths": [
+        "manifest.webmanifest",
+        "service-worker.js",
+        "midad-pwa-icon.svg"
+      ],
+      "status": "active",
+      "description": "PWA manifest, service-worker cache/scope and icon assets."
+    },
+    {
+      "id": "mobile-operations-surface",
+      "repository": "control-room",
+      "domain": "mobile-operations",
+      "kind": "ui",
+      "paths": [
+        "midad-mobile-control.html"
+      ],
+      "status": "active",
+      "description": "Phone-first operations page."
+    },
+    {
+      "id": "mobile-factory",
+      "repository": "control-room",
+      "domain": "mobile",
+      "kind": "application",
+      "paths": [
+        "mobile/"
+      ],
+      "status": "active",
+      "description": "Capacitor mobile app, product manifests, build factory and web assets."
+    },
+    {
+      "id": "supabase-functions",
+      "repository": "control-room",
+      "domain": "backend-functions",
+      "kind": "edge-function-source",
+      "paths": [
+        "supabase/functions/"
+      ],
+      "status": "active",
+      "description": "Supabase Edge Function source tree; source presence is not proof of deployed runtime state."
+    },
+    {
+      "id": "supabase-migrations",
+      "repository": "control-room",
+      "domain": "data-schema",
+      "kind": "database-migrations",
+      "paths": [
+        "supabase/migrations/"
+      ],
+      "status": "active",
+      "description": "Ordered database schema migration source."
+    },
+    {
+      "id": "supabase-tests",
+      "repository": "control-room",
+      "domain": "data-schema",
+      "kind": "tests",
+      "paths": [
+        "supabase/tests/"
+      ],
+      "status": "active",
+      "description": "Database and function contract tests."
+    },
+    {
+      "id": "developer-tools",
+      "repository": "control-room",
+      "domain": "developer-tooling",
+      "kind": "tooling",
+      "paths": [
+        "tools/"
+      ],
+      "status": "active",
+      "description": "Browser runtime/agent, reverse-engineering lab, miner sensor and developer tools."
+    },
+    {
+      "id": "repository-tests",
+      "repository": "control-room",
+      "domain": "quality",
+      "kind": "test-suite",
+      "paths": [
+        "tests/"
+      ],
+      "status": "active",
+      "description": "Cross-module Node/CJS regression and contract suite."
+    },
+    {
+      "id": "agent-skills",
+      "repository": "control-room",
+      "domain": "agent-governance",
+      "kind": "skill-library",
+      "paths": [
+        ".agents/"
+      ],
+      "status": "active",
+      "description": "Agent skill definitions, references and tests."
+    },
+    {
+      "id": "codex-config",
+      "repository": "control-room",
+      "domain": "developer-tooling",
+      "kind": "configuration",
+      "paths": [
+        ".codex/"
+      ],
+      "status": "active",
+      "description": "Project-level Codex configuration without secrets."
+    },
+    {
+      "id": "github-workflows",
+      "repository": "control-room",
+      "domain": "ci-cd",
+      "kind": "automation",
+      "paths": [
+        ".github/workflows/"
+      ],
+      "status": "active",
+      "description": "Build, test, deployment, research and controlled automation workflows."
+    },
+    {
+      "id": "neural-compute-fabric",
+      "repository": "control-room",
+      "domain": "compute",
+      "kind": "worker-runtime",
+      "paths": [
+        "compute/mncf/"
+      ],
+      "status": "active",
+      "description": "MIDAD Neural Compute Fabric manifest and bounded ephemeral Linux worker runtime."
+    },
+    {
+      "id": "revenue-checkout",
+      "repository": "control-room",
+      "domain": "revenue",
+      "kind": "application",
+      "paths": [
+        "revenue/",
+        "revenue-forge.html"
+      ],
+      "status": "active",
+      "description": "Revenue checkout surface, attribution and distribution assets."
+    },
+    {
+      "id": "services-catalog",
+      "repository": "control-room",
+      "domain": "services",
+      "kind": "catalog-ui",
+      "paths": [
+        "services.html",
+        "services.catalog.mjs"
+      ],
+      "status": "active",
+      "description": "Public fixed-scope services catalogue."
+    },
+    {
+      "id": "meme-scout-surface",
+      "repository": "control-room",
+      "domain": "market-research",
+      "kind": "ui",
+      "paths": [
+        "meme-scout.html"
+      ],
+      "status": "active",
+      "description": "Meme market research interface."
+    },
+    {
+      "id": "research-artifacts",
+      "repository": "control-room",
+      "domain": "research",
+      "kind": "research",
+      "paths": [
+        "research/",
+        "knots-analysis.html"
+      ],
+      "status": "active",
+      "description": "Research notes, publishing status and analysis scripts."
+    },
+    {
+      "id": "stageshow-lab",
+      "repository": "control-room",
+      "domain": "visualization-lab",
+      "kind": "experimental-app",
+      "paths": [
+        "lab/stageshow/",
+        "stageshow-preview.html"
+      ],
+      "status": "experimental",
+      "description": "Isolated StageShow demo application and preview route."
+    },
+    {
+      "id": "viabtc-monitor-service",
+      "repository": "control-room",
+      "domain": "mining-monitoring",
+      "kind": "service",
+      "paths": [
+        "midad_viabtc_monitor/"
+      ],
+      "status": "active",
+      "description": "Standalone ViaBTC monitor service package."
+    },
+    {
+      "id": "static-egress-gateway",
+      "repository": "control-room",
+      "domain": "network-gateway",
+      "kind": "service",
+      "paths": [
+        "midad_static_egress_gateway/"
+      ],
+      "status": "active",
+      "description": "Static egress gateway service package."
+    },
+    {
+      "id": "shared-assets",
+      "repository": "control-room",
+      "domain": "shared-assets",
+      "kind": "assets",
+      "paths": [
+        "assets/"
+      ],
+      "status": "active",
+      "description": "Shared static images and visual assets."
+    },
+    {
+      "id": "automation-backups",
+      "repository": "control-room",
+      "domain": "automation-governance",
+      "kind": "backup-snapshots",
+      "paths": [
+        "automation-backup/"
+      ],
+      "status": "active",
+      "description": "Exported automation snapshots; not the canonical runtime source."
+    },
+    {
+      "id": "architecture-docs",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "documentation",
+      "paths": [
+        "docs/"
+      ],
+      "status": "active",
+      "description": "Architecture, operating standards, audits and technical documents."
+    },
+    {
+      "id": "project-policies",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "policy-documents",
+      "paths": [
+        "README.md",
+        "MIDAD_CRYPTO_ONLY_AUTONOMY_POLICY.md",
+        "MIDAD_FABRIC_REGISTRY.md",
+        "MIDAD_HYBRID_REVENUE_SWARM.md",
+        "MIDAD_PROVIDER_ADAPTER_CONTRACT.md",
+        "MIDAD_TREASURY_MARKET_RULES_V2.md",
+        "REVENUE_DELEGATION_CHARTER.md",
+        "REVENUE_MESH_V3_MULTI_MARKET.md"
+      ],
+      "status": "active",
+      "description": "Root-level project policies, contracts and architecture charters."
+    },
+    {
+      "id": "intelligence-scanners",
+      "repository": "midad-intelligence",
+      "domain": "opportunity-intelligence",
+      "kind": "read-only-scanners",
+      "paths": [
+        "automation/"
+      ],
+      "status": "active",
+      "description": "Independent public-source opportunity scanners and evidence qualification."
+    },
+    {
+      "id": "intelligence-vespa-package",
+      "repository": "midad-intelligence",
+      "domain": "signal-storage",
+      "kind": "configuration",
+      "paths": [
+        "vespa/"
+      ],
+      "status": "experimental",
+      "description": "Vespa application configuration and schemas; not evidence of a live Vespa deployment."
+    },
+    {
+      "id": "genesis0-runtime",
+      "repository": "midad-genesis0",
+      "domain": "research-runtime",
+      "kind": "language-runtime",
+      "paths": [
+        "genesis0/",
+        "SPEC.md",
+        "ARCHITECTURE.md",
+        "tests/"
+      ],
+      "status": "experimental",
+      "description": "Independent GENESIS-0 language/runtime and tests."
+    },
+    {
+      "id": "genesis0-bridge",
+      "repository": "midad-genesis0",
+      "domain": "research-integration",
+      "kind": "bounded-adapter",
+      "paths": [
+        "integrations/midad_agi_lab_bridge.py",
+        "MIDAD_INTEGRATION.md"
+      ],
+      "status": "experimental",
+      "description": "Optional bounded handoff adapter; documented as plan-only/static-read-only and not a production-connected service."
+    },
+    {
+      "id": "community-demo",
+      "repository": "midad-community",
+      "domain": "community",
+      "kind": "static-demo",
+      "paths": [
+        "index.html",
+        "docs/",
+        "LICENSE"
+      ],
+      "status": "active",
+      "description": "Static public demonstration and documentation, isolated from production."
+    },
+    {
+      "id": "github-profile",
+      "repository": "profile",
+      "domain": "identity",
+      "kind": "profile-site",
+      "paths": [
+        "README.md",
+        "index"
+      ],
+      "status": "active",
+      "description": "Personal GitHub profile presentation."
+    },
+    {
+      "id": "github-clone-demo",
+      "repository": "github-clone",
+      "domain": "education",
+      "kind": "static-demo",
+      "paths": [
+        "README.md",
+        "index.html",
+        "assets/"
+      ],
+      "status": "active",
+      "description": "Independent GitHub-style tutorial project."
+    },
+    {
+      "id": "governance-registry",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "repository-and-dependency-registry",
+      "paths": [
+        "architecture/governance/"
+      ],
+      "status": "active",
+      "description": "Canonical repository inventory, module ownership records, dependency evidence and governance manifest schema."
+    },
+    {
+      "id": "architecture-governance-tooling",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "validator-and-cli",
+      "paths": [
+        "tools/architecture-governance/"
+      ],
+      "status": "active",
+      "description": "Read-only manifest validator, dependency impact analyzer, workspace drift detector and run provenance generator."
+    },
+    {
+      "id": "architecture-governance-tests",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "contract-tests",
+      "paths": [
+        "tests/architecture-governance.test.mjs"
+      ],
+      "status": "active",
+      "description": "Focused unit tests for governance registry, path ownership, change impact, drift and provenance contracts."
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "control-room-entry",
+      "to": "control-room-ui",
+      "relationship": "runtime-load",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "index.html",
+          "note": "Loads midad-control-v2.css, midad-fix-v1.css and midad-control-v2.js as the primary application bundle."
+        }
+      ]
+    },
+    {
+      "from": "control-room-entry",
+      "to": "pwa-runtime",
+      "relationship": "pwa-registration",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "index.html",
+          "note": "Links the PWA manifest/icon and registers service-worker.js."
+        }
+      ]
+    },
+    {
+      "from": "control-room-entry",
+      "to": "revenue-checkout",
+      "relationship": "route-redirect",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "index.html",
+          "note": "Redirects view=revenue to revenue-forge.html while preserving query parameters."
+        }
+      ]
+    },
+    {
+      "from": "control-room-ui",
+      "to": "supabase-functions",
+      "relationship": "api-client",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "midad-control-v2.js",
+          "note": "CFG defines the Supabase midad_control_room function endpoint used by the UI."
+        }
+      ]
+    },
+    {
+      "from": "viabtc-route",
+      "to": "viabtc-ui-bundles",
+      "relationship": "runtime-load",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "viabtc.html",
+          "note": "Loads viabtc-neuralpp-v1.css and viabtc-neuralpp-v1.js."
+        }
+      ]
+    },
+    {
+      "from": "repository-tests",
+      "to": "neural-compute-fabric",
+      "relationship": "regression-tests",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tests/midad-linux-worker.test.mjs",
+          "note": "Imports validateForgeManifest and runForgeBuild from compute/mncf/runtime/worker.mjs."
+        }
+      ]
+    },
+    {
+      "from": "repository-tests",
+      "to": "mobile-factory",
+      "relationship": "contract-tests",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tests/mobile-factory-version-contract.test.mjs",
+          "note": "Reads the mobile product manifest/package and asserts their release contract."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "mobile-factory",
+      "relationship": "build-and-path-trigger",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/midad-mobile-android.yml",
+          "note": "Filters on mobile/** and builds the selected Mobile Factory product."
+        }
+      ]
+    },
+    {
+      "from": "genesis0-bridge",
+      "to": "project-policies",
+      "relationship": "documented-optional-boundary",
+      "impactPropagation": false,
+      "evidence": [
+        {
+          "repository": "midad-genesis0",
+          "path": "MIDAD_INTEGRATION.md",
+          "note": "Describes the optional bounded MIDAD handoff and explicitly states no production API/credential/database/live action is connected."
+        },
+        {
+          "repository": "control-room",
+          "path": "MIDAD_PROVIDER_ADAPTER_CONTRACT.md",
+          "note": "Project-level provider contract included as a governance reference; not asserted as a direct GENESIS runtime dependency."
+        }
+      ]
+    },
+    {
+      "from": "architecture-governance-tooling",
+      "to": "governance-registry",
+      "relationship": "manifest-consumption",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tools/architecture-governance/cli.mjs",
+          "note": "CLI default manifest path is architecture/governance/manifest.json."
+        }
+      ]
+    },
+    {
+      "from": "architecture-governance-tests",
+      "to": "architecture-governance-tooling",
+      "relationship": "contract-tests",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tests/architecture-governance.test.mjs",
+          "note": "Imports and tests validator, impact, audit and provenance exports."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "architecture-governance-tooling",
+      "relationship": "ci-execution",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/architecture-governance.yml",
+          "note": "Runs the governance CLI to validate the checkout and generate health/impact/provenance artifacts."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "architecture-governance-tests",
+      "relationship": "ci-test-execution",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/architecture-governance.yml",
+          "note": "Executes the architecture governance Node test suite."
+        }
+      ]
+    },
+    {
+      "from": "architecture-docs",
+      "to": "governance-registry",
+      "relationship": "architecture-documentation",
+      "impactPropagation": false,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "docs/architecture/ARCHITECTURE_GOVERNANCE.md",
+          "note": "Describes manifest fields, registry use, validation rules and governance operation."
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "managedRoots": [
+      ".agents/",
+      ".codex/",
+      ".github/workflows/",
+      "assets/",
+      "automation-backup/",
+      "compute/",
+      "docs/",
+      "lab/",
+      "mobile/",
+      "midad_static_egress_gateway/",
+      "midad_viabtc_monitor/",
+      "research/",
+      "revenue/",
+      "supabase/",
+      "tests/",
+      "tools/",
+      "architecture/governance/"
+    ],
+    "rootAssetExtensions": [
+      ".html",
+      ".js",
+      ".css",
+      ".mjs",
+      ".webmanifest",
+      ".svg"
+    ],
+    "generatedPathHandling": "warning-only",
+    "duplicateContentHandling": "report-only-no-automatic-deletion",
+    "secretFilenameHandling": "error-on-sensitive-filename-except-env-example-templates"
+  }
+}
