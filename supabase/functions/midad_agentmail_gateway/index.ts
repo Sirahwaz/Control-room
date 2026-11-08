@@ -244,4 +244,4 @@ async function main(req: Request) {
   return json({ ok: false, error: "not_found" }, 404);
 }
 
-Deno.serve(main);
+if (import.meta.main) Deno.serve(main);
