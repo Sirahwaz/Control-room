@@ -16,9 +16,10 @@ function smokeBranch() {
 }
 
 test("Gemini smoke check is authenticated before dispatch", () => {
-  const auth = source.indexOf("if(!(await authOK(req)))");
+  const auth = source.indexOf("callerAuthMode=await authMode(req)");
+  const unauthorized = source.indexOf('if(callerAuthMode==="unauthorized")');
   const dispatch = source.indexOf('if(action==="gemini_smoke")');
-  assert.ok(auth >= 0 && dispatch > auth, "operator authentication must precede the smoke action");
+  assert.ok(auth >= 0 && unauthorized > auth && dispatch > unauthorized, "operator authentication must precede the smoke action");
 });
 
 test("Gemini smoke issues one stateless, bounded interactions request", () => {
