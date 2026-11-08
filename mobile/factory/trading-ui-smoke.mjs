@@ -39,6 +39,40 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   const page = await context.newPage();
+
+  const mimicRequests = [];
+  await page.route("https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_chain_intelligence", async route => {
+    const request = route.request();
+    const body = request.postDataJSON();
+    const headers = request.headers();
+    mimicRequests.push({
+      method: request.method(),
+      body,
+      apikey: headers.apikey || "",
+      authorization: headers.authorization || ""
+    });
+    const address = String(body.address || "");
+    const now = Math.floor(Date.now()/1000);
+    const recent_transactions = Array.from({length:12},(_,i)=>({
+      hash:"0x"+String(i+1).padStart(64,"0"),
+      from:address,
+      to:"0x2222222222222222222222222222222222222222",
+      timeStamp:String(now-i*60),
+      input:"0x",
+      isError:"0"
+    }));
+    await route.fulfill({
+      status:200,
+      contentType:"application/json",
+      body:JSON.stringify({
+        provider:"etherscan",api_version:"v2",action:"profile",chainid:String(body.chainid),
+        address,ok:true,
+        profile:{recent_transactions,token_transfers:[]},
+        upstream:{balance_ok:true,txlist_ok:true,tokentx_ok:true}
+      })
+    });
+  });
+
   page.on("pageerror", error => pageErrors.push(String(error)));
   page.on("console", message => { if (message.type() === "error") consoleErrors.push(message.text()); });
 
@@ -81,10 +115,32 @@ try {
   await page.route("https://api.coinex.com/**", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [] }) }));
 
   await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+  assert.equal(mimicRequests.length,0,"MIMIC must not request public wallet data before manual scan");
   assert.match(await page.title(), /MIDAD Trading Intelligence/i);
   assert.equal(await page.locator("script[type='module']").count(), 1);
   assert.equal(await page.locator("#marketRows tr").count(), 4);
   checks.push("page-load-and-market-feed");
+
+
+  await page.getByRole("button", { name: "MIMIC" }).click();
+  await page.locator("#mimicWallet").fill("0x1111111111111111111111111111111111111111");
+  await page.locator("#mimicChainId").fill("1");
+  await page.locator("#mimicScanBtn").click();
+  await page.waitForFunction(() => document.querySelector("#mimicStatus")?.textContent === "VERIFIED", null, { timeout: 10000 });
+  assert.equal(mimicRequests.length,1,"one manual scan must issue exactly one request");
+  assert.equal(mimicRequests[0].method,"POST");
+  assert.deepEqual(
+    {action:mimicRequests[0].body.action,address:mimicRequests[0].body.address,chainid:mimicRequests[0].body.chainid,page:mimicRequests[0].body.page,offset:mimicRequests[0].body.offset},
+    {action:"profile",address:"0x1111111111111111111111111111111111111111",chainid:"1",page:1,offset:50}
+  );
+  assert.match(mimicRequests[0].apikey,/^sb_publishable_/);
+  assert.match(mimicRequests[0].authorization,/^Bearer [^.]+\.[^.]+\.[^.]+$/);
+  const anonPayload=JSON.parse(Buffer.from(mimicRequests[0].authorization.split(".")[1],"base64url").toString("utf8"));
+  assert.equal(anonPayload.role,"anon");
+  assert.equal(mimicRequests[0].authorization.includes("service_role"),false);
+  assert.match(await page.locator("#mimicResult").innerText(),/Valid unique transactions/);
+  assert.match(await page.locator("#mimicResult").innerText(),/12/);
+  checks.push("manual-mimic-public-profile-analysis-and-anon-only-auth");
 
   await page.getByRole("button", { name: "DEX Discovery" }).click();
   await page.waitForFunction(() => document.querySelector("#dexStatus")?.textContent === "OBSERVED · 0", null, { timeout: 10000 });
