@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { isRelevantSearchResult, parseBing, parseSearch } from "./search-result-parser.ts";
 
 const H = {
   "content-type": "application/json; charset=utf-8",
@@ -40,51 +41,6 @@ async function searchBing(query:string){
     });
     return {ok:r.ok,status:r.status,html:await r.text()};
   }catch(e){return {ok:false,status:0,html:"",error:clip(e,250)};}
-}
-function isRelevantSearchResult(item:any, query:string){
-  const text=(String(item?.title||"")+" "+String(item?.url||"")).toLowerCase();
-  const stop=new Set(["the","and","for","with","from","that","this","into","beyond","current","find","search","prioritize","include","verify","official","new","live","task","tasks","platform","platforms","source","sources","public","data","work","jobs","job","listings","criteria","must","have","only","need","when","where","which","what","how","your","their","ours","than","each","other","funded"]);
-  const tokens=(query.toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g)||[]).filter((w:string)=>!stop.has(w));
-  const matches=tokens.filter((w:string)=>text.includes(w));
-  const core=/(crypto|usdc|usdt|bounty|bounties|freelanc|escrow|web3|blockchain|x402|payout|payrelayer|cryptotask|taskmarket|basedagents|bountybook|nadbounty|basebounty|arcbounty|gig|earn|reward|grant|airdrop|workusdc|mining|miner|hashrate|bitcoin|dogecoin|cloud|miningpool|cloudminecrypto|withdrawal|withdrawals|proof-of-work|faucet|referral)/i.test(text);
-  return matches.length>=1&&core;
-}
-function parseSearch(html:string){
-  const out:any[]=[];
-  const re=/<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
-  let m:any;
-  while((m=re.exec(html))&&out.length<16){
-    const attrs=String(m[1]+" "+m[3]);
-    if(!/(?:result__a|result-link)/i.test(attrs))continue;
-    let href=String(m[2]).replace(/&amp;/g,"&");
-    try{
-      if(href.startsWith("//"))href="https:"+href;
-      const u=new URL(href);
-      const redirected=u.searchParams.get("uddg");
-      const url=redirected||href;
-      if(!/^https?:$/i.test(new URL(url).protocol))continue;
-      const title=clip(esc(String(m[4])).replace(/<[^>]+>/g," "),220);
-      if(title&&!out.some(x=>x.url===url))out.push({title,url});
-    }catch(_){}
-  }
-  return out;
-}
-function parseBing(html:string){
-  const out:any[]=[];
-  const blocks=/<li\b[^>]*class=["'][^"']*\bb_algo\b[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let b:any;
-  while((b=blocks.exec(html))&&out.length<16){
-    const a=/<h2[^>]*>\s*<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(b[1]);
-    if(!a)continue;
-    const href=String(a[1]).replace(/&amp;/g,"&");
-    try{
-      const u=new URL(href);
-      if(!/^https?:$/i.test(u.protocol))continue;
-      const title=clip(esc(String(a[2])).replace(/<[^>]+>/g," "),220);
-      if(title&&!out.some(x=>x.url===href))out.push({title,url:href});
-    }catch(_){}
-  }
-  return out;
 }
 async function discoverSearchResults(query:string){
   const ddg=await searchDuckDuckGo(query);
