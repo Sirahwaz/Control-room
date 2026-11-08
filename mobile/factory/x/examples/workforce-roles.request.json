@@ -1,0 +1,72 @@
+{
+  "product_key": "midad-trading",
+  "objective": "Compile safe plans for MIDAD's wallet behaviour, offer negotiation and media-production roles.",
+  "workforce_agent_ids": [
+    "wallet-behavior-agent",
+    "offer-negotiation-agent",
+    "media-production-agent"
+  ],
+  "workforce_payloads": {
+    "wallet-behavior-agent": {
+      "public_wallet_transactions": [
+        {
+          "hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "chain_id": "1",
+          "timestamp": "2026-11-08T00:00:00Z"
+        }
+      ],
+      "chain_id": "1",
+      "observation_window": "30d",
+      "risk_policy": {
+        "minimum_sample": 10,
+        "paper_only": true
+      }
+    },
+    "offer-negotiation-agent": {
+      "client_requirements": {
+        "language": "ar",
+        "scope": "landing page"
+      },
+      "delivery_scope": [
+        "single-page website"
+      ],
+      "pricing_policy": {
+        "currency": "USD",
+        "floor": 50
+      },
+      "commercial_constraints": {
+        "non_binding": true
+      }
+    },
+    "media-production-agent": {
+      "content_brief": {
+        "objective": "explain a product",
+        "script": "original script"
+      },
+      "voice_profile": {
+        "style": "professional Arabic",
+        "source": "licensed catalog voice"
+      },
+      "language": "ar",
+      "delivery_format": "short-video",
+      "credit_budget": 25
+    }
+  },
+  "workforce_approvals": {
+    "media-production-agent": {
+      "mediaPlan": {
+        "status": "PENDING_SPEND_APPROVAL",
+        "mediaType": "image",
+        "selected": {
+          "modelId": "verified-test-image",
+          "creditsRequired": 10,
+          "affordable": true
+        },
+        "spendLimit": 25,
+        "rightsConfirmed": true,
+        "executionAllowed": false
+      },
+      "spend_approved": false
+    }
+  }
+}
