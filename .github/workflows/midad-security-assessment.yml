@@ -1,0 +1,187 @@
+name: MIDAD Security Assessment — MSAV-1
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msav1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-security:
+    name: Repository supply-chain and static security baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python for Semgrep
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: false
+
+      - name: Set up Go for pinned security scanners
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.10"
+          check-latest: false
+
+      - name: Install pinned Semgrep Community Edition
+        id: install-semgrep
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check --no-compile "semgrep==1.184.0"
+
+      - name: Install pinned Gitleaks and OSV-Scanner
+        id: install-go-scanners
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$HOME/go/bin"
+          go install github.com/gitleaks/gitleaks/v8@v8.30.1
+          GITLEAKS_INSTALL_STATUS=$?
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.0
+          OSV_INSTALL_STATUS=$?
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          {
+            echo "GITLEAKS_INSTALL_STATUS=$GITLEAKS_INSTALL_STATUS"
+            echo "OSV_INSTALL_STATUS=$OSV_INSTALL_STATUS"
+          } >> "$GITHUB_ENV"
+          echo "Pinned Go scanner installation attempted; individual scanner status will be recorded in the sanitized report."
+          exit 0
+
+      - name: Prepare private runner-local report directories
+        shell: bash
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-public" "$RUNNER_TEMP/msav-trivy-cache"
+          chmod 700 "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-public" "$RUNNER_TEMP/msav-trivy-cache"
+
+      - name: Run non-blocking repository scanners
+        id: scanners
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          RAW="$RUNNER_TEMP/msav-raw"
+
+          run_scanner() {
+            local name="$1"
+            local executable="$2"
+            shift 2
+
+            if ! command -v "$executable" >/dev/null 2>&1; then
+              printf '127\n' > "$RAW/$name.exit"
+              return 0
+            fi
+
+            "$@" > "$RAW/$name.stdout" 2> "$RAW/$name.stderr"
+            local status=$?
+            printf '%s\n' "$status" > "$RAW/$name.exit"
+            return 0
+          }
+
+          run_scanner semgrep semgrep semgrep scan \
+            --config p/security-audit \
+            --metrics off \
+            --timeout 120 \
+            --json \
+            --output "$RAW/semgrep.json" \
+            .
+
+          run_scanner gitleaks gitleaks gitleaks git \
+            --log-opts=--all \
+            --redact \
+            --no-banner \
+            --report-format sarif \
+            --report-path "$RAW/gitleaks.sarif" \
+            --exit-code 0
+
+          run_scanner osv-scanner osv-scanner osv-scanner scan source \
+            --recursive . \
+            --format json \
+            --output-file "$RAW/osv.json"
+
+          run_scanner trivy docker docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/work,readonly" \
+            --mount "type=bind,src=$RAW,dst=/out" \
+            --mount "type=bind,src=$RUNNER_TEMP/msav-trivy-cache,dst=/root/.cache" \
+            aquasec/trivy:0.76.2 fs \
+            --scanners vuln,misconfig \
+            --format json \
+            --output /out/trivy.json \
+            --exit-code 0 \
+            --skip-dirs /work/.git \
+            --skip-dirs /work/node_modules \
+            /work
+
+          echo "Scanner commands finished. Non-zero and missing-report states are retained for review; findings do not fail this job."
+
+      - name: Run MSAV sanitizer contract tests
+        id: sanitizer-tests
+        continue-on-error: true
+        run: |
+          node --test tests/msav-security-scanning.test.mjs tests/msav-security-workflow.test.mjs
+
+      - name: Build sanitized security report
+        id: sanitize
+        if: always()
+        continue-on-error: true
+        env:
+          MSAV_RAW_DIR: ${{ runner.temp }}/msav-raw
+          MSAV_OUTPUT_FILE: ${{ runner.temp }}/msav-public/security-report.json
+        run: |
+          node tools/security/msav-sanitize.mjs \
+            --input "$MSAV_RAW_DIR" \
+            --output "$MSAV_OUTPUT_FILE" \
+            --workspace "$GITHUB_WORKSPACE"
+
+      - name: Add sanitized summary to the workflow run
+        if: always()
+        shell: bash
+        run: |
+          REPORT="$RUNNER_TEMP/msav-public/security-report.json"
+          if [[ -f "$REPORT" ]]; then
+            node --input-type=module - "$REPORT" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          console.log('## MIDAD Security Assessment — MSAV-1');
+          console.log('');
+          console.log(`Commit: \`${report.commitSha || 'unknown'}\``);
+          console.log('');
+          console.log(`Normalized findings: **${report.findingCount}**`);
+          console.log('');
+          console.log('| Scanner | Version | Report state | Findings |');
+          console.log('|---|---:|---|---:|');
+          for (const scanner of report.scanners) {
+            console.log(`| ${scanner.name} | ${scanner.version} | ${scanner.status} | ${scanner.findings} |`);
+          }
+          console.log('');
+          console.log('Raw reports and source snippets are not uploaded. Secret values are excluded from the normalized report.');
+          NODE
+          else
+            echo "## MIDAD Security Assessment — MSAV-1" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Sanitized report was not produced. Do not interpret missing scanner output as a clean result." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload sanitized report only
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-msav1-sanitized-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/msav-public/security-report.json
+          if-no-files-found: warn
+          retention-days: 7
