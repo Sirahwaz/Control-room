@@ -48,3 +48,8 @@ export function resolveRouterRoutePolicy(input = {}) {
     sanitizationMethod: dataClass === "sanitized" ? sanitizationMethod : null
   };
 }
+
+
+export function shouldAllowRouterFallback({ taskClass } = {}) {
+  return String(taskClass ?? "").trim().toLowerCase() !== "public_sanitized";
+}
