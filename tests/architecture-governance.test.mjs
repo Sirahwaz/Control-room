@@ -208,3 +208,69 @@ test('maps governance registry changes to their dedicated module owner', () => {
     assert.deepEqual(result.unmappedPaths, []);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+
+test('detects high-confidence credential material and redacts matched values', async () => {
+  const { scanSecretContent } = await import('../tools/architecture-governance/validator.mjs');
+  const githubToken = 'ghp_' + 'A'.repeat(40);
+  const providerKey = 'sk-proj-' + 'B'.repeat(48);
+  const privateKeyHeader = ['-----BEGIN', 'OPENSSH PRIVATE KEY-----'].join(' ');
+  const content = [
+    'GITHUB_TOKEN="' + githubToken + '"',
+    'OPENAI_API_KEY="' + providerKey + '"',
+    privateKeyHeader,
+    'API_KEY="YOUR_API_KEY_HERE"',
+  ].join('\n');
+  const findings = scanSecretContent('config/runtime.env', content);
+  assert.deepEqual(findings.map(x => x.rule).sort(), ['GITHUB_TOKEN', 'OPENAI_API_KEY', 'PRIVATE_KEY_MATERIAL'].sort());
+  assert.ok(findings.every(x => x.path === 'config/runtime.env' && Number.isInteger(x.line)));
+  assert.equal(JSON.stringify(findings).includes(githubToken), false);
+  assert.equal(JSON.stringify(findings).includes(providerKey), false);
+
+  const genericCredential = Array.from({ length: 48 }, (_, index) => 'aB3xP9qL0mR7cK2z'[index % 16]).join('');
+  const mixedContent = [
+    'OPENROUTER_API_KEY="' + genericCredential + '"',
+    'GITHUB_TOKEN="' + String.fromCharCode(36) + '{{ secrets.GITHUB_TOKEN }}"',
+    'API_KEY="https://example.invalid/this-is-a-public-url-not-a-secret"',
+    'TOKEN="0x' + 'a'.repeat(40) + '"',
+    'apiKey: "A readable translation label describing the API key"',
+  ].join(String.fromCharCode(10));
+  const genericFindings = scanSecretContent('runtime.env', mixedContent);
+  assert.deepEqual(genericFindings.map(x => x.rule), ['GENERIC_CREDENTIAL_ASSIGNMENT']);
+  assert.equal(JSON.stringify(genericFindings).includes(genericCredential), false);
+});
+
+test('reports in-repository references for duplicate assets without mutating copies', async () => {
+  const { auditDuplicateReferences } = await import('../tools/architecture-governance/validator.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-refs-'));
+  try {
+    fs.mkdirSync(path.join(root, 'assets'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'assets', 'copy-a.js'), 'same bytes');
+    fs.writeFileSync(path.join(root, 'assets', 'copy-b.js'), 'same bytes');
+    fs.writeFileSync(path.join(root, 'index.html'), '<script src="./assets/copy-a.js"></script>');
+    const audit = auditDuplicateReferences(root, [{ paths: ['assets/copy-a.js', 'assets/copy-b.js'] }]);
+    assert.equal(audit.length, 1);
+    assert.deepEqual(audit[0].referencedPaths, ['assets/copy-a.js']);
+    assert.equal(audit[0].references[0].source, 'index.html');
+    assert.equal(fs.existsSync(path.join(root, 'assets', 'copy-a.js')), true);
+    assert.equal(fs.existsSync(path.join(root, 'assets', 'copy-b.js')), true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('checks the current repository license and keeps external repositories explicitly unchecked', async () => {
+  const { auditLicenses } = await import('../tools/architecture-governance/validator.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-license-'));
+  try {
+    fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\\nPermission is hereby granted, free of charge');
+    const result = auditLicenses(root, {
+      currentRepository: 'local',
+      repositories: [
+        { id: 'local', fullName: 'owner/local', licenseStatus: 'MIT' },
+        { id: 'external', fullName: 'owner/external', licenseStatus: 'Apache-2.0' },
+      ],
+    });
+    assert.equal(result.repositories.find(x => x.id === 'local').status, 'VERIFIED');
+    assert.equal(result.repositories.find(x => x.id === 'external').status, 'NOT_CHECKED_EXTERNAL');
+    assert.equal(result.issues.length, 0);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
