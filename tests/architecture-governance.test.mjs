@@ -283,38 +283,3 @@ test('checks the current repository license and keeps external repositories expl
   assert.deepEqual(genericFindings.map(x => x.rule), ['GENERIC_CREDENTIAL_ASSIGNMENT']);
   assert.equal(JSON.stringify(genericFindings).includes(genericCredential), false);
 });
-
-test('reports in-repository references for duplicate assets without mutating copies', async () => {
-  const { auditDuplicateReferences } = await import('../tools/architecture-governance/validator.mjs');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-refs-'));
-  try {
-    fs.mkdirSync(path.join(root, 'assets'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'assets', 'copy-a.js'), 'same bytes');
-    fs.writeFileSync(path.join(root, 'assets', 'copy-b.js'), 'same bytes');
-    fs.writeFileSync(path.join(root, 'index.html'), '<script src="./assets/copy-a.js"></script>');
-    const audit = auditDuplicateReferences(root, [{ paths: ['assets/copy-a.js', 'assets/copy-b.js'] }]);
-    assert.equal(audit.length, 1);
-    assert.deepEqual(audit[0].referencedPaths, ['assets/copy-a.js']);
-    assert.equal(audit[0].references[0].source, 'index.html');
-    assert.equal(fs.existsSync(path.join(root, 'assets', 'copy-a.js')), true);
-    assert.equal(fs.existsSync(path.join(root, 'assets', 'copy-b.js')), true);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
-});
-
-test('checks the current repository license and keeps external repositories explicitly unchecked', async () => {
-  const { auditLicenses } = await import('../tools/architecture-governance/validator.mjs');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-license-'));
-  try {
-    fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\\nPermission is hereby granted, free of charge');
-    const result = auditLicenses(root, {
-      currentRepository: 'local',
-      repositories: [
-        { id: 'local', fullName: 'owner/local', licenseStatus: 'MIT' },
-        { id: 'external', fullName: 'owner/external', licenseStatus: 'Apache-2.0' },
-      ],
-    });
-    assert.equal(result.repositories.find(x => x.id === 'local').status, 'VERIFIED');
-    assert.equal(result.repositories.find(x => x.id === 'external').status, 'NOT_CHECKED_EXTERNAL');
-    assert.equal(result.issues.length, 0);
-  } finally { fs.rmSync(root, { recursive: true, force: true }); }
-});
