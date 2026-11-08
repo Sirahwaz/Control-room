@@ -111,6 +111,10 @@ jobs:
           fi
 
       - name: Run read-only architecture governance
+        env:
+          MIDAD_GOVERNANCE_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          MIDAD_GOVERNANCE_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          MIDAD_GOVERNANCE_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
         run: |
           node tools/architecture-governance/cli.mjs \
             --manifest architecture/governance/manifest.json \
