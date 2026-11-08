@@ -1,7 +1,7 @@
 import { adaptChainIntelligenceProfile } from "./chain-intelligence-adapter.mjs";
 
 const EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
-const CHAIN_ID = /^\\d{1,8}$/;
+const CHAIN_ID = /^\d{1,8}$/;
 const PROFILE_OFFSET = 50;
 const DEFAULT_TIMEOUT_MS = 15000;
 
