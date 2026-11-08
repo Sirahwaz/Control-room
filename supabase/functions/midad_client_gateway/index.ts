@@ -140,14 +140,7 @@ async function getOrCreateClient(admin:any,userId:string,p:any){
   if(externalRef){
     const {data}=await admin.from("midad_client_profiles").select("*")
       .eq("user_id",userId).eq("external_ref",externalRef).maybeSingle();
-    if(data){
-      if(channel==="agentmail" && clip(p.inbox_id,240)){
-        const metadata={...(data.metadata||{}),provider:"agentmail",inbox_id:clip(p.inbox_id,240)};
-        await admin.from("midad_conversations").update({metadata}).eq("id",data.id);
-        data.metadata=metadata;
-      }
-      return data;
-    }
+    if(data)return data;
   }
   const {data,error}=await admin.from("midad_client_profiles").insert({
     user_id:userId,external_ref:externalRef,display_name:clip(p.client_name,160)||null,
@@ -165,7 +158,14 @@ async function getOrCreateConversation(admin:any,userId:string,clientId:string,p
   if(thread){
     const {data}=await admin.from("midad_conversations").select("*")
       .eq("user_id",userId).eq("channel",channel).eq("external_thread_id",thread).maybeSingle();
-    if(data)return data;
+    if(data){
+      if(channel==="agentmail" && clip(p.inbox_id,240)){
+        const metadata={...(data.metadata||{}),provider:"agentmail",inbox_id:clip(p.inbox_id,240)};
+        await admin.from("midad_conversations").update({metadata}).eq("id",data.id);
+        data.metadata=metadata;
+      }
+      return data;
+    }
   }
   const {data,error}=await admin.from("midad_conversations").insert({
     user_id:userId,client_id:clientId,channel,external_thread_id:thread,
@@ -385,7 +385,7 @@ async function decideApproval(admin:any,userId:string,p:any){
   if(!draft)return {ok:false,error:"approval_draft_missing"};
   const {data:convo}=await admin.from("midad_conversations").select("*").eq("id",a.subject_id).eq("user_id",userId).maybeSingle();
   if(!convo)return {ok:false,error:"conversation_not_found"};
-  let delivery={ok:false,error:"delivery_not_configured"};
+  let delivery:any={ok:false,error:"delivery_not_configured"};
   if(String(convo.channel).toLowerCase()==="telegram"){
     const {data:client}=await admin.from("midad_client_profiles").select("external_ref").eq("id",ev.client_id).eq("user_id",userId).maybeSingle();
     const chat=String(client?.external_ref||"").replace(/^telegram:/,"");
