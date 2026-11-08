@@ -18,6 +18,7 @@ Set these through Supabase Edge Function Secrets, never GitHub or browser code:
 - `GET /functions/v1/midad_agentmail_gateway/health`: reports whether secrets are configured; never returns secret values.
 - `POST /functions/v1/midad_agentmail_gateway/webhook`: verifies Svix signature against the exact raw request body before parsing. Eligible `message.received` events enter MIDAD. If Agent Armor is enabled in Monitor mode, `message.received` is held while its scan is pending and `message.security.completed` triggers an authenticated message fetch; only a `complete/clear` verdict is forwarded. Review and unavailable verdicts are not processed.
 - `POST /functions/v1/midad_agentmail_gateway/inboxes`: admin-key protected, idempotently provisions an inbox using AgentMail `client_id`.
+- `POST /functions/v1/midad_agentmail_gateway/webhooks`: admin-key protected, idempotently creates the organization webhook for `message.received` and `message.security.completed`; returns the Svix secret once so the owner can store it in Supabase Edge Function Secrets.
 
 ## Inbound controls
 - Spam, blocked, unauthenticated and pending Agent Armor messages are not forwarded.
@@ -31,8 +32,8 @@ Set these through Supabase Edge Function Secrets, never GitHub or browser code:
 1. Apply `20261108070000_midad_agentmail_events.sql`.
 2. Set the required Edge Function secrets.
 3. Deploy `midad_agentmail_gateway` with JWT verification disabled; Svix verification is mandatory on the webhook route, and inbox provisioning requires the separate admin key. Redeploy `midad_client_gateway` with the same `AGENTMAIL_API_KEY` secret to enable approval-gated replies.
-4. Create one inbox with deterministic `client_id`.
-5. Register an AgentMail webhook for both `message.received` and `message.security.completed`, then store its Svix secret.
+4. Create one inbox with deterministic `client_id` through the protected `/inboxes` endpoint.
+5. Create the signed webhook through the protected `/webhooks` endpoint; copy its returned signing secret into `AGENTMAIL_WEBHOOK_SECRET` in Supabase Edge Function Secrets, then do not retain it in chat or GitHub.
 6. Verify health, signature rejection, duplicate delivery, and inbound draft creation before enabling live use.
 
 ## Free-tier guardrails
