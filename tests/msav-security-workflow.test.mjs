@@ -25,6 +25,7 @@ test('secret and source-bearing scanner output is never uploaded raw', () => {
   assert.match(workflow, /gitleaks:v8\.30\.1[\s\S]*\n\s+git\s+[\s\S]*--redact/);
   assert.match(workflow, /msav-sanitize\.mjs/);
   assert.match(workflow, /security-report\.json/);
+  assert.match(workflow, /Overall coverage: \*\*\$\{report\.coverageState/);
   assert.doesNotMatch(workflow, /path:[^\n]*(msav-raw|gitleaks\.sarif|semgrep\.json|osv\.json|trivy\.json)/);
   assert.match(workflow, /rawReportsUploaded:\s*false|msav-sanitize/);
 });
