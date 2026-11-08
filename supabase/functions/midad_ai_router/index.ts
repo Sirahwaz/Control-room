@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import { parseGeminiModels } from "./gemini-catalog.mjs";
 import { hasExecutorProvider, hasGeminiAdvisor, executorProviderLabel, buildOpenRouterCatalogRequest, configuredExecutorProviders } from "./provider-gateway-policy.mjs";
-import { resolveRouterRoutePolicy } from "./public-routing-policy.mjs";
+import { resolveRouterRoutePolicy, shouldAllowRouterFallback } from "./public-routing-policy.mjs";
 
 const URL = Deno.env.get("SUPABASE_URL") || "";
 const DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
@@ -347,8 +347,14 @@ Finish the original request without bypassing security or testing."});
   if(a.ok&&a.data?.ok!==false)return json({...a.data,router:"midad_ai_router",fallback:false,pipeline:{requested:consultGemini,advisor:consultGemini?{provider:"gemini",model:GEMINI_ADVISOR_MODEL,state:advisor?.state||"PENDING",advice_injected:Boolean(advisor?.ok),error:advisor?.ok?null:(advisor?.error||"claude_executor_not_configured")}:{provider:"gemini",state:"SKIPPED",reason:"consult_gemini_not_requested"},executor:{provider:executorProviderLabel(a.data?.provider),model:a.data?.model||null,state:"VERIFIED"}}});
   if(a.status!==401) {
     // Preserve the primary error as evidence if fallback also fails.
+    if(!shouldAllowRouterFallback({taskClass:routeTaskClass}))return json({
+      ok:false,state:a.status===503?"PENDING":"FAILED",
+      error:"public_route_executor_unavailable",gateway_status:a.status,
+      executor_called:true,fallback_called:false,fallback:false,
+      request_ref:body.request_ref||null
+    },a.status===503?503:502);
     if(body?.strict_pipeline===true)return json({ok:false,state:"PENDING",error:"model_executor_not_configured",executor_called:false,request_ref:body.request_ref||null},503);
- const fallback=await internal("midad_control_room",{
+    const fallback=await internal("midad_control_room",{
       action:"ai_assist",prompt:clip(body.prompt,14000),ai_mode:body.ai_mode||routeTaskClass
     });
     if(fallback.ok&&fallback.data?.ok!==false)return json({
@@ -359,6 +365,11 @@ Finish the original request without bypassing security or testing."});
   }
   return json({ok:false,state:"FAILED",error:"ai_gateway_failed",gateway_status:a.status,model_executor_configured:executorConfigured},502);
  }
+ if(!shouldAllowRouterFallback({taskClass:routeTaskClass}))return json({
+  ok:false,state:"PENDING",error:"public_route_executor_not_configured",
+  executor_called:false,fallback_called:false,fallback:false,
+  request_ref:body.request_ref||null
+ },503);
  const fallback=await internal("midad_control_room",{
   action:"ai_assist",prompt:clip(body.prompt,14000),ai_mode:body.ai_mode||routeTaskClass
  });
