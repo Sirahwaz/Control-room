@@ -1,0 +1,23 @@
+name: MIDAD MIMIC Public Wallet Intelligence Tests
+on:
+  pull_request:
+    paths:
+      - "mobile/intelligence/mimic/**"
+      - ".github/workflows/midad-mimic-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mobile/intelligence/mimic/**"
+      - ".github/workflows/midad-mimic-tests.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: MIMIC public wallet fingerprint tests
+        run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs mobile/intelligence/mimic/chain-intelligence-adapter.test.mjs mobile/intelligence/mimic/mimic-client.test.mjs
