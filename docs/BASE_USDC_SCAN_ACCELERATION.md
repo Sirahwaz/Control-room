@@ -1,42 +1,33 @@
-# Base USDC Monitor — Bounded Catch-up Acceleration
+# Base USDC Monitor — Bounded Catch-up Design
 
-## Current production snapshot — 2026-11-08 03:40 UTC
+## Purpose
 
-- Live function: `midad_base_usdc_monitor` **ACTIVE v23**.
-- Deployed source SHA-256: `bfb32966ccff93c02d2ef051d9900ae72fe4f1e3386637d98e50ab1c3752e35a`.
-- Both canonical Base USDC receive routes report `VERIFIED`, `scan_caught_up=true`, `payment_reconciliation_ready=true`, and `error_count=0`.
-- Latest route monitor snapshots were refreshed at approximately 03:40 UTC.
-- No Base receipts were detected and no payment-verifier calls were recorded; route readiness is not evidence of collected revenue.
-- Avalanche USDT remains `DEGRADED` with `scan_catchup_incomplete`; Solana USDC/USDT remain `READY_AWAITING_FIRST_TOKEN_ACCOUNT` with zero token accounts. Solana EURC remains non-canonical and excluded.
-- No wallet signing, transfer, settlement, cursor skip, or manual readiness override was performed.
+Provide a conservative, resumable scanner for confirmed EVM token-transfer activity. The monitor is designed to make progress without skipping blocks, relaxing finality, or creating duplicate receipt records.
 
+## Safety invariants
 
+- Scan only through the configured finalized block.
+- Keep each log query bounded to at most 500 blocks.
+- Cap the total scan window per route and invocation at 6,000 finalized blocks.
+- Process chunks sequentially; do not increase provider concurrency to accelerate catch-up.
+- Advance a route cursor only after the complete requested range has been scanned and receipt persistence has succeeded.
+- Keep writes idempotent and preserve the evidence needed for independent payment reconciliation.
+- Treat provider timeouts, malformed responses, incomplete ranges, and persistence failures as failed scans; never skip ahead to hide a gap.
+- Do not perform wallet signing, transfers, settlement, or payment approval from the scanner.
 
-## Historical deployment snapshot — 2026-11-07
-- Supabase function: `midad_base_usdc_monitor`
-- Live version: **21** (ACTIVE)
-- Deployment SHA-256: `bfb32966ccff93c02d2ef051d9900ae72fe4f1e3386637d98e50ab1c3752e35a`
-- Cron job: `37`, every 5 minutes, unchanged
-- RPC endpoints: configured endpoint plus PublicNode and 1RPC fallbacks, unchanged
+## Range helper and test coverage
 
-## Change
-- Increased the maximum scan window from 4,000 to **6,000 finalized blocks per route per invocation**.
-- Kept each `eth_getLogs` request bounded to **500 blocks** and sequential (12 chunks per route at the new limit).
-- Cursor advances only after the entire requested range and receipt persistence complete.
-- The range helper enforces contiguous, non-overlapping windows, clamps at the finalized block, rejects unsafe limits, and emits no chunks for an empty range.
-- No RPC provider concurrency increase, no cursor skipping, no finality relaxation, no wallet transfer or signing.
+The range helper enforces contiguous, non-overlapping windows, clamps to the finalized height, rejects unsafe limits, and emits no chunks for an empty range.
 
-## Verification
-- Eight focused Node tests pass for 6,000-block progression, first-run bootstrap, finalized-block clamping, empty ranges, 500-block chunk continuity, unsafe-limit rejection, and exact 12-chunk coverage.
-- A manual scan was triggered through the existing authenticated cron path after deployment.
-- Both active Base USDC receive routes advanced exactly **6,000 finalized blocks** in the observed invocation. Both remained `VERIFIED`, with `error_count=0` and no recorded `last_error`.
-- Latest observed cursors after the 01:50 UTC scheduled scan:
-  - Speedbot Base USDC: `53,521,826` against finalized block `54,123,682` (lag 601,856).
-  - Trust Wallet Base USDC: `53,521,625` against finalized block `54,121,850` (lag 600,225).
-- `scan_caught_up=false` and `payment_reconciliation_ready=false` remain correct. No route was marked ready manually.
+Focused tests cover:
+- bounded 6,000-block progression;
+- first-run cursor bootstrap;
+- finalized-block clamping;
+- empty ranges;
+- contiguous 500-block chunk boundaries;
+- unsafe-limit rejection;
+- exact 12-chunk coverage.
 
-## Estimated catch-up
-At 6,000 blocks per route every five minutes, the observed backlog implies roughly **8.5 hours** to catch up if cadence and RPC throughput remain stable. This is an estimate, not a guarantee.
+## Operational data boundary
 
-## Safety gates
-Do not mark routes ready or bypass the cursor. After catch-up, require the monitor's `scan_caught_up=true`, strict verifier readiness, exact recipient/token/amount checks, and independent payment reconciliation before exposing the route as ready for settlement.
+Live function versions, deployment hashes, RPC provider names, wallet/route identifiers, block heights, receipt counts, scan errors, and payment reconciliation state are intentionally excluded from this public document. Keep those details in private operational records. This document describes the design contract, not current production health.
