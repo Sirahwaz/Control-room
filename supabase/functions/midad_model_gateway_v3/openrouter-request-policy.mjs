@@ -35,7 +35,13 @@ export function buildOpenRouterRequestPolicy({routeMetadata = {},budgetClass = "
     if (only.length) provider.only = only;
     return {ok:true,model,privacyProfile,verifiedFreePricing,provider};
   }
-  if (privacyProfile === "public_sanitized" && only.length === 0) return {ok:false,error:"openrouter_public_provider_allowlist_required"};
+  if (privacyProfile === "public_sanitized") {
+    const normalizedDataClass = String(dataClass || "").trim().toLowerCase();
+    if (normalizedDataClass !== "public" && normalizedDataClass !== "sanitized") {
+      return {ok:false,error:"openrouter_public_sanitized_requires_public_or_sanitized_data"};
+    }
+    if (only.length === 0) return {ok:false,error:"openrouter_public_provider_allowlist_required"};
+  }
   const provider = privacyProfile === "public_sanitized"
     ? {allow_fallbacks:false,data_collection:"allow",sort:"price",only}
     : {allow_fallbacks:false,data_collection:"deny",zdr:true};
