@@ -68,15 +68,43 @@ test("media work blocks until cost, rights and spend approval are all verified",
   assert.equal(result.dispatchAllowed,false);
 });
 
-test("media plan may become review-ready but never invokes a provider", () => {
+const verifiedImagePlan = () => ({
+  status:"PENDING_SPEND_APPROVAL",
+  mediaType:"image",
+  selected:{modelId:"nano-banana-2",creditsRequired:20,affordable:true},
+  spendLimit:25,
+  rightsConfirmed:true,
+  executionAllowed:false
+});
+
+test("verified Media Studio plan remains pending a separate spend approval", () => {
   const result=plan(["media-production-agent"],{
-    approvals:{"media-production-agent":{
-      verified_cost_quote:true,rights_confirmed:true,spend_approved:true
-    }}
+    approvals:{"media-production-agent":{mediaPlan:verifiedImagePlan(),spend_approved:false}}
+  });
+  assert.equal(result.tasks[0].state,"PENDING_SPEND_APPROVAL");
+  assert.deepEqual(result.tasks[0].requiredApprovals,["spend_approved"]);
+  assert.equal(result.tasks[0].providerInvoked,false);
+  assert.equal(result.dispatchAllowed,false);
+});
+
+test("approved media plan becomes review-ready but never invokes a provider", () => {
+  const result=plan(["media-production-agent"],{
+    approvals:{"media-production-agent":{mediaPlan:verifiedImagePlan(),spend_approved:true}}
   });
   assert.equal(result.tasks[0].state,"READY_FOR_HUMAN_REVIEW");
   assert.equal(result.tasks[0].providerInvoked,false);
   assert.equal(result.dispatchAllowed,false);
+});
+
+test("rejects a media quote whose cost exceeds its verified spend limit", () => {
+  const result=plan(["media-production-agent"],{
+    approvals:{"media-production-agent":{
+      mediaPlan:{...verifiedImagePlan(),selected:{modelId:"video",creditsRequired:50,affordable:false}},
+      spend_approved:true
+    }}
+  });
+  assert.equal(result.tasks[0].state,"BLOCKED_APPROVAL_GATES");
+  assert.ok(result.tasks[0].requiredApprovals.includes("verified_cost_quote"));
 });
 
 test("missing required inputs fail closed", () => {
