@@ -403,10 +403,13 @@ export function auditWorkspace(root, manifest) {
     }
     try {
       const stat = fs.statSync(file.absolute);
-      if (stat.size <= MAX_SECRET_SCAN_BYTES) {
+      const extension = path.extname(file.path).toLowerCase();
+      const baseName = path.posix.basename(file.path);
+      const likelyText = !extension || TEXT_EXTENSIONS.has(extension) || baseName.startsWith('.');
+      if (likelyText && stat.size <= MAX_SECRET_SCAN_BYTES) {
         const content = readTextFile(root, file.path, MAX_SECRET_SCAN_BYTES);
         if (content !== null) findings.push(...scanSecretContent(file.path, content));
-      } else {
+      } else if (likelyText) {
         findings.push(issue('SECRET_SCAN_SIZE_LIMIT', 'File exceeded the 1 MiB content-scan limit and was not inspected for secrets.', 'warning', file.path));
       }
       if (stat.size > 0 && stat.size <= MAX_HASH_BYTES) {
@@ -416,7 +419,7 @@ export function auditWorkspace(root, manifest) {
         duplicateMap.set(digest, group);
       }
     } catch (error) {
-      findings.push(issue('FILE_READ_FAILED', \`Could not inspect file: \${error.message}\`, 'warning', file.path));
+      findings.push(issue('FILE_READ_FAILED', 'Could not inspect file: ' + error.message, 'warning', file.path));
     }
   }
 
