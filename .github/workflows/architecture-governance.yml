@@ -1,0 +1,96 @@
+name: MIDAD Architecture Governance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "architecture/governance/**"
+      - "tools/architecture-governance/**"
+      - "tests/architecture-governance.test.mjs"
+      - ".github/workflows/architecture-governance.yml"
+      - "index.html"
+      - "midad-control-v2.js"
+      - "viabtc.html"
+      - "viabtc-neuralpp-v1.*"
+      - "midad-mobile-control.html"
+      - "mobile/**"
+      - "compute/mncf/**"
+      - "supabase/functions/**"
+      - "tests/**"
+      - "MIDAD_PROVIDER_ADAPTER_CONTRACT.md"
+  push:
+    branches: ["main"]
+    paths:
+      - "architecture/governance/**"
+      - "tools/architecture-governance/**"
+      - "tests/architecture-governance.test.mjs"
+      - ".github/workflows/architecture-governance.yml"
+      - "index.html"
+      - "midad-control-v2.js"
+      - "viabtc.html"
+      - "viabtc-neuralpp-v1.*"
+      - "midad-mobile-control.html"
+      - "mobile/**"
+      - "compute/mncf/**"
+      - "supabase/functions/**"
+      - "tests/**"
+      - "MIDAD_PROVIDER_ADAPTER_CONTRACT.md"
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-governance:
+    name: Validate registry, dependencies, module health and provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check tools/architecture-governance/validator.mjs
+          node --check tools/architecture-governance/cli.mjs
+
+      - name: Run architecture governance unit tests
+        run: node --test tests/architecture-governance.test.mjs
+
+      - name: Calculate changed paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+          fi
+          if [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+          else
+            git ls-tree -r --name-only "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+          fi
+
+      - name: Run read-only architecture governance
+        run: |
+          node tools/architecture-governance/cli.mjs \
+            --manifest architecture/governance/manifest.json \
+            --impact-file "$RUNNER_TEMP/midad-changed-paths.txt" \
+            --provenance \
+            --out "$RUNNER_TEMP/midad-architecture-governance"
+
+      - name: Upload health, impact and provenance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-architecture-governance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/midad-architecture-governance/
+          if-no-files-found: warn
+          retention-days: 30
