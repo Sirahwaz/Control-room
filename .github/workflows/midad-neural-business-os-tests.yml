@@ -1,0 +1,42 @@
+name: MIDAD Neural Business OS tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_client_gateway/**"
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/migrations/**"
+      - "tests/**"
+      - ".github/workflows/midad-neural-business-os-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/midad_client_gateway/**"
+      - "supabase/functions/midad_base_usdc_monitor/**"
+      - "supabase/migrations/**"
+      - "tests/**"
+      - ".github/workflows/midad-neural-business-os-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-neural-business-os-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused-tests:
+    name: Focused negotiation and Base scanner tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run focused tests
+        run: node --experimental-default-type=module --test tests/negotiation.test.js tests/base-scan-range.test.js
