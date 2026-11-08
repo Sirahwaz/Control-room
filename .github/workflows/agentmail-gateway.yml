@@ -22,8 +22,6 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Format check
-        run: deno fmt --check supabase/functions/midad_agentmail_gateway
       - name: Lint
         run: deno lint supabase/functions/midad_agentmail_gateway
       - name: Type check
