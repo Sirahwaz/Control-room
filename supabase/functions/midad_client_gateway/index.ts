@@ -68,6 +68,23 @@ async function sendTelegram(token:string,chatId:string,text:string){
   return {ok:r.ok&&j?.ok===true,telegram:j};
 }
 
+async function sendAgentMail(inboxId:string,to:string,subject:string,text:string,idempotencyKey:string){
+  const apiKey=Deno.env.get("AGENTMAIL_API_KEY")||"";
+  if(!apiKey)return {ok:false,error:"agentmail_api_key_missing"};
+  if(!inboxId||!/^\S+@\S+\.\S+$/.test(to))return {ok:false,error:"agentmail_recipient_or_inbox_invalid"};
+  const response=await fetch("https://api.agentmail.to/v0/inboxes/"+encodeURIComponent(inboxId)+"/messages/send",{
+    method:"POST",
+    headers:{
+      "authorization":"Bearer "+apiKey,
+      "content-type":"application/json",
+      "Idempotency-Key":idempotencyKey
+    },
+    body:JSON.stringify({to,subject:clip(subject,500),text:clip(text,8000)})
+  });
+  const payload=await response.json().catch(()=>({}));
+  return {ok:response.ok,message_id:payload?.message_id||null,thread_id:payload?.thread_id||null,error:response.ok?null:"agentmail_send_failed"};
+}
+
 async function audit(admin:any,userId:string,p:any){
   await admin.from("midad_audit_log").insert({
     user_id:userId,
@@ -121,7 +138,14 @@ async function getOrCreateClient(admin:any,userId:string,p:any){
   if(externalRef){
     const {data}=await admin.from("midad_client_profiles").select("*")
       .eq("user_id",userId).eq("external_ref",externalRef).maybeSingle();
-    if(data)return data;
+    if(data){
+      if(channel==="agentmail" && clip(p.inbox_id,240)){
+        const metadata={...(data.metadata||{}),provider:"agentmail",inbox_id:clip(p.inbox_id,240)};
+        await admin.from("midad_conversations").update({metadata}).eq("id",data.id);
+        data.metadata=metadata;
+      }
+      return data;
+    }
   }
   const {data,error}=await admin.from("midad_client_profiles").insert({
     user_id:userId,external_ref:externalRef,display_name:clip(p.client_name,160)||null,
@@ -144,6 +168,7 @@ async function getOrCreateConversation(admin:any,userId:string,clientId:string,p
   const {data,error}=await admin.from("midad_conversations").insert({
     user_id:userId,client_id:clientId,channel,external_thread_id:thread,
     language:clip(p.language,32)||null,topic:clip(p.topic,200)||null,
+    metadata:channel==="agentmail"?{provider:"agentmail",inbox_id:clip(p.inbox_id,240)||null}:{},
     last_message_at:new Date().toISOString()
   }).select("*").single();
   if(error)throw new Error("conversation_create_failed");
@@ -363,6 +388,12 @@ async function decideApproval(admin:any,userId:string,p:any){
     const {data:client}=await admin.from("midad_client_profiles").select("external_ref").eq("id",ev.client_id).eq("user_id",userId).maybeSingle();
     const chat=String(client?.external_ref||"").replace(/^telegram:/,"");
     delivery=await sendTelegram(await telegramToken(admin),chat,draft);
+  }else if(String(convo.channel).toLowerCase()==="agentmail"){
+    const {data:client}=await admin.from("midad_client_profiles").select("contact").eq("id",ev.client_id).eq("user_id",userId).maybeSingle();
+    const inboxId=clip(convo.metadata?.inbox_id,240);
+    const recipient=clip(client?.contact,320);
+    const subject=String(convo.topic||"").toLowerCase().startsWith("re:")?String(convo.topic):"Re: "+clip(convo.topic,450);
+    delivery=await sendAgentMail(inboxId,recipient,subject,draft,"midad-approval-"+approvalId);
   }
   await admin.from("midad_approvals").update({
     status:delivery.ok?"approved":"pending",
