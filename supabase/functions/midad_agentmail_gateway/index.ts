@@ -253,6 +253,31 @@ async function main(req: Request) {
     }
   }
 
+  if (url.pathname.endsWith("/webhooks")) {
+    if (!hasAdminAccess(req)) return json({ ok: false, error: "unauthorized" }, 401);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    if (!supabaseUrl) return json({ ok: false, error: "supabase_url_missing" }, 503);
+    const webhookUrl = supabaseUrl.replace(/\\/$/, "") + "/functions/v1/midad_agentmail_gateway/webhook";
+    try {
+      const webhook = await agentMailRequest("/webhooks", "POST", {
+        client_id: "midad-agentmail-us-webhook-v1",
+        url: webhookUrl,
+        event_types: ["message.received", "message.security.completed"],
+      });
+      return json({
+        ok: true,
+        webhook_id: webhook.webhook_id,
+        url: webhook.url,
+        secret: webhook.secret,
+        event_types: webhook.event_types,
+        note: "Store the returned signing secret as AGENTMAIL_WEBHOOK_SECRET in Supabase Edge Function Secrets. It is not persisted by this function.",
+      }, 201);
+    } catch (error) {
+      const status = (error as Error & { status?: number }).status || 502;
+      return json({ ok: false, error: "agentmail_webhook_create_failed", status }, status >= 400 && status < 600 ? status : 502);
+    }
+  }
+
   return json({ ok: false, error: "not_found" }, 404);
 }
 
