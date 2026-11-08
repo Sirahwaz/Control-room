@@ -7,6 +7,7 @@ import { buildOpenRouterRequestPolicy } from "./openrouter-request-policy.mjs";
 import { evaluateGeminiRequestPolicy } from "./gemini-request-policy.mjs";
 import { runOpenRouterDiscovery, getOpenRouterDiscoveryStatus, getOpenRouterRecommendations } from "./openrouter-discovery.mjs";
 import { runOpenRouterAuthCheck } from "./openrouter-auth-check.mjs";
+import { resolveModelGatewayAuthMode } from "./auth-policy.mjs";
 
 const DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
 const db = DB_URL ? postgres(DB_URL,{max:1,idle_timeout:5,connect_timeout:10,ssl:"require",prepare:false}) : null;
@@ -17,13 +18,15 @@ const json=(v:unknown,s=200)=>new Response(JSON.stringify(v),{status:s,headers:H
 const clip=(v:unknown,n=6000)=>String(v??"").slice(0,n);
 function needDb(){if(!db)throw new Error("supabase_db_url_missing");return db;}
 async function secret(name:string){const d=needDb();const r=await d`select decrypted_secret from vault.decrypted_secrets where name=${name} order by created_at desc limit 1`;return typeof r[0]?.decrypted_secret==="string"?r[0].decrypted_secret:"";}
-async function authOK(req:Request){
- const supplied=req.headers.get("x-midad-autonomy-key")||"";
- const ingest=req.headers.get("x-midad-ingest-key")||"";
- if(ingest&&Deno.env.get("MIDAD_INGEST_KEY")&&ingest===Deno.env.get("MIDAD_INGEST_KEY"))return true;
- if(!supplied)return false;
- const expected=await secret("midad_autonomy_key");
- return !!expected&&supplied===expected;
+async function authMode(req:Request){
+ const autonomyHeader=req.headers.get("x-midad-autonomy-key")||"";
+ const autonomySecret=autonomyHeader?await secret("midad_autonomy_key"):"";
+ return resolveModelGatewayAuthMode({
+  ingestHeader:req.headers.get("x-midad-ingest-key")||"",
+  ingestSecret:Deno.env.get("MIDAD_INGEST_KEY")||"",
+  autonomyHeader,
+  autonomySecret
+ });
 }
 function taskClass(task:string){
  const s=String(task||"generic").toLowerCase();
@@ -78,8 +81,9 @@ Deno.serve(async(req)=>{
   catch(e){return json({ok:false,state:"FAILED",service:"midad_model_gateway_v3",error:clip((e as any)?.message||e,250)},503)}
  }
  if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
- try{if(!(await authOK(req)))return json({ok:false,error:"unauthorized"},401)}catch{return json({ok:false,error:"auth_check_failed"},500)}
+ let callerAuthMode="unauthorized";try{callerAuthMode=await authMode(req);if(callerAuthMode==="unauthorized")return json({ok:false,error:"unauthorized"},401)}catch{return json({ok:false,error:"auth_check_failed"},500)}
  const body=await req.json().catch(()=>({}));const action=String(body.action||"chat").toLowerCase();const tc=taskClass(String(body.task_class||body.task||"generic"));const ref=String(body.request_ref||crypto.randomUUID());
+ if(tc==="public_sanitized"&&callerAuthMode!=="autonomy")return json({ok:false,state:"BLOCKED",error:"public_sanitized_route_requires_autonomy_identity",inference_called:false},403);
  if(action==="auth_check"){
   try{
    const requestedProvider=String(body.provider||"openrouter").trim().toLowerCase();
