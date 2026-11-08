@@ -61,8 +61,7 @@ MIDAD now maintains an evidence-backed repository/module registry and read-only 
 
 - [Architecture Governance Layer](docs/architecture/ARCHITECTURE_GOVERNANCE.md) — operating model, validation rules, change impact and provenance.
 - [Dependency Map](docs/architecture/DEPENDENCY_MAP.md) — verified local runtime/test/build relationships and explicitly documented optional boundaries.
-- [Repository Registry](architecture/governance/manifest.json) — seven repository records, 38 module ownership records and evidence-backed dependency edges.
+- [Repository Registry](architecture/governance/manifest.json) — seven repository records, 41 module ownership records and 14 evidence-backed dependency edges.
 - [Manifest Schema](architecture/governance/manifest.schema.json) — machine-readable contract.
 
 The CI governance workflow is read-only. It reports unowned paths, missing module/evidence references, generated/cache files, duplicate content and change impact. It does not move or delete code, change service state, or expose secrets.
-
