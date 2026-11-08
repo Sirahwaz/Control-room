@@ -37,7 +37,7 @@ export function buildOpenRouterRequestPolicy({routeMetadata = {},budgetClass = "
   }
   if (privacyProfile === "public_sanitized" && only.length === 0) return {ok:false,error:"openrouter_public_provider_allowlist_required"};
   const provider = privacyProfile === "public_sanitized"
-    ? {allow_fallbacks:true,data_collection:"allow",sort:"price",only}
+    ? {allow_fallbacks:false,data_collection:"allow",sort:"price",only}
     : {allow_fallbacks:false,data_collection:"deny",zdr:true};
   if (only.length && privacyProfile !== "public_sanitized") provider.only = only;
   return {ok:true,model,privacyProfile,verifiedFreePricing,provider};
