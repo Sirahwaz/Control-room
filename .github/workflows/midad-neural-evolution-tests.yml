@@ -1,0 +1,28 @@
+name: MIDAD Neural Evolution Bounded Refresh Contract
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_neural_evolution/**"
+      - ".github/workflows/midad-neural-evolution-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_neural_evolution/**"
+      - ".github/workflows/midad-neural-evolution-tests.yml"
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Freshness and bounded concurrency tests
+        run: node --test supabase/functions/midad_neural_evolution/freshness.test.mjs supabase/functions/midad_neural_evolution/auth-policy.test.mjs supabase/functions/midad_neural_evolution/learning-prior-sanitizer.test.mjs
+      - name: Neural Evolution type check
+        run: deno check supabase/functions/midad_neural_evolution/index.ts
