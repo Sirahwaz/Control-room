@@ -15,7 +15,7 @@ test('MSAV-1 is pull-request and manual only with read-only repository permissio
 
 test('scanner versions are pinned to reviewed releases', () => {
   assert.match(workflow, /semgrep==1\.184\.0/);
-  assert.match(workflow, /zricethezav\/gitleaks\/v8@v8\.30\.1/);
+  assert.match(workflow, /ghcr\.io\/gitleaks\/gitleaks:v8\.30\.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb/);
   assert.match(workflow, /osv-scanner\/v2\/cmd\/osv-scanner@v2\.7\.0/);
   assert.match(workflow, /aquasec\/trivy:0\.76\.2/);
   assert.match(workflow, /go-version:\s*["']1\.27\.3["']/);
