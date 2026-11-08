@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   sanitizeSemgrep,
   sanitizeGitleaks,
   sanitizeOsv,
   sanitizeTrivy,
   sanitizeRepositoryPath,
+  buildSanitizedReport,
 } from '../tools/security/msav-sanitize.mjs';
 
 const WORKSPACE = '/workspace/control-room';
@@ -141,4 +145,24 @@ test('repository paths are relative and traversal or outside-workspace paths are
   assert.equal(sanitizeRepositoryPath('/etc/passwd', WORKSPACE), null);
   assert.equal(sanitizeRepositoryPath('../../workspace/other-secret', WORKSPACE), null);
   assert.equal(sanitizeRepositoryPath('', WORKSPACE), null);
+});
+
+test('OSV scanner exit state is read from the same report key written by the workflow', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-msav-osv-state-'));
+  try {
+    fs.writeFileSync(path.join(directory, 'osv.json'), JSON.stringify({ results: [] }));
+    fs.writeFileSync(path.join(directory, 'osv-scanner.exit'), '0\n');
+    const report = buildSanitizedReport({
+      inputDirectory: directory,
+      workspaceRoot: WORKSPACE,
+      repository: 'Sirahwaz/Control-room',
+      commitSha: 'a'.repeat(40),
+    });
+    const osv = report.scanners.find(scanner => scanner.name === 'osv-scanner');
+    assert.ok(osv);
+    assert.equal(osv.exitCode, 0);
+    assert.equal(osv.status, 'REPORT_PARSED');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
