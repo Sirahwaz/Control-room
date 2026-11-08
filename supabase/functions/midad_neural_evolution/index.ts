@@ -1,13 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { buildFreshnessUpdates, mapInBatches, DEFAULT_BATCH_SIZE } from "./freshness.mjs";
+import { isAuthorizedEvolutionRequest } from "./auth-policy.mjs";
+import { sanitizeDecisionAction } from "./learning-prior-sanitizer.mjs";
 const H={"content-type":"application/json","access-control-allow-origin":"*","access-control-allow-methods":"POST,OPTIONS","access-control-allow-headers":"content-type,authorization,x-midad-autonomy-key,x-midad-ingest-key"};
 const json=(x:any,s=200)=>new Response(JSON.stringify(x),{status:s,headers:H});
 const n=(v:any,d=0)=>{const x=Number(v);return Number.isFinite(x)?x:d};
 Deno.serve(async(req)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:H});
   if(req.method!=="POST")return json({ok:true,service:"midad_neural_evolution",version:1});
-  const autoKey=Deno.env.get("MIDAD_AUTONOMY_KEY")||"",ingestKey=Deno.env.get("MIDAD_INGEST_KEY")||"";const s=req.headers.get("x-midad-autonomy-key")||req.headers.get("x-midad-ingest-key")||"";let vaultKey="";const sk0=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";try{const c=createClient(Deno.env.get("SUPABASE_URL")!,sk0);const v=await c.rpc("midad_get_autonomy_key");vaultKey=typeof v?.data==="string"?v.data:"";}catch(_){};if((autoKey||ingestKey||vaultKey)&&s!==autoKey&&s!==ingestKey&&s!==vaultKey)return json({ok:false,error:"forbidden"},403);
+  const autoKey=Deno.env.get("MIDAD_AUTONOMY_KEY")||"",ingestKey=Deno.env.get("MIDAD_INGEST_KEY")||"";const s=req.headers.get("x-midad-autonomy-key")||req.headers.get("x-midad-ingest-key")||"";let vaultKey="";const sk0=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";try{const c=createClient(Deno.env.get("SUPABASE_URL")!,sk0);const v=await c.rpc("midad_get_autonomy_key");vaultKey=typeof v?.data==="string"?v.data:"";}catch(_){};if(!isAuthorizedEvolutionRequest(s,[autoKey,ingestKey,vaultKey]))return json({ok:false,error:"forbidden"},403);
   try{
     const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const [nodes,edges,hyp,learn,fb,runs,factoryLearn]=await Promise.all([
@@ -44,13 +46,14 @@ Deno.serve(async(req)=>{
     const factoryRows=factoryLearn.data||[];
     const factoryGroups:any={};
     for(const row of factoryRows){
-      const key=String(row.decision_key||"unknown");
+      const key=String(sanitizeDecisionAction(row.decision_key||"unknown")).slice(0,256)||"unknown";
       const g=factoryGroups[key]||{samples:0,weighted_reward:0,weighted_confidence:0,actions:{}};
       const samples=Math.max(1,n(row.sample_size,1)), conf=Math.max(0,Math.min(1,n(row.confidence,.5))), reward=n(row.reward,0);
       g.samples+=samples;
       g.weighted_reward+=reward*samples*conf;
       g.weighted_confidence+=conf*samples;
-      const ak=JSON.stringify(row.chosen_action||{});
+      const safeAction=sanitizeDecisionAction(row.chosen_action||{});
+      const ak=JSON.stringify(safeAction);
       g.actions[ak]=(g.actions[ak]||0)+samples*conf;
       factoryGroups[key]=g;
     }
