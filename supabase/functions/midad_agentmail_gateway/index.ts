@@ -131,15 +131,22 @@ async function processInbound(event: AgentMailEvent) {
   const { error: insertError } = await admin.from("midad_agentmail_events").insert(eventRow);
   if (insertError?.code === "23505") {
     const { data: prior, error: readError } = await admin.from("midad_agentmail_events")
-      .select("status").eq("event_id", normalized.event_id).maybeSingle();
+      .select("status,locked_at").eq("event_id", normalized.event_id).maybeSingle();
     if (readError) throw new Error("agentmail_event_dedupe_read_failed");
-    if (prior?.status === "processed" || prior?.status === "processing") {
+    if (prior?.status === "processed") {
       return { ok: true, duplicate: true, event_id: normalized.event_id };
     }
-    const { data: claimed, error: claimError } = await admin.from("midad_agentmail_events")
-      .update({ status: "processing", last_error: null })
-      .eq("event_id", normalized.event_id).in("status", ["failed", "received"])
-      .select("event_id").maybeSingle();
+    const staleBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    if (prior?.status === "processing" && prior.locked_at && prior.locked_at > staleBefore) {
+      return { ok: true, duplicate: true, event_id: normalized.event_id };
+    }
+    let claim = admin.from("midad_agentmail_events")
+      .update({ status: "processing", locked_at: new Date().toISOString(), last_error: null })
+      .eq("event_id", normalized.event_id);
+    claim = prior?.status === "processing"
+      ? claim.eq("status", "processing").lt("locked_at", staleBefore)
+      : claim.in("status", ["failed", "received"]);
+    const { data: claimed, error: claimError } = await claim.select("event_id").maybeSingle();
     if (claimError || !claimed) return { ok: true, duplicate: true, event_id: normalized.event_id };
   } else if (insertError) {
     throw new Error("agentmail_event_persist_failed");
