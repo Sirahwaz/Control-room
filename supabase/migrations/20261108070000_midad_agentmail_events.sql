@@ -9,6 +9,7 @@ create table if not exists public.midad_agentmail_events (
   metadata jsonb not null default '{}'::jsonb,
   last_error text,
   received_at timestamptz not null default now(),
+  locked_at timestamptz not null default now(),
   processed_at timestamptz
 );
 
