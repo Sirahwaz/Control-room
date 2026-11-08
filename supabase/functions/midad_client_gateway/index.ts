@@ -71,7 +71,9 @@ async function sendTelegram(token:string,chatId:string,text:string){
 async function sendAgentMail(inboxId:string,to:string,subject:string,text:string,idempotencyKey:string){
   const apiKey=Deno.env.get("AGENTMAIL_API_KEY")||"";
   if(!apiKey)return {ok:false,error:"agentmail_api_key_missing"};
-  if(!inboxId||!/^\S+@\S+\.\S+$/.test(to))return {ok:false,error:"agentmail_recipient_or_inbox_invalid"};
+  const bracketed=to.match(/<([^<>]+)>/);
+  const recipient=String(bracketed?.[1]||to).trim();
+  if(!inboxId||!/^\\S+@\\S+\\.\\S+$/.test(recipient))return {ok:false,error:"agentmail_recipient_or_inbox_invalid"};
   const response=await fetch("https://api.agentmail.to/v0/inboxes/"+encodeURIComponent(inboxId)+"/messages/send",{
     method:"POST",
     headers:{
