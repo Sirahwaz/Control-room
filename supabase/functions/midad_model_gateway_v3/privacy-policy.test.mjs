@@ -30,6 +30,20 @@ test("Public-sanitized profile requires a valid provider allowlist", () => {
   assert.equal(r.error, "openrouter_public_provider_allowlist_required");
 });
 
+test("Public-sanitized profile rejects sensitive, private and unknown data classes", () => {
+  for (const dataClass of ["sensitive", "private", "", undefined]) {
+    const r = buildOpenRouterRequestPolicy({
+      routeMetadata:{privacy_profile:"public_sanitized",provider_only:["verified-provider"]},
+      budgetClass:"free",
+      configuredModel:"provider/model:free",
+      dataClass,
+      now:NOW
+    });
+    assert.equal(r.ok,false);
+    assert.equal(r.error,"openrouter_public_sanitized_requires_public_or_sanitized_data");
+  }
+});
+
 test("Provider allowlist accepts valid slugs and drops invalid entries", () => {
   const r = buildOpenRouterRequestPolicy({ routeMetadata:{privacy_profile:"public_sanitized",provider_only:["valid-provider","../bad","UPPER_CASE"]}, budgetClass:"free", configuredModel:"provider/model:free", dataClass:"sanitized", now:NOW });
   assert.equal(r.ok,true);
