@@ -71,7 +71,8 @@ test("media work blocks until cost, rights and spend approval are all verified",
 const verifiedImagePlan = () => ({
   status:"PENDING_SPEND_APPROVAL",
   mediaType:"image",
-  selected:{modelId:"nano-banana-2",creditsRequired:20,affordable:true},
+  provider:"openart",
+  selected:{provider:"openart",modelId:"nano-banana-2",creditsRequired:20,affordable:true},
   spendLimit:25,
   rightsConfirmed:true,
   executionAllowed:false
@@ -93,7 +94,20 @@ test("approved media plan becomes review-ready but never invokes a provider", ()
   });
   assert.equal(result.tasks[0].state,"READY_FOR_HUMAN_REVIEW");
   assert.equal(result.tasks[0].providerInvoked,false);
+  assert.deepEqual(result.tasks[0].provider,{primary:"openart",fallback:null});
   assert.equal(result.dispatchAllowed,false);
+});
+
+test("rejects a media quote whose provider does not match the media type",()=>{
+  const base=verifiedImagePlan();
+  const result=plan(["media-production-agent"],{
+    approvals:{"media-production-agent":{
+      mediaPlan:{...base,provider:"heygen",selected:{...base.selected,provider:"heygen"}},
+      spend_approved:true
+    }}
+  });
+  assert.equal(result.tasks[0].state,"BLOCKED_APPROVAL_GATES");
+  assert.ok(result.tasks[0].requiredApprovals.includes("verified_cost_quote"));
 });
 
 test("rejects a media quote whose cost exceeds its verified spend limit", () => {
