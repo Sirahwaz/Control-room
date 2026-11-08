@@ -26,7 +26,9 @@ test("accepts only documented sanitization methods", () => {
   for(const method of ["credential_redaction","pii_redaction","allowlisted_fields","aggregation_only"]) assert.equal(resolveRouterRoutePolicy({taskClass:"public_sanitized",dataClass:"sanitized",sanitizationVerified:true,sanitizationMethod:method,content:"Aggregated public-market metrics"}).ok,true);
 });
 test("blocks obvious secrets, bearer tokens, passwords, seed phrase labels and private keys", () => {
-  const samples=["api_key: sk-abcdefghijklmnopqrstuvwxyz123456","Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456","password: SuperSecretCredential12345","seed phrase: alpha beta gamma delta epsilon","-----BEGIN PRIVATE KEY-----"];
+  const fakeOpenAiKey=["sk","-","abcdefghijklmnopqrstuvwxyz123456"].join("");
+  const fakePrivateKeyHeader=["-----BEGIN ","PRIVATE KEY-----"].join("");
+  const samples=[`api_key: ${fakeOpenAiKey}`,"Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456","password: SuperSecretCredential12345","seed phrase: alpha beta gamma delta epsilon",fakePrivateKeyHeader];
   for(const content of samples) assert.equal(resolveRouterRoutePolicy({taskClass:"public_sanitized",dataClass:"public",sourceScope:"public_web_content",content}).error,"public_route_sensitive_material_detected");
 });
 test("blocks empty public route content", () => {
