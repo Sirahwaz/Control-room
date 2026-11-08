@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import parse_qs, urlsplit
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,54 @@ SOCIAL_DRAFT_PATH = Path("research/knots-x-post-draft.md")
 IMAGE_URL = "https://raw.githubusercontent.com/Sirahwaz/Control-room/main/assets/knots-research-infographic.png"
 PAGES_URL = "https://sirahwaz.github.io/Control-room/knots-analysis.html"
 SVG_URL = "https://sirahwaz.github.io/Control-room/assets/knots-research-infographic.svg"
+
+
+def is_allowed_devto_request(url: str, method: str) -> bool:
+    """Allow only the two DEV.to API routes used by this publisher."""
+    if not isinstance(url, str) or not isinstance(method, str):
+        return False
+    try:
+        parsed = urlsplit(url)
+        if parsed.scheme != "https" or parsed.hostname != "dev.to":
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        if parsed.port not in (None, 443):
+            return False
+        if parsed.netloc not in ("dev.to", "dev.to:443") or parsed.fragment:
+            return False
+
+        verb = method.upper()
+        if verb == "GET":
+            return (
+                parsed.path == "/api/articles/me/published"
+                and parse_qs(parsed.query, keep_blank_values=True) == {"per_page": ["100"]}
+            )
+        if verb == "POST":
+            return parsed.path == "/api/articles" and not parsed.query
+        return False
+    except (TypeError, ValueError):
+        return False
+
+
+def is_allowed_public_image_url(url: str) -> bool:
+    """The readiness probe may fetch only the exact checked-in research image."""
+    return isinstance(url, str) and url == IMAGE_URL
+
+
+class _NoExternalRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            "Redirect blocked by publication endpoint policy",
+            headers,
+            fp,
+        )
+
+
+def _safe_opener():
+    return urllib.request.build_opener(_NoExternalRedirect())
 
 
 def set_output(name: str, value: str) -> None:
@@ -44,9 +93,11 @@ def api_json(url: str, api_key: str, method: str = "GET", payload: dict[str, Any
     headers = {"api-key": api_key, "Accept": "application/json"}
     if body is not None:
         headers["Content-Type"] = "application/json"
+    if not is_allowed_devto_request(url, method):
+        raise ValueError("DEVTO_ENDPOINT_REJECTED")
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=35) as response:
+        with _safe_opener().open(request, timeout=35) as response:
             raw = response.read()
             if len(raw) > 4_000_000:
                 raise RuntimeError("API response exceeded the configured safety bound.")
@@ -59,10 +110,12 @@ def api_json(url: str, api_key: str, method: str = "GET", payload: dict[str, Any
 
 
 def public_image_ready() -> bool:
+    if not is_allowed_public_image_url(IMAGE_URL):
+        return False
     request = urllib.request.Request(IMAGE_URL, headers={"User-Agent": "MIDAD-KNOTS-publication-check/1.0"}, method="GET")
     for attempt in range(1, 7):
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with _safe_opener().open(request, timeout=10) as response:
                 return response.status == 200 and "image/png" in response.headers.get("Content-Type", "").lower()
         except Exception:
             if attempt < 6:
