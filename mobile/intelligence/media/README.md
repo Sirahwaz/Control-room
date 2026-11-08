@@ -5,8 +5,9 @@ This package prepares media job plans. It does not call OpenArt or HeyGen and ca
 ## Existing inputs
 - Nine active reusable creative templates exist in `public.creative_templates`; they require original wording, scenes and calls to action.
 - The active owner voice profile is Arabic, professional/confident, with no false certainty and no invented commitments.
-- Public Arabic HeyGen voices are available in the catalog. Their remaining quota and per-request cost were not exposed by the connector in this audit.
-- OpenArt account balance observed 2026-11-08: 25 credits. Current catalog showed image options from 15 credits, but no video mode affordable at this balance; the cheapest video mode listed was 50 credits.
+- Current HeyGen workspace is on the Free plan. The connector reports both premium and add-on credit balances as `null`, with no verified speech unit quote; all HeyGen synthesis remains blocked until cost and quota are independently measurable.
+- OpenArt workspace is on the Free plan with 25 credits (verified 2026-11-08). The live default catalog shows image options from 10 credits (Kling 3 Omni) and several 15-credit image modes; the cheapest available video mode is 50 credits (PixVerse V6), so no video mode is currently affordable.
+- Provider prices and affordability are volatile. Always refresh the account balance and model catalog immediately before preparing a production job; these figures are a point-in-time snapshot, not hard-coded planner rules.
 
 ## Gate behavior
 - Requires a production brief and explicit rights confirmation.
