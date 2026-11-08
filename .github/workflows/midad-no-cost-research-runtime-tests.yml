@@ -1,0 +1,39 @@
+name: MIDAD No-Cost Research Runtime Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_research_center/**"
+      - "supabase/functions/midad_revenue_intel_research_worker/**"
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-no-cost-research-runtime-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/midad_research_center/**"
+      - "supabase/functions/midad_revenue_intel_research_worker/**"
+      - "supabase/functions/midad_revenue_intelligence_mesh/**"
+      - ".github/workflows/midad-no-cost-research-runtime-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  no-cost-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check research runtime and mesh integration
+        run: |
+          deno check supabase/functions/midad_research_center/index.ts
+          deno check supabase/functions/midad_revenue_intel_research_worker/index.ts
+          deno check supabase/functions/midad_revenue_intelligence_mesh/index.ts
+      - name: Test no-cost research center, worker and mesh integration
+        run: |
+          deno test --allow-read=supabase/functions/midad_research_center supabase/functions/midad_research_center/index_test.ts
+          deno test --allow-read=supabase/functions/midad_revenue_intel_research_worker supabase/functions/midad_revenue_intel_research_worker/index_test.ts
+          deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh supabase/functions/midad_revenue_intelligence_mesh/wide_research_integration_test.ts
