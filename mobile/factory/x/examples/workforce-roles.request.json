@@ -57,7 +57,9 @@
       "mediaPlan": {
         "status": "PENDING_SPEND_APPROVAL",
         "mediaType": "image",
+        "provider": "openart",
         "selected": {
+          "provider": "openart",
           "modelId": "verified-test-image",
           "creditsRequired": 10,
           "affordable": true
