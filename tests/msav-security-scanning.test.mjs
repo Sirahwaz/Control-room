@@ -220,3 +220,38 @@ test('overall scanner coverage is COMPLETE only when all four reports parse with
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('Semgrep error metadata is sanitized and omits raw messages', () => {
+  const privateText = 'DO-NOT-LEAK-SEM-GREP-ERROR-DETAIL';
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-msav-semgrep-error-details-'));
+  try {
+    fs.writeFileSync(path.join(directory, 'semgrep.json'), JSON.stringify({
+      results: [],
+      errors: [{
+        type: 'RuleParseError',
+        code: 42,
+        path: 'tools/rules/custom.yml',
+        spans: [{ start: { line: 9 } }],
+        message: privateText,
+      }],
+    }));
+    fs.writeFileSync(path.join(directory, 'semgrep.exit'), '0\n');
+    const report = buildSanitizedReport({
+      inputDirectory: directory,
+      workspaceRoot: WORKSPACE,
+      repository: 'Sirahwaz/Control-room',
+      commitSha: 'd'.repeat(40),
+    });
+    const semgrep = report.scanners.find(scanner => scanner.name === 'semgrep');
+    assert.equal(semgrep.reportedErrors.length, 1);
+    assert.deepEqual(semgrep.reportedErrors[0], {
+      errorType: 'RuleParseError',
+      code: 42,
+      path: 'tools/rules/custom.yml',
+      line: 9,
+    });
+    assert.equal(JSON.stringify(report).includes(privateText), false);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
