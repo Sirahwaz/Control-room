@@ -35,6 +35,11 @@ test('Trivy excludes secret scanning because Gitleaks owns secret detection', ()
   assert.doesNotMatch(workflow, /--scanners[^\n]*secret/);
 });
 
+test('MSAV runs miner and publisher outbound-endpoint security contract suites', () => {
+  assert.match(workflow, /unittest discover -s tools\/midad-miner-sensor/);
+  assert.match(workflow, /unittest discover -s research -p 'test_publish_knots_security\.py'/);
+});
+
 test('scanner execution is non-blocking, but MSAV contract tests remain a required gate', () => {
   const testStep = workflow.split('      - name: Run MSAV sanitizer contract tests')[1]?.split('      - name: Build sanitized security report')[0] || '';
   assert.match(workflow, /continue-on-error:\s*true/);
