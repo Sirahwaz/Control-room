@@ -259,7 +259,24 @@ const SECRET_CONTENT_RULES = [
   { rule: 'AWS_ACCESS_KEY_ID', pattern: /\bAKIA[0-9A-Z]{16}\b/ },
   { rule: 'SLACK_TOKEN', pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/ },
 ];
-const GENERIC_CREDENTIAL_ASSIGNMENT = /\b(?:[A-Z0-9_]*(?:API[_-]?KEY|ACCESS[_-]?TOKEN|CLIENT[_-]?SECRET|SERVICE[_-]?ROLE[_-]?KEY|PRIVATE[_-]?KEY|PASSWORD|SECRET|TOKEN)[A-Z0-9_]*)\b\s*[:=]\s*["'\x60]([^"'\x60]{24,})["'\x60]/i;
+const GENERIC_CREDENTIAL_ASSIGNMENT = /\b([A-Z][A-Z0-9_]*(?:API[_-]?KEY|ACCESS[_-]?TOKEN|CLIENT[_-]?SECRET|PRIVATE[_-]?KEY|PASSWORD|SECRET|TOKEN))\b\s*[:=]\s*["'\x60]([^"'\x60]{32,})["'\x60]/;
+function shannonEntropy(value) {
+  const counts = new Map();
+  for (const character of value) counts.set(character, (counts.get(character) || 0) + 1);
+  let entropy = 0;
+  for (const count of counts.values()) {
+    const probability = count / value.length;
+    entropy -= probability * Math.log2(probability);
+  }
+  return entropy;
+}
+function looksLikeCredentialValue(value) {
+  const normalized = value.trim();
+  if (PLACEHOLDER_VALUE.test(normalized)) return false;
+  if (/^(?:\$\{\{.*\}\}|\$\{.*\}|https?:\/\/)/i.test(normalized)) return false;
+  if (/^0x[0-9a-f]{40,}$/i.test(normalized)) return false;
+  return new Set(normalized).size >= 10 && shannonEntropy(normalized) >= 3.3;
+}
 const PLACEHOLDER_VALUE = /^(?:YOUR|EXAMPLE|PLACEHOLDER|REPLACE|CHANGEME|DUMMY|TEST|REDACTED|XXX|TODO)(?:[_-]|$)/i;
 const TEXT_EXTENSIONS = new Set([
   '.cjs', '.css', '.csv', '.html', '.ini', '.js', '.json', '.md', '.mjs', '.py',
@@ -278,7 +295,7 @@ export function scanSecretContent(filePath, content) {
       findings.push({ code: 'SECRET_CONTENT', rule: rule.rule, severity: 'error', path: filePath, line: index + 1 });
     }
     const assignment = line.match(GENERIC_CREDENTIAL_ASSIGNMENT);
-    if (!specificMatches.length && assignment && !PLACEHOLDER_VALUE.test(assignment[1].trim())) {
+    if (!specificMatches.length && assignment && looksLikeCredentialValue(assignment[2])) {
       findings.push({ code: 'SECRET_CONTENT', rule: 'GENERIC_CREDENTIAL_ASSIGNMENT', severity: 'error', path: filePath, line: index + 1 });
     }
   }
