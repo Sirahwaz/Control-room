@@ -2,6 +2,17 @@ import { benchmarkAnswerMatches } from "./benchmark-eval.mjs";
 import { resolveAutoPromotableRouteTaskClass } from "./model-promotion-policy.mjs";
 
 const BASE_URL = "https://openrouter.ai/api/v1";
+
+// Discovery is intentionally metadata-only. Inference benchmarks and all route
+// enable/disable/promotion actions require a separate owner-approved change.
+export const OPENROUTER_DISCOVERY_POLICY = Object.freeze({
+  catalogSync: true,
+  endpointMetadataRefresh: true,
+  recommendations: true,
+  providerInference: false,
+  routeReconciliation: false,
+  routePromotion: false
+});
 const clip = (value, max = 500) => String(value ?? "").slice(0, max);
 
 function dataRows(payload) {
@@ -227,7 +238,7 @@ async function refreshRecommendations(db) {
         recommendation_reason: reasons.length ? reasons.join(",") : "matched_model_metadata",
         eligibility_state: eligibility,
         benchmark_state: model.benchmark_state || "not_tested",
-        auto_route_eligible: Boolean(model.account_eligible && model.zdr_eligible && model.free_pricing && model.benchmark_state === "passed"),
+        auto_route_eligible: false,
         metadata: { source: "metadata_heuristics_v1", requires_benchmark: model.benchmark_state !== "passed" }
       });
     }
@@ -451,14 +462,20 @@ export async function runOpenRouterDiscovery({ db, apiKey, source = "manual" }) 
     stage = 'upsert_models';
     const newModels = await upsertModels(db, records);
     stage = 'reconcile_routes';
-    const disabledRoutes = await reconcileOpenRouterRoutes(db);
+    const disabledRoutes = OPENROUTER_DISCOVERY_POLICY.routeReconciliation
+      ? await reconcileOpenRouterRoutes(db)
+      : 0;
     stage = 'refresh_endpoints';
     const endpointResult = await refreshEndpoints(db, apiHeaders, 24);
     stage = 'refresh_recommendations';
     const recommendationResult = await refreshRecommendations(db);
     stage = 'benchmark';
-    const benchmarkResult = await benchmarkOne(db, apiHeaders);
-    const promotionResult = await promoteVerifiedRoutes(db, benchmarkResult);
+    const benchmarkResult = OPENROUTER_DISCOVERY_POLICY.providerInference
+      ? await benchmarkOne(db, apiHeaders)
+      : { state: "PENDING_APPROVAL", inference_called: false };
+    const promotionResult = OPENROUTER_DISCOVERY_POLICY.routePromotion
+      ? await promoteVerifiedRoutes(db, benchmarkResult)
+      : { promoted: 0, reason: "human_approval_required" };
     stage = 'persist_discovery_run';
 
     await db.unsafe(
