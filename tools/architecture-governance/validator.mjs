@@ -38,13 +38,16 @@ function localPathExists(root, relativePath) {
     && fs.existsSync(absolute);
 }
 
-function moduleOwnsPath(module, changedPath) {
-  if (module.repository !== module._currentRepository) return false;
-  return module.paths.some(rawPath => {
+function modulePathSpecificity(module, changedPath) {
+  let specificity = -1;
+  for (const rawPath of module.paths) {
     const ownerPath = normalizeRelativePath(rawPath);
-    if (ownerPath.endsWith('/')) return changedPath.startsWith(ownerPath);
-    return changedPath === ownerPath || changedPath.startsWith(`${ownerPath}/`);
-  });
+    const matches = ownerPath.endsWith('/')
+      ? changedPath.startsWith(ownerPath)
+      : (changedPath === ownerPath || changedPath.startsWith(`${ownerPath}/`));
+    if (matches) specificity = Math.max(specificity, ownerPath.length);
+  }
+  return specificity;
 }
 
 export function validateManifest(manifest, { root = process.cwd() } = {}) {
@@ -118,11 +121,14 @@ export function validateManifest(manifest, { root = process.cwd() } = {}) {
         checks.push({ path: String(rawPath), exists: false });
         continue;
       }
-      const exists = module.repository !== manifest.currentRepository || localPathExists(root, normalized);
-      checks.push({ path: normalized, exists });
-      if (!exists) errors.push(issue('MISSING_MODULE_PATH', `Module ${module.id} path does not exist: ${normalized}`, 'error', normalized));
+      const isLocal = module.repository === manifest.currentRepository;
+      const exists = isLocal ? localPathExists(root, normalized) : null;
+      checks.push({ path: normalized, exists, verificationScope: isLocal ? 'local' : 'external-not-fetched' });
+      if (isLocal && !exists) errors.push(issue('MISSING_MODULE_PATH', `Module ${module.id} path does not exist: ${normalized}`, 'error', normalized));
     }
-    if (module.id) moduleHealth.push({ id: module.id, repository: module.repository, status: checks.every(x => x.exists) ? 'VERIFIED' : 'FAILED', paths: checks });
+    const localModule = module.repository === manifest.currentRepository;
+    const moduleStatus = !localModule ? 'NOT_CHECKED_EXTERNAL' : checks.every(x => x.exists) ? 'VERIFIED' : 'FAILED';
+    if (module.id) moduleHealth.push({ id: module.id, repository: module.repository, status: moduleStatus, verificationScope: localModule ? 'local' : 'external-not-fetched', paths: checks });
   }
 
   const dependencyKeys = new Set();
@@ -180,11 +186,13 @@ export function analyzeImpact(changedPaths, manifest) {
   const directlyChanged = new Set();
   const unmappedPaths = [];
   for (const changedPath of normalizedChanges) {
-    const owners = localModules
-      .filter(module => moduleOwnsPath({ ...module, _currentRepository: manifest.currentRepository }, changedPath))
-      .sort((a, b) => b.paths.reduce((n, p) => Math.max(n, normalizeRelativePath(p).length), 0) - a.paths.reduce((n, p) => Math.max(n, normalizeRelativePath(p).length), 0));
+    const scoredOwners = localModules
+      .map(module => ({ module, specificity: modulePathSpecificity(module, changedPath) }))
+      .filter(item => item.specificity >= 0);
+    const bestSpecificity = scoredOwners.reduce((best, item) => Math.max(best, item.specificity), -1);
+    const owners = scoredOwners.filter(item => item.specificity === bestSpecificity);
     if (owners.length === 0) unmappedPaths.push(changedPath);
-    for (const owner of owners) directlyChanged.add(owner.id);
+    for (const owner of owners) directlyChanged.add(owner.module.id);
   }
 
   const impacted = new Set(directlyChanged);
@@ -309,12 +317,22 @@ export function createProvenanceRecord(env = process.env, manifestContent = '') 
   if (commitSha && !/^[a-f0-9]{40,64}$/i.test(commitSha)) throw new TypeError('GITHUB_SHA must be a 40- to 64-character hexadecimal commit hash');
   const timestamp = env.MIDAD_GOVERNANCE_TIMESTAMP || new Date().toISOString();
   if (Number.isNaN(Date.parse(timestamp))) throw new TypeError('MIDAD_GOVERNANCE_TIMESTAMP must be a valid ISO timestamp');
+  const sourceHeadSha = env.MIDAD_GOVERNANCE_PR_HEAD_SHA || commitSha;
+  const baseSha = env.MIDAD_GOVERNANCE_PR_BASE_SHA || null;
+  for (const [label, sha] of [['MIDAD_GOVERNANCE_PR_HEAD_SHA', sourceHeadSha], ['MIDAD_GOVERNANCE_PR_BASE_SHA', baseSha]]) {
+    if (sha && !/^[a-f0-9]{40,64}$/i.test(sha)) throw new TypeError(`${label} must be a 40- to 64-character hexadecimal commit hash`);
+  }
+  const pullRequestNumber = env.MIDAD_GOVERNANCE_PR_NUMBER ? Number(env.MIDAD_GOVERNANCE_PR_NUMBER) : null;
+  if (pullRequestNumber !== null && (!Number.isInteger(pullRequestNumber) || pullRequestNumber < 1)) throw new TypeError('MIDAD_GOVERNANCE_PR_NUMBER must be a positive integer');
   const runAttempt = env.GITHUB_RUN_ATTEMPT ? Number(env.GITHUB_RUN_ATTEMPT) : 1;
   if (!Number.isInteger(runAttempt) || runAttempt < 1) throw new TypeError('GITHUB_RUN_ATTEMPT must be a positive integer');
   return {
     schemaVersion: 1,
     repository: env.GITHUB_REPOSITORY || 'local',
     commitSha,
+    sourceHeadSha,
+    baseSha,
+    pullRequestNumber,
     ref: env.GITHUB_REF || 'local',
     workflow: env.GITHUB_WORKFLOW || 'local',
     runId: env.GITHUB_RUN_ID || null,
