@@ -143,8 +143,14 @@ jobs:
           console.log('');
           console.log(`Commit: \`${report.commitSha || 'unknown'}\``);
           console.log('');
+          console.log(`Overall coverage: **${report.coverageState || 'UNKNOWN'}**`);
+          console.log('');
           console.log(`Normalized findings: **${report.findingCount}**`);
           console.log('');
+          if (report.coverageState !== 'COMPLETE') {
+            console.log('Coverage is partial. Review scanner states and error counts before treating this run as a complete assessment.');
+            console.log('');
+          }
           console.log('| Scanner | Version | Report state | Findings |');
           console.log('|---|---:|---|---:|');
           for (const scanner of report.scanners) {
