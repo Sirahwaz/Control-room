@@ -28,7 +28,7 @@ export function normalizeReceivedEvent(event: AgentMailEvent) {
       Boolean(clip(message.message_id, 240)) &&
       Boolean(clip(message.inbox_id, 240)) &&
       !labels.some((label) => ["spam", "blocked", "unauthenticated"].includes(label.toLowerCase())) &&
-      (!armor || armor.status === "complete" || armor.status === "unavailable"),
+      (!armor || (armor.status === "complete" && armor.verdict === "clear")),
     event_id: clip(event.event_id, 240),
     message_id: clip(message.message_id, 240),
     inbox_id: clip(message.inbox_id, 240),
@@ -90,6 +90,17 @@ async function agentMailRequest(path: string, method: string, body?: unknown, id
 }
 
 async function processInbound(event: AgentMailEvent) {
+  if (event.event_type === "message.security.completed") {
+    const message = event.message || {};
+    const inboxId = clip(message.inbox_id, 240);
+    const messageId = clip(message.message_id, 240);
+    if (!inboxId || !messageId) return { ok: true, ignored: true, reason: "security_event_identifiers_missing" };
+    const fullMessage = await agentMailRequest(
+      "/inboxes/" + encodeURIComponent(inboxId) + "/messages/" + encodeURIComponent(messageId),
+      "GET",
+    );
+    event = { ...event, event_type: "message.received", message: fullMessage as Record<string, unknown> };
+  }
   const normalized = normalizeReceivedEvent(event);
   if (!normalized.accepted) return { ok: true, ignored: true, reason: "event_not_eligible" };
 
@@ -201,6 +212,9 @@ async function main(req: Request) {
     const event = await verifyWebhook(req, rawBody);
     if (!event) return json({ ok: false, error: "invalid_webhook_signature" }, 401);
     try {
+      if (!["message.received", "message.security.completed"].includes(String(event.event_type))) {
+        return json({ ok: true, ignored: true, reason: "unsupported_event_type" }, 202);
+      }
       const result = await processInbound(event);
       return json(result, 202);
     } catch {
