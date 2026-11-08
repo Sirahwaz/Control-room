@@ -16,9 +16,9 @@ test('MSAV-1 is pull-request and manual only with read-only repository permissio
 test('scanner versions are pinned to reviewed releases', () => {
   assert.match(workflow, /semgrep==1\.184\.0/);
   assert.match(workflow, /ghcr\.io\/gitleaks\/gitleaks:v8\.30\.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb/);
-  assert.match(workflow, /osv-scanner\/v2\/cmd\/osv-scanner@v2\.7\.0/);
+  assert.match(workflow, /ghcr\.io\/google\/osv-scanner:v2\.7\.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0/);
   assert.match(workflow, /aquasec\/trivy:0\.76\.2/);
-  assert.match(workflow, /go-version:\s*["']1\.27\.3["']/);
+  assert.doesNotMatch(workflow, /setup-go@|go-version:|go install/);
 });
 
 test('secret and source-bearing scanner output is never uploaded raw', () => {
