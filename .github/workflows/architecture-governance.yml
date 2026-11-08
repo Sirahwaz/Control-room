@@ -8,16 +8,31 @@ on:
       - "tools/architecture-governance/**"
       - "tests/architecture-governance.test.mjs"
       - ".github/workflows/architecture-governance.yml"
-      - "index.html"
-      - "midad-control-v2.js"
-      - "viabtc.html"
-      - "viabtc-neuralpp-v1.*"
-      - "midad-mobile-control.html"
+      - ".agents/**"
+      - ".codex/**"
+      - ".github/workflows/**"
+      - "assets/**"
+      - "automation-backup/**"
+      - "compute/**"
+      - "docs/**"
+      - "lab/**"
       - "mobile/**"
-      - "compute/mncf/**"
-      - "supabase/functions/**"
+      - "midad_static_egress_gateway/**"
+      - "midad_viabtc_monitor/**"
+      - "research/**"
+      - "revenue/**"
+      - "supabase/**"
       - "tests/**"
-      - "MIDAD_PROVIDER_ADAPTER_CONTRACT.md"
+      - "tools/**"
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "*.mjs"
+      - "*.svg"
+      - "*.webmanifest"
+      - "MIDAD_*"
+      - "REVENUE_*"
+      - "README.md"
   push:
     branches: ["main"]
     paths:
@@ -25,16 +40,31 @@ on:
       - "tools/architecture-governance/**"
       - "tests/architecture-governance.test.mjs"
       - ".github/workflows/architecture-governance.yml"
-      - "index.html"
-      - "midad-control-v2.js"
-      - "viabtc.html"
-      - "viabtc-neuralpp-v1.*"
-      - "midad-mobile-control.html"
+      - ".agents/**"
+      - ".codex/**"
+      - ".github/workflows/**"
+      - "assets/**"
+      - "automation-backup/**"
+      - "compute/**"
+      - "docs/**"
+      - "lab/**"
       - "mobile/**"
-      - "compute/mncf/**"
-      - "supabase/functions/**"
+      - "midad_static_egress_gateway/**"
+      - "midad_viabtc_monitor/**"
+      - "research/**"
+      - "revenue/**"
+      - "supabase/**"
       - "tests/**"
-      - "MIDAD_PROVIDER_ADAPTER_CONTRACT.md"
+      - "tools/**"
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "*.mjs"
+      - "*.svg"
+      - "*.webmanifest"
+      - "MIDAD_*"
+      - "REVENUE_*"
+      - "README.md"
 
 permissions:
   contents: read
@@ -67,15 +97,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          : > "$RUNNER_TEMP/midad-changed-paths.txt"
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-          fi
-          if [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
-          else
-            git ls-tree -r --name-only "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            BASE_SHA="${{ github.event.before }}"
+            if [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+              git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+            else
+              git ls-tree -r --name-only "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+            fi
           fi
 
       - name: Run read-only architecture governance
