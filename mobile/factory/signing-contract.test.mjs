@@ -22,6 +22,6 @@ test("copies signing secrets only into lowercase local shell variables", () => {
 });
 
 test("non-debug release channels fail closed when persistent signing is absent", () => {
-  assert.match(workflow, /if \[ "\$RELEASE_CHANNEL" != "debug" \ ]; then/);
+  assert.ok(workflow.includes('if [ "$RELEASE_CHANNEL" != "debug" ]; then'));
   assert.match(workflow, /Internal, beta and production builds require persistent Android signing secrets/);
 });
