@@ -62,11 +62,11 @@ Deno.test("Jobbi normalization rejects closed claims, expired items and non-HTTP
   const rows = normalizeJobbiJsonFeed({
     items: [
       {
-        id: "closed", title: "Closed claim", url: "https://board.example/closed",
+        id: "closed", title: "Closed claim", url: "https://board.example.org/closed",
         _jobbi: { claims_open: false, reward: { amount: 1, currency: "USDC", rail: "x402" } },
       },
       {
-        id: "expired", title: "Expired claim", url: "https://board.example/expired",
+        id: "expired", title: "Expired claim", url: "https://board.example.org/expired",
         _jobbi: { claims_open: true, expires: "2026-11-07T23:59:59.000Z", reward: { amount: 1, currency: "USDC", rail: "x402" } },
       },
       {
@@ -74,7 +74,7 @@ Deno.test("Jobbi normalization rejects closed claims, expired items and non-HTTP
         _jobbi: { claims_open: true, reward: { amount: 1, currency: "USDC", rail: "x402" } },
       },
       {
-        id: "valid", title: "Open listing", url: "https://board.example/valid",
+        id: "valid", title: "Open listing", url: "https://board.example.org/valid",
         _jobbi: { claims_open: true, expires: "2026-11-09T00:00:00.000Z", reward: { amount: 2, currency: "USDC", rail: "x402" } },
       },
     ],
