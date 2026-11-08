@@ -211,9 +211,39 @@ export function compileWorkforcePlan({
     let requiredApprovals = [...policy.approvals];
     if (agentId === "media-production-agent") {
       const approval = approvals?.[agentId] || {};
-      const missingApprovals = requiredApprovals.filter(name => approval[name] !== true);
-      state = missingApprovals.length ? "BLOCKED_APPROVAL_GATES" : "READY_FOR_HUMAN_REVIEW";
-      requiredApprovals = missingApprovals;
+      const mediaPlan = approval.mediaPlan;
+      const validStatus = mediaPlan?.status === "PENDING_SPEND_APPROVAL" || mediaPlan?.status === "READY_PENDING_EXECUTION";
+      const validImageOrVideoQuote = ["image", "video"].includes(mediaPlan?.mediaType)
+        && mediaPlan?.selected?.affordable === true
+        && Number.isFinite(Number(mediaPlan?.selected?.creditsRequired))
+        && Number(mediaPlan.selected.creditsRequired) >= 0
+        && Number.isFinite(Number(mediaPlan?.spendLimit))
+        && Number(mediaPlan.spendLimit) >= 0
+        && Number(mediaPlan.selected.creditsRequired) <= Number(mediaPlan.spendLimit)
+        && mediaPlan?.rightsConfirmed === true;
+      const audioQuote = mediaPlan?.mediaType === "audio" ? mediaPlan?.verifiedQuote : null;
+      const validAudioQuote = mediaPlan?.mediaType === "audio"
+        && audioQuote?.verified === true
+        && typeof audioQuote?.unit === "string"
+        && audioQuote.unit.trim().length > 0
+        && Number.isFinite(Number(audioQuote?.amount))
+        && Number(audioQuote.amount) >= 0
+        && Number.isFinite(Number(audioQuote?.availableUnits))
+        && Number(audioQuote.availableUnits) >= Number(audioQuote.amount)
+        && approval.rights_confirmed === true;
+      const verifiedCostQuote = mediaPlan?.executionAllowed === false
+        && validStatus
+        && (validImageOrVideoQuote || validAudioQuote);
+      const rightsConfirmed = validImageOrVideoQuote || (validAudioQuote && approval.rights_confirmed === true);
+      requiredApprovals = [];
+      if (!verifiedCostQuote) requiredApprovals.push("verified_cost_quote");
+      if (!rightsConfirmed) requiredApprovals.push("rights_confirmed");
+      if (approval.spend_approved !== true) requiredApprovals.push("spend_approved");
+      state = !verifiedCostQuote || !rightsConfirmed
+        ? "BLOCKED_APPROVAL_GATES"
+        : approval.spend_approved === true
+          ? "READY_FOR_HUMAN_REVIEW"
+          : "PENDING_SPEND_APPROVAL";
     }
 
     tasks.push({
