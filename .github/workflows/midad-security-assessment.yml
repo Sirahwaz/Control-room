@@ -30,31 +30,11 @@ jobs:
           python-version: "3.12"
           check-latest: false
 
-      - name: Set up Go for pinned security scanners
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.27.3"
-          check-latest: false
-
       - name: Install pinned Semgrep Community Edition
         id: install-semgrep
         continue-on-error: true
         run: |
           python -m pip install --disable-pip-version-check --no-compile "semgrep==1.184.0"
-
-      - name: Install pinned OSV-Scanner
-        id: install-osv-scanner
-        continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          mkdir -p "$HOME/go/bin"
-          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.0
-          OSV_INSTALL_STATUS=$?
-          echo "$HOME/go/bin" >> "$GITHUB_PATH"
-          echo "OSV_INSTALL_STATUS=$OSV_INSTALL_STATUS" >> "$GITHUB_ENV"
-          echo "Pinned OSV-Scanner installation attempted; report state will expose missing binaries or reports."
-          exit 0
 
       - name: Prepare private runner-local report directories
         shell: bash
@@ -108,10 +88,14 @@ jobs:
             --report-path /out/gitleaks.sarif \
             --exit-code 0
 
-          run_scanner osv-scanner osv-scanner osv-scanner scan source \
-            --recursive . \
+          run_scanner osv-scanner docker docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
+            --mount "type=bind,src=$RAW,dst=/out" \
+            ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 \
+            scan source \
+            --recursive /src \
             --format json \
-            --output-file "$RAW/osv.json"
+            --output-file /out/osv.json
 
           run_scanner trivy docker docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/work,readonly" \
