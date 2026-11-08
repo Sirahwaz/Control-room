@@ -160,6 +160,7 @@ async function processInbound(event: AgentMailEvent) {
         channel: "agentmail",
         external_message_id: normalized.message_id,
         external_thread_id: normalized.thread_id,
+        inbox_id: normalized.inbox_id,
         client_name: normalized.from,
         contact: normalized.from,
         topic: normalized.subject,
