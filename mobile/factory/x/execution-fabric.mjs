@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { assessAdapterReadiness } from "./adapter-policy.mjs";
 
 const root = process.cwd();
 const requestPath = process.argv[2];
@@ -60,7 +61,8 @@ for (const agentId of requested) {
       : "AUTO_ALLOWED";
 
   const dispatchMode = adapter.execution;
-  const ready = dispatchMode !== "none";
+  const readiness = assessAdapterReadiness(adapter);
+  const ready = readiness.ready;
 
   tasks.push({
     task_id: crypto.createHash("sha256").update(JSON.stringify({
@@ -79,6 +81,8 @@ for (const agentId of requested) {
     },
     adapter:binding.adapter,
     dispatch_mode:dispatchMode,
+    adapter_status:adapter.status ?? "LEGACY_ACTIVE",
+    block_reason:readiness.reason,
     safety,
     parallel_safe:Boolean(agent.parallel_safe),
     fit_score:fitScore,
