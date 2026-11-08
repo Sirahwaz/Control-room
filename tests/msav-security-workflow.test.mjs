@@ -28,6 +28,8 @@ test('secret and source-bearing scanner output is never uploaded raw', () => {
   assert.match(workflow, /Overall coverage: \*\*\$\{report\.coverageState/);
   assert.doesNotMatch(workflow, /path:[^\n]*(msav-raw|gitleaks\\.json|semgrep\.json|osv\.json|trivy\.json)/);
   assert.match(workflow, /rawReportsUploaded:\s*false|msav-sanitize/);
+  assert.match(workflow, /Remove runner-local raw scan data/);
+  assert.match(workflow, /rm -rf "\$RUNNER_TEMP\/msav-raw" "\$RUNNER_TEMP\/msav-trivy-cache"/);
 });
 
 test('Trivy excludes secret scanning because Gitleaks owns secret detection', () => {
