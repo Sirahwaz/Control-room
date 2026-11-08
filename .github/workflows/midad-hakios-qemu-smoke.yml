@@ -52,6 +52,9 @@ jobs:
             ramdisk=prebuilt/userland/hello \
             --cmdline "$ARGS"
 
+      - name: Verify fixed payload memory contract
+        run: node --test compute/mncf/tests/hakios-uefi-payload-memory.test.mjs
+
       - name: Boot HakiOS open kernel under QEMU (bounded smoke)
         working-directory: hakios
         shell: bash
