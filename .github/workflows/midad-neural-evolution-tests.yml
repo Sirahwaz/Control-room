@@ -23,6 +23,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Freshness and bounded concurrency tests
-        run: node --test supabase/functions/midad_neural_evolution/freshness.test.mjs
+        run: node --test supabase/functions/midad_neural_evolution/freshness.test.mjs supabase/functions/midad_neural_evolution/auth-policy.test.mjs supabase/functions/midad_neural_evolution/learning-prior-sanitizer.test.mjs
       - name: Neural Evolution type check
         run: deno check supabase/functions/midad_neural_evolution/index.ts
