@@ -197,7 +197,7 @@ test('overall scanner coverage is COMPLETE only when all four reports parse with
   try {
     const fixtures = {
       'semgrep.json': { results: [], errors: [] },
-      'gitleaks.sarif': { runs: [{ results: [] }] },
+      'gitleaks.json': [],
       'osv.json': { results: [] },
       'trivy.json': { Results: [] },
     };
