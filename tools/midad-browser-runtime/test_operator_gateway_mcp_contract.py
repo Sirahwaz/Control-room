@@ -18,7 +18,7 @@ class BrowserMcpGatewayContractTests(unittest.TestCase):
         self.assertIn('const auth = await resolveBrowserUserOwner(sb, sessionToken);', self.source)
 
         start = self.source.index("if (mcpBridge) {")
-        end = self.source.index("\\n    if (userBridge)", start)
+        end = self.source.index("\n    if (userBridge)", start)
         bridge = self.source[start:end]
         self.assertIn("resolveBrowserUserOwner(sb, sessionToken)", bridge)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", bridge)
@@ -39,7 +39,7 @@ class BrowserMcpGatewayContractTests(unittest.TestCase):
 
     def test_mcp_commands_use_the_authenticated_user_bridge(self):
         start = self.source.index("if (mcpBridge) {")
-        end = self.source.index("\\n    if (userBridge)", start)
+        end = self.source.index("\n    if (userBridge)", start)
         bridge = self.source[start:end]
         self.assertIn("unknown_browser_tool", bridge)
         self.assertIn('body: JSON.stringify({ action: "user_bridge", subaction, token: sessionToken, ...extra })', bridge)
