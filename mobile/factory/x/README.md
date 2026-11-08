@@ -57,3 +57,8 @@ Factory decisions and outcomes feed the existing MIDAD control plane when enable
 ## Current phase
 
 Foundation implementation. SignalScan v0.2 remains the known-good baseline and is not rebuilt until Factory X passes its own self-test.
+
+
+## Neural++ workforce role planning
+
+`plan.mjs` now optionally compiles explicit `workforce_agent_ids` through `workforce-runtime.mjs` and includes the result in `runtime-plan.json`. The wallet, offer and media roles are plan-only: no adapter/provider dispatch, signing, live orders, customer sends or provider spend. Media plans require a verified planner quote, rights confirmation and a separate spend approval before becoming human-review-ready. The plan remains non-executable even after approval.
