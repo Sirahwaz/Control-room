@@ -25,6 +25,13 @@ class RestartApprovalContractTests(unittest.TestCase):
     def test_accepts_restart_with_current_per_action_approval_and_both_safety_gates(self):
         self.assertTrue(is_valid_restart_approval(self.command, now=self.now))
 
+    def test_accepts_approval_without_expiry_when_cloud_record_has_no_expiry(self):
+        command = {
+            **self.command,
+            "approval": {**self.command["approval"], "expires_at": None},
+        }
+        self.assertTrue(is_valid_restart_approval(command, now=self.now))
+
     def test_rejects_restart_without_action_identity(self):
         command = {**self.command}
         command.pop("action_id")
