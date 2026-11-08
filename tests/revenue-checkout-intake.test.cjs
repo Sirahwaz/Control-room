@@ -11,7 +11,7 @@ test('checkout email is required in the UI and validated before creating an orde
   assert.match(html, /<input id="customerEmail" name="customer_email" type="email"[^>]*required aria-required="true" aria-describedby="emailHint"/);
   assert.match(html, /emailInput\.checkValidity\(\)/);
   assert.match(html, /emailInput\?\.reportValidity\(\)/);
-  assert.doesNotMatch(html, /emailLabel'\)\+\s*'<span class="optional">/);
+  assert.ok(!html.includes("esc(tr('emailLabel'))+' <span class=\"optional\">"));
 });
 
 test('all six supported locales describe email as required, never optional', () => {
@@ -30,7 +30,7 @@ test('frontend intake contract matches the backend email requirement', () => {
 });
 
 test('public revenue page inline JavaScript remains syntactically valid', () => {
-  const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)]
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
     .map((match) => match[1]).filter(Boolean);
   assert.equal(scripts.length, 1);
   scripts.forEach((script, index) => {
