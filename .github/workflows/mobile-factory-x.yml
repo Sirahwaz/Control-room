@@ -73,6 +73,9 @@ jobs:
           node --check mobile/factory/x/execution-engine.mjs
           node --check mobile/factory/x/execution-fabric.mjs
 
+      - name: Workforce role runtime contract tests
+        run: node --test mobile/factory/x/tests/*.test.mjs
+
       - name: Factory contract registration
         run: |
           node - <<'NODE'
