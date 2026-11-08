@@ -22,7 +22,7 @@ test('scanner versions are pinned to reviewed releases', () => {
 });
 
 test('secret and source-bearing scanner output is never uploaded raw', () => {
-  assert.match(workflow, /gitleaks git[\s\S]*--redact/);
+  assert.match(workflow, /gitleaks:v8\.30\.1[\s\S]*\n\s+git\s+[\s\S]*--redact/);
   assert.match(workflow, /msav-sanitize\.mjs/);
   assert.match(workflow, /security-report\.json/);
   assert.doesNotMatch(workflow, /path:[^\n]*(msav-raw|gitleaks\.sarif|semgrep\.json|osv\.json|trivy\.json)/);
@@ -34,8 +34,10 @@ test('Trivy excludes secret scanning because Gitleaks owns secret detection', ()
   assert.doesNotMatch(workflow, /--scanners[^\n]*secret/);
 });
 
-test('MSAV-1 is non-blocking and stores the sanitized report for a short retention period', () => {
+test('scanner execution is non-blocking, but MSAV contract tests remain a required gate', () => {
+  const testStep = workflow.split('      - name: Run MSAV sanitizer contract tests')[1]?.split('      - name: Build sanitized security report')[0] || '';
   assert.match(workflow, /continue-on-error:\s*true/);
+  assert.doesNotMatch(testStep, /continue-on-error:\s*true/);
   assert.match(workflow, /if:\s*always\(\)/);
   assert.match(workflow, /retention-days:\s*7/);
 });
