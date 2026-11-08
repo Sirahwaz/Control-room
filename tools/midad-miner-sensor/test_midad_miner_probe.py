@@ -1,7 +1,9 @@
 import unittest
 from datetime import datetime, timezone
 
-from midad_miner_probe import is_valid_restart_approval, is_valid_midad_endpoint
+from midad_miner_probe import is_valid_restart_approval, is_valid_midad_endpoint, _NoMidadRedirect
+import urllib.error
+import urllib.request
 
 
 class RestartApprovalContractTests(unittest.TestCase):
@@ -139,6 +141,21 @@ class MinerEndpointPolicyTests(unittest.TestCase):
         for url in urls:
             with self.subTest(url=url):
                 self.assertFalse(is_valid_midad_endpoint(url, "midad_miner_telemetry_ingest"))
+
+    def test_redirect_handler_rejects_redirects_instead_of_following_them(self):
+        handler = _NoMidadRedirect()
+        request = urllib.request.Request(
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest"
+        )
+        with self.assertRaises(urllib.error.HTTPError):
+            handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {},
+                "https://evil.example/collect",
+            )
 
     def test_rejects_malformed_urls(self):
         for url in ("", "not-a-url", "https://", "https://[::1]/functions/v1/midad_miner_telemetry_ingest"):
