@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/functions/midad_agentmail_gateway/**"
+      - "supabase/functions/midad_client_gateway/**"
       - ".github/workflows/agentmail-gateway.yml"
   push:
     branches: [main, 'feat/**']
@@ -25,6 +26,6 @@ jobs:
       - name: Lint
         run: deno lint supabase/functions/midad_agentmail_gateway
       - name: Type check
-        run: deno check supabase/functions/midad_agentmail_gateway/index.ts supabase/functions/midad_agentmail_gateway/index_test.ts
+        run: deno check --config supabase/functions/midad_agentmail_gateway/deno.json supabase/functions/midad_agentmail_gateway/index.ts supabase/functions/midad_agentmail_gateway/index_test.ts supabase/functions/midad_client_gateway/index.ts
       - name: Unit tests
         run: deno test supabase/functions/midad_agentmail_gateway/index_test.ts
