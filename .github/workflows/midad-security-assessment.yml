@@ -122,6 +122,11 @@ jobs:
         run: |
           python -m unittest discover -s tools/midad-miner-sensor -p 'test_*.py' -v
 
+      - name: Run DEV.to publisher endpoint security tests
+        id: publisher-security-tests
+        run: |
+          python -m unittest discover -s research -p 'test_publish_knots_security.py' -v
+
       - name: Build sanitized security report
         id: sanitize
         if: always()
