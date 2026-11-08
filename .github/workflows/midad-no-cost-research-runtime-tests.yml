@@ -36,4 +36,5 @@ jobs:
         run: |
           deno test --allow-read=supabase/functions/midad_research_center supabase/functions/midad_research_center/index_test.ts
           deno test --allow-read=supabase/functions/midad_revenue_intel_research_worker supabase/functions/midad_revenue_intel_research_worker/index_test.ts
+          deno test supabase/functions/midad_research_center/search-result-parser.test.ts
           deno test --allow-read=supabase/functions/midad_revenue_intelligence_mesh supabase/functions/midad_revenue_intelligence_mesh/wide_research_integration_test.ts
