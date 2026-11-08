@@ -1,0 +1,30 @@
+name: AgentMail Gateway
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_agentmail_gateway/**"
+      - ".github/workflows/agentmail-gateway.yml"
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - "supabase/functions/midad_agentmail_gateway/**"
+      - ".github/workflows/agentmail-gateway.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Lint
+        run: deno lint supabase/functions/midad_agentmail_gateway
+      - name: Type check
+        run: deno check --config supabase/functions/midad_agentmail_gateway/deno.json supabase/functions/midad_agentmail_gateway/index.ts supabase/functions/midad_agentmail_gateway/index_test.ts
+      - name: Unit tests
+        run: deno test supabase/functions/midad_agentmail_gateway/index_test.ts
