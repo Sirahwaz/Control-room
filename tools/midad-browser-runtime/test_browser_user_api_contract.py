@@ -15,7 +15,7 @@ class BrowserUserApiContractTests(unittest.TestCase):
         self.assertIn('if (!authorized(req) && !userBridge && !mcpBridge)', self.source)
         self.assertIn('browser_user_origin_not_allowed', self.source)
         start = self.source.index("if (mcpBridge) {")
-        end = self.source.index("\\n    if (userBridge)", start)
+        end = self.source.index("\n    if (userBridge)", start)
         mcp = self.source[start:end]
         self.assertIn("resolveBrowserUserOwner(sb, sessionToken)", mcp)
         self.assertIn('if (!auth.ok)', mcp)
