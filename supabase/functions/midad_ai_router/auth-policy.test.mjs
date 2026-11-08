@@ -38,3 +38,6 @@ test("rejects missing, empty and mismatched credentials", () => {
     { autonomyHeader: "autonomy-secret", autonomySecret: "" }
   ]) assert.equal(resolveAIRouterAuthMode(input), "unauthorized");
 });
+
+// Pull the caller/source integration contract into the existing AI Router test gate.
+import "../../../tests/ai-router-caller-auth-contract.test.mjs";
