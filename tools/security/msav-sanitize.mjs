@@ -230,10 +230,17 @@ export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository
 
     const normalized = spec.sanitize(loaded.data, workspaceRoot);
     findings.push(...normalized.findings);
+    const status = exitCode === null
+      ? 'REPORT_PARSED_EXIT_UNKNOWN'
+      : exitCode !== 0
+        ? 'REPORT_PARSED_NONZERO_EXIT'
+        : normalized.reportedErrorCount > 0
+          ? 'REPORT_PARSED_WITH_ERRORS'
+          : 'REPORT_PARSED';
     scanners.push({
       name: spec.name,
-      version: TOOL_VERSIONS[spec.statusKey || spec.name],
-      status: exitCode === null ? 'REPORT_PARSED_EXIT_UNKNOWN' : exitCode === 0 ? 'REPORT_PARSED' : 'REPORT_PARSED_NONZERO_EXIT',
+      version: TOOL_VERSIONS[spec.versionKey || spec.name],
+      status,
       exitCode,
       findings: normalized.findings.length,
       reportedErrorCount: normalized.reportedErrorCount,
