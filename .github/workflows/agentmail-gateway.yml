@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "supabase/functions/midad_client_gateway/agentmail*"
+      - "supabase/functions/midad_client_gateway/index.ts"
+      - "supabase/functions/midad_client_gateway/deno.json"
       - ".github/workflows/agentmail-gateway.yml"
   push:
     branches: [main, 'feat/**']
