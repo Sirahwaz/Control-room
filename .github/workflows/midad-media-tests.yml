@@ -1,0 +1,23 @@
+name: MIDAD Media Budget and Rights Gate Tests
+on:
+  pull_request:
+    paths:
+      - "mobile/intelligence/media/**"
+      - ".github/workflows/midad-media-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mobile/intelligence/media/**"
+      - ".github/workflows/midad-media-tests.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Media budget and rights tests
+        run: node --test mobile/intelligence/media/media-planner.test.mjs
