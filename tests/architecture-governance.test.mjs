@@ -249,7 +249,7 @@ test('checks the current repository license and keeps external repositories expl
   const { auditLicenses } = await import('../tools/architecture-governance/validator.mjs');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-license-'));
   try {
-    fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\\nPermission is hereby granted');
+    fs.writeFileSync(path.join(root, 'LICENSE'), 'MIT License\\nPermission is hereby granted, free of charge');
     const result = auditLicenses(root, {
       currentRepository: 'local',
       repositories: [

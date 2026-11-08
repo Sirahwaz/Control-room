@@ -68,7 +68,9 @@ Unknown changed paths are reported rather than silently assigned to a guessed mo
 | Unknown repository/module reference | Error | Fails governance checks |
 | Missing local dependency evidence | Error | Fails governance checks |
 | Unsafe absolute/traversal path | Error | Fails governance checks |
-| Secret-like filename (`.env`, private key/certificate names) | Error | Fails governance checks |\n| High-confidence secret content (provider tokens, private-key headers, credential assignments) | Error | Reports path/line/rule only; never stores or prints matched values |\n| File over the 1 MiB content-scan ceiling | Warning | Explicitly reports that the file was not content-scanned |
+| Secret-like filename (`.env`, private key/certificate names) | Error | Fails governance checks |
+| High-confidence secret content (provider tokens, private-key headers, credential assignments) | Error | Reports path/line/rule only; never stores or prints matched values |
+| File over the 1 MiB content-scan ceiling | Warning | Explicitly reports that the file was not content-scanned |
 | Unowned file in a managed root | Error | Fails governance checks |
 | Unowned root-level app asset | Warning | Report for classification |
 | Generated/cache path | Warning | Report only; never deletes it |
@@ -77,7 +79,9 @@ Unknown changed paths are reported rather than silently assigned to a guessed mo
 
 The scanner deliberately excludes `.env.example` and `.env.template` from secret-like filename findings and ignores placeholder credential values. Content scanning covers text files up to 1 MiB and detects high-confidence token/private-key patterns plus credential-looking assignments. Findings contain only rule ID, path and line number; matched values are never emitted. This is a pragmatic built-in detector, not a guarantee of zero leaked credentials or a replacement for a dedicated enterprise secret scanner. Files over the size ceiling are reported as not scanned.
 
-Duplicate-content findings are not deletion instructions. The audit now records in-repository references to each duplicate path and labels files with no internal references as `NO_INTERNAL_REFERENCE_FOUND_EXTERNAL_UNVERIFIED`; external bookmarks, Telegram Mini Apps, caches and clients remain outside repository visibility. No files are deleted or renamed.\n\nThe license audit checks the current repository root for `LICENSE`/`COPYING` and, when present, classifies a supported SPDX identifier against the registry declaration. Other repositories remain `NOT_CHECKED_EXTERNAL` during this local CI job. A missing root license is a warning for an owner decision, not an automatically assigned license.
+Duplicate-content findings are not deletion instructions. The audit now records in-repository references to each duplicate path and labels files with no internal references as `NO_INTERNAL_REFERENCE_FOUND_EXTERNAL_UNVERIFIED`; external bookmarks, Telegram Mini Apps, caches and clients remain outside repository visibility. No files are deleted or renamed.
+
+The license audit checks the current repository root for `LICENSE`/`COPYING` and, when present, classifies a supported SPDX identifier against the registry declaration. Other repositories remain `NOT_CHECKED_EXTERNAL` during this local CI job. A missing root license is a warning for an owner decision, not an automatically assigned license.
 
 ## Change Impact
 
