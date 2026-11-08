@@ -4,8 +4,6 @@ create table if not exists public.midad_agentmail_events (
   inbox_id text not null,
   message_id text not null,
   thread_id text,
-  sender text,
-  subject text,
   status text not null default 'received'
     check (status in ('received', 'processing', 'processed', 'failed')),
   metadata jsonb not null default '{}'::jsonb,
