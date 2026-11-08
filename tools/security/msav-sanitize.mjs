@@ -253,9 +253,14 @@ export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository
     || String(a.ruleId || a.advisoryId).localeCompare(String(b.ruleId || b.advisoryId))
     || (a.startLine || 0) - (b.startLine || 0));
 
+  const coverageState = scanners.every(scanner => scanner.status === 'REPORT_PARSED')
+    ? 'COMPLETE'
+    : 'PARTIAL';
+
   return {
     schemaVersion: 1,
     reportType: 'midad-msav-sanitized-security-scan',
+    coverageState,
     generatedAt: new Date().toISOString(),
     repository: cleanText(repository, 200) || 'unknown',
     commitSha: /^[a-f0-9]{40,64}$/i.test(commitSha || '') ? commitSha : null,
