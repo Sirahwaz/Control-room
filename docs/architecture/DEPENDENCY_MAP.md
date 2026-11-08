@@ -17,6 +17,9 @@ flowchart LR
   CI[GitHub workflows]
   G0[GENESIS-0 optional bridge]
   POLICY[Control Room policy references]
+  GOVREG[Governance registry]
+  GOVTOOL[Governance validator and CLI]
+  GOVTEST[Governance contract tests]
 
   ENTRY -->|runtime load| UI
   ENTRY -->|PWA registration| PWA
@@ -27,6 +30,10 @@ flowchart LR
   TESTS -->|contract tests| MOBILE
   CI -->|build and path triggers| MOBILE
   G0 -.->|documented boundary only| POLICY
+  GOVTOOL -->|manifest consumption| GOVREG
+  GOVTEST -->|contract tests| GOVTOOL
+  CI -->|governance run| GOVTOOL
+  CI -->|governance tests| GOVTEST
 ```
 
 ## Edge interpretation
@@ -42,6 +49,10 @@ flowchart LR
 | Repository tests | Mobile Factory | Contract tests | `tests/mobile-factory-version-contract.test.mjs` reads the product manifest/package | Yes |
 | GitHub workflows | Mobile Factory | Build/path triggers | `midad-mobile-android.yml` filters `mobile/**` and renders the product | Yes |
 | GENESIS-0 bridge | Control Room policy references | Documented optional boundary | `midad-genesis0/MIDAD_INTEGRATION.md` describes the bounded handoff and says it is not production-connected | No |
+| Governance tooling | Governance registry | Manifest consumption | `tools/architecture-governance/cli.mjs` reads `architecture/governance/manifest.json` | Yes |
+| Governance tests | Governance tooling | Contract tests | `tests/architecture-governance.test.mjs` imports the validator and impact/audit functions | Yes |
+| GitHub workflows | Governance tooling and tests | CI execution | `architecture-governance.yml` runs the CLI and test suite | Yes |
+| Architecture docs | Governance registry | Documentation | `ARCHITECTURE_GOVERNANCE.md` describes the registry and validation contract | No |
 
 ## Intentionally isolated projects
 
