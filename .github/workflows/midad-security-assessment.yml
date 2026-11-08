@@ -160,13 +160,32 @@ jobs:
             console.log('Coverage is partial. Review scanner states and error counts before treating this run as a complete assessment.');
             console.log('');
           }
-          console.log('| Scanner | Version | Report state | Findings |');
-          console.log('|---|---:|---|---:|');
+          console.log('| Scanner | Version | Report state | Findings | Internal errors |');
+          console.log('|---|---:|---|---:|---:|');
           for (const scanner of report.scanners) {
-            console.log(`| ${scanner.name} | ${scanner.version} | ${scanner.status} | ${scanner.findings} |`);
+            console.log(`| ${scanner.name} | ${scanner.version} | ${scanner.status} | ${scanner.findings} | ${scanner.reportedErrorCount || 0} |`);
           }
           console.log('');
-          console.log('Raw reports and source snippets are not uploaded. Secret values are excluded from the normalized report.');
+          const semgrep = report.scanners.find(scanner => scanner.name === 'semgrep');
+          if (semgrep?.reportedErrors?.length) {
+            console.log('### Sanitized Semgrep diagnostics');
+            console.log('');
+            for (const error of semgrep.reportedErrors) {
+              console.log(`- ${error.errorType} ${error.code ?? ''} ${error.path || '<unknown path>'}${error.line ? ':' + error.line : ''}`);
+            }
+            console.log('');
+          }
+          const gitleaks = report.findings.filter(item => item.scanner === 'gitleaks');
+          const presentInHead = gitleaks.filter(item => item.presentInHead === true).length;
+          const absentFromHeadPath = gitleaks.filter(item => item.presentInHead === false).length;
+          const headUnknown = gitleaks.length - presentInHead - absentFromHeadPath;
+          console.log('### Gitleaks triage');
+          console.log('');
+          console.log(`- Present in current HEAD at reported path: **${presentInHead}**`);
+          console.log(`- Not present in current HEAD at reported path: **${absentFromHeadPath}**`);
+          console.log(`- Current presence not comparable: **${headUnknown}**`);
+          console.log('');
+          console.log('Presence is a triage signal, not proof of a live credential. Historical findings still require exposure review. Raw reports, source snippets and secret values are not uploaded.');
           NODE
           else
             echo "## MIDAD Security Assessment — MSAV-1" >> "$GITHUB_STEP_SUMMARY"
