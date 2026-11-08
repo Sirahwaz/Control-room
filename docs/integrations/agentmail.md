@@ -25,12 +25,12 @@ Set these through Supabase Edge Function Secrets, never GitHub or browser code:
 - Only minimal event metadata is stored in `midad_agentmail_events`; message content remains in the existing MIDAD conversation/message workflow.
 - Webhook retries receive a non-success response when MIDAD processing fails.
 - Incoming content is data, not trusted instructions.
-- Outbound sending is deliberately excluded until the MIDAD approval ledger has an explicit email-send approval contract.
+- Outbound replies use the existing MIDAD client-message approval record; the send request carries an idempotency key derived from the approval ID. Failed delivery leaves the approval pending for retry.
 
 ## Deployment sequence
 1. Apply `20261108070000_midad_agentmail_events.sql`.
 2. Set the required Edge Function secrets.
-3. Deploy `midad_agentmail_gateway` with JWT verification disabled only for the webhook endpoint; Svix verification is mandatory there, while admin routes require the separate admin key.
+3. Deploy `midad_agentmail_gateway` with JWT verification disabled; Svix verification is mandatory on the webhook route, and inbox provisioning requires the separate admin key. Redeploy `midad_client_gateway` with the same `AGENTMAIL_API_KEY` secret to enable approval-gated replies.
 4. Create one inbox with deterministic `client_id`.
 5. Register an AgentMail webhook for both `message.received` and `message.security.completed`, then store its Svix secret.
 6. Verify health, signature rejection, duplicate delivery, and inbound draft creation before enabling live use.
