@@ -274,12 +274,3 @@ test('checks the current repository license and keeps external repositories expl
     assert.equal(result.issues.length, 0);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
- + '{{ secrets.GITHUB_TOKEN }}"',
-    'API_KEY="https://example.invalid/this-is-a-public-url-not-a-secret"',
-    'TOKEN="0x' + 'a'.repeat(40) + '"',
-    'apiKey: "A readable translation label describing the API key"',
-  ].join(String.fromCharCode(10));
-  const genericFindings = scanSecretContent('runtime.env', mixedContent);
-  assert.deepEqual(genericFindings.map(x => x.rule), ['GENERIC_CREDENTIAL_ASSIGNMENT']);
-  assert.equal(JSON.stringify(genericFindings).includes(genericCredential), false);
-});
