@@ -3,6 +3,12 @@ on:
   pull_request:
     paths:
       - "supabase/functions/midad_ai_router/**"
+      - "supabase/functions/midad_control_room/**"
+      - "supabase/functions/midad_orchestrator/**"
+      - "supabase/functions/midad_omni_agent_gateway/**"
+      - "supabase/functions/generate_campaign/**"
+      - "supabase/functions/midad_model_gateway_v3/**"
+      - "tests/ai-router-caller-auth-contract.test.mjs"
       - ".github/workflows/midad-ai-router-tests.yml"
   push:
     branches: [main]
@@ -23,6 +29,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Public route policy contract tests
-        run: node --test supabase/functions/midad_ai_router/public-routing-policy.test.mjs supabase/functions/midad_ai_router/fallback-policy.test.mjs supabase/functions/midad_ai_router/auth-policy.test.mjs
+        run: node --test supabase/functions/midad_ai_router/public-routing-policy.test.mjs supabase/functions/midad_ai_router/fallback-policy.test.mjs supabase/functions/midad_ai_router/auth-policy.test.mjs tests/ai-router-caller-auth-contract.test.mjs
       - name: AI Router type check
         run: deno check supabase/functions/midad_ai_router/index.ts
