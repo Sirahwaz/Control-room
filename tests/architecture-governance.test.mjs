@@ -197,3 +197,14 @@ test('prefers the most specific module owner over a broad parent module path', (
     assert.deepEqual(result.directlyChangedModules, ['architecture-governance-tooling']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+
+test('maps governance registry changes to their dedicated module owner', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-governance-registry-impact-'));
+  try {
+    const manifest = fixture(root);
+    const result = analyzeImpact(['architecture/governance/manifest.json'], manifest);
+    assert.deepEqual(result.directlyChangedModules, ['governance-registry']);
+    assert.deepEqual(result.unmappedPaths, []);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
