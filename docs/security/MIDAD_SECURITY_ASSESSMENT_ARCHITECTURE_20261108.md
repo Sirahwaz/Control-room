@@ -185,7 +185,7 @@ Only after the earlier tracks are established: narrowly scoped service discovery
 | Gate | Work | Acceptance evidence | Initial status |
 |---|---|---|---|
 | MSAV-0 — Baseline | Preserve RE Lab; inventory tools, CI, target assets and report paths | Source hash, tests, workflow and asset inventory | PARTIAL — source reviewed; fresh run not yet evidenced |
-| MSAV-1 — Repo supply-chain | Add Semgrep, Gitleaks, OSV-Scanner and Trivy to a non-blocking CI branch | Pinned versions, test fixtures, SARIF/JSON, redaction tests, no secrets uploaded | PENDING |
+| MSAV-1 — Repo supply-chain | Add Semgrep, Gitleaks, OSV-Scanner and Trivy to a non-blocking CI branch | Pinned scanner execution, path/secret sanitization, 11 passing contract tests, sanitized artifact | PARTIAL — execution and tests verified; Semgrep rule errors and finding triage remain |
 | MSAV-2 — Case/report contract | Define versioned case, finding, evidence and retest schemas | Schema validation; state and failure semantics; artifact hashes | PENDING |
 | MSAV-3 — Web/API passive | ZAP Baseline + endpoint inventory + API contract/auth matrix | Owned staging target, allowlist proof, passive report and reviewed findings | PENDING |
 | MSAV-4 — Mobile | Extend static checks; test MobSF in disposable runner | APK hash, MASVS mapping, emulator/network isolation proof | PENDING |
@@ -195,6 +195,24 @@ Only after the earlier tracks are established: narrowly scoped service discovery
 | MSAV-8 — Service readiness | Human review, reporting templates, pricing/scope boundaries and operating handbook | Sample engagement on a lab target; independent quality review; limitations stated | PENDING |
 
 A gate is VERIFIED only when its acceptance evidence exists. Do not promote a documentation plan or a green unit-test run into proof that a live asset has been assessed.
+
+### MSAV-1 execution evidence — 2026-11-08
+
+The MSAV-1 workflow executed on the feature branch in GitHub Actions. The most recent completed baseline run before the Semgrep-status refinement produced the following sanitized result:
+
+| Scanner | Version | Exit | Normalized observations | State / limitation |
+|---|---:|---:|---:|---|
+| Semgrep CE | 1.184.0 | 0 | 8 (2 ERROR, 6 WARNING) | 4 scanner/rule errors were also reported; treat coverage as PARTIAL, not a clean scan |
+| Gitleaks | 8.30.1 | 0 | 86 secret-pattern matches | 50 distinct path/rule/line locations after deduplicating 36 repeated entries; each match requires triage before calling it a secret |
+| OSV-Scanner | 2.7.0 | 0 | 0 known advisories returned | Lockfiles/dependency sources found by this run only; not a general guarantee of dependency safety |
+| Trivy | 0.76.2 | 0 | 3 LOW misconfiguration observations | All three were DS-0026 missing Docker HEALTHCHECK observations; evaluate service-appropriate probes before changing images |
+
+The sanitized artifact contains 97 normalized observations. It contains no raw scanner output, source snippets or secret values. The Gitleaks report includes known non-secret patterns such as public Supabase `anon` client configuration, public token-contract addresses, test fixtures and a static mesh identifier; this does not justify a broad suppression rule. Historical findings whose paths are no longer present in the current checkout remain pending review, because absence from the current tree does not prove that an old value was never exposed.
+
+The MSAV contract suite was subsequently made blocking and completed with **11/11 tests passing**. A follow-up regression test now requires Semgrep reports with non-zero internal error counts to be labelled `REPORT_PARSED_WITH_ERRORS`; that status refinement is committed but still requires its own post-change CI run before being marked verified.
+
+Run evidence: [MSAV-1 GitHub Actions run](https://github.com/Sirahwaz/Control-room/actions/runs/42520136431) · [Draft PR #221](https://github.com/Sirahwaz/Control-room/pull/221).
+
 
 ## 9. Current live security baseline — 2026-11-08
 
