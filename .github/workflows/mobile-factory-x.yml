@@ -71,6 +71,8 @@ jobs:
           node --check mobile/factory/x/plan.mjs
           node --check mobile/factory/x/preflight.mjs
           node --check mobile/factory/x/execution-engine.mjs
+          node --check mobile/factory/x/workforce-runtime.mjs
+          node --check mobile/factory/x/plan.mjs
           node --check mobile/factory/x/execution-fabric.mjs
 
       - name: Workforce role runtime contract tests
