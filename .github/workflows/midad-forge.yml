@@ -68,6 +68,7 @@ jobs:
     needs: [claim, prepare]
     if: needs.prepare.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -75,6 +76,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Setup Node 24 for MIDAD Linux Worker
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: Download Forge manifest
         uses: actions/download-artifact@v4
@@ -99,36 +105,12 @@ jobs:
             printf '%s' "$content" > "$path"
           done
 
-      - name: Build and test generated app
-        id: verify
+      - name: Run bounded MIDAD Linux Worker
+        id: worker
         shell: bash
         run: |
-          set +e
-          target_dir="$(jq -r '.manifest.target_dir' forge.json)"
-          report='{}'
-          install=0; lint=0; test=0; build=0
-          if [ -f "$target_dir/package.json" ]; then
-            (cd "$target_dir" && npm install --ignore-scripts --no-audit --no-fund) > install.log 2>&1 || install=1
-            (cd "$target_dir" && npm run lint --if-present) > lint.log 2>&1 || lint=1
-            (cd "$target_dir" && npm run test --if-present) > test.log 2>&1 || test=1
-            (cd "$target_dir" && npm run build --if-present) > build.log 2>&1 || build=1
-          fi
-          report="$(jq -n             --argjson install "$install"             --argjson lint "$lint"             --argjson test "$test"             --argjson build "$build"             --arg target "$target_dir"             '{target_dir:$target,install_failed:($install==1),lint_failed:($lint==1),test_failed:($test==1),build_failed:($build==1)}')"
-          printf '%s' "$report" > forge-build-report.json
-          mkdir -p forge-output
-          cp forge.json forge-output/
-          cp forge-build-report.json forge-output/
-          # The app workspace must be included even when it has no package.json.
-          # Remove transient installed dependencies so they never enter the publish artifact.
-          rm -rf "$target_dir/node_modules"
-          cp -R "$target_dir" forge-output/
-          if [ ! -d "forge-output/$target_dir" ] && [ ! -d "forge-output/$(basename "$target_dir")" ]; then
-            echo "::error::Generated app directory was not included in the build artifact"
-            exit 25
-          fi
-          if [ "$install" -ne 0 ] || [ "$lint" -ne 0 ] || [ "$test" -ne 0 ] || [ "$build" -ne 0 ]; then
-            exit 1
-          fi
+          set -euo pipefail
+          node compute/mncf/runtime/worker.mjs --manifest forge.json --output forge-output
 
       - name: Upload Forge build artifact
         if: always()
@@ -156,12 +138,24 @@ jobs:
 
       # Download only after checkout: checkout's clean step otherwise deletes forge-output.
       - name: Download Forge artifact
-        if: needs.build.result == 'success'
+        if: always()
         uses: actions/download-artifact@v4
         with:
           name: midad-forge-build
           path: forge-output
         continue-on-error: true
+
+      - name: Preserve Forge build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f forge-output/forge-build-report.json ]; then
+            cp forge-output/forge-build-report.json "$RUNNER_TEMP/midad-forge-build-report.json"
+          fi
+          if [ -f forge-output/forge-artifact-manifest.json ]; then
+            cp forge-output/forge-artifact-manifest.json "$RUNNER_TEMP/midad-forge-artifact-manifest.json"
+          fi
 
       - name: Publish branch and pull request
         if: needs.build.result == 'success'
@@ -247,6 +241,9 @@ jobs:
             pr_url=""
           fi
           report='{}'
-          if [ -f forge-output/forge-build-report.json ]; then report="$(cat forge-output/forge-build-report.json)"; fi
+          if [ -f "$RUNNER_TEMP/midad-forge-build-report.json" ]; then report="$(cat "$RUNNER_TEMP/midad-forge-build-report.json")"; fi
+          artifact_manifest='{}'
+          if [ -f "$RUNNER_TEMP/midad-forge-artifact-manifest.json" ]; then artifact_manifest="$(cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json")"; fi
+          report="$(jq --argjson artifact_manifest "$artifact_manifest" '. + {artifact_manifest:$artifact_manifest}' <<<"$report")"
           body="$(jq -n             --arg action "complete"             --arg run_id "${{ needs.claim.outputs.run_id }}"             --arg status "$status"             --arg commit_sha "$commit_sha"             --arg pr_url "$pr_url"             --argjson build_report "$report"             '{action:$action,run_id:$run_id,status:$status,commit_sha:($commit_sha|if .=="" then null else . end),pr_url:($pr_url|if .=="" then null else . end),build_report:$build_report}')"
           curl -fsSL -X POST             -H "Authorization: bearer ${token}"             -H "Content-Type: application/json"             "${MIDAD_SUPABASE_URL}${MIDAD_FORGE_FUNCTION}"             -d "${body}"

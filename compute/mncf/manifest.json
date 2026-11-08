@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "fabric_id": "midad-neural-compute-fabric",
+  "updated_at": "2026-11-07",
+  "scope": {
+    "mode": "hybrid",
+    "principles": [
+      "audit-preserve-repair-integrate-upgrade",
+      "provider-agnostic",
+      "linux-first-production",
+      "isolated-hakios-research",
+      "evidence-before-capacity-claims"
+    ]
+  },
+  "budget": {
+    "mode": "zero",
+    "allow_paid_resources": false,
+    "require_explicit_approval_for_any_cost": true
+  },
+  "layers": {
+    "control_plane": {
+      "role": "existing_midad_control_plane",
+      "source_repository": "Sirahwaz/Control-room",
+      "status": "existing",
+      "integrations": [
+        "midad_orchestrator",
+        "midad_forge",
+        "midad_forge_coordinator",
+        "midad_bot_fabric"
+      ]
+    },
+    "linux_compute": {
+      "role": "production_compute",
+      "status": "ephemeral_runtime_implemented_persistent_host_pending",
+      "os_family": "Linux",
+      "runtime": "node24-bounded-linux-worker",
+      "persistent_server_required_for_online_service": true,
+      "do_not_claim_persistent_capacity_from_ci": true,
+      "runtime_contract": "compute/mncf/runtime/worker.mjs",
+      "orchestration": {
+        "mode": "reuse-existing-midad-forge",
+        "edge_function": "midad_forge",
+        "coordinator": "midad_forge_coordinator",
+        "existing_tables": [
+          "midad_forge_projects",
+          "midad_forge_runs",
+          "midad_forge_events"
+        ],
+        "new_queue_created": false,
+        "database_schema_changed": false,
+        "live_edge_functions_changed": false
+      },
+      "runner_adapter": {
+        "provider": "github-actions-linux",
+        "workflow": ".github/workflows/midad-forge.yml",
+        "job": "build",
+        "node_version": 24,
+        "job_timeout_minutes": 15,
+        "persistent": false,
+        "permissions": {
+          "contents": "read",
+          "checkout_credentials_persisted": false,
+          "id_token_permission": false,
+          "pull_request_write_permission": false
+        }
+      },
+      "execution_policy": {
+        "max_manifest_files": 32,
+        "max_source_file_bytes": 60000,
+        "max_manifest_bytes": 2000000,
+        "allowed_npm_scripts": [
+          "lint",
+          "test",
+          "build"
+        ],
+        "npm_lifecycle_scripts": "disabled",
+        "install_flags": [
+          "--ignore-scripts",
+          "--no-audit",
+          "--no-fund"
+        ],
+        "command_timeout_seconds": 180,
+        "output_log_limit_bytes": 512000,
+        "max_artifact_files": 3000,
+        "max_artifact_file_bytes": 5000000,
+        "max_artifact_bytes": 30000000,
+        "reject_path_traversal": true,
+        "reject_symlinks": true,
+        "reject_credentials_and_private_key_files": true,
+        "child_process_environment": "minimal-no-github-or-supabase-secrets",
+        "network_egress": "not_isolated_in_this_iteration"
+      },
+      "capacity_boundary": {
+        "persistent_host": "not_provisioned",
+        "production_online_service": "blocked_pending_verified_free_linux_host",
+        "do_not_infer_persistence_from_github_actions": true
+      }
+    },
+    "hakios_lab": {
+      "role": "isolated_research_guest",
+      "production_kernel": false,
+      "source_repository": "oosexgang/hakios-xnu-kernel",
+      "source_ref": "63fc2b4633bac3af8e57dadab9f5a8d4cb940438",
+      "qemu": {
+        "target": "qemu-open",
+        "smoke_mode": "prebuilt-qemu-boot",
+        "full_source_build": false,
+        "requires_apple_payload": false,
+        "network_exposure": "none_by_default",
+        "purpose": "kernel-build-and-boot-research",
+        "artifact_integrity_check": "grep prebuilt entries from prebuilt/SHA256SUMS and verify with sha256sum",
+        "ci_workflow": ".github/workflows/midad-hakios-qemu-smoke.yml",
+        "boot_path_strategy": "parallel-differential-plus-uboot",
+        "boot_paths": [
+          "loader-device",
+          "uefi-esp",
+          "u-boot"
+        ],
+        "diagnostic_qemu_flags": [
+          "guest_errors",
+          "cpu_reset"
+        ],
+        "firmware_pairing_strategy": "use-matched-aavmf-code-and-vars-images-with-equal-size-no-padding",
+        "uboot_path": {
+          "firmware": "U-Boot v2026.07 with HakiOS patch",
+          "build_command": "uefi/u-boot/build.sh qemu",
+          "runner": "qemu/run-u-boot.sh",
+          "payload_transport": "HKUB container at 0x50000000; payload at 0xF0000000",
+          "source_repository": "oosexgang/hakios-uefi",
+          "source_revision": "1c6522893266157506c767e2ca427053ed3634a8",
+          "requires_edk2": false,
+          "research_only": true,
+          "boot_command_override": {
+            "upstream": "hakios load 0x50000000 && run hakios_start",
+            "ci_override": "hakios load 0x50000000 && hakios boot",
+            "reason": "The pinned defconfig references hakios_start, but no environment variable defines it; the pinned U-Boot patch implements an explicit hakios boot subcommand.",
+            "scope": "MIDAD CI-only patch to the ephemeral HakiOS checkout; upstream repository remains unchanged."
+          }
+        },
+        "boot_path_results": {
+          "u-boot": {
+            "status": "verified",
+            "result": "loader-kernel-userland-and-return-to-loader",
+            "run_id": 42312414610,
+            "job_id": 128216829054,
+            "evidence": [
+              "== XNULOADER v3 ==",
+              "platform qemu-virt",
+              "Hello from user space on Darwin!",
+              "kernel returned: log at",
+              "returned 21713 0"
+            ],
+            "termination": {
+              "observed": "PID 1 (launchd test payload) exits with status 0; XNU records initproc-failed panic; XNULOADER captures and returns the kernel log.",
+              "classification": "expected_one_shot_research_payload_exit_not_a_stable_os_session"
+            },
+            "stable_os_session_verified": false,
+            "full_source_build_verified": false
+          },
+          "uefi-esp": {
+            "status": "failed-before-loader",
+            "exception": "Synchronous Exception at 0x00000000A10021A8",
+            "run_id": 42311648171
+          },
+          "loader-device": {
+            "status": "failed-before-loader",
+            "exception": "Synchronous Exception at 0x00000000A10021A8",
+            "run_id": 42311648171
+          }
+        }
+      }
+    }
+  },
+  "providers": [
+    {
+      "id": "github-actions-linux",
+      "kind": "managed_ci_runner",
+      "enabled": true,
+      "persistence": "ephemeral",
+      "paid_resources_allowed": false,
+      "permitted_workloads": [
+        "contract-tests",
+        "static-validation",
+        "reproducible-build-checks",
+        "hakios-prebuilt-qemu-boot-smoke",
+        "midad-forge-builds"
+      ],
+      "not_a_persistent_server": true
+    },
+    {
+      "id": "self-hosted-linux",
+      "kind": "self_hosted_worker",
+      "enabled": false,
+      "persistence": "persistent",
+      "paid_resources_allowed": false,
+      "activation_gate": "verify-free-host-ownership-capacity-and-secure-access"
+    }
+  ],
+  "network": {
+    "publicly_exposed_ports": [],
+    "remote_access_requires_authenticated_overlay": true,
+    "direct_public_ssh": false,
+    "direct_public_vnc": false,
+    "guest_to_control_plane_default": "deny"
+  },
+  "integrations": {
+    "existing_control_plane": [
+      "midad_orchestrator",
+      "midad_forge",
+      "midad_forge_coordinator",
+      "midad_bot_fabric"
+    ],
+    "create_replacement_orchestrator": false,
+    "create_new_database_queue": false,
+    "supabase_write_path_verified": false
+  },
+  "gates": {
+    "persistent_linux_node": "blocked_pending_verified_free_host",
+    "hakios_qemu_execution": "pending_prebuilt_qemu_smoke",
+    "remote_access": "blocked_until_authenticated_overlay_and_host_are_verified",
+    "production_cutover": "not_authorized_by_this_manifest"
+  },
+  "external_technology_review": {
+    "reviewed_at": "2026-11-07",
+    "policy": "evaluate-as-reusable-components; do-not-rebuild-existing-MIDAD-systems",
+    "candidates": {
+      "weaver": {
+        "repository": "KeoneSomers/Weaver",
+        "source_ref": "a80f74093118602d69b3d741b9e96dfda046cfb5",
+        "license": "MIT",
+        "role": "optional_native_git_desktop_client",
+        "adoption": "not_in_server_runtime",
+        "reason": "desktop_Git_GUI_not_headless_worker; extension_commands_are_local_processes_not_an_OS_sandbox"
+      },
+      "tiny11builder": {
+        "repository": "ntdevlabs/tiny11builder",
+        "source_ref": "38f7ab6b1f177098c026a19b73ec84bca9c4b874",
+        "role": "optional_windows_11_image_lab",
+        "adoption": "excluded_from_linux_compute",
+        "reason": "Windows_client_image_builder; Windows_Server_unsupported; Core_removes_servicing_recovery_and_Defender; upstream_notice_says_no_standalone_license"
+      },
+      "fuchsia": {
+        "repository": "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main",
+        "role": "architecture_research_reference",
+        "adoption": "patterns_only_not_production_kernel",
+        "reason": "Zircon_microkernel_and_capability_component_model; not_Linux_and_not_a_drop_in_server_distribution"
+      },
+      "appwrite": {
+        "repository": "appwrite/appwrite",
+        "source_ref": "2.7.1",
+        "role": "optional_backend_candidate",
+        "adoption": "not_deployed_not_a_supabase_replacement",
+        "reason": "self_hosted_requires_at_least_2_CPU_4GB_RAM_2GB_swap_and_Docker; free_cloud_projects_pause_after_7_days_inactive; avoid_duplicate_backend_until_host_and_migration_need_verified"
+      },
+      "northflank": {
+        "role": "optional_zero_budget_managed_container_host",
+        "plan": "Sandbox",
+        "official_pricing_url": "https://northflank.com/pricing",
+        "official_billing_docs_url": "https://northflank.com/docs/v1/application/billing/pricing-on-northflank",
+        "advertised_limits": {
+          "services": 2,
+          "jobs": 2,
+          "databases": 1,
+          "monthly_resource_allowance_usd": 20,
+          "always_on": true,
+          "no_card_claim": true
+        },
+        "adoption": "pending_conflicting_card_requirement",
+        "production_status": "not_approved",
+        "reason": "Pricing page advertises a no-card always-on Sandbox, but official billing documentation says all users must add a payment method before creating resources. No account/resource creation is authorized or verified; do not assume a no-card path."
+      }
+    }
+  }
+}

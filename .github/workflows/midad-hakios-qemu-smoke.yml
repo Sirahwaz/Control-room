@@ -1,0 +1,196 @@
+name: MIDAD HakiOS QEMU Smoke
+
+on:
+  push:
+    branches:
+      - feat/midad-compute-fabric-zero-budget
+    paths:
+      - '.github/workflows/midad-hakios-qemu-smoke.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/midad-hakios-qemu-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qemu-open:
+    name: qemu-open (${{ matrix.boot_path }})
+    strategy:
+      fail-fast: false
+      matrix:
+        boot_path: [loader-device, uefi-esp]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout MIDAD control repository
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned HakiOS source and prebuilt research artifacts
+        uses: actions/checkout@v4
+        with:
+          repository: oosexgang/hakios-xnu-kernel
+          ref: 63fc2b4633bac3af8e57dadab9f5a8d4cb940438
+          path: hakios
+
+      - name: Install QEMU and AArch64 UEFI firmware
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm qemu-efi-aarch64
+
+      - name: Verify upstream prebuilt artifact integrity
+        working-directory: hakios
+        run: grep ' prebuilt/' prebuilt/SHA256SUMS | sha256sum -c -
+
+      - name: Assemble Apple-free open-kernel payload
+        working-directory: hakios
+        shell: bash
+        run: |
+          ARGS="$(python3 tools/hakios-config.py args --defconfig defconfig)"
+          python3 xnuloader/mkpayload.py -o qemu/payload.bin \
+            kernel=prebuilt/hakios-kernel \
+            ramdisk=prebuilt/userland/hello \
+            --cmdline "$ARGS"
+
+      - name: Boot HakiOS open kernel under QEMU (bounded smoke)
+        working-directory: hakios
+        shell: bash
+        run: |
+          # Use the matched AAVMF firmware CODE + VARS pair from Ubuntu's qemu-efi-aarch64 package.
+          # Never pair the compact standalone QEMU_EFI.fd with an unrelated AAVMF VARS template.
+          EFI="/usr/share/AAVMF/AAVMF_CODE.fd"
+          VARS="/usr/share/AAVMF/AAVMF_VARS.fd"
+          test -s "$EFI" && test -s "$VARS"
+          EFI_BYTES="$(stat -L -c %s "$EFI")"
+          VARS_BYTES="$(stat -L -c %s "$VARS")"
+          echo "QEMU_EFI_PATH=$EFI"
+          echo "QEMU_VARS_PATH=$VARS"
+          echo "QEMU_EFI_BYTES=$EFI_BYTES"
+          echo "QEMU_VARS_BYTES=$VARS_BYTES"
+          test "$EFI_BYTES" -eq "$VARS_BYTES" || {
+            echo "::error::AAVMF CODE/VARS firmware size mismatch; refusing mixed firmware images"
+            exit 1
+          }
+          set +e
+          if [ "${{ matrix.boot_path }}" = "uefi-esp" ]; then
+            # Differential path: UEFI loads the payload from the ESP file; no QEMU loader device.
+            QEMU_ESP=1 QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+          else
+            # Baseline path: QEMU's loader device places the payload at 0xF0000000.
+            QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+          fi
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ] && [ "$status" -ne 0 ]; then
+            cat qemu-open.log
+            if [ -f qemu/qemu-debug.log ]; then tail -n 120 qemu/qemu-debug.log; fi
+            exit "$status"
+          fi
+          cat qemu-open.log
+          grep -F 'XNULOADER v3' qemu-open.log
+          grep -F 'hakios-kernel: version' qemu-open.log
+
+      - name: Upload bounded boot log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakios-qemu-${{ matrix.boot_path }}-diagnostics
+          path: |
+            hakios/qemu-open.log
+            hakios/qemu/qemu-debug.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  qemu-uboot:
+    name: qemu-uboot (independent firmware path)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout MIDAD control repository
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned HakiOS source and prebuilt research artifacts
+        uses: actions/checkout@v4
+        with:
+          repository: oosexgang/hakios-xnu-kernel
+          ref: 63fc2b4633bac3af8e57dadab9f5a8d4cb940438
+          path: hakios
+
+      - name: Install QEMU and AArch64 U-Boot build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-arm gcc-aarch64-linux-gnu build-essential \
+            bc bison flex libssl-dev libgnutls28-dev libncurses-dev \
+            python3-dev python3-setuptools python3-pyelftools \
+            swig uuid-dev device-tree-compiler
+
+      - name: Verify upstream prebuilt artifact integrity
+        working-directory: hakios
+        run: grep ' prebuilt/' prebuilt/SHA256SUMS | sha256sum -c -
+
+      - name: Assemble Apple-free open-kernel payload
+        working-directory: hakios
+        shell: bash
+        run: |
+          ARGS="$(python3 tools/hakios-config.py args --defconfig defconfig)"
+          python3 xnuloader/mkpayload.py -o qemu/payload.bin \
+            kernel=prebuilt/hakios-kernel \
+            ramdisk=prebuilt/userland/hello \
+            --cmdline "$ARGS"
+
+      - name: Sync pinned HakiOS UEFI source
+        working-directory: hakios
+        run: python3 tools/hakios-device.py sync hakios-uefi
+
+      - name: Apply minimal MIDAD QEMU boot-command compatibility patch
+        working-directory: hakios
+        run: |
+          git apply ../compute/mncf/patches/hakios-qemu-bootcmd.patch
+          grep -F 'CONFIG_BOOTCOMMAND="hakios load 0x50000000 && hakios boot"' devices/qemu/u-boot/files/configs/hakios_qemu_defconfig
+          if grep -F 'hakios_start' devices/qemu/u-boot/files/configs/hakios_qemu_defconfig; then
+            echo "::error::Undefined hakios_start reference remains in QEMU boot command"
+            exit 1
+          fi
+
+      - name: Build HakiOS-patched U-Boot for QEMU
+        working-directory: hakios
+        env:
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          uefi/u-boot/apply.sh qemu
+          uefi/u-boot/build.sh qemu
+          test -s u-boot/build-qemu/u-boot.bin
+
+      - name: Boot open kernel using U-Boot (bounded smoke)
+        working-directory: hakios
+        shell: bash
+        run: |
+          set +e
+          QEMU_MEM=6G bash qemu/run-u-boot.sh 150 -d guest_errors,cpu_reset -D qemu-u-boot-debug.log > qemu/qemu-u-boot.log 2>&1
+          status=$?
+          set -e
+          cat qemu/qemu-u-boot.log
+          if [ "$status" -ne 124 ] && [ "$status" -ne 0 ]; then
+            if [ -f qemu/qemu-u-boot-debug.log ]; then tail -n 120 qemu/qemu-u-boot-debug.log; fi
+            exit "$status"
+          fi
+          grep -F '== XNULOADER v3 ==' qemu/qemu-u-boot.log
+          grep -F 'Hello from user space on Darwin!' qemu/qemu-u-boot.log
+          grep -F 'kernel returned: log at' qemu/qemu-u-boot.log
+          grep -E 'returned [0-9]+ 0' qemu/qemu-u-boot.log
+          if grep -E 'EARLY KERNEL EXCEPTION|THE KERNEL HUNG' qemu/qemu-u-boot.log; then
+            echo "::error::HakiOS did not complete the expected return-to-loader smoke"
+            exit 1
+          fi
+
+      - name: Upload U-Boot boot diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakios-qemu-uboot-diagnostics
+          path: |
+            hakios/qemu/qemu-u-boot.log
+            hakios/qemu/qemu-u-boot-debug.log
+          if-no-files-found: ignore
+          retention-days: 7
