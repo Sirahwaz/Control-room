@@ -111,6 +111,12 @@ jobs:
         working-directory: mobile
         run: npm install --no-fund --no-audit
 
+      - name: Install Chromium runtime smoke dependency
+        working-directory: mobile
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
       - name: Prepare web surface
         shell: bash
         run: |
@@ -126,6 +132,11 @@ jobs:
             test -f "$asset"
             cp "$asset" mobile/www/
           done <<< "$ASSETS"
+
+
+      - name: Trading UI browser runtime smoke
+        working-directory: mobile
+        run: node factory/trading-ui-smoke.mjs www ../dist
 
       - name: Add Android platform
         working-directory: mobile
@@ -156,6 +167,9 @@ jobs:
       - name: Validate Android runtime smoke script
         run: bash -n mobile/factory/android-runtime-smoke.sh
 
+      - name: Android signing contract tests
+        run: node --test mobile/factory/signing-contract.test.mjs
+
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product_key }}"
 
@@ -168,20 +182,68 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Sign installable APK
+        id: sign
         shell: bash
+        env:
+          RELEASE_CHANNEL: ${{ steps.product.outputs.release_channel }}
+          MIDAD_ANDROID_KEYSTORE_BASE64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_BASE64 }}
+          MIDAD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          MIDAD_ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          MIDAD_ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v             -keystore signing/midad-factory-temp.jks             -storepass "midad-factory-temp"             -keypass "midad-factory-temp"             -alias midadfactory             -keyalg RSA -keysize 2048 -validity 3650             -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          KEYSTORE="signing/midad-signing.jks"
+          HAS_ANY=0
+          for value in "$MIDAD_ANDROID_KEYSTORE_BASE64" "$MIDAD_ANDROID_KEYSTORE_PASSWORD" "$MIDAD_ANDROID_KEY_ALIAS" "$MIDAD_ANDROID_KEY_PASSWORD"; do
+            if [ -n "$value" ]; then HAS_ANY=1; fi
+          done
+          if [ "$HAS_ANY" -eq 1 ]; then
+            if [ -z "$MIDAD_ANDROID_KEYSTORE_BASE64" ] || [ -z "$MIDAD_ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$MIDAD_ANDROID_KEY_ALIAS" ] || [ -z "$MIDAD_ANDROID_KEY_PASSWORD" ]; then
+              echo "Persistent Android signing secrets are incomplete; refusing to fall back." >&2
+              exit 1
+            fi
+            printf '%s' "$MIDAD_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            test -s "$KEYSTORE"
+            store_password="$MIDAD_ANDROID_KEYSTORE_PASSWORD"
+            key_password="$MIDAD_ANDROID_KEY_PASSWORD"
+            key_alias="$MIDAD_ANDROID_KEY_ALIAS"
+            keytool -list -keystore "$KEYSTORE" -storepass "$store_password" -alias "$key_alias" >/dev/null
+            SIGNING_MODE="persistent"
+          else
+            if [ "$RELEASE_CHANNEL" != "debug" ]; then
+              echo "Internal, beta and production builds require persistent Android signing secrets." >&2
+              exit 1
+            fi
+            store_password="$(openssl rand -hex 32)"
+            key_password="$store_password"
+            key_alias="midadfactory"
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" \
+              -storepass "$store_password" \
+              -keypass "$key_password" \
+              -alias "$key_alias" \
+              -keyalg RSA -keysize 2048 -validity 3650 \
+              -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+            SIGNING_MODE="ephemeral-debug"
+          fi
+          export MIDAD_KEYstore_password="$store_password"
+          export MIDAD_key_password="$key_password"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           OUT="dist/${{ steps.product.outputs.artifact_name }}-release.apk"
-          "$APKSIGNER" sign             --ks signing/midad-factory-temp.jks             --ks-pass pass:midad-factory-temp             --key-pass pass:midad-factory-temp             --ks-key-alias midadfactory             --out "$OUT" "$APK_SRC"
+          "$APKSIGNER" sign \
+            --ks "$KEYSTORE" \
+            --ks-pass env:MIDAD_KEYstore_password \
+            --key-pass env:MIDAD_key_password \
+            --ks-key-alias "$key_alias" \
+            --out "$OUT" "$APK_SRC"
           "$APKSIGNER" verify --verbose "$OUT"
           sha256sum "$OUT" | tee "$OUT.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
+          echo "signing_mode=$SIGNING_MODE" >> "$GITHUB_OUTPUT"
 
       - name: Enable KVM for Android emulator
         run: |
@@ -217,6 +279,7 @@ jobs:
             "product_key": "${{ steps.product.outputs.product_key }}",
             "version": "${{ steps.product.outputs.version }}",
             "release_channel": "${{ steps.product.outputs.release_channel }}",
+            "signing_mode": "${{ steps.sign.outputs.signing_mode }}",
             "artifact_name": "${{ steps.product.outputs.artifact_name }}",
             "factory_quality_gate": "PASSED",
             "build_status": "PASSED"
@@ -228,7 +291,8 @@ jobs:
             "static_js_syntax": "PASSED",
             "secret_scan": "PASSED",
             "artifact_verification": "PASSED",
-            "runtime_smoke": "PASSED"
+            "runtime_smoke": "PASSED",
+            "browser_runtime_smoke": "PASSED"
           }
           EOF
           cat > dist/learning-report.json <<EOF
@@ -253,4 +317,6 @@ jobs:
             dist/build-report.json
             dist/test-report.json
             dist/runtime-smoke-report.json
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
             dist/learning-report.json
