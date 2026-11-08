@@ -21,3 +21,44 @@ jobs:
           node-version: 24
       - name: MIMIC public wallet fingerprint tests
         run: node --test mobile/intelligence/mimic/mimic-intelligence.test.mjs mobile/intelligence/mimic/chain-intelligence-adapter.test.mjs mobile/intelligence/mimic/mimic-client.test.mjs
+
+      - name: Install existing mobile dependencies
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium browser smoke dependency
+        working-directory: mobile
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      - name: Prepare selected Trading product web surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          node mobile/factory/render.mjs midad-trading
+          WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
+          test -f "$WEB_ENTRY"
+          rm -rf mobile/www dist
+          mkdir -p mobile/www/site dist
+          cp "$WEB_ENTRY" mobile/www/index.html
+          ASSETS="$(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)"
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            test -f "$asset"
+            cp "$asset" mobile/www/
+          done <<< "$ASSETS"
+
+      - name: Trading Android WebView browser runtime smoke
+        working-directory: mobile
+        run: node factory/trading-ui-smoke.mjs www ../dist
+
+      - name: Upload MIMIC and Trading browser smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-trading-mimic-browser-smoke
+          path: |
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
+          if-no-files-found: ignore
