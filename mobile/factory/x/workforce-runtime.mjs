@@ -215,21 +215,25 @@ export function compileWorkforcePlan({
       const validStatus = mediaPlan?.status === "PENDING_SPEND_APPROVAL" || mediaPlan?.status === "READY_PENDING_EXECUTION";
       const validImageOrVideoQuote = ["image", "video"].includes(mediaPlan?.mediaType)
         && mediaPlan?.selected?.affordable === true
-        && Number.isFinite(Number(mediaPlan?.selected?.creditsRequired))
-        && Number(mediaPlan.selected.creditsRequired) >= 0
-        && Number.isFinite(Number(mediaPlan?.spendLimit))
-        && Number(mediaPlan.spendLimit) >= 0
-        && Number(mediaPlan.selected.creditsRequired) <= Number(mediaPlan.spendLimit)
+        && typeof mediaPlan?.selected?.creditsRequired === "number"
+        && Number.isFinite(mediaPlan.selected.creditsRequired)
+        && mediaPlan.selected.creditsRequired >= 0
+        && typeof mediaPlan?.spendLimit === "number"
+        && Number.isFinite(mediaPlan.spendLimit)
+        && mediaPlan.spendLimit >= 0
+        && mediaPlan.selected.creditsRequired <= mediaPlan.spendLimit
         && mediaPlan?.rightsConfirmed === true;
       const audioQuote = mediaPlan?.mediaType === "audio" ? mediaPlan?.verifiedQuote : null;
       const validAudioQuote = mediaPlan?.mediaType === "audio"
         && audioQuote?.verified === true
         && typeof audioQuote?.unit === "string"
         && audioQuote.unit.trim().length > 0
-        && Number.isFinite(Number(audioQuote?.amount))
-        && Number(audioQuote.amount) >= 0
-        && Number.isFinite(Number(audioQuote?.availableUnits))
-        && Number(audioQuote.availableUnits) >= Number(audioQuote.amount)
+        && typeof audioQuote?.amount === "number"
+        && Number.isFinite(audioQuote.amount)
+        && audioQuote.amount >= 0
+        && typeof audioQuote?.availableUnits === "number"
+        && Number.isFinite(audioQuote.availableUnits)
+        && audioQuote.availableUnits >= audioQuote.amount
         && approval.rights_confirmed === true;
       const verifiedCostQuote = mediaPlan?.executionAllowed === false
         && validStatus
