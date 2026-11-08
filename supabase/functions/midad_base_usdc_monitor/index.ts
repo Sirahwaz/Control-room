@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { computeScanRange, chunkScanRange } from "./scan-range.js";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const SK=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
@@ -182,25 +183,19 @@ async function runRoute(route:any){
     .eq("route_id",route.id).maybeSingle();
   if(stateReadError)throw new Error("base_monitor_cursor_read_failed:"+stateReadError.message);
   const previous=Number(state?.last_slot||0);
-  // On the first run, inspect a recent window. Once a cursor exists, continue from it
-  // in bounded chunks so RPC outages do not permanently skip receipts older than 2,000 blocks.
-  const hasCursor=state?.last_slot!==null&&state?.last_slot!==undefined&&previous>0;
-  const from=hasCursor?previous+1:Math.max(0,finalBlock-1999);
-  const to=Math.min(finalBlock,from+1999);
-  const scanCaughtUp=previous>=finalBlock||to>=finalBlock;
+  // Each route advances by at most 6,000 finalized blocks per run.
+  // The range helper guarantees contiguous, non-overlapping windows and 500-block RPC chunks.
+  const {from,to,caughtUp:scanCaughtUp}=computeScanRange({previous,finalized:finalBlock,maxBlocks:6000});
 
   let logs:any[]=[];
-  if(from<=to){
-    for(let start=from;start<=to;start+=500){
-      const end=Math.min(to,start+499);
-      const part=await rpc("eth_getLogs",[{
-        address:USDC,
-        fromBlock:"0x"+start.toString(16),
-        toBlock:"0x"+end.toString(16),
-        topics:[TRANSFER,null,addrTopic(wallet.address)]
-      }]);
-      if(Array.isArray(part))logs.push(...part);
-    }
+  for(const chunk of chunkScanRange(from,to,500)){
+    const part=await rpc("eth_getLogs",[{
+      address:USDC,
+      fromBlock:"0x"+chunk.from.toString(16),
+      toBlock:"0x"+chunk.to.toString(16),
+      topics:[TRANSFER,null,addrTopic(wallet.address)]
+    }]);
+    if(Array.isArray(part))logs.push(...part);
   }
 
   // Store a single receipt per transaction: the database idempotency key is transaction-based,
