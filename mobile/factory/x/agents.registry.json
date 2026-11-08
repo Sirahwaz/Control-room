@@ -444,6 +444,58 @@
       "outputs": [
         "content_pack"
       ]
+    },
+    {
+      "id": "wallet-behavior-agent",
+      "domain": "market_intelligence",
+      "parallel_safe": true,
+      "inputs": [
+        "public_wallet_transactions",
+        "chain_id",
+        "observation_window",
+        "risk_policy"
+      ],
+      "outputs": [
+        "wallet_behavior_fingerprint",
+        "strategy_feature_vector",
+        "paper_backtest_report",
+        "evidence_bundle"
+      ]
+    },
+    {
+      "id": "offer-negotiation-agent",
+      "domain": "revenue",
+      "parallel_safe": true,
+      "inputs": [
+        "client_requirements",
+        "delivery_scope",
+        "pricing_policy",
+        "commercial_constraints"
+      ],
+      "outputs": [
+        "offer_draft",
+        "scope_risks",
+        "negotiation_options",
+        "approval_requirements"
+      ]
+    },
+    {
+      "id": "media-production-agent",
+      "domain": "media",
+      "parallel_safe": true,
+      "inputs": [
+        "content_brief",
+        "voice_profile",
+        "language",
+        "delivery_format",
+        "credit_budget"
+      ],
+      "outputs": [
+        "production_plan",
+        "media_assets",
+        "voice_and_rights_report",
+        "cost_report"
+      ]
     }
   ]
 }
