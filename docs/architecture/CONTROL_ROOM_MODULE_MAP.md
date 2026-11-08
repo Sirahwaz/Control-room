@@ -75,7 +75,7 @@ Do not move or rewrite these contracts without a references audit and owner revi
 ## Observed cleanup candidates (not yet changed)
 
 - The root contains multiple versioned UI bundles and some root-level domain pages. Keep them operational while a route/reference graph is built.
-- `viabtc-monitor.*` and `viabtc-neuralpp-v1.*` appeared byte-identical by name/size in the file inventory; verify hashes before any deduplication.
+- `viabtc-monitor.css` and `viabtc-neuralpp-v1.css` share the same Git blob SHA; the corresponding JavaScript files also share the same blob SHA. The inspected `viabtc.html` route currently references the `neuralpp-v1` names. The older `viabtc-monitor.*` copies are deduplication candidates, but retain them until all internal/external references and legacy URLs are checked.
 - Several standalone Node packages have their own `package.json` and Dockerfiles; add package-specific lifecycle/readiness documentation rather than merging them into a global package.
 - Automation backup exports should remain clearly distinguished from active deployed workflows.
 - The fabric registry is dated and should be regenerated from verified live inventories before operational use.
