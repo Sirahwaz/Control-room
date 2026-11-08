@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from midad_miner_probe import is_valid_restart_approval
+from midad_miner_probe import is_valid_restart_approval, is_valid_midad_endpoint
 
 
 class RestartApprovalContractTests(unittest.TestCase):
@@ -87,6 +87,63 @@ class RestartApprovalContractTests(unittest.TestCase):
         command = {**self.command, "operation": "diagnostic"}
         self.assertFalse(is_valid_restart_approval(command, now=self.now))
 
+
+
+class MinerEndpointPolicyTests(unittest.TestCase):
+    def test_accepts_only_the_exact_midad_telemetry_endpoint_on_supabase_https(self):
+        self.assertTrue(is_valid_midad_endpoint(
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest",
+            "midad_miner_telemetry_ingest",
+        ))
+
+    def test_accepts_only_the_exact_midad_repair_endpoint_on_supabase_https(self):
+        self.assertTrue(is_valid_midad_endpoint(
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_repair_bridge",
+            "midad_miner_repair_bridge",
+        ))
+
+    def test_rejects_plain_http(self):
+        self.assertFalse(is_valid_midad_endpoint(
+            "http://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest",
+            "midad_miner_telemetry_ingest",
+        ))
+
+    def test_rejects_non_supabase_hosts_and_subdomains(self):
+        for url in (
+            "https://evil.example/functions/v1/midad_miner_telemetry_ingest",
+            "https://abcdefghijklmnopqrst.supabase.co.evil.example/functions/v1/midad_miner_telemetry_ingest",
+            "https://api.subdomain.abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest",
+        ):
+            with self.subTest(url=url):
+                self.assertFalse(is_valid_midad_endpoint(url, "midad_miner_telemetry_ingest"))
+
+    def test_rejects_wrong_edge_function_path(self):
+        self.assertFalse(is_valid_midad_endpoint(
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/other_function",
+            "midad_miner_telemetry_ingest",
+        ))
+
+    def test_rejects_unexpected_function_names(self):
+        self.assertFalse(is_valid_midad_endpoint(
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/other_function",
+            "other_function",
+        ))
+
+    def test_rejects_userinfo_nonstandard_ports_query_and_fragment(self):
+        urls = (
+            "https://user@abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest",
+            "https://abcdefghijklmnopqrst.supabase.co:8443/functions/v1/midad_miner_telemetry_ingest",
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest?next=https://evil.example",
+            "https://abcdefghijklmnopqrst.supabase.co/functions/v1/midad_miner_telemetry_ingest#fragment",
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertFalse(is_valid_midad_endpoint(url, "midad_miner_telemetry_ingest"))
+
+    def test_rejects_malformed_urls(self):
+        for url in ("", "not-a-url", "https://", "https://[::1]/functions/v1/midad_miner_telemetry_ingest"):
+            with self.subTest(url=url):
+                self.assertFalse(is_valid_midad_endpoint(url, "midad_miner_telemetry_ingest"))
 
 if __name__ == "__main__":
     unittest.main()
