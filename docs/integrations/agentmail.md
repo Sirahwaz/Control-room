@@ -5,7 +5,7 @@
 - Cost target: Free tier only; no paid upgrades or billing actions.
 - Runtime: Supabase Edge Function `midad_agentmail_gateway`.
 - Existing customer workflow: verified inbound messages are handed to `midad_client_gateway` as channel `agentmail`; the existing MIDAD drafting and approval policy remains authoritative.
-- No cold outreach. No automatic outbound email sending is implemented in this phase.
+- Approved customer replies are sent only after the existing MIDAD owner approval is approved. No cold outreach or automatic outbound sending.
 
 ## Required Supabase secrets
 Set these through Supabase Edge Function Secrets, never GitHub or browser code:
