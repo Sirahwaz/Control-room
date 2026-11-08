@@ -65,3 +65,38 @@ Deno.test("rejects unsupported event types and missing identifiers", () => {
   });
   if (unsupported.accepted || missing.accepted) throw new Error("invalid event was accepted");
 });
+
+Deno.test("rejects Agent Armor review and unavailable verdicts", () => {
+  for (const agent_armor of [
+    { status: "complete", verdict: "review" },
+    { status: "unavailable", unavailable_reason: "payload_too_large" },
+  ]) {
+    const result = normalizeReceivedEvent({
+      type: "event",
+      event_type: "message.received",
+      event_id: "evt_armor_" + agent_armor.status,
+      message: {
+        message_id: "msg_armor_" + agent_armor.status,
+        inbox_id: "inbox_123",
+        labels: [],
+        agent_armor,
+      },
+    });
+    if (result.accepted) throw new Error("non-clear Agent Armor verdict must not be processed");
+  }
+});
+
+Deno.test("accepts only a clear Agent Armor verdict", () => {
+  const result = normalizeReceivedEvent({
+    type: "event",
+    event_type: "message.received",
+    event_id: "evt_clear",
+    message: {
+      message_id: "msg_clear",
+      inbox_id: "inbox_123",
+      labels: [],
+      agent_armor: { status: "complete", verdict: "clear" },
+    },
+  });
+  if (!result.accepted) throw new Error("clear Agent Armor verdict should be eligible");
+});
