@@ -141,3 +141,14 @@ test("parallel planning respects configured cap and reports non-executable state
   assert.equal(result.dispatchAllowed,false);
   assert.equal(result.executionMode,"PLAN_ONLY_NO_DISPATCH");
 });
+
+test("rejects a media quote with null or nonnumeric cost data", () => {
+  const result=plan(["media-production-agent"],{
+    approvals:{"media-production-agent":{
+      mediaPlan:{...verifiedImagePlan(),selected:{modelId:"bad",creditsRequired:null,affordable:true}},
+      spend_approved:true
+    }}
+  });
+  assert.equal(result.tasks[0].state,"BLOCKED_APPROVAL_GATES");
+  assert.ok(result.tasks[0].requiredApprovals.includes("verified_cost_quote"));
+});
