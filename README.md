@@ -48,4 +48,9 @@ MIDAD also exposes a read-only machine-to-machine opportunity feed for agents an
 
 The health and payment manifest are public. The opportunity data route requires a valid x402 payment. The feed contains cached public opportunity metadata only; it does not expose private messages, customer records, credentials or wallet-signing requests. It is an early product: **no paid requests or sales are confirmed yet**, and no income is counted until a payment receipt is independently verified.
 
+## Repository architecture and organization
 
+- [Repository Catalog](docs/architecture/REPOSITORY_CATALOG.md) — ownership boundaries across the Sirahwaz GitHub projects.
+- [Control-room Module Map](docs/architecture/CONTROL_ROOM_MODULE_MAP.md) — module responsibilities, entry points and safe organization rules.
+
+These maps document source ownership and known constraints. They do not imply that a GitHub source file or function is deployed or live; verify runtime state separately.
