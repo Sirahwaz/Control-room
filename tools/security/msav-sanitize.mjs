@@ -79,7 +79,20 @@ export function sanitizeSemgrep(data, workspaceRoot) {
       ...(endLine ? { endLine } : {}),
     });
   }
-  return { findings, reportedErrorCount: Array.isArray(data?.errors) ? data.errors.length : 0 };
+  const rawErrors = Array.isArray(data?.errors) ? data.errors : [];
+  const reportedErrors = rawErrors.slice(0, 20).map(error => {
+    const file = sanitizeRepositoryPath(error?.path, workspaceRoot);
+    const line = positiveLine(error?.spans?.[0]?.start?.line ?? error?.start?.line);
+    const errorType = cleanIdentifier(error?.type) || 'UNKNOWN';
+    const code = Number.isSafeInteger(error?.code) ? error.code : null;
+    return {
+      errorType,
+      ...(code !== null ? { code } : {}),
+      ...(file ? { path: file } : {}),
+      ...(line ? { line } : {}),
+    };
+  });
+  return { findings, reportedErrorCount: rawErrors.length, reportedErrors };
 }
 
 export function sanitizeGitleaks(data, workspaceRoot) {
@@ -244,6 +257,7 @@ export function buildSanitizedReport({ inputDirectory, workspaceRoot, repository
       exitCode,
       findings: normalized.findings.length,
       reportedErrorCount: normalized.reportedErrorCount,
+      ...(normalized.reportedErrors?.length ? { reportedErrors: normalized.reportedErrors } : {}),
     });
   }
 
