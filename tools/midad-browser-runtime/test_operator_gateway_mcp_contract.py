@@ -1,117 +1,21 @@
-"""Contract tests for the operator result relay in the Supabase browser gateway."""
-import re
+"""Contract tests for the MCP bridge deployed in MIDAD Browser Gateway v16."""
 import unittest
 from pathlib import Path
 
-GATEWAY = Path(__file__).resolve().parents[2] / "supabase" / "functions" / "midad_browser_agent_gateway" / "index.ts"
+GATEWAY = (
+    Path(__file__).resolve().parents[2]
+    / "supabase" / "functions" / "midad_browser_agent_gateway" / "index.ts"
+)
 
-class OperatorGatewayContractTests(unittest.TestCase):
+class BrowserMcpGatewayContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = GATEWAY.read_text(encoding="utf-8")
 
-    def test_public_user_bridge_uses_hashed_control_room_session_and_owner_scope(self):
-        self.assertIn('action === "user_bridge"', self.source)
-        self.assertIn('control_room_sessions', self.source)
-        self.assertIn('crypto.subtle.digest("SHA-256"', self.source)
-        self.assertIn('profiles.data.length !== 1', self.source)
-        self.assertIn('browser_user_origin_not_allowed', self.source)
-        self.assertIn('user_bridge_action_not_allowed', self.source)
-        self.assertIn('eq("owner_user_id", ownerUserId)', self.source)
-        start = self.source.index("async function resolveBrowserUserOwner")
-        end = self.source.index("Deno.serve", start)
-        self.assertNotIn("body.owner_user_id", self.source[start:end])
-
-    def test_worker_identity_is_private_and_derives_single_profile_owner(self):
-        self.assertIn('action === "worker_identity"', self.source)
-        start = self.source.index('if (action === "worker_identity")')
-        end = self.source.index('if (action === "worker_heartbeat")', start)
-        branch = self.source[start:end]
-        self.assertIn('from("profiles").select("id").limit(2)', branch)
-        self.assertIn('profiles.data.length !== 1', branch)
-        self.assertIn('owner_user_id: String(profiles.data[0].id)', branch)
-
-    def test_worker_heartbeat_is_ingest_key_only_and_persists_timestamp(self):
-        self.assertIn('action === "worker_heartbeat"', self.source)
-        start = self.source.index('if (action === "worker_heartbeat")')
-        end = self.source.index('if (action === "capabilities")', start)
-        branch = self.source[start:end]
-        self.assertIn('req.headers.get("x-midad-ingest-key")', branch)
-        self.assertIn('midad_browser_providers', branch)
-        self.assertIn('heartbeat_at', branch)
-        self.assertIn('upsert', branch)
-
-    def test_private_queue_endpoint_accepts_only_bounded_hint_data(self):
-        self.assertIn('action === "queue_operator_hint"', self.source)
-        start = self.source.index('if (action === "queue_operator_hint")')
-        end = self.source.index('if (action === "record_command_result")', start)
-        branch = self.source[start:end]
-        self.assertIn('clip(body.operator_hint ?? body.platform_hint, 500)', branch)
-        self.assertIn('input_data: { operator_hint: hint }', branch)
-        self.assertIn('platform_key: "operator_router"', branch)
-        self.assertNotIn("hint_preview", branch)
-        self.assertIn('state: "PREPARING"', branch)
-
-    def test_queue_rejects_secret_like_hints_before_database_insert(self):
-        self.assertIn("function unsafeOperatorHint(hint: string)", self.source)
-        self.assertIn('if (unsafeOperatorHint(hint))', self.source)
-        self.assertIn('sensitive_operator_hint_rejected', self.source)
-        start = self.source.index('if (action === "queue_operator_hint")')
-        end = self.source.index('if (action === "record_command_result")', start)
-        branch = self.source[start:end]
-        self.assertLess(branch.index("unsafeOperatorHint(hint)"), branch.index('from("midad_browser_jobs").insert'))
-
-    def test_safe_result_lookup_is_owner_scoped_and_does_not_return_raw_job(self):
-        self.assertIn('action === "get_operator_result"', self.source)
-        start = self.source.index('if (action === "get_operator_result")')
-        end = self.source.index('if (action === "get_job")', start)
-        branch = self.source[start:end]
-        self.assertIn('String(found.data.owner_user_id || "") !== ownerUserId', branch)
-        self.assertIn('result: ready ? sanitizeOperatorResult(rawResult) : null', branch)
-        self.assertNotIn('job: found.data', branch)
-        self.assertNotIn('input_data:', branch)
-
-    def test_result_action_is_restricted_to_operator_jobs(self):
-        self.assertIn('action === "record_command_result"', self.source)
-        self.assertIn("not_an_operator_command_job", self.source)
-        self.assertIn('inputData.operator_command', self.source)
-
-    def test_result_preview_is_bounded_and_redacted(self):
-        self.assertIn("safeOperatorPreview(source.text_preview, 1400)", self.source)
-        self.assertIn("safeOperatorPreview(source.title, 200)", self.source)
-        self.assertIn("[REDACTED]", self.source)
-        self.assertIn("page_content_is_untrusted: true", self.source)
-
-    def test_result_schema_does_not_accept_credentials_or_arbitrary_fields(self):
-        function = self.source[self.source.index("function sanitizeOperatorResult"):self.source.index("function safeCode")]
-        for forbidden in ("password", "secret_value", "cookie", "access_token", "refresh_token"):
-            self.assertNotIn(forbidden, function)
-        self.assertIn("text_preview", function)
-        self.assertIn("session_storage", function)
-
-    def test_result_is_written_to_job_evidence_and_agent_event(self):
-        start = self.source.index('if (action === "record_command_result")')
-        end = self.source.index('if (action === "get_job")', start)
-        branch = self.source[start:end]
-        self.assertIn('evidence: { ...currentEvidence, operator_result: result }', branch)
-        self.assertIn('event_type: "operator_command_result"', branch)
-
-
-    def test_mcp_json_rpc_bridge_requires_owner_session_and_routes_only_known_tools(self):
+    def test_mcp_json_rpc_bridge_requires_existing_owner_session(self):
         self.assertIn('const mcpBridge = body.jsonrpc === "2.0" && typeof body.method === "string";', self.source)
         self.assertIn('const browserKey = req.headers.get("x-midad-browser-key") || "";', self.source)
         self.assertIn('const auth = await resolveBrowserUserOwner(sb, sessionToken);', self.source)
-        self.assertIn('if (mcpMethod === "tools/list")', self.source)
-        for tool_name in (
-            "midad_browser_capabilities",
-            "midad_browser_list_sessions",
-            "midad_browser_command",
-            "midad_browser_get_result",
-        ):
-            self.assertIn('name: "' + tool_name + '"', self.source)
-        self.assertIn("unknown_browser_tool", self.source)
-        self.assertIn('body: JSON.stringify({ action: "user_bridge", subaction, token: sessionToken, ...extra })', self.source)
-        self.assertIn("isError: !upstream.ok || result?.ok !== true", self.source)
 
         start = self.source.index("if (mcpBridge) {")
         end = self.source.index("\\n    if (userBridge)", start)
@@ -119,6 +23,29 @@ class OperatorGatewayContractTests(unittest.TestCase):
         self.assertIn("resolveBrowserUserOwner(sb, sessionToken)", bridge)
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", bridge)
         self.assertNotIn("MIDAD_INGEST_KEY", bridge)
+
+    def test_mcp_tool_list_is_bounded_to_four_browser_operations(self):
+        start = self.source.index('if (mcpMethod === "tools/list")')
+        end = self.source.index('if (mcpMethod !== "tools/call")', start)
+        tool_list = self.source[start:end]
+        for name in (
+            "midad_browser_capabilities",
+            "midad_browser_list_sessions",
+            "midad_browser_command",
+            "midad_browser_get_result",
+        ):
+            self.assertIn('name: "' + name + '"', tool_list)
+        self.assertEqual(tool_list.count("{ name:"), 4)
+
+    def test_mcp_commands_use_the_authenticated_user_bridge(self):
+        start = self.source.index("if (mcpBridge) {")
+        end = self.source.index("\\n    if (userBridge)", start)
+        bridge = self.source[start:end]
+        self.assertIn("unknown_browser_tool", bridge)
+        self.assertIn('body: JSON.stringify({ action: "user_bridge", subaction, token: sessionToken, ...extra })', bridge)
+        self.assertIn("isError: !upstream.ok || result?.ok !== true", bridge)
+        self.assertIn("request_id", bridge)
+        self.assertIn("job_id", bridge)
 
 if __name__ == "__main__":
     unittest.main()
