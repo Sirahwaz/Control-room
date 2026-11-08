@@ -255,3 +255,58 @@ test('Semgrep error metadata is sanitized and omits raw messages', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('Gitleaks JSON keeps commit and HEAD-presence metadata but never exports secret material', () => {
+  const secret = 'SYNTHETIC_GITLEAKS_SECRET_MUST_NOT_LEAK';
+  const historicalSecret = 'SYNTHETIC_HISTORICAL_SECRET_MUST_NOT_LEAK';
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'midad-msav-gitleaks-history-'));
+  try {
+    fs.mkdirSync(path.join(workspace, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, 'src', 'config.txt'), 'TOKEN=' + secret + '\n');
+
+    const report = sanitizeGitleaks([
+      {
+        RuleID: 'generic-api-key',
+        File: 'src/config.txt',
+        StartLine: 1,
+        EndLine: 1,
+        Commit: 'a'.repeat(40),
+        Secret: secret,
+        Match: secret,
+        Fingerprint: 'raw-fingerprint-must-not-leak',
+        Author: 'private@example.invalid',
+        Message: 'raw match message',
+      },
+      {
+        RuleID: 'generic-api-key',
+        File: 'removed/old.env',
+        StartLine: 4,
+        Commit: 'b'.repeat(40),
+        Secret: historicalSecret,
+        Match: historicalSecret,
+      },
+    ], workspace);
+
+    assert.equal(report.findings.length, 2);
+    const current = report.findings.find(item => item.path === 'src/config.txt');
+    const historical = report.findings.find(item => item.path === 'removed/old.env');
+    assert.equal(current.presentInHead, true);
+    assert.equal(current.commitSha, 'a'.repeat(40));
+    assert.match(current.secretSha256, /^[a-f0-9]{64}$/);
+    assert.equal(historical.presentInHead, false);
+    assert.equal(historical.commitSha, 'b'.repeat(40));
+
+    const serialized = JSON.stringify(report);
+    for (const forbidden of [
+      secret,
+      historicalSecret,
+      'raw-fingerprint-must-not-leak',
+      'private@example.invalid',
+      'raw match message',
+    ]) {
+      assert.equal(serialized.includes(forbidden), false);
+    }
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
