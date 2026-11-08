@@ -20,6 +20,7 @@ import ssl
 import sys
 import time
 import urllib.request
+from urllib.parse import urlsplit
 from datetime import datetime, timezone
 from typing import Any
 
@@ -184,6 +185,59 @@ def normalize(raw: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
 def sign(secret: str, timestamp: str, body: bytes) -> str:
     return hmac.new(secret.encode(), (timestamp + ".").encode() + body, hashlib.sha256).hexdigest()
 
+ALLOWED_MIDAD_FUNCTIONS = frozenset({
+    "midad_miner_telemetry_ingest",
+    "midad_miner_repair_bridge",
+})
+
+
+def is_valid_midad_endpoint(url: str, expected_function: str) -> bool:
+    """Accept only exact MIDAD Edge Function paths on a Supabase project HTTPS host."""
+    if expected_function not in ALLOWED_MIDAD_FUNCTIONS or not isinstance(url, str):
+        return False
+    try:
+        parsed = urlsplit(url)
+        hostname = parsed.hostname or ""
+        project_ref, separator, domain = hostname.partition(".supabase.co")
+        if not separator or domain or len(project_ref) != 20:
+            return False
+        if not project_ref.isascii() or not project_ref.isalnum() or project_ref.lower() != project_ref:
+            return False
+        if parsed.scheme != "https" or parsed.username is not None or parsed.password is not None:
+            return False
+        if parsed.port not in (None, 443):
+            return False
+        if parsed.netloc not in (hostname, f"{hostname}:443"):
+            return False
+        if parsed.path != f"/functions/v1/{expected_function}":
+            return False
+        if parsed.query or parsed.fragment:
+            return False
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+class _NoMidadRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            "Redirect blocked by MIDAD endpoint policy",
+            headers,
+            fp,
+        )
+
+
+def open_midad_endpoint(req: urllib.request.Request, url: str, expected_function: str, timeout: float = 15) -> dict[str, Any]:
+    """POST only to the approved MIDAD Edge endpoint and never follow redirects."""
+    if not is_valid_midad_endpoint(url, expected_function):
+        raise ValueError("MIDAD_ENDPOINT_REJECTED")
+    opener = urllib.request.build_opener(_NoMidadRedirect())
+    with opener.open(req, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def post_repair(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -> dict[str, Any]:
     body = json.dumps(body_obj, separators=(",", ":"), ensure_ascii=False).encode()
     ts = str(int(time.time()))
@@ -198,8 +252,7 @@ def post_repair(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -
             "x-midad-signature": sign(secret, ts, body),
         },
     )
-    with urllib.request.urlopen(req, timeout=15) as res:
-        return json.loads(res.read().decode("utf-8"))
+    return open_midad_endpoint(req, url, "midad_miner_repair_bridge", timeout=15)
 
 
 def cgminer_command(host: str, port: int, command: str, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
@@ -333,9 +386,7 @@ def post_batch(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) ->
             "x-midad-signature": sign(secret, ts, body),
         },
     )
-    ctx = ssl.create_default_context()
-    with urllib.request.urlopen(req, timeout=15, context=ctx) as res:
-        return json.loads(res.read().decode("utf-8"))
+    return open_midad_endpoint(req, url, "midad_miner_telemetry_ingest", timeout=15)
 
 
 def load_config(path: str) -> dict[str, Any]:
