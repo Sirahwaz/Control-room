@@ -59,6 +59,74 @@ jobs:
         working-directory: mobile
         run: node factory/trading-ui-smoke.mjs www ../dist
 
+      - name: Setup Java 21 for Android debug build
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android SDK for Trading APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;36.0.0"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Add and sync Trading Android platform
+        working-directory: mobile
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Trading Factory security and quality gate
+        run: node mobile/factory/quality-gate.mjs midad-trading
+
+      - name: Build MIMIC-integrated Trading debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify Trading APK package and integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          PACKAGE="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          test "$PACKAGE" = "ai.midad.trading"
+          mkdir -p dist
+          sha256sum "$APK" | tee dist/MIDAD-Trading-Intelligence-v0.2.1-debug.apk.sha256
+          echo "TRADING_APK_PACKAGE_VERIFIED=$PACKAGE"
+
+      - name: Install and launch MIMIC-integrated Trading APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash mobile/factory/android-runtime-smoke.sh "ai.midad.trading" "mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+
+      - name: Upload MIMIC-integrated Trading Android debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDAD-Trading-Intelligence-v0.2.1-mimic-debug
+          path: |
+            mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            dist/MIDAD-Trading-Intelligence-v0.2.1-debug.apk.sha256
+            dist/runtime-smoke-report.json
+            dist/trading-ui-smoke-report.json
+            dist/trading-ui-smoke.png
+          if-no-files-found: error
+
       - name: Upload MIMIC and Trading browser smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
