@@ -54,3 +54,15 @@ The health and payment manifest are public. The opportunity data route requires 
 - [Control-room Module Map](docs/architecture/CONTROL_ROOM_MODULE_MAP.md) — module responsibilities, entry points and safe organization rules.
 
 These maps document source ownership and known constraints. They do not imply that a GitHub source file or function is deployed or live; verify runtime state separately.
+
+## Architecture Governance
+
+MIDAD now maintains an evidence-backed repository/module registry and read-only architecture checks:
+
+- [Architecture Governance Layer](docs/architecture/ARCHITECTURE_GOVERNANCE.md) — operating model, validation rules, change impact and provenance.
+- [Dependency Map](docs/architecture/DEPENDENCY_MAP.md) — verified local runtime/test/build relationships and explicitly documented optional boundaries.
+- [Repository Registry](architecture/governance/manifest.json) — seven repository records, 38 module ownership records and evidence-backed dependency edges.
+- [Manifest Schema](architecture/governance/manifest.schema.json) — machine-readable contract.
+
+The CI governance workflow is read-only. It reports unowned paths, missing module/evidence references, generated/cache files, duplicate content and change impact. It does not move or delete code, change service state, or expose secrets.
+
