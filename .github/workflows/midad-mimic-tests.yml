@@ -97,7 +97,7 @@ jobs:
           test -s "$APK"
           AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          PACKAGE="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          PACKAGE="$("$AAPT" dump badging "$APK" | awk -F"'" '/^package: name=/ {print $2; exit}')"
           test "$PACKAGE" = "ai.midad.trading"
           mkdir -p dist
           sha256sum "$APK" | tee dist/MIDAD-Trading-Intelligence-v0.2.1-debug.apk.sha256
