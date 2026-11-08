@@ -101,10 +101,34 @@ const workforcePlan = workforceAgentIds.length
       waves: []
     };
 
+const safeRequest = { ...req };
+delete safeRequest.workforce_payloads;
+delete safeRequest.workforce_approvals;
+const workforceInputManifest = Object.fromEntries(
+  Object.entries(req.workforce_payloads ?? {}).map(([agentId, payload]) => [
+    agentId,
+    Object.keys(payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {})
+      .filter(key => !/(?:secret|token|api[-_]?key|password|credential|authorization|private[-_]?key|mnemonic|seed|bearer)/i.test(key))
+      .sort()
+  ])
+);
+const workforceApprovalManifest = Object.fromEntries(
+  Object.entries(req.workforce_approvals ?? {}).map(([agentId, approval]) => [
+    agentId,
+    Object.entries(approval && typeof approval === "object" ? approval : {})
+      .filter(([key, value]) => value === true && !/(?:secret|token|api[-_]?key|password|credential|authorization|private[-_]?key|mnemonic|seed|bearer)/i.test(key))
+      .map(([key]) => key)
+      .sort()
+  ])
+);
+
+
 const result = {
   ok:true,
   factory:"MIDAD Mobile Factory X",
-  request:req,
+  request:safeRequest,
+  workforce_input_manifest:workforceInputManifest,
+  workforce_approval_manifest:workforceApprovalManifest,
   inferred_capabilities:capabilityPlan,
   plugins:pluginPlan,
   providers:providerPlan,
