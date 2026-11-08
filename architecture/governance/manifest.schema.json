@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Sirahwaz/Control-room/blob/main/architecture/governance/manifest.schema.json",
+  "title": "MIDAD Architecture Governance Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "auditDate",
+    "currentRepository",
+    "canonicalRepository",
+    "repositories",
+    "modules",
+    "dependencies",
+    "policy"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "auditDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "auditBaselineCommit": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{40,64}$"
+    },
+    "currentRepository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonicalRepository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/repository"
+      },
+      "minItems": 1
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      },
+      "minItems": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    }
+  },
+  "$defs": {
+    "repository": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "fullName",
+        "visibility",
+        "role",
+        "status",
+        "defaultBranch",
+        "description",
+        "boundary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "fullName": {
+          "type": "string",
+          "pattern": "^[^/\\s]+/[^/\\s]+$"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "active",
+            "experimental",
+            "unknown",
+            "archived"
+          ]
+        },
+        "defaultBranch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "boundary": {
+          "type": "string"
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "repository",
+        "domain",
+        "kind",
+        "paths",
+        "status",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "status": {
+          "enum": [
+            "active",
+            "experimental",
+            "planned",
+            "deprecated",
+            "unknown"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "relationship",
+        "evidence"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relationship": {
+          "type": "string",
+          "minLength": 1
+        },
+        "impactPropagation": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository",
+              "path",
+              "note"
+            ],
+            "properties": {
+              "repository": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "managedRoots",
+        "rootAssetExtensions",
+        "generatedPathHandling",
+        "duplicateContentHandling",
+        "secretFilenameHandling"
+      ],
+      "properties": {
+        "managedRoots": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rootAssetExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\."
+          }
+        },
+        "generatedPathHandling": {
+          "type": "string"
+        },
+        "duplicateContentHandling": {
+          "type": "string"
+        },
+        "secretFilenameHandling": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

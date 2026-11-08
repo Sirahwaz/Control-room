@@ -1,0 +1,133 @@
+name: MIDAD Architecture Governance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "architecture/governance/**"
+      - "tools/architecture-governance/**"
+      - "tests/architecture-governance.test.mjs"
+      - ".github/workflows/architecture-governance.yml"
+      - ".agents/**"
+      - ".codex/**"
+      - ".github/workflows/**"
+      - "assets/**"
+      - "automation-backup/**"
+      - "compute/**"
+      - "docs/**"
+      - "lab/**"
+      - "mobile/**"
+      - "midad_static_egress_gateway/**"
+      - "midad_viabtc_monitor/**"
+      - "research/**"
+      - "revenue/**"
+      - "supabase/**"
+      - "tests/**"
+      - "tools/**"
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "*.mjs"
+      - "*.svg"
+      - "*.webmanifest"
+      - "MIDAD_*"
+      - "REVENUE_*"
+      - "README.md"
+  push:
+    branches: ["main"]
+    paths:
+      - "architecture/governance/**"
+      - "tools/architecture-governance/**"
+      - "tests/architecture-governance.test.mjs"
+      - ".github/workflows/architecture-governance.yml"
+      - ".agents/**"
+      - ".codex/**"
+      - ".github/workflows/**"
+      - "assets/**"
+      - "automation-backup/**"
+      - "compute/**"
+      - "docs/**"
+      - "lab/**"
+      - "mobile/**"
+      - "midad_static_egress_gateway/**"
+      - "midad_viabtc_monitor/**"
+      - "research/**"
+      - "revenue/**"
+      - "supabase/**"
+      - "tests/**"
+      - "tools/**"
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "*.mjs"
+      - "*.svg"
+      - "*.webmanifest"
+      - "MIDAD_*"
+      - "REVENUE_*"
+      - "README.md"
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-governance:
+    name: Validate registry, dependencies, module health and provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check tools/architecture-governance/validator.mjs
+          node --check tools/architecture-governance/cli.mjs
+
+      - name: Run architecture governance unit tests
+        run: node --test tests/architecture-governance.test.mjs
+
+      - name: Calculate changed paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/midad-changed-paths.txt"
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            BASE_SHA="${{ github.event.before }}"
+            if [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+              git diff --name-only "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+            else
+              git ls-tree -r --name-only "$GITHUB_SHA" > "$RUNNER_TEMP/midad-changed-paths.txt"
+            fi
+          fi
+
+      - name: Run read-only architecture governance
+        env:
+          MIDAD_GOVERNANCE_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          MIDAD_GOVERNANCE_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          MIDAD_GOVERNANCE_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+        run: |
+          node tools/architecture-governance/cli.mjs \
+            --manifest architecture/governance/manifest.json \
+            --impact-file "$RUNNER_TEMP/midad-changed-paths.txt" \
+            --provenance \
+            --fail-on-unmapped \
+            --out "$RUNNER_TEMP/midad-architecture-governance"
+
+      - name: Upload health, impact and provenance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-architecture-governance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/midad-architecture-governance/
+          if-no-files-found: warn
+          retention-days: 30

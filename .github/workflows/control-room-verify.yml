@@ -24,6 +24,12 @@ jobs:
       - name: Git diff check
         run: git diff --check
 
+      - name: Architecture Governance unit tests
+        run: node --test tests/architecture-governance.test.mjs
+
+      - name: Architecture Governance manifest and workspace validation
+        run: node tools/architecture-governance/cli.mjs --manifest architecture/governance/manifest.json
+
       - name: JavaScript syntax
         run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
 
