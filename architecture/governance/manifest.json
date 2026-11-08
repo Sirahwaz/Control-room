@@ -540,6 +540,39 @@
       ],
       "status": "active",
       "description": "Independent GitHub-style tutorial project."
+    },
+    {
+      "id": "governance-registry",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "repository-and-dependency-registry",
+      "paths": [
+        "architecture/governance/"
+      ],
+      "status": "active",
+      "description": "Canonical repository inventory, module ownership records, dependency evidence and governance manifest schema."
+    },
+    {
+      "id": "architecture-governance-tooling",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "validator-and-cli",
+      "paths": [
+        "tools/architecture-governance/"
+      ],
+      "status": "active",
+      "description": "Read-only manifest validator, dependency impact analyzer, workspace drift detector and run provenance generator."
+    },
+    {
+      "id": "architecture-governance-tests",
+      "repository": "control-room",
+      "domain": "architecture-governance",
+      "kind": "contract-tests",
+      "paths": [
+        "tests/architecture-governance.test.mjs"
+      ],
+      "status": "active",
+      "description": "Focused unit tests for governance registry, path ownership, change impact, drift and provenance contracts."
     }
   ],
   "dependencies": [
@@ -664,6 +697,71 @@
           "note": "Project-level provider contract included as a governance reference; not asserted as a direct GENESIS runtime dependency."
         }
       ]
+    },
+    {
+      "from": "architecture-governance-tooling",
+      "to": "governance-registry",
+      "relationship": "manifest-consumption",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tools/architecture-governance/cli.mjs",
+          "note": "CLI default manifest path is architecture/governance/manifest.json."
+        }
+      ]
+    },
+    {
+      "from": "architecture-governance-tests",
+      "to": "architecture-governance-tooling",
+      "relationship": "contract-tests",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "tests/architecture-governance.test.mjs",
+          "note": "Imports and tests validator, impact, audit and provenance exports."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "architecture-governance-tooling",
+      "relationship": "ci-execution",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/architecture-governance.yml",
+          "note": "Runs the governance CLI to validate the checkout and generate health/impact/provenance artifacts."
+        }
+      ]
+    },
+    {
+      "from": "github-workflows",
+      "to": "architecture-governance-tests",
+      "relationship": "ci-test-execution",
+      "impactPropagation": true,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": ".github/workflows/architecture-governance.yml",
+          "note": "Executes the architecture governance Node test suite."
+        }
+      ]
+    },
+    {
+      "from": "architecture-docs",
+      "to": "governance-registry",
+      "relationship": "architecture-documentation",
+      "impactPropagation": false,
+      "evidence": [
+        {
+          "repository": "control-room",
+          "path": "docs/architecture/ARCHITECTURE_GOVERNANCE.md",
+          "note": "Describes manifest fields, registry use, validation rules and governance operation."
+        }
+      ]
     }
   ],
   "policy": {
@@ -683,7 +781,8 @@
       "revenue/",
       "supabase/",
       "tests/",
-      "tools/"
+      "tools/",
+      "architecture/governance/"
     ],
     "rootAssetExtensions": [
       ".html",
