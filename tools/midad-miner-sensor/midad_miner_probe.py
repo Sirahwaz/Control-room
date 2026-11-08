@@ -16,7 +16,6 @@ import hmac
 import json
 import os
 import socket
-import ssl
 import sys
 import time
 import urllib.request
