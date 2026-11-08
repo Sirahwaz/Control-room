@@ -42,7 +42,7 @@ Each module has:
 - one or more relative path scopes;
 - a lifecycle status and human-readable purpose.
 
-Local Control-room module paths are checked against the checked-out workspace. External repository module paths are recorded but not fetched by CI; their evidence remains an audited inventory statement until the external repository is checked separately.
+Local Control-room module paths are checked against the checked-out workspace. External repository module paths are not fetched by this local CI job and are reported as `NOT_CHECKED_EXTERNAL`, never as `VERIFIED`; their evidence remains an audited inventory statement until the external repository is checked separately.
 
 Managed roots include `.agents/`, `.codex/`, `.github/workflows/`, `assets/`, `automation-backup/`, `compute/`, `docs/`, `lab/`, `mobile/`, the standalone service packages, `research/`, `revenue/`, `supabase/`, `tests/` and `tools/`.
 
@@ -106,6 +106,7 @@ node tools/architecture-governance/cli.mjs
 
 The CLI returns:
 - `VERIFIED`: manifest valid and no findings.
+- `NOT_CHECKED_EXTERNAL`: a module record points to another repository whose paths are not fetched by this workspace check. This is an explicit limitation, not a pass.
 - `REVIEW`: only warnings (for example identical files or generated artifacts).
 - `FAILED`: one or more blocking validation or hygiene errors.
 
