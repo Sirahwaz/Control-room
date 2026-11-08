@@ -214,6 +214,8 @@ export function compileWorkforcePlan({
       const mediaPlan = approval.mediaPlan;
       const validStatus = mediaPlan?.status === "PENDING_SPEND_APPROVAL" || mediaPlan?.status === "READY_PENDING_EXECUTION";
       const validImageOrVideoQuote = ["image", "video"].includes(mediaPlan?.mediaType)
+        && mediaPlan?.provider === "openart"
+        && mediaPlan?.selected?.provider === "openart"
         && mediaPlan?.selected?.affordable === true
         && typeof mediaPlan?.selected?.creditsRequired === "number"
         && Number.isFinite(mediaPlan.selected.creditsRequired)
@@ -225,6 +227,7 @@ export function compileWorkforcePlan({
         && mediaPlan?.rightsConfirmed === true;
       const audioQuote = mediaPlan?.mediaType === "audio" ? mediaPlan?.verifiedQuote : null;
       const validAudioQuote = mediaPlan?.mediaType === "audio"
+        && mediaPlan?.provider === "heygen"
         && audioQuote?.verified === true
         && typeof audioQuote?.unit === "string"
         && audioQuote.unit.trim().length > 0
@@ -260,10 +263,17 @@ export function compileWorkforcePlan({
       providedInputNames: inputNames.slice().sort(),
       requiredApprovals,
       adapter: binding.adapter,
-      provider: {
-        primary: binding.primary,
-        fallback: binding.fallback ?? null
-      },
+      provider: agentId === "media-production-agent"
+        ? {
+            primary: approvals?.[agentId]?.mediaPlan?.provider
+              ?? approvals?.[agentId]?.mediaPlan?.selected?.provider
+              ?? null,
+            fallback: null
+          }
+        : {
+            primary: binding.primary,
+            fallback: binding.fallback ?? null
+          },
       adapterInvoked: false,
       providerInvoked: false,
       dispatchAllowed: false,
