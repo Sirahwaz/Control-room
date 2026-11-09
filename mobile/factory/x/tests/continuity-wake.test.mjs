@@ -94,6 +94,15 @@ test('enqueue writes a durable wake outbox entry and alarm publishes it exactly 
   storage.close();
 });
 
+test('pull-only fallback does not accumulate wake outbox rows when Queue is not configured', async () => {
+  const { storage, ledger, ctx } = setup();
+  const created = await read(await ledger.fetch(post('/v1/tasks/enqueue', task(), admin())));
+  assert.equal(created.status, 201);
+  assert.equal(storage.db.prepare('SELECT COUNT(*) AS n FROM continuity_wake_outbox').get().n, 0);
+  assert.equal(ctx.storage.alarms.length, 0);
+  storage.close();
+});
+
 test('a failed Queue send leaves the outbox pending and schedules a retry', async () => {
   const queue = { async send() { throw new Error('temporary queue outage'); } };
   const { storage, ledger, ctx } = setup({ CONTINUITY_WAKE_QUEUE: queue });
