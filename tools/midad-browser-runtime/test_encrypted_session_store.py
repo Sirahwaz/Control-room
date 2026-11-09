@@ -56,9 +56,11 @@ class EncryptedSessionStoreTests(unittest.TestCase):
     def test_tampered_ciphertext_is_rejected(self):
         self.store.save(self.owner, self.account, self.host, self.state)
         path = self.store.path_for(self.owner, self.account, self.host)
-        raw = bytearray(path.read_bytes())
-        raw[-3] ^= 0x01
-        path.write_bytes(raw)
+        envelope = json.loads(path.read_text(encoding="ascii"))
+        ciphertext = bytearray(base64.b64decode(envelope["ciphertext"], validate=True))
+        ciphertext[len(ciphertext) // 2] ^= 0x01
+        envelope["ciphertext"] = base64.b64encode(ciphertext).decode("ascii")
+        path.write_text(json.dumps(envelope, sort_keys=True, separators=(",", ":")), encoding="ascii")
         os.chmod(path, 0o600)
         with self.assertRaisesRegex(SessionStoreError, "SESSION_STORE_AUTH_FAILED"):
             self.store.load(self.owner, self.account, self.host)
