@@ -289,7 +289,9 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
         capabilities: [...RUNNER_CAPABILITIES],
       }),
     }));
-    assert.equal(directHeartbeat.status, 200);
+    const directHeartbeatBody = await directHeartbeat.json();
+    assert.equal(directHeartbeat.headers.get('content-type')?.includes('application/json'), true);
+    assert.equal(directHeartbeat.status, 200, directHeartbeatBody.error || 'HEARTBEAT_REJECTED');
 
     const enqueueResponse = await ledger.fetch(new Request('https://ledger.test/v1/tasks/enqueue', {
       method: 'POST',
