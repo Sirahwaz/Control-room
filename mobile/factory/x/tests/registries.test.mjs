@@ -64,6 +64,14 @@ test("hybrid execution substrates are registered without implying runtime readin
     assert.ok(capabilityIds.has(id), `missing execution capability: ${id}`);
   }
 
+  const github = providers.find(x => x.id === "github");
+  assert.ok(github.capabilities.includes("stateless-ci-execution"));
+
+  const interactiveBrowserCandidates = providers
+    .filter(x => x.capabilities.includes("interactive-browser-execution"))
+    .map(x => x.id);
+  assert.deepEqual(interactiveBrowserCandidates, ["midad-playwright-worker"]);
+
   const codespaces = providers.find(x => x.id === "github-codespaces");
   assert.ok(codespaces);
   assert.equal(codespaces.status, "discover_on_need");
