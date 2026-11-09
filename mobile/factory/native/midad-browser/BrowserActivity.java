@@ -208,6 +208,11 @@ public final class BrowserActivity extends Activity {
                 progress.setProgress(100);
                 if (url != null && url.startsWith(MIDAD_HOME)) {
                     android.util.Log.i("MIDAD_BROWSER", "LOCAL_HOME_LOADED");
+                } else if (url != null && url.startsWith("https://")) {
+                    String host = Uri.parse(url).getHost();
+                    if (host != null) {
+                        android.util.Log.i("MIDAD_BROWSER", "ONLINE_PAGE_LOADED:" + host);
+                    }
                 }
             }
 
@@ -223,6 +228,15 @@ public final class BrowserActivity extends Activity {
             public void onReceivedError(WebView view, WebResourceRequest request,
                                         WebResourceError error) {
                 if (request.isForMainFrame()) {
+                    Uri failedUri = request.getUrl();
+                    if (failedUri != null && "https".equalsIgnoreCase(failedUri.getScheme())) {
+                        String host = failedUri.getHost();
+                        android.util.Log.e(
+                            "MIDAD_BROWSER",
+                            "ONLINE_MAIN_FRAME_ERROR:" + (host == null ? "unknown" : host) +
+                                ":" + error.getErrorCode()
+                        );
+                    }
                     securityState.setText("تعذر تحميل الصفحة");
                 }
             }

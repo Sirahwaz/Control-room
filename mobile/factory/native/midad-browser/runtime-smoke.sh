@@ -27,7 +27,21 @@ adb shell svc wifi enable >/dev/null 2>&1 || true
 adb shell svc data enable >/dev/null 2>&1 || true
 adb shell pidof "$APP_ID" >/dev/null || fail "process" "Browser process did not remain alive"
 adb shell am start -W -a android.intent.action.VIEW -d "https://example.com/" "$APP_ID" >/dev/null || fail "view-intent" "HTTPS VIEW intent failed"
-sleep 3
+for attempt in $(seq 1 30); do
+  if adb logcat -d -s MIDAD_BROWSER:I | grep -Fq "ONLINE_PAGE_LOADED:example.com"; then
+    echo "MIDAD_BROWSER_ONLINE_PAGE_PASSED"
+    break
+  fi
+  if adb logcat -d -s MIDAD_BROWSER:E | grep -Fq "ONLINE_MAIN_FRAME_ERROR:example.com"; then
+    adb logcat -d -s MIDAD_BROWSER:E || true
+    fail "online-load" "HTTPS main-frame navigation to example.com failed"
+  fi
+  sleep 1
+done
+if ! adb logcat -d -s MIDAD_BROWSER:I | grep -Fq "ONLINE_PAGE_LOADED:example.com"; then
+  adb logcat -d -s MIDAD_BROWSER:I MIDAD_BROWSER:E || true
+  fail "online-load" "Browser did not report a completed HTTPS page load for example.com"
+fi
 FOREGROUND="$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -F "$APP_ID" | head -n 1 || true)"
 test -n "$FOREGROUND" || fail "foreground" "Browser activity is not foreground after VIEW intent"
 echo "MIDAD_BROWSER_ANDROID_SMOKE_PASSED"
