@@ -59,9 +59,11 @@ test("the Browser APK workflow packages the local home page and its local CSS an
 
 test("the Browser APK artifact is uploaded even when emulator verification fails after signing", () => {
   const workflow = read(".github/workflows/midad-browser-android.yml");
-  const uploadStep = workflow.match(/      - name: Upload Browser APK and reports([\\s\\S]*?)(?=\\n      - name:|$)/);
+  const start = workflow.indexOf("- name: Upload Browser APK and reports");
+  const end = workflow.indexOf("\n      - name:", start + 1);
 
-  assert.ok(uploadStep, "Browser APK upload step must exist");
-  assert.match(uploadStep[0], /if: always\\(\\)/);
-  assert.match(uploadStep[0], /if-no-files-found: ignore/);
+  assert.ok(start >= 0, "Browser APK upload step must exist");
+  const uploadStep = workflow.slice(start, end >= 0 ? end : undefined);
+  assert.ok(uploadStep.includes("if: always()"));
+  assert.ok(uploadStep.includes("if-no-files-found: ignore"));
 });
