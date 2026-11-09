@@ -22,6 +22,11 @@ on:
       - 'tests/midad-linux-worker.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
 
 permissions:
   contents: read
