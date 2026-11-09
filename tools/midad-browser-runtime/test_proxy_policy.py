@@ -145,6 +145,8 @@ class ProxyPolicyTests(unittest.TestCase):
     def test_proxy_runtime_requires_exact_account_host_purpose_and_scope_binding(self):
         from proxy_policy import ProxyRuntime
         config = make_config()
+        config["routing_rules"] = [config["routing_rules"][0]]
+        config["routing_rules"][0]["scopes"] = ["AUTOMATION"]
         runtime = ProxyRuntime(config, secret_resolver=lambda _ref: {"username": "u", "password": "p"})
         with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_SCOPE_MISMATCH"):
             runtime.resolve_for_profile({
@@ -154,6 +156,8 @@ class ProxyPolicyTests(unittest.TestCase):
     def test_proxy_runtime_rejects_missing_proxy_auth_binding(self):
         from proxy_policy import ProxyRuntime
         config = make_config()
+        config["routing_rules"] = [config["routing_rules"][0]]
+        config["routing_rules"][0]["scopes"] = ["AUTOMATION"]
         config["credential_bindings"] = []
         runtime = ProxyRuntime(config, secret_resolver=lambda _ref: {"username": "u", "password": "p"})
         with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_SCOPE_MISMATCH"):
@@ -165,6 +169,8 @@ class ProxyPolicyTests(unittest.TestCase):
         from proxy_policy import ProxyRuntime
         for field, value in [("host", "other.example"), ("purpose", "BROWSER_LOGIN"), ("scope", "BROWSER")]:
             config = make_config()
+            config["routing_rules"] = [config["routing_rules"][0]]
+            config["routing_rules"][0]["scopes"] = ["AUTOMATION"]
             config["credential_bindings"][0][field] = value
             runtime = ProxyRuntime(
                 config, secret_resolver=lambda _ref: {"username": "u", "password": "p"}
