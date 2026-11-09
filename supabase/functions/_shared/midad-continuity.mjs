@@ -62,7 +62,8 @@ export async function loadRuntimeContext({
   url,
   now = Date.now(),
   fetchImpl = fetch,
-  cacheMs = 0
+  cacheMs = 0,
+  expectedSha256
 } = {}) {
   if (cacheMs > 0 && cachedContext && cacheExpiresAt > now) {
     return { ok: true, context: cachedContext };
@@ -73,9 +74,15 @@ export async function loadRuntimeContext({
   try {
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return { ok: false, code: "CONTEXT_SOURCE_UNAVAILABLE" };
+    const raw = await response.text();
+    if (expectedSha256) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+      const actualSha256 = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      if (actualSha256 !== expectedSha256) return { ok: false, code: "CONTEXT_INTEGRITY_MISMATCH" };
+    }
     let document;
     try {
-      document = await response.json();
+      document = JSON.parse(raw);
     } catch {
       return { ok: false, code: "CONTEXT_SOURCE_INVALID" };
     }
