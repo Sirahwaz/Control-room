@@ -109,17 +109,22 @@ class OperatorWorker:
                     "account_id": account_id,
                     "host": profile["host"],
                     "authenticated": bool(session.authenticated),
-                    "session_storage": "memory_only",
+                    "session_storage": getattr(session, "session_storage", "memory_only"),
                 }
             elif validated["action"] == "stop_session":
                 if session is not None:
-                    await session.close()
+                    discard = getattr(session, "stop_and_discard", None)
+                    if callable(discard):
+                        await discard()
+                    else:
+                        await session.close()
                     self.session_pool.sessions.pop(account_id, None)
                 result = {"status": "STOPPED", "action": "stop_session", "account_id": account_id}
             elif validated["action"] == "status":
                 result = {
                     "status": session.last_status if session else "NOT_STARTED",
                     "authenticated": bool(session and session.authenticated),
+                    "session_storage": getattr(session, "session_storage", "memory_only") if session else "none",
                     "action": "status", "account_id": account_id, "host": profile["host"],
                 }
             else:
@@ -127,6 +132,12 @@ class OperatorWorker:
                 result = await session.execute(validated)
                 result.update({"action": validated["action"], "account_id": account_id,
                                "platform_key": validated["platform_key"]})
+            if session is not None and bool(getattr(session, "authenticated", False)):
+                persist = getattr(session, "persist_storage_state", None)
+                if callable(persist):
+                    await persist()
+            if session is not None:
+                result.setdefault("session_storage", getattr(session, "session_storage", "memory_only"))
             await self._complete_result(job, result, "COMPLETED")
             return {"job_id": job_id, **result}
         except BrowserSessionError as exc:

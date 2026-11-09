@@ -2,6 +2,7 @@ name: MIDAD Factory X Registry Contract
 on:
   pull_request:
     paths:
+      - "mobile/factory/x/**"
       - "mobile/factory/x/agents.registry.json"
       - "mobile/factory/x/agent-bindings.registry.json"
       - "mobile/factory/x/tests/**"
@@ -9,6 +10,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "mobile/factory/x/**"
       - "mobile/factory/x/agents.registry.json"
       - "mobile/factory/x/agent-bindings.registry.json"
       - "mobile/factory/x/tests/**"
@@ -24,4 +26,4 @@ jobs:
         with:
           node-version: 24
       - name: Validate agent and capability bindings
-        run: node --test mobile/factory/x/tests/registries.test.mjs
+        run: node --test mobile/factory/x/tests/*.test.mjs

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { selectProviderForCapability } from "./provider-selection.mjs";
 
 const root = process.cwd();
 const requestPath = process.argv[2];
@@ -24,6 +25,21 @@ const providers = readJson("mobile/factory/x/providers.registry.json").providers
 const plugins = readJson("mobile/factory/x/plugins.registry.json").plugins;
 const agents = readJson("mobile/factory/x/agents.registry.json").agents;
 
+// The evidence file contains signed runtime metadata only, never credentials.
+// Its HMAC key is injected by the trusted host environment, never committed.
+const runtimeEvidenceEnvelope = (() => {
+  const file = process.env.MIDAD_RUNTIME_EVIDENCE_FILE;
+  if (!file) return null;
+  try {
+    const stat = fs.statSync(file);
+    if (!stat.isFile() || stat.size > 1_000_000) return null;
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+})();
+const runtimeEvidenceSigningKey = process.env.MIDAD_RUNTIME_EVIDENCE_HMAC_KEY || "";
+
 const maxTasks = Math.max(1, Number(cfg.execution.max_parallel_tasks || 1));
 const maxAgents = Math.max(1, Number(cfg.execution.max_parallel_agents || 1));
 const maxRetries = Math.min(3, Math.max(0, Number(cfg.execution.max_repair_attempts_per_incident || 3)));
@@ -43,30 +59,20 @@ const inferredCaps = [...new Set(
   caps.filter(c => c.tags.some(t => requestedTags.has(t) || blob.includes(t))).map(c => c.id)
 )];
 
-const scoreProvider = p => {
-  const status = p.status === "known_available" ? 0.70 : p.status === "optional" ? 0.48 : p.status === "discover_on_need" ? 0.42 : 0.30;
-  const fallback = Array.isArray(p.fallbacks) && p.fallbacks.length ? 0.12 : 0;
-  const account = p.account_action === "none_by_default" ? 0.10 : p.account_action === "evaluate_per_task" ? 0.06 : 0.02;
-  const integration = ["backend_control_plane","source_ci","research_web"].includes(p.kind) ? 0.08 : 0.04;
-  return Number(Math.min(1, status + fallback + account + integration).toFixed(3));
-};
-
-const providerFor = capability => {
-  const matches = providers.filter(p => p.capabilities.includes(capability))
-    .map(p => ({...p, score: scoreProvider(p)}))
-    .sort((a,b) => b.score - a.score);
-  const primary = matches[0] ?? null;
-  const fallback = matches.find(p => p.id !== primary?.id) ?? null;
-  const broad = request.discovery_mode === "broad" || request.discovery_mode === "competitive";
-  return {
-    capability,
-    primary: primary?.id ?? null,
-    fallback: fallback?.id ?? null,
-    candidates: matches.map(p => ({id:p.id,name:p.name,status:p.status,score:p.score})),
-    discovery_required: broad || matches.length === 0 || !matches.some(p => p.status === "known_available"),
-    reason: matches.length === 0 ? "no_registered_candidate" : broad ? "requested_broad_discovery" : "provider_satisfies_need"
-  };
-};
+const providerFor = capability => selectProviderForCapability({
+  capability,
+  providers,
+  evidenceEnvelope: runtimeEvidenceEnvelope,
+  signingKey: runtimeEvidenceSigningKey,
+  requirements: {
+    max_cost_usd: Number.isFinite(request.max_cost_usd) ? request.max_cost_usd : 0,
+    duration_minutes: Number.isFinite(request.duration_minutes) ? request.duration_minutes : 0,
+    min_memory_mb: Number.isFinite(request.min_memory_mb) ? request.min_memory_mb : 0,
+    min_disk_mb: Number.isFinite(request.min_disk_mb) ? request.min_disk_mb : 0,
+    min_cpu_cores: Number.isFinite(request.min_cpu_cores) ? request.min_cpu_cores : 0,
+  },
+  discoveryMode: request.discovery_mode,
+});
 
 const makeTask = (id, phase, deps, agentId, capability, fn, parallelSafe = true) => ({
   id, phase, deps, agentId, capability, fn, parallelSafe

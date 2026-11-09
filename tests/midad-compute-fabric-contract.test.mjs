@@ -141,7 +141,6 @@ test('Linux compute reuses the existing Forge queue through the bounded worker r
   assert.ok(contractWorkflowForRuntime());
 });
 
-
 test('Forge preserves build diagnostics and submits artifact provenance in the completion report', () => {
   const preserveReport = forgeWorkflow.indexOf(
     'cp forge-output/forge-build-report.json "$RUNNER_TEMP/midad-forge-build-report.json"'
@@ -169,3 +168,86 @@ function contractWorkflowForRuntime() {
   return text.includes('node --test tests/midad-linux-worker.test.mjs') &&
     text.includes('node --check compute/mncf/runtime/worker.mjs');
 }
+
+
+const browserSmokeWorkflow = fs.readFileSync(
+  new URL('../.github/workflows/midad-browser-runtime-live-smoke.yml', import.meta.url),
+  'utf8'
+);
+
+test('MNCF online availability does not depend on a persistent Linux server', () => {
+  const operatingModel = manifest.operating_model;
+  assert.ok(operatingModel, 'operating_model contract is required');
+  assert.equal(operatingModel.availability_pattern, 'always-on-logically-ephemeral-physically');
+  assert.equal(operatingModel.persistent_linux_host_required, false);
+  assert.equal(operatingModel.control_plane.provider, 'cloudflare');
+  assert.equal(operatingModel.control_plane.source_status, 'merged_to_main');
+  assert.equal(operatingModel.control_plane.runtime_status, 'not_deployed');
+  assert.equal(operatingModel.dispatch.current_authority, 'existing_midad_forge');
+  assert.equal(operatingModel.dispatch.cloudflare_to_github_runner, 'cloudflare_push_trigger_pending');
+  assert.equal(operatingModel.compute.primary_provider, 'github-actions-linux');
+  assert.equal(operatingModel.compute.persistence, 'ephemeral');
+  assert.equal(operatingModel.compute.persistent_linux_fallback, 'optional_specialist_only');
+  assert.equal(operatingModel.browser.github_playwright, 'ephemeral_ci');
+  assert.equal(operatingModel.browser.cloudflare_browser_run, 'adapter_pending_quota_limited');
+  assert.equal(operatingModel.browser.persistent_playwright_node, 'optional_specialist_only');
+  assert.equal(manifest.layers.linux_compute.persistent_server_required_for_online_service, false);
+  assert.equal(
+    manifest.layers.linux_compute.capacity_boundary.production_online_service,
+    'serverless_control_plane_plus_github_ephemeral_pull_runner_source_implemented_live_ledger_activation_pending'
+  );
+});
+
+test('live Chromium smoke runs on pull requests in a disposable least-privilege runner', () => {
+  assert.match(browserSmokeWorkflow, /pull_request:/);
+  assert.match(browserSmokeWorkflow, /branches:\s*\[main\]/);
+  assert.match(browserSmokeWorkflow, /runs-on:\s*ubuntu-latest/);
+  assert.match(browserSmokeWorkflow, /permissions:\s*\n\s*contents:\s*read/);
+  assert.match(browserSmokeWorkflow, /timeout-minutes:\s*8/);
+  assert.match(browserSmokeWorkflow, /python live_browser_smoke\.py/);
+  assert.doesNotMatch(browserSmokeWorkflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|MIDAD_LEDGER_ADMIN_KEY/);
+  assert.doesNotMatch(browserSmokeWorkflow, /id-token:\s*write|contents:\s*write|pull-requests:\s*write/);
+});
+
+
+const continuityRunnerWorkflow = fs.readFileSync(
+  new URL('../.github/workflows/midad-continuity-github-ephemeral-node.yml', import.meta.url),
+  'utf8'
+);
+const continuityRunnerSource = fs.readFileSync(
+  new URL('../compute/mncf/runtime/continuity-github-runner.mjs', import.meta.url),
+  'utf8'
+);
+
+test('GitHub Actions is registered as a scheduled ephemeral Continuity node, not a persistent host', () => {
+  const adapter = manifest.layers.linux_compute.continuity_runner_adapter;
+  assert.equal(adapter.provider, 'github-actions-linux');
+  assert.equal(adapter.workflow, '.github/workflows/midad-continuity-github-ephemeral-node.yml');
+  assert.equal(adapter.runtime, 'compute/mncf/runtime/continuity-github-runner.mjs');
+  assert.equal(adapter.polling_interval_minutes, 5);
+  assert.equal(adapter.max_tasks_per_run, 1);
+  assert.equal(adapter.persistence, 'ephemeral');
+  assert.equal(adapter.live_status, 'source_implemented_not_enrolled');
+  assert.deepEqual(adapter.capabilities, ['generic-execution', 'midad.public-read-only-probe']);
+  assert.equal(manifest.operating_model.dispatch.github_to_cloudflare_pull_claim.model, 'scheduled_pull_claim');
+  assert.equal(manifest.operating_model.dispatch.github_to_cloudflare_pull_claim.push_trigger_from_cloudflare, false);
+  assert.equal(manifest.operating_model.compute.github_continuity_node.persistent_host_required, false);
+});
+
+test('scheduled GitHub node has a narrow read-only operation and no secret-bearing or write permissions', () => {
+  assert.match(continuityRunnerWorkflow, /schedule:\s*\n\s*- cron: "\*\/5 \* \* \* \*"/);
+  assert.match(continuityRunnerWorkflow, /workflow_dispatch:/);
+  assert.match(continuityRunnerWorkflow, /github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_NODE_ID != ''/);
+  assert.match(continuityRunnerWorkflow, /runs-on:\s*ubuntu-latest/);
+  assert.match(continuityRunnerWorkflow, /contents:\s*read/);
+  assert.match(continuityRunnerWorkflow, /persist-credentials:\s*false/);
+  assert.match(continuityRunnerWorkflow, /MIDAD_CONTINUITY_NODE_TOKEN/);
+  assert.match(continuityRunnerWorkflow, /MIDAD_CONTINUITY_NODE_NOT_ENROLLED/);
+  assert.doesNotMatch(continuityRunnerWorkflow, /id-token:\s*write|contents:\s*write|pull-requests:\s*write/);
+  assert.doesNotMatch(continuityRunnerWorkflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|MIDAD_LEDGER_ADMIN_KEY/);
+  assert.match(continuityRunnerSource, /https:\/\/example\.com\//);
+  assert.match(continuityRunnerSource, /method:\s*'GET'/);
+  assert.match(continuityRunnerSource, /redirect:\s*'error'/);
+  assert.match(continuityRunnerSource, /maxResponseBytes:\s*64 \* 1024/);
+  assert.doesNotMatch(continuityRunnerSource, /spawn\(|exec\(|eval\(/);
+});

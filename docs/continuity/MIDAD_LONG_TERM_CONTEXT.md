@@ -88,3 +88,25 @@ The local audit checks supported root `LICENSE`/`COPYING` files against registry
 ## 9. Approval boundaries
 
 Read-only inspection, documentation, tests and safe code changes may proceed under the existing engineering authorization. Human approval remains required for destructive/irreversible operations, external spending, production-sensitive changes, wallet signing, financial transfers, live trades, claims/submissions requiring personal eligibility, and license choice/assignment.
+
+
+## 10. Mandatory continuity and no-repeat gate
+
+**Effective date:** 2026-11-09  
+**Status:** Accepted operating rule; documentation-only change. It does not claim an application-enforced runtime lock.
+
+Before any MIDAD work, the operator/agent must:
+
+1. Retrieve the canonical Notion boot record: [MIDAD Global Continuity — Always Load Commands, Rules & Memory](https://app.notion.com/p/3fab132b437d81649bcfe9a5647ebc33), then retrieve only the newest checkpoint for the exact active workstream.
+2. Read this long-term context and the relevant short-term record. Do not load every project history or restart a completed audit.
+3. Establish a compact resume tuple before action: `GOAL`, `LAST VERIFIED STATE`, `EVIDENCE/REFS`, `COMPLETED`, `CURRENT BLOCKER`, `APPROVED NEXT ACTION`, and `PROHIBITED ACTIONS`.
+4. Preserve the user's agreed architecture, current task, providers, resource/cost boundaries and authorization limits. Do not silently change architecture, replace a selected runtime, move a task to VPS-centric execution, or switch workstreams.
+5. Search for and reuse existing branches, PRs, files, credentials *by reference only*, integrations, pages, schedules and deployed components before creating equivalents.
+6. Repeat a completed check only when new evidence could materially change the decision, the previous evidence is stale for that decision, or the user explicitly requests it. State what changed.
+7. Before any write, inspect the exact target, current state, callers/dependencies, minimal diff, impact and rollback path. Read-only is the default.
+8. After each material action, verify the result at its actual source of truth (GitHub for source/CI, Supabase for deployed state, Notion for decisions/checkpoints). Do not equate CI success, PR merge, deployment metadata, HTTP 200 or a saved note with end-to-end readiness.
+9. Update the existing workstream checkpoint and mirror its evidence/refs in this register when a material verified state or blocker changes. Do not create duplicate parallel records.
+
+**Hard stop:** If the canonical record or relevant checkpoint cannot be retrieved, sources conflict, target identity is uncertain, or a required approval/rollback condition is missing, do not mutate. Perform only bounded read-only recovery and report `BLOCKED` with the exact missing evidence. Never guess, invent continuity, or ask the user to re-enter information already stored.
+
+A request to continue means **resume from the last verified checkpoint**. It does not authorize a broad re-audit, architecture redesign, duplicate implementation, or task substitution.

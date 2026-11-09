@@ -1,10 +1,17 @@
 name: MIDAD Browser Gateway — Contract Suite
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - "tests/browser-gateway-source-parity.test.mjs"
+      - "tests/browser-gateway-auth.test.mjs"
+      - ".github/workflows/midad-browser-gateway-contract.yml"
   push:
     branches: [main]
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
+      - "tests/browser-gateway-source-parity.test.mjs"
       - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
       - "supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql"
       - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
@@ -41,6 +48,10 @@ jobs:
         run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
       - name: Run offline ledger helper tests
         run: deno test supabase/functions/midad_browser_agent_gateway/ledger.test.ts
+      - name: Run gateway source parity snapshot contract
+        run: node --test tests/browser-gateway-source-parity.test.mjs
+      - name: Run gateway authorization parsing regression tests
+        run: node --test tests/browser-gateway-auth.test.mjs
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update

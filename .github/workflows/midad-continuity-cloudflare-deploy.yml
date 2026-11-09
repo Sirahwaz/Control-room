@@ -1,0 +1,175 @@
+name: MIDAD Continuity — Cloudflare Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile/factory/x/continuity-ledger/**"
+      - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Dry-run validates only. Deploy provisions Queues and publishes the Worker."
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - deploy
+        default: dry-run
+      confirmation:
+        description: "Type DEPLOY only when intentionally publishing the Worker."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-continuity-cloudflare-deploy
+  cancel-in-progress: false
+
+jobs:
+  pull-request-dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mobile/factory/x/continuity-ledger
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate Cloudflare Worker bundle without credentials or deployment
+        run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
+
+  dry-run:
+    if: inputs.operation == 'dry-run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mobile/factory/x/continuity-ledger
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate Worker bundle without credentials or deployment
+        run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-dry-run"
+
+  deploy:
+    if: inputs.operation == 'deploy'
+    runs-on: ubuntu-latest
+    environment: cloudflare-production
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile/factory/x/continuity-ledger
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MIDAD_LEDGER_ADMIN_KEY: ${{ secrets.MIDAD_LEDGER_ADMIN_KEY }}
+      MIDAD_WAKE_INTERNAL_KEY: ${{ secrets.MIDAD_WAKE_INTERNAL_KEY }}
+      DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require explicit main-branch deployment approval and secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Deployment is allowed only from refs/heads/main after PR review and merge."
+            exit 1
+          fi
+          if [[ "$DEPLOY_CONFIRMATION" != "DEPLOY" ]]; then
+            echo "::error::Type DEPLOY in the confirmation input to authorize publication."
+            exit 1
+          fi
+          if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ||
+                -z "$MIDAD_LEDGER_ADMIN_KEY" || -z "$MIDAD_WAKE_INTERNAL_KEY" ]]; then
+            echo "::error::One or more required cloudflare-production environment secrets are missing."
+            exit 1
+          fi
+          if [[ "${#MIDAD_LEDGER_ADMIN_KEY}" -lt 32 || "${#MIDAD_WAKE_INTERNAL_KEY}" -lt 32 ]]; then
+            echo "::error::MIDAD worker secrets must each contain at least 32 characters."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Create missing Cloudflare Queues (idempotent)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for queue in midad-continuity-wake midad-continuity-wake-dlq; do
+            if npx --yes wrangler@4.102.0 queues info "$queue" >/dev/null 2>&1; then
+              echo "Queue already exists: $queue"
+            else
+              echo "Creating Queue: $queue"
+              npx --yes wrangler@4.102.0 queues create "$queue"
+            fi
+          done
+
+      - name: Deploy Durable Object Worker and Queue bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.102.0 deploy 2>&1 | tee "$RUNNER_TEMP/midad-continuity-deploy.log"
+
+      - name: Set Worker secrets without printing or committing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          SECRET_FILE="$RUNNER_TEMP/midad-continuity-worker-secrets.json"
+          node - "$SECRET_FILE" <<'NODE'
+          const fs = require('node:fs');
+          const target = process.argv[2];
+          const values = {
+            MIDAD_LEDGER_ADMIN_KEY: process.env.MIDAD_LEDGER_ADMIN_KEY,
+            MIDAD_WAKE_INTERNAL_KEY: process.env.MIDAD_WAKE_INTERNAL_KEY,
+          };
+          if (Object.values(values).some(value => typeof value !== 'string' || value.length < 32)) {
+            throw new Error('Worker secret validation failed');
+          }
+          fs.writeFileSync(target, JSON.stringify(values), { mode: 0o600 });
+          NODE
+          npx --yes wrangler@4.102.0 secret bulk "$SECRET_FILE" --name midad-continuity-ledger
+          rm -f "$SECRET_FILE"
+
+      - name: Verify public Worker health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKER_URL="$(grep -Eo 'https://[A-Za-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/midad-continuity-deploy.log" | tail -n 1 || true)"
+          if [[ -z "$WORKER_URL" ]]; then
+            echo "::error::Wrangler did not report a workers.dev URL; inspect the deployment output before marking this deploy verified."
+            exit 1
+          fi
+          curl --silent --show-error --fail --retry 5 --retry-delay 2 "$WORKER_URL/health" \
+            | tee "$RUNNER_TEMP/midad-continuity-health.json"
+          node - "$RUNNER_TEMP/midad-continuity-health.json" <<'NODE'
+          const fs = require('node:fs');
+          const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (health.ok !== true || health.service !== 'midad-continuity-ledger') {
+            throw new Error('Continuity Worker health response is invalid');
+          }
+          console.log(JSON.stringify({
+            ok: health.ok,
+            service: health.service,
+            schema: health.schema,
+            dispatch: health.dispatch,
+          }));
+          NODE
