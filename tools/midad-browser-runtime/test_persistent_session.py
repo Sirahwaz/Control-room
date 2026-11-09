@@ -28,6 +28,46 @@ class FakeRoute:
     async def abort(self, *_args):
         self.aborted = True
 
+
+class FakeProxyPage:
+    def set_default_navigation_timeout(self, _timeout):
+        pass
+    async def route(self, _pattern, _handler):
+        pass
+
+
+class FakeProxyContext:
+    async def new_page(self):
+        return FakeProxyPage()
+
+
+class FakeProxyBrowser:
+    def __init__(self):
+        self.context_options = None
+    async def new_context(self, **kwargs):
+        self.context_options = kwargs
+        return FakeProxyContext()
+
+
+class FakeProxyChromium:
+    def __init__(self, browser):
+        self.browser = browser
+    async def launch(self, **_kwargs):
+        return self.browser
+
+
+class FakeProxyPlaywright:
+    def __init__(self, browser):
+        self.chromium = FakeProxyChromium(browser)
+
+
+class FakeProxyPlaywrightManager:
+    def __init__(self, browser):
+        self.playwright = FakeProxyPlaywright(browser)
+    async def start(self):
+        return self.playwright
+
+
 class PersistentSessionPolicyTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.dns = patch("runner.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))])
@@ -47,6 +87,19 @@ class PersistentSessionPolicyTests(unittest.IsolatedAsyncioTestCase):
             "login_post_paths": ["/login"],
         }
         self.session = PlatformBrowserSession(self.profile, {"example.com"}, secret_provider=object())
+
+
+    async def test_proxy_settings_are_applied_to_isolated_playwright_context(self):
+        browser = FakeProxyBrowser()
+        proxy = {"server": "https://proxy.example.net:8443", "username": "proxy-user", "password": "secret"}
+        session = PlatformBrowserSession(
+            self.profile, {"example.com"}, secret_provider=object(),
+            playwright_factory=lambda: FakeProxyPlaywrightManager(browser),
+            proxy_settings=proxy,
+        )
+        await session._open()
+        self.assertEqual(browser.context_options["proxy"], proxy)
+        self.assertFalse(browser.context_options["ignore_https_errors"])
 
     async def test_login_post_allowed_once_only_on_declared_main_frame_path(self):
         self.session._login_submit_active = True
