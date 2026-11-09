@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "midad-continuity-ledger",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-09",
+  "durable_objects": {
+    "bindings": [{ "name": "CONTINUITY_LEDGER", "class_name": "MidadContinuityLedger" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MidadContinuityLedger"] }],
+  "observability": { "enabled": true }
+}
