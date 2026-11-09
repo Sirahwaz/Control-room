@@ -163,7 +163,7 @@ jobs:
           p = Path(sys.argv[1])
           lines = [line for line in p.read_text().splitlines() if not line.startswith("networkTimeout=")]
           lines.append("networkTimeout=120000")
-          p.write_text("\\n".join(lines) + "\\n")
+          p.write_text("\n".join(lines) + "\n")
           PY
           grep -qx 'networkTimeout=120000' "$WRAPPER_FILE"
 
