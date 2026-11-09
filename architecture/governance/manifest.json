@@ -130,12 +130,17 @@
     },
     {
       "id": "network-access-surface",
+      "repository": "control-room",
+      "domain": "network-access",
+      "kind": "proxy-policy-and-operator-ui",
       "paths": [
         "midad-network-access.html",
         "midad-network-access.css",
-        "midad-network-access.js"
+        "midad-network-access.js",
+        "contracts/midad-network-access.schema.json"
       ],
-      "repository": "control-room"
+      "status": "experimental",
+      "description": "Experimental network access contract and Control Room UI shell. Backend profile mutations, encrypted Vault leases, and live proxy activation remain pending."
     },
     {
       "id": "ai-room-surface",
