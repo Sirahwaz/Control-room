@@ -7,6 +7,7 @@ on:
       - "mobile/factory/products/midad-browser.json"
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
+      - "tests/midad-browser-offline-home-contract.test.mjs"
       - "mobile/factory/quality-gate.mjs"
       - "mobile/package.json"
       - "midad-browser.html"
@@ -19,6 +20,7 @@ on:
       - "mobile/factory/products/midad-browser.json"
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
+      - "tests/midad-browser-offline-home-contract.test.mjs"
       - "midad-browser.html"
       - "midad-browser.css"
       - "midad-browser.js"
@@ -40,6 +42,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+
+      - name: Browser offline-home contract tests
+        run: node --test tests/midad-browser-offline-home-contract.test.mjs
 
       - name: Resolve Browser product
         id: product
