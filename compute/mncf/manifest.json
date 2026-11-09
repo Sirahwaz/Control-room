@@ -333,7 +333,7 @@
     "dispatch": {
       "current_authority": "existing_midad_forge",
       "current_transport": "existing_supabase_forge_oidc",
-      "cloudflare_to_github_runner": "adapter_pending",
+      "cloudflare_to_github_runner": "cloudflare_push_trigger_pending",
       "cutover_policy": "preserve_existing_forge_until_cloudflare_runner_adapter_is_live_verified_and_approved",
       "github_to_cloudflare_pull_claim": {
         "status": "source_implemented_live_ledger_activation_pending",
