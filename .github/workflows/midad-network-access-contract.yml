@@ -27,5 +27,5 @@ jobs:
           node-version: "24"
       - name: Validate JSON Schema syntax
         run: node -e "JSON.parse(require('node:fs').readFileSync('contracts/midad-network-access.schema.json','utf8'))"
-      - name: Run network access contract tests
-        run: node --test tests/midad-network-access-contract.test.mjs
+      - name: Run network access contract and Control Room UI tests
+        run: node --test tests/midad-network-access-contract.test.mjs tests/midad-network-access-ui.test.mjs
