@@ -147,9 +147,12 @@ export async function dispatchGitHubWorkflow(eventValue, env = {}, fetchImpl = f
   );
   if (!tokenResponse.ok) throw new Error('GITHUB_APP_TOKEN_MINT_FAILED_' + tokenResponse.status);
   const tokenBody = await tokenResponse.json();
+  const grantedPermissions = Object.entries(tokenBody.permissions || {})
+    .filter(([name, permission]) => name !== 'metadata' && permission !== 'none');
   if (typeof tokenBody.token !== 'string' || tokenBody.token.length < 20 ||
-      tokenBody.permissions?.actions !== 'write') {
-    throw new Error('GITHUB_APP_ACTIONS_WRITE_REQUIRED');
+      tokenBody.token.length > 4096 || grantedPermissions.length !== 1 ||
+      grantedPermissions[0][0] !== 'actions' || grantedPermissions[0][1] !== 'write') {
+    throw new Error('GITHUB_APP_ACTIONS_WRITE_ONLY_REQUIRED');
   }
 
   const dispatchResponse = await fetchImpl(
