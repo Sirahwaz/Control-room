@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from account_registry import AccountRegistry
-from automation_policy import REVERSIBLE_ACTIONS, evaluate_action
+from automation_policy import evaluate_action
 from operator_command_router import CommandRoutingError, build_operator_request, validate_operator_command
 from persistent_session import BrowserSessionError, PersistentSessionPool
 from runner import BrowserConfig, GatewayClient
@@ -84,6 +84,8 @@ class OperatorWorker:
                 "allowed_actions": [
                     "inspect", "read", "navigate", "search",
                     "wait_for_selector", "capture_screenshot", "status", "stop_session",
+                    "start_session", "click", "fill", "select", "upload", "download",
+                    "create", "update", "submit_form",
                 ],
             }
 
@@ -157,7 +159,7 @@ class OperatorWorker:
             policy_command = dict(command)
             # The profile policy supersedes the legacy per-command boolean.
             # Only a policy-approved reversible action may pass that older gate.
-            if policy_decision.risk in REVERSIBLE_ACTIONS or policy_decision.risk == "reversible":
+            if policy_decision.risk == "reversible":
                 policy_command["action_approved"] = True
             validated = validate_operator_command(policy_command, profile, set(self.config.allowed_hosts))
             if current_url is None and validated.get("target_url"):
