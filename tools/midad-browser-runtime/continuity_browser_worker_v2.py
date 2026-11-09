@@ -201,7 +201,24 @@ class ContinuityWorkerConfig:
 
         ledger_url = required("MIDAD_CONTINUITY_LEDGER_URL")
         node_id = required("MIDAD_CONTINUITY_NODE_ID")
-        node_token = required("MIDAD_CONTINUITY_NODE_TOKEN")
+        token_env = os.environ.get("MIDAD_CONTINUITY_NODE_TOKEN", "").strip()
+        token_file_env = os.environ.get("MIDAD_CONTINUITY_NODE_TOKEN_FILE", "").strip()
+        if bool(token_env) == bool(token_file_env):
+            raise ContinuityWorkerError("SET_EXACTLY_ONE_NODE_TOKEN_SOURCE")
+        if token_file_env:
+            token_path = Path(token_file_env).expanduser()
+            if not token_path.is_absolute() or token_path.is_symlink() or not token_path.is_file():
+                raise ContinuityWorkerError("NODE_TOKEN_FILE_INVALID")
+            if os.name != "nt" and (token_path.stat().st_mode & 0o077):
+                raise ContinuityWorkerError("NODE_TOKEN_FILE_PERMISSIONS_INVALID")
+            try:
+                node_token = token_path.read_text(encoding="ascii").strip()
+            except (OSError, UnicodeError) as exc:
+                raise ContinuityWorkerError("NODE_TOKEN_FILE_UNREADABLE") from exc
+        else:
+            node_token = token_env
+        if not re.fullmatch(r"[A-Fa-f0-9]{64}", node_token):
+            raise ContinuityWorkerError("NODE_TOKEN_INVALID")
         owner_id = required("MIDAD_CONTINUITY_OWNER_ID")
         try:
             uuid.UUID(owner_id)
