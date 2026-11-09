@@ -127,7 +127,10 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         result = await self.worker.process_job(job)
         self.assertEqual(result["status"], "INSPECTED")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
-        self.assertTrue(any(event["state"] == "RUNNING" for event in self.gateway.events))
+        running = [event for event in self.gateway.events if event["state"] == "RUNNING"]
+        self.assertEqual(len(running), 1)
+        self.assertEqual(running[0]["evidence"]["policy_risk"], "low")
+        self.assertEqual(running[0]["evidence"]["policy_reason"], "AUTHORIZED_WITHIN_PROFILE_SCOPE")
         self.assertTrue(any(event["state"] == "COMPLETED" for event in self.gateway.events))
 
     async def test_scoped_autonomy_policy_authorizes_reversible_click_without_per_action_flag(self):
