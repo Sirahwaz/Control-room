@@ -101,10 +101,11 @@ test('GitHub App JWT is signed and workflow dispatch carries identifiers only', 
       );
       assert.equal(valid, true, 'App JWT signature must verify');
       const body = JSON.parse(init.body);
+      assert.deepEqual(body.repositories, ['Control-room']);
       assert.deepEqual(body.permissions, { actions: 'write' });
       return new Response(JSON.stringify({
         token: 'ghs_test_installation_token_not_a_real_secret',
-        permissions: { actions: 'write' },
+        permissions: { actions: 'write', metadata: 'read' },
       }), { status: 201 });
     }
     assert.equal(
@@ -154,7 +155,7 @@ test('GitHub App installation must grant Actions write before workflow dispatch'
     MIDAD_GITHUB_APP_ID: APP_ID,
     MIDAD_GITHUB_INSTALLATION_ID: INSTALLATION_ID,
     MIDAD_GITHUB_APP_PRIVATE_KEY: keys.pem,
-  }, fetchMock), /GITHUB_APP_ACTIONS_WRITE_REQUIRED/);
+  }, fetchMock), /GITHUB_APP_ACTIONS_WRITE_ONLY_REQUIRED/);
   assert.equal(dispatchCalled, false);
 });
 
@@ -262,4 +263,22 @@ test('ephemeral workflow uses task-targeted workflow dispatch and read-only perm
   assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
   assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
   assert.doesNotMatch(workflow, /persist-credentials:\s*true/);
+});
+
+
+test('installation token with additional repository permissions is rejected before dispatch', async () => {
+  const keys = await keyFixture();
+  let dispatchCalled = false;
+  const fetchMock = async url => String(url).includes('/access_tokens')
+    ? new Response(JSON.stringify({
+        token: 'ghs_overprivileged_token_1234567890',
+        permissions: { actions: 'write', contents: 'read', metadata: 'read' },
+      }), { status: 201 })
+    : (dispatchCalled = true, new Response(null, { status: 204 }));
+  await assert.rejects(() => dispatchGitHubWorkflow(EVENT, {
+    MIDAD_GITHUB_APP_ID: APP_ID,
+    MIDAD_GITHUB_INSTALLATION_ID: INSTALLATION_ID,
+    MIDAD_GITHUB_APP_PRIVATE_KEY: keys.pem,
+  }, fetchMock), /GITHUB_APP_ACTIONS_WRITE_ONLY_REQUIRED/);
+  assert.equal(dispatchCalled, false);
 });
