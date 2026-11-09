@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const NODE_ID = 'github-actions-linux';
+const NODE_ID = 'github-actions-cpu-batch';
 const AGENT_VERSION = 'midad-actions-0.1.0';
 const MAX_SUM_ITEMS = 10_000;
 const MAX_TEXT_BYTES = 65_536;
