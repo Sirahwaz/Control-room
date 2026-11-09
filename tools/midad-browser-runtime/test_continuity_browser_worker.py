@@ -148,6 +148,14 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("password", result)
         self.assertNotIn(page_text, str(result))
 
+    def test_result_url_drops_query_and_fragment(self):
+        result = sanitize_browser_result({
+            "url": "https://example.com/dashboard?access_token=not-real#id_token=also-not-real"
+        })
+        self.assertEqual(result.get("url"), "https://example.com/dashboard")
+        self.assertNotIn("access_token", str(result))
+        self.assertNotIn("id_token", str(result))
+
     async def test_read_only_browser_task_completes_with_digest_not_page_text(self):
         client = FakeLedgerClient({"operator_hint": "inspect example"})
         operator = FakeOperator({
