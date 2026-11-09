@@ -58,6 +58,10 @@ class FakeGateway:
                 for job in self.jobs
             ]
             return {"ok": True, "jobs": claimed}
+        if action == "renew_operator_lease":
+            return {"ok": True, "renewed": True}
+        if action == "release_operator_lease":
+            return {"ok": True, "released": True}
         if action == "record_command_result":
             return {"ok": True}
         return {"ok": True}
@@ -145,6 +149,9 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "INSPECTED")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
+        renewal = [payload for action, payload in self.gateway.calls if action == "renew_operator_lease"]
+        self.assertEqual(len(renewal), 1)
+        self.assertEqual(renewal[0]["lease_seconds"], 180)
         running = [event for event in self.gateway.events if event["state"] == "RUNNING"]
         self.assertEqual(len(running), 1)
         self.assertEqual(running[0]["evidence"]["policy_risk"], "low")
