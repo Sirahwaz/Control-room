@@ -1,6 +1,11 @@
 name: MIDAD Continuity — Cloudflare Deploy
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile/factory/x/continuity-ledger/**"
+      - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
   workflow_dispatch:
     inputs:
       operation:
@@ -25,6 +30,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pull-request-dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mobile/factory/x/continuity-ledger
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate Cloudflare Worker bundle without credentials or deployment
+        run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
+
   dry-run:
     if: inputs.operation == 'dry-run'
     runs-on: ubuntu-latest
