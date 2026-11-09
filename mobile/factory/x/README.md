@@ -89,3 +89,8 @@ Foundation implementation. SignalScan v0.2 remains the known-good baseline and i
 ## Neural++ workforce role planning
 
 `plan.mjs` now optionally compiles explicit `workforce_agent_ids` through `workforce-runtime.mjs` and includes the result in `runtime-plan.json`. The wallet, offer and media roles are plan-only: no adapter/provider dispatch, signing, live orders, customer sends or provider spend. Media plans require a verified planner quote, rights confirmation and a separate spend approval before becoming human-review-ready. The plan remains non-executable even after approval.
+
+
+## MIDAD Continuity Fabric
+
+The Continuity Fabric separates durable task state from short-lived execution processes. It adds a consent-aware planner for CPU/WebGPU shards and stateful browser sessions, with deterministic idempotency keys, checkpoint contracts, lease recovery and strict cost ceilings. See [CONTINUITY_FABRIC.md](./CONTINUITY_FABRIC.md) and `continuity-planner.mjs`. The planner is intentionally plan-only: it does not dispatch jobs or claim a worker is live. Durable queue storage, wake-on-work dispatch and the deployed worker-v2 remain separate gates.
