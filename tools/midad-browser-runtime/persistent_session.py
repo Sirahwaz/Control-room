@@ -101,7 +101,7 @@ def _validate_login_profile(profile: dict, global_hosts: set[str]) -> dict:
 
 class PlatformBrowserSession:
     def __init__(self, profile: dict, allowed_hosts: set[str], secret_provider=None,
-                 playwright_factory=None, timeout_ms: int = 12000):
+                 playwright_factory=None, timeout_ms: int = 12000, proxy_settings=None):
         self.profile = _validate_login_profile(profile, {h.strip().lower().rstrip(".") for h in allowed_hosts})
         self.allowed_hosts = set(self.profile["_session_hosts"])
         self.timeout_ms = max(1000, min(int(timeout_ms), 20000))
@@ -110,6 +110,9 @@ class PlatformBrowserSession:
                           self.profile["password_secret_ref"])
         ])
         self.playwright_factory = playwright_factory
+        if proxy_settings is not None and (not isinstance(proxy_settings, dict) or not isinstance(proxy_settings.get("server"), str)):
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID")
+        self.proxy_settings = dict(proxy_settings) if proxy_settings is not None else None
         self.playwright = self.browser = self.context = self.page = None
         self.authenticated = False
         self.last_status = "NOT_STARTED"
@@ -134,9 +137,14 @@ class PlatformBrowserSession:
             headless=True,
             args=["--disable-background-networking", "--disable-sync", "--no-first-run"],
         )
-        self.context = await self.browser.new_context(
-            accept_downloads=False, service_workers="block", ignore_https_errors=False
-        )
+        context_options = {
+            "accept_downloads": False,
+            "service_workers": "block",
+            "ignore_https_errors": False,
+        }
+        if self.proxy_settings is not None:
+            context_options["proxy"] = dict(self.proxy_settings)
+        self.context = await self.browser.new_context(**context_options)
         self.page = await self.context.new_page()
         self.page.set_default_navigation_timeout(self.timeout_ms)
         await self.page.route("**/*", self._guard_route)
@@ -367,11 +375,12 @@ class PlatformBrowserSession:
 class PersistentSessionPool:
     """Keep authenticated contexts in memory while the single worker is alive."""
     def __init__(self, allowed_hosts: set[str], secret_provider_factory=None,
-                 playwright_factory=None, timeout_ms: int = 12000):
+                 playwright_factory=None, timeout_ms: int = 12000, proxy_settings_resolver=None):
         self.allowed_hosts = {h.strip().lower().rstrip(".") for h in allowed_hosts}
         self.secret_provider_factory = secret_provider_factory
         self.playwright_factory = playwright_factory
         self.timeout_ms = timeout_ms
+        self.proxy_settings_resolver = proxy_settings_resolver
         self.sessions: dict[str, PlatformBrowserSession] = {}
 
     async def ensure(self, profile: dict) -> PlatformBrowserSession:
@@ -381,9 +390,11 @@ class PersistentSessionPool:
         session = self.sessions.get(account_id)
         if session is None:
             provider = self.secret_provider_factory(profile) if self.secret_provider_factory else None
+            proxy_settings = self.proxy_settings_resolver(profile) if self.proxy_settings_resolver else None
             session = PlatformBrowserSession(
                 profile, self.allowed_hosts, secret_provider=provider,
-                playwright_factory=self.playwright_factory, timeout_ms=self.timeout_ms
+                playwright_factory=self.playwright_factory, timeout_ms=self.timeout_ms,
+                proxy_settings=proxy_settings,
             )
             self.sessions[account_id] = session
         if not session.authenticated:
