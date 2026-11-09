@@ -134,7 +134,8 @@
         "midad-network-access.html",
         "midad-network-access.css",
         "midad-network-access.js"
-      ]
+      ],
+      "repository": "control-room"
     },
     {
       "id": "ai-room-surface",
