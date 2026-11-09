@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "midad-continuity-ledger",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-09",
+  "durable_objects": {
+    "bindings": [{ "name": "CONTINUITY_LEDGER", "class_name": "MidadContinuityLedger" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MidadContinuityLedger"] }],
+  "queues": {
+    "producers": [
+      { "binding": "CONTINUITY_WAKE_QUEUE", "queue": "midad-continuity-wake" }
+    ],
+    "consumers": [
+      {
+        "queue": "midad-continuity-wake",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "midad-continuity-wake-dlq"
+      }
+    ]
+  },
+  "observability": { "enabled": true }
+}

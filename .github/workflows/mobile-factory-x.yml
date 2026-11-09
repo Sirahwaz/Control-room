@@ -9,11 +9,13 @@ on:
       - 'mobile/factory/x/**'
       - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
   pull_request:
     paths:
       - 'mobile/factory/x/**'
       - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
   workflow_dispatch:
 
 concurrency:
@@ -39,7 +41,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Validate Continuity Worker with Wrangler (no deployment)
+        working-directory: mobile/factory/x/continuity-ledger
+        run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir /tmp/midad-continuity-ledger-dry-run
 
       - name: JSON registry parse
         run: |
