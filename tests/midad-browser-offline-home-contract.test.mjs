@@ -37,6 +37,10 @@ test("Android runtime smoke proves the packaged home loads with Wi-Fi and mobile
   assert.match(smoke, /LOCAL_HOME_LOADED/);
   assert.match(smoke, /svc wifi enable/);
   assert.match(smoke, /svc data enable/);
+  assert.match(activity, /ONLINE_PAGE_LOADED:/);
+  assert.match(activity, /ONLINE_MAIN_FRAME_ERROR:/);
+  assert.match(smoke, /ONLINE_PAGE_LOADED:example\\.com/);
+  assert.match(smoke, /MIDAD_BROWSER_ONLINE_PAGE_PASSED/);
 });
 
 test("the Browser APK workflow packages the local home page and its local CSS and JS", () => {
@@ -51,4 +55,13 @@ test("the Browser APK workflow packages the local home page and its local CSS an
   assert.match(workflow, /cp midad-browser\.js mobile\/www\//);
   assert.match(html, /href="\.\/midad-browser\.css/);
   assert.match(html, /src="\.\/midad-browser\.js/);
+});
+
+test("the Browser APK artifact is uploaded even when emulator verification fails after signing", () => {
+  const workflow = read(".github/workflows/midad-browser-android.yml");
+  const uploadStep = workflow.match(/      - name: Upload Browser APK and reports([\\s\\S]*?)(?=\\n      - name:|$)/);
+
+  assert.ok(uploadStep, "Browser APK upload step must exist");
+  assert.match(uploadStep[0], /if: always\\(\\)/);
+  assert.match(uploadStep[0], /if-no-files-found: ignore/);
 });
