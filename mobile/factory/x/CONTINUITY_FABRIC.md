@@ -131,3 +131,16 @@ The companion `continuity-ledger/` directory contains a Cloudflare SQLite-backed
 - Preserve the existing Forge/Continuity ledgers during migration. No parallel queue, replacement orchestrator or Supabase cutover is authorized by this design note.
 
 **Acceptance gate:** prove task intake → durable lease → ephemeral GitHub runner → checkpoint/result → independent verification → Control Room receipt with no VPS; then inject duplicate delivery, runner loss and expired leases. Production Cloudflare activation and any cutover remain separate approvals.
+
+
+## GitHub ephemeral CPU runner adapter — source implemented, live activation pending
+
+- The Cloudflare Queue consumer now keeps the existing owner-scoped WebSocket wake and, for queued `CPU_BATCH` tasks only, dispatches the fixed GitHub Actions workflow.
+- The GitHub App adapter mints a short-lived installation token for each dispatch and requests repository-scoped `Actions: write` only. Its inputs contain only `event_id`, `task_id` and `owner_id`.
+- The GitHub-hosted `ubuntu-latest` runner uses a separately enrolled owner-bound node token from Actions secrets. It heartbeats, claims only the dispatched task ID, writes a checkpoint, returns bounded evidence and completes the task.
+- The current CPU adapter supports only `RUNNER_SMOKE`, `SUM_INTEGERS` and `HASH_TEXT`. It deliberately does not execute arbitrary shell/code or claim Browser Session tasks.
+- The current MIDAD Forge build queue remains intact and separate. This adapter is for Continuity Fabric CPU_BATCH execution, not a replacement Forge orchestrator.
+- Queue/dispatch delivery is at-least-once. Exact-task atomic claims, one runner slot and workflow concurrency constrain duplicate dispatches; uncertain external browser effects are not routed through this CPU path.
+- No App, GitHub secret, owner node enrollment, Cloudflare secret or production Worker is configured by this source change.
+
+**Acceptance gate:** exact-head unit/contract tests and Wrangler PR dry-run must pass. Live activation later requires a repository-scoped GitHub App, verified Cloudflare deployment, explicit node enrollment/secret setup, then one harmless CPU task through enqueue → Queue → GitHub runner → claim → checkpoint → complete. This live task gate is separate from merging source code.
