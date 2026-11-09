@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "tests/browser-gateway-source-parity.test.mjs"
+      - "tests/browser-gateway-auth.test.mjs"
       - ".github/workflows/midad-browser-gateway-contract.yml"
   push:
     branches: [main]
@@ -49,6 +50,8 @@ jobs:
         run: deno test supabase/functions/midad_browser_agent_gateway/ledger.test.ts
       - name: Run gateway source parity snapshot contract
         run: node --test tests/browser-gateway-source-parity.test.mjs
+      - name: Run gateway authorization parsing regression tests
+        run: node --test tests/browser-gateway-auth.test.mjs
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
