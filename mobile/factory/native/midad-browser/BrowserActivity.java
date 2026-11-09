@@ -32,14 +32,17 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.webkit.WebViewAssetLoader;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 public final class BrowserActivity extends Activity {
     private static final String MIDAD_HOME =
-        "https://sirahwaz.github.io/Control-room/midad-browser.html";
+        "https://appassets.androidplatform.net/assets/public/index.html";
     private static final String SEARCH_URL = "https://www.google.com/search?q=";
     private WebView webView;
+    private WebViewAssetLoader assetLoader;
     private EditText address;
     private ProgressBar progress;
     private TextView securityState;
@@ -141,12 +144,18 @@ public final class BrowserActivity extends Activity {
     }
 
     private void configureWebView() {
+        assetLoader = new WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+            .build();
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
@@ -161,6 +170,19 @@ public final class BrowserActivity extends Activity {
         webView.setBackgroundColor(Color.WHITE);
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse local = assetLoader.shouldInterceptRequest(request.getUrl());
+                return local != null ? local : super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                WebResourceResponse local = assetLoader.shouldInterceptRequest(Uri.parse(url));
+                return local != null ? local : super.shouldInterceptRequest(view, url);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return routeNavigation(request.getUrl());
             }
@@ -173,9 +195,11 @@ public final class BrowserActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 address.setText(url);
-                securityState.setText(url.startsWith("https://")
-                    ? "HTTPS · اتصال مشفّر"
-                    : "HTTP · اتصال غير مشفّر");
+                securityState.setText(url.startsWith(MIDAD_HOME)
+                    ? "MIDAD LOCAL · الصفحة الرئيسية متاحة دون اتصال"
+                    : (url.startsWith("https://")
+                        ? "HTTPS · اتصال مشفّر"
+                        : "HTTP · اتصال غير مشفّر"));
             }
 
             @Override
