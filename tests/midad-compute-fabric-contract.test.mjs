@@ -184,13 +184,18 @@ test('MNCF online availability does not depend on a persistent Linux server', ()
   assert.equal(operatingModel.control_plane.source_status, 'merged_to_main');
   assert.equal(operatingModel.control_plane.runtime_status, 'not_deployed');
   assert.equal(operatingModel.dispatch.current_authority, 'existing_midad_forge');
-  assert.equal(operatingModel.dispatch.cloudflare_to_github_runner, 'adapter_pending');
+  assert.equal(operatingModel.dispatch.cloudflare_to_github_runner, 'source_implemented_ci_pending_live_activation');
   assert.equal(operatingModel.compute.primary_provider, 'github-actions-linux');
   assert.equal(operatingModel.compute.persistence, 'ephemeral');
   assert.equal(operatingModel.compute.persistent_linux_fallback, 'optional_specialist_only');
   assert.equal(operatingModel.browser.github_playwright, 'ephemeral_ci');
   assert.equal(operatingModel.browser.cloudflare_browser_run, 'adapter_pending_quota_limited');
   assert.equal(operatingModel.browser.persistent_playwright_node, 'optional_specialist_only');
+  assert.equal(operatingModel.compute.github_actions_adapter.supported_workload, 'CPU_BATCH');
+  assert.equal(operatingModel.compute.github_actions_adapter.arbitrary_shell_execution, false);
+  assert.equal(operatingModel.compute.github_actions_adapter.persistent_host_required, false);
+  assert.equal(operatingModel.security.github_dispatch.app_permission, 'repository_actions_write_only');
+  assert.equal(operatingModel.security.github_dispatch.secrets_in_workflow_inputs, false);
   assert.equal(manifest.layers.linux_compute.persistent_server_required_for_online_service, false);
   assert.equal(
     manifest.layers.linux_compute.capacity_boundary.production_online_service,
