@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { stripBearerPrefix } from "./auth.mjs";
 import {
   makeLedgerEventKey,
   normalizeActorKey,
@@ -322,7 +323,7 @@ Deno.serve(async (req: Request) => {
     if (mcpBridge) {
       const mcpId = body.id ?? null;
       const mcpMethod = String(body.method || "");
-      const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+      const bearer = stripBearerPrefix(req.headers.get("authorization"));
       const browserKey = req.headers.get("x-midad-browser-key") || "";
       const sessionToken = browserKey || bearer;
       const auth = await resolveBrowserUserOwner(sb, sessionToken);
@@ -415,7 +416,7 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "user_bridge_action_not_allowed" }, 403);
       }
       const browserApiKey = req.headers.get("x-midad-browser-key") || "";
-      const bearerToken = (req.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+      const bearerToken = stripBearerPrefix(req.headers.get("authorization"));
       const sessionToken = browserApiKey || bearerToken || (typeof body.token === "string" ? body.token : "");
       const auth = await resolveBrowserUserOwner(sb, sessionToken);
       if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);

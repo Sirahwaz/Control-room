@@ -125,12 +125,37 @@ The companion `continuity-ledger/` directory contains a Cloudflare SQLite-backed
 
 - Cloudflare Worker + SQLite Durable Object + Queue provide the intended durable coordination path. Their source is merged, but production deployment and health are not verified.
 - GitHub-hosted Linux Actions runners provide disposable compute for bounded builds, tests and browser smoke. The existing Forge runner is retained; its current task intake still uses the existing Supabase Forge OIDC path.
-- The Cloudflare-to-GitHub runner dispatch adapter remains **PENDING**. Until it is implemented and live-tested, do not describe Cloudflare as dispatching GitHub compute.
+- The CPU_BATCH Cloudflare-to-GitHub dispatch adapter is implemented in this branch but is not yet CI-verified or live-activated. Do not describe Cloudflare as dispatching compute until CI, protected deployment, owner-approved node enrollment and an end-to-end smoke test pass.
 - GitHub Playwright smoke is intended to run on pull requests with read-only permissions and no secrets. Browser Run is a separate quota-limited candidate adapter; it is not the general-purpose compute layer.
 - Persistent Linux/Playwright nodes and VPS are optional specialist workers only, selected when a verified workload requires persistent local state, specialised egress or resource headroom.
 - Preserve the existing Forge/Continuity ledgers during migration. No parallel queue, replacement orchestrator or Supabase cutover is authorized by this design note.
 
 **Acceptance gate:** prove task intake → durable lease → ephemeral GitHub runner → checkpoint/result → independent verification → Control Room receipt with no VPS; then inject duplicate delivery, runner loss and expired leases. Production Cloudflare activation and any cutover remain separate approvals.
+
+
+## P2a — GitHub-hosted Continuity node (source implemented; activation pending)
+
+A new optional, disposable GitHub Actions node polls the Cloudflare Continuity Ledger every five minutes. It does not use a persistent Linux/VPS host and does not create a second task queue.
+
+- Workflow: `.github/workflows/midad-continuity-github-ephemeral-node.yml`
+- Runtime: `compute/mncf/runtime/continuity-github-runner.mjs`
+- Contract tests: `tests/midad-continuity-github-runner.test.mjs`
+- Authentication: owner-approved enrolled node token, stored only as the GitHub Actions secret `MIDAD_CONTINUITY_NODE_TOKEN`. Identity values are GitHub Actions variables: `MIDAD_CONTINUITY_LEDGER_URL`, `MIDAD_CONTINUITY_NODE_ID`, `MIDAD_CONTINUITY_OWNER_ID`.
+- Capabilities: `generic-execution` and `midad.public-read-only-probe`.
+- Task contract: `SINGLE` workload with exact payload `{schema: "midad-public-probe-v1", operation: "GET_EXAMPLE_DOMAIN"}`.
+- Permitted effect: one fixed HTTPS GET to `https://example.com/`, with redirects rejected and the response capped at 64 KiB. The runner returns status, byte count, content type and SHA-256 only; it never returns page content.
+- One task per ephemeral run, 120-second lease, idempotent retry semantics, 3-attempt maximum, no Shell command execution, no arbitrary task URL, no user credentials, no Supabase/business-table writes, and no financial capabilities. The only persistent writes are the task, heartbeat, lease, checkpoint and evidence records in the Continuity Ledger.
+- The scheduled poll is a **pull/claim integration**. Cloudflare does not yet push-trigger GitHub Actions; the source for a push-triggered GitHub App bridge remains a separate future adapter.
+- If the ledger variables or node token are absent, the workflow exits as `MIDAD_CONTINUITY_NODE_NOT_ENROLLED` without claiming work.
+
+### Activation gate
+1. Deploy the existing Cloudflare Continuity Worker and Queues under the separate protected production approval gate; verify `GET /health`.
+2. With owner consent, enroll node `midad-github-hosted-runner` for the correct owner and exactly the two capabilities above. The returned token is one-time; retain it privately.
+3. Add the three identity values as GitHub Actions Variables and the one-time enrollment token as the GitHub Actions Secret. Never put token material in task envelopes, repository content, issue comments, logs or chat.
+4. Enqueue one harmless task with workload `SINGLE`, required capability `midad.public-read-only-probe`, retry mode `AT_LEAST_ONCE_IDEMPOTENT`, `units=1`, `estimated_seconds_per_unit=15` and `max_cost_usd=0`.
+5. Verify node heartbeat, atomic claim, checkpoint, completion evidence and final task state in the ledger. Then test duplicate delivery, runner loss and lease expiry.
+
+**Current status:** source and unit/contract tests are in a draft PR; the Cloudflare Worker is not deployed, no GitHub node is enrolled, no Actions variables/secrets have been configured, and no live end-to-end claim has been performed. The existing Forge/Supabase OIDC queue remains unchanged and authoritative for Forge jobs.
 
 
 ## GitHub ephemeral CPU runner adapter — source implemented, live activation pending

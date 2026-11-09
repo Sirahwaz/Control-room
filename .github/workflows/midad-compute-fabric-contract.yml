@@ -8,25 +8,29 @@ on:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
+      - 'tests/midad-continuity-github-runner.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
-      - 'mobile/factory/x/continuity-ledger/**'
-      - 'mobile/factory/x/tests/continuity-*.test.mjs'
-      - 'mobile/factory/x/ephemeral-runner.mjs'
-      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
       - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/continuity-ledger/**'
   pull_request:
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
+      - 'tests/midad-continuity-github-runner.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
-      - 'mobile/factory/x/continuity-ledger/**'
-      - 'mobile/factory/x/tests/continuity-*.test.mjs'
-      - 'mobile/factory/x/ephemeral-runner.mjs'
-      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
       - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/continuity-ledger/**'
 
 permissions:
   contents: read
@@ -38,6 +42,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -48,19 +54,11 @@ jobs:
         run: node --test tests/midad-compute-fabric-contract.test.mjs
       - name: MIDAD Linux Worker runtime safety tests
         run: node --test tests/midad-linux-worker.test.mjs
+      - name: GitHub ephemeral Continuity Runner tests
+        run: node --test tests/midad-continuity-github-runner.test.mjs
+      - name: Validate GitHub ephemeral runner syntax
+        run: node --check compute/mncf/runtime/continuity-github-runner.mjs
       - name: Validate MIDAD Linux Worker runtime syntax
         run: node --check compute/mncf/runtime/worker.mjs
-      - name: Continuity Fabric and ephemeral dispatch contract tests
-        run: |
-          node --test \
-            mobile/factory/x/tests/continuity-ledger.test.mjs \
-            mobile/factory/x/tests/continuity-planner.test.mjs \
-            mobile/factory/x/tests/continuity-wake.test.mjs \
-            mobile/factory/x/tests/continuity-github-dispatch.test.mjs
-      - name: Validate Continuity runtime syntax
-        run: |
-          node --check mobile/factory/x/continuity-ledger/worker.mjs
-          node --check mobile/factory/x/continuity-ledger/github-dispatch.mjs
-          node --check mobile/factory/x/ephemeral-runner.mjs
       - name: Diff whitespace validation
         run: git diff --check
