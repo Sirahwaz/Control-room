@@ -272,7 +272,14 @@ class ContinuityBrowserWorker:
         self.store = EncryptedSessionStore(
             config.session_store_path, config.session_store_key_b64, key_id="v1"
         )
-        registry = AccountRegistry(str(config.account_registry_path), set(config.allowed_hosts))
+        registry_path = config.account_registry_path
+        if registry_path.is_symlink() or not registry_path.is_file():
+            raise ContinuityWorkerError("PRIVATE_ACCOUNT_REGISTRY_REQUIRED")
+        if os.name != "nt" and (registry_path.stat().st_mode & 0o077):
+            raise ContinuityWorkerError("ACCOUNT_REGISTRY_PERMISSIONS_INVALID")
+        registry = AccountRegistry(str(registry_path), set(config.allowed_hosts))
+        if not registry.list_profiles():
+            raise ContinuityWorkerError("NO_APPROVED_BROWSER_ACCOUNT_PROFILES")
         self.session_pool = session_pool or PersistentSessionPool(
             set(config.allowed_hosts), session_store=self.store, owner_id=config.owner_id
         )
