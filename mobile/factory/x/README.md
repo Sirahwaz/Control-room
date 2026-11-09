@@ -42,6 +42,19 @@ The capability registry separates `ephemeral-dev-workspace`, `stateless-ci-execu
 
 A database status label such as `online` is insufficient. Readiness must be based on fresh heartbeat, contract version, authenticated queue access, a capability handshake, resource checks and policy. Missing or stale evidence blocks dispatch. Metered browser providers are not automatic fallbacks for the owned interactive-browser capability.
 
+### Signed runtime evidence and plan-only substrate selection
+
+`execution-fabric.mjs` now reads optional runtime evidence only from the protected runner environment:
+
+- `MIDAD_FACTORY_RUNTIME_EVIDENCE`: path to a local JSON envelope (defaults to `.factory-runtime/runtime-evidence.json` when configured by the runner).
+- `MIDAD_FACTORY_RUNTIME_EVIDENCE_HMAC_KEY`: minimum 32-character HMAC key injected by the trusted runner environment. Never place it in a repository file, task JSON, registry, or client bundle.
+
+The envelope schema is `midad-runtime-evidence-v1` and contains `issued_at`, a provider-keyed `providers` object and an HMAC-SHA256 `signature` over canonical JSON. The verifier rejects missing keys, altered payloads, invalid provider ids, stale envelopes and future timestamps. Only after verification does it mark the contained snapshots as `trusted_runtime_adapter`.
+
+A verified envelope is still only a readiness snapshot. Each candidate is checked for its own heartbeat age, required capability handshake, authenticated queue, resource probe, browser/session-store availability and budget. The resulting substrate plan is informational: `dispatch_allowed=false` and `execution_performed=false` remain explicit until a separate trusted dispatcher rechecks readiness and acquires an atomic task lease.
+
+No runtime evidence file or HMAC key is committed to Git. The CI tests use test-only keys and synthetic snapshots; they do not create a real Codespace, deploy a worker, or contact a production host.
+
 ## Safety boundary
 
 - Server secrets remain server-side.
