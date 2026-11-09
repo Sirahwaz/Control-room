@@ -29,7 +29,8 @@ test("Omni gateway gates every model and live-token action after bridge authenti
 });
 
 test("Omni direct Gemini routes receive the verified continuity system instruction", () => {
-  const calls = omni.match(/continuitySystemInstruction\(continuity\)/g) || [];
-  assert.ok(calls.length >= 5, "expected every direct Gemini fallback to include continuity context");
+  const calls = omni.match(/continuityInstruction/g) || [];
+  assert.ok(calls.length >= 6, "expected every direct Gemini fallback to include continuity context");
+  assert.match(omni, /const continuityInstruction=continuity\?continuitySystemInstruction\(continuity\):"";/);
   assert.match(omni, /expectedSha256:CONTINUITY_SHA256/);
 });
