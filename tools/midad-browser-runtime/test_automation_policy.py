@@ -16,7 +16,7 @@ PROFILE = {
         "allowed_paths": ["/owner/repo"],
         "allowed_actions": [
             "inspect", "read", "navigate", "search", "wait_for_selector",
-            "click", "fill", "select", "upload", "download",
+            "start_session", "click", "fill", "select", "upload", "download",
             "create", "update", "delete", "submit_form",
             "publish", "send", "deploy", "change_permissions",
             "use_secret",
@@ -77,6 +77,13 @@ class ScopedAutomationPolicyTests(unittest.TestCase):
             with self.subTest(action=action):
                 result = evaluate_action(action, PROFILE, request(action), now=self.NOW)
                 self.assertTrue(result.allowed, result.reason)
+
+    def test_scoped_autonomy_allows_starting_an_approved_account_session(self):
+        result = evaluate_action(
+            "start_session", PROFILE, request("start_session"), now=self.NOW
+        )
+        self.assertTrue(result.allowed, result.reason)
+        self.assertEqual(result.risk, "reversible")
 
     def test_assisted_mode_does_not_enable_unbounded_interactive_actions(self):
         profile = {**PROFILE, "automation_policy": {**PROFILE["automation_policy"], "mode": "assisted"}}
