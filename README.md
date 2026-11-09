@@ -62,6 +62,7 @@ MIDAD now maintains an evidence-backed repository/module registry and read-only 
 - [Architecture Governance Layer](docs/architecture/ARCHITECTURE_GOVERNANCE.md) — operating model, validation rules, change impact and provenance.
 - [Dependency Map](docs/architecture/DEPENDENCY_MAP.md) — verified local runtime/test/build relationships and explicitly documented optional boundaries.
 - [MIDAD Network Access & Vault Architecture](docs/architecture/MIDAD_NETWORK_ACCESS_V1.md) — versioned Proxy routing, secret brokering, worker boundaries and diagnostics ownership.
+- [MIDAD Network Access Panel](midad-network-access.html) — responsive RTL administration surface; controls remain disabled until the secure control API is connected.
 - [Repository Registry](architecture/governance/manifest.json) — seven repository records, 41 module ownership records and 14 evidence-backed dependency edges.
 - [Manifest Schema](architecture/governance/manifest.schema.json) — machine-readable contract.
 
