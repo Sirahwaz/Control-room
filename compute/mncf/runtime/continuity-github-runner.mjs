@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import os from 'node:os';
-import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const RUNNER_CAPABILITIES = Object.freeze([
@@ -161,8 +160,8 @@ export async function runContinuityRunner(input, {
       },
       body: JSON.stringify(payload),
     });
-    const raw = await response.text();
-    if (raw.length > 65536) throw new Error('LEDGER_RESPONSE_TOO_LARGE');
+    const rawBytes = await readBoundedBody(response, 65536);
+    const raw = new TextDecoder().decode(rawBytes);
     let body;
     try { body = JSON.parse(raw); } catch { throw new Error('LEDGER_RESPONSE_INVALID_JSON'); }
     if (!response.ok || body?.ok !== true) {
