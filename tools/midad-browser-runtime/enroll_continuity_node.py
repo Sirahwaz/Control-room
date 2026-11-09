@@ -51,6 +51,30 @@ def validate_base_url(value: str) -> str:
     return "https://" + parts.hostname.lower()
 
 
+def validate_token_destination(path: Path, replace_existing: bool = False) -> None:
+    if not path.is_absolute() or path.is_symlink():
+        raise EnrollmentError("TOKEN_FILE_PATH_INVALID")
+    parent = path.parent
+    parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if parent.is_symlink() or not parent.is_dir():
+        raise EnrollmentError("TOKEN_FILE_PARENT_UNSAFE")
+    if os.name != "nt":
+        os.chmod(parent, 0o700)
+        if parent.stat().st_mode & 0o077:
+            raise EnrollmentError("TOKEN_FILE_PARENT_PERMISSIONS_INVALID")
+    if path.exists() and not replace_existing:
+        raise EnrollmentError("TOKEN_FILE_ALREADY_EXISTS")
+    if path.exists():
+        if path.is_symlink() or not path.is_file():
+            raise EnrollmentError("TOKEN_FILE_PATH_INVALID")
+    try:
+        fd, name = tempfile.mkstemp(prefix=".node-token-preflight-", dir=str(parent))
+        os.close(fd)
+        os.unlink(name)
+    except OSError as exc:
+        raise EnrollmentError("TOKEN_FILE_PARENT_NOT_WRITABLE") from exc
+
+
 def write_private_token(path: Path, token: str, replace_existing: bool = False) -> None:
     if not path.is_absolute() or path.is_symlink():
         raise EnrollmentError("TOKEN_FILE_PATH_INVALID")
@@ -116,6 +140,7 @@ def enroll_node(base_url: str, node_id: str, owner_id: str, admin_key: str,
         raise EnrollmentError("OWNER_ID_INVALID") from exc
     if not isinstance(admin_key, str) or len(admin_key) < 32:
         raise EnrollmentError("LEDGER_ADMIN_KEY_REQUIRED")
+    validate_token_destination(token_file, replace_token_file)
     origin = validate_base_url(base_url)
     payload = {
         "node_id": node_id,
