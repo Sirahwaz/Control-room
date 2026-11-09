@@ -325,10 +325,12 @@ export class MidadContinuityLedger {
         body.workload, JSON.stringify(required), normalized.min_cpu_cores, normalized.min_memory_mb,
         body.units, body.estimated_seconds_per_unit, body.max_cost_usd, retry, attempts, now, now, now);
       this.event(body.task_id, 'TASK_ENQUEUED', 'admin', { workload: body.workload, units: body.units });
-      this.exec(
-        'INSERT INTO continuity_wake_outbox(event_id,task_id,owner_id,created_at_ms,published_at_ms) VALUES(?,?,?,?,NULL)',
-        wakeEventId, body.task_id, body.owner_id, now
-      );
+      if (typeof this.env.CONTINUITY_WAKE_QUEUE?.send === 'function') {
+        this.exec(
+          'INSERT INTO continuity_wake_outbox(event_id,task_id,owner_id,created_at_ms,published_at_ms) VALUES(?,?,?,?,NULL)',
+          wakeEventId, body.task_id, body.owner_id, now
+        );
+      }
     });
     await this.scheduleWakeOutbox();
     if (existing) {
