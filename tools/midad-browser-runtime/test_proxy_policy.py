@@ -123,6 +123,43 @@ class ProxyPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ProxyPolicyError, "TUNNEL_ADAPTER_REQUIRED"):
             build_playwright_proxy(profile, secret_resolver=lambda _ref: {})
 
+    def test_environment_vault_resolver_maps_reference_to_host_secret_alias(self):
+        from proxy_policy import EnvironmentVaultSecretResolver
+        resolver = EnvironmentVaultSecretResolver(
+            {"vault://proxy/eu-01/auth": "MIDAD_PROXY_EU01_AUTH"},
+            environ={"MIDAD_PROXY_EU01_AUTH": '{"username":"proxy-user","password":"secret-value"}'},
+        )
+        self.assertEqual(
+            resolver.resolve("vault://proxy/eu-01/auth"),
+            {"username": "proxy-user", "password": "secret-value"},
+        )
+
+    def test_environment_vault_resolver_never_accepts_arbitrary_environment_names(self):
+        from proxy_policy import EnvironmentVaultSecretResolver
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_INVALID"):
+            EnvironmentVaultSecretResolver(
+                {"vault://proxy/eu-01/auth": "PATH"},
+                environ={"PATH": "must-not-be-read"},
+            )
+
+    def test_environment_vault_resolver_returns_generic_missing_reference_error(self):
+        from proxy_policy import EnvironmentVaultSecretResolver
+        resolver = EnvironmentVaultSecretResolver({}, environ={})
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_REFERENCE_NOT_BOUND"):
+            resolver.resolve("vault://proxy/eu-01/auth")
+
+    def test_proxy_runtime_resolves_automation_route_and_returns_ephemeral_settings(self):
+        from proxy_policy import ProxyRuntime
+        config = make_config()
+        config["routing_rules"][0]["scopes"] = ["AUTOMATION"]
+        runtime = ProxyRuntime(
+            config,
+            secret_resolver=lambda _ref: {"username": "proxy-user", "password": "secret-value"},
+        )
+        settings = runtime.resolve_for_profile({"host": "example.com"})
+        self.assertEqual(settings["server"], "https://proxy.example.net:8443")
+        self.assertEqual(settings["username"], "proxy-user")
+
 
 if __name__ == "__main__":
     unittest.main()
