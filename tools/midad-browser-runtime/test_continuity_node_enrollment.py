@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from continuity_browser_worker_v2 import ContinuityWorkerConfig, ContinuityWorkerError
-from enroll_continuity_node import EnrollmentError, enroll_node, validate_base_url
+from enroll_continuity_node import EnrollmentError, enroll_node, read_admin_key_file, validate_base_url
 
 
 class FakeResponse:
@@ -87,6 +87,28 @@ class NodeEnrollmentTests(unittest.TestCase):
             )
         self.assertIsNone(opener.request)
         self.assertEqual(path.read_text(encoding="ascii"), "x" * 64)
+
+    def test_admin_key_is_read_from_private_file_and_not_command_argument(self):
+        key_file = self.root / "admin-key"
+        key_file.write_text("admin-key-" + "z" * 48 + "\n", encoding="ascii")
+        os.chmod(key_file, 0o600)
+        self.assertEqual(read_admin_key_file(str(key_file)), "admin-key-" + "z" * 48)
+
+    def test_admin_key_file_rejects_group_or_world_permissions(self):
+        key_file = self.root / "admin-key"
+        key_file.write_text("admin-key-" + "z" * 48, encoding="ascii")
+        os.chmod(key_file, 0o640)
+        with self.assertRaisesRegex(EnrollmentError, "LEDGER_ADMIN_KEY_FILE_PERMISSIONS_INVALID"):
+            read_admin_key_file(str(key_file))
+
+    def test_admin_key_file_rejects_symlinks(self):
+        target = self.root / "real-admin-key"
+        target.write_text("admin-key-" + "z" * 48, encoding="ascii")
+        os.chmod(target, 0o600)
+        link = self.root / "admin-key-link"
+        link.symlink_to(target)
+        with self.assertRaisesRegex(EnrollmentError, "LEDGER_ADMIN_KEY_FILE_INVALID"):
+            read_admin_key_file(str(link))
 
     def test_only_secure_worker_origin_is_accepted(self):
         with self.assertRaisesRegex(EnrollmentError, "LEDGER_URL_INVALID"):
