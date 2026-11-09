@@ -96,6 +96,7 @@ test('claim, renew, checkpoint and complete require the same live lease token', 
   assert.equal((await heartbeat(ledger,'node-a',token)).status,200); await enqueue(ledger,task());
   const first=await claim(ledger,'node-a',token); const lease=first.body.task.lease_token;
   assert.equal(first.body.task.task_id,'task-001');
+  assert.equal(first.body.task.owner_id,'owner-a');
   const headers=nodeHeaders('node-a',token);
   assert.equal((await read(await ledger.fetch(post('/v1/tasks/renew',{task_id:'task-001',lease_token:lease},headers)))).status,200);
   assert.equal((await read(await ledger.fetch(post('/v1/tasks/checkpoint',{task_id:'task-001',lease_token:lease,checkpoint:{offset:5}},headers)))).status,200);

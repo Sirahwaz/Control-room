@@ -1,0 +1,41 @@
+[Unit]
+Description=MIDAD Cloudflare Stateful Browser Worker v2
+Documentation=https://github.com/Sirahwaz/Control-room/tree/main/tools/midad-browser-runtime
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=midad-browser
+Group=midad-browser
+WorkingDirectory=/opt/midad/Control-room
+EnvironmentFile=/etc/midad-browser/worker.env
+Environment=HOME=/var/lib/midad-browser
+Environment=PLAYWRIGHT_BROWSERS_PATH=/var/lib/midad-browser/.cache/ms-playwright
+ExecStart=/opt/midad/Control-room/.venv/bin/python /opt/midad/Control-room/tools/midad-browser-runtime/continuity_browser_worker_v2.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+KillSignal=SIGTERM
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/midad-browser
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Chromium uses JIT. Do not enable MemoryDenyWriteExecute for this browser service.
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target
