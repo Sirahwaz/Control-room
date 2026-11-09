@@ -160,10 +160,31 @@ def sanitize_browser_result(raw: Any) -> dict:
     raw_url = source.get("url")
     if isinstance(raw_url, str) and raw_url.startswith("https://") and len(raw_url) <= 1500:
         try:
-            from urllib.parse import urlsplit
+            from urllib.parse import unquote, urlsplit, urlunsplit
             parts = urlsplit(raw_url)
-            if parts.hostname and parts.username is None and parts.password is None:
-                result["url"] = raw_url
+            host = (parts.hostname or "").lower().rstrip(".")
+            if (
+                parts.scheme.lower() == "https"
+                and host
+                and ":" not in host
+                and parts.username is None
+                and parts.password is None
+                and parts.port in (None, 443)
+            ):
+                safe_segments = []
+                for segment in parts.path.split("/"):
+                    decoded = unquote(segment)
+                    if (
+                        re.search(r"(?i)(?:token|secret|session|auth|reset|verify|code|key|password|otp|signature)", decoded)
+                        or re.fullmatch(r"[A-Za-z0-9_-]{32,}", decoded)
+                    ):
+                        safe_segments.append("[redacted]")
+                        break
+                    safe_segments.append(segment)
+                safe_path = "/".join(safe_segments) or "/"
+                # Query strings and fragments can contain OAuth tokens, signed URLs,
+                # reset codes and other credentials; never persist either component.
+                result["url"] = urlunsplit(("https", host, safe_path, "", ""))
         except ValueError:
             pass
     title = source.get("title")
