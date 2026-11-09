@@ -258,8 +258,8 @@ test('ephemeral workflow uses task-targeted workflow dispatch and read-only perm
   assert.match(workflow, /task_id:/);
   assert.match(workflow, /event_id:/);
   assert.match(workflow, /owner_id:/);
-  assert.match(workflow, /contents:\\s*read/);
-  assert.match(workflow, /midad-ephemeral-runner\\.mjs/);
-  assert.doesNotMatch(workflow, /pull-requests:\\s*write|contents:\\s*write|id-token:\\s*write/);
-  assert.doesNotMatch(workflow, /persist-credentials:\\s*true/);
+  assert.match(workflow, /contents:\s*read/);
+  assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
+  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
+  assert.doesNotMatch(workflow, /persist-credentials:\s*true/);
 });
