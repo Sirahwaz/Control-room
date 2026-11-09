@@ -24,6 +24,10 @@ const providers = [
     capabilities:["interactive-browser-execution","persistent-worker-runtime"],
     runtime_capabilities:["interactive-browser-execution","persistent-worker-runtime"],
     runtime_class:"persistent_browser", health_requirements:{heartbeat_max_age_seconds:45},
+    required_runtime_capabilities:{
+      "interactive-browser-execution":["interactive-browser-execution","persistent-worker-runtime"],
+      "persistent-worker-runtime":["persistent-worker-runtime"],
+    },
     fallbacks:[], account_action:"verify_fresh_heartbeat_before_dispatch" },
 ];
 
