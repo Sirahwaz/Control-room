@@ -95,6 +95,33 @@ test("disabled or blocked provider registry states cannot be revived by a stale 
   assert.equal(assessProviderRuntime(provider, good, {}, NOW).reason, "PROVIDER_STATUS_BLOCKED");
 });
 
+test("GitHub Actions is the quota-checked stateless CI substrate", () => {
+  const github = providers.find(x => x.id === "github");
+  const good = evidence({
+    workflow_dispatch: true,
+    included_quota_verified: true,
+  });
+  assert.equal(assessProviderRuntime(github, good, { max_cost_usd: 0 }, NOW).ready, true);
+  const unknownQuota = evidence({
+    workflow_dispatch: true,
+    included_quota_verified: false,
+  });
+  assert.equal(assessProviderRuntime(github, unknownQuota, { max_cost_usd: 0 }, NOW).reason, "CI_QUOTA_UNVERIFIED");
+});
+
+test("Codespaces must confirm the selected machine resources, not just quota", () => {
+  const provider = providers.find(x => x.id === "github-codespaces");
+  const insufficient = evidence({
+    lifecycle_control: true,
+    quota_remaining_minutes: 60,
+    machine_resources: { verified: true, memory_mb: 512, cpu_cores: 2 },
+  });
+  assert.equal(
+    assessProviderRuntime(provider, insufficient, { duration_minutes: 10, min_memory_mb: 1024 }, NOW).reason,
+    "INSUFFICIENT_MEMORY",
+  );
+});
+
 test("cost ceilings block otherwise healthy metered runtimes", () => {
   const provider = providers.find(x => x.id === "github-codespaces");
   const paid = evidence({ lifecycle_control: true, quota_remaining_minutes: 90, estimated_cost_usd: 0.01 });
