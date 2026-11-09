@@ -12,9 +12,10 @@ class Storage {
     this.db = new DatabaseSync(':memory:');
     this.alarms = [];
     this.sql = { exec: (query, ...args) => {
-      if (!args.length) { this.db.exec(query); return new Cursor(); }
+      const isRead = /\b(SELECT|RETURNING)\b/i.test(query);
+      if (!args.length && !isRead) { this.db.exec(query); return new Cursor(); }
       const statement = this.db.prepare(query);
-      if (/\b(SELECT|RETURNING)\b/i.test(query)) return new Cursor(statement.all(...args));
+      if (isRead) return new Cursor(statement.all(...args));
       statement.run(...args);
       return new Cursor();
     }};
