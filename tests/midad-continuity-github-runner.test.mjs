@@ -302,7 +302,9 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
       }),
     });
     const headerNodeId = directRequest.headers.get('x-midad-node-id') || '';
-    const suppliedToken = (directRequest.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');
+    const authorization = directRequest.headers.get('authorization') || '';
+    assert.ok(authorization.startsWith('Bearer '));
+    const suppliedToken = authorization.slice('Bearer '.length);
     assert.match(headerNodeId, /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
     assert.equal(suppliedToken, enrollment.enrollment_token);
     const selectedNode = ledger.one(
