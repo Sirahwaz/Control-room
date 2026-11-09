@@ -62,8 +62,8 @@ The correct implementation is additive:
 
 - Contract tests passed in the last observed contract workflow.
 - MIDAD Intelligence full suite passed: 30 tests; sanitized HTML report generation and artifact upload passed.
-- One worker test run exposed an ambiguous test fixture; the fixture was corrected in a later commit. A fresh CI run for the corrected current head is still required.
-- Control Room UI tests were added after the last observed contract workflow and require a fresh CI run.
+- MIDAD Isolated Playwright Runtime Tests: PASS (136 tests across the complete worker suite, including 19 focused proxy policy tests).
+- MIDAD Network Access Contract + Control Room UI: PASS (10/10 tests, including RTL navigation, no secret-entry surface, route and offline-cache checks).
 - Architecture Governance still reports the repository-level ROOT_LICENSE_MISSING finding; the governance report showed no validation errors for the newly added contract paths.
 
 ## Deferred, intentionally
