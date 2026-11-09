@@ -103,6 +103,25 @@ export function assessProviderRuntime(provider, evidence, requirements = {}, now
         required_minutes: duration,
       });
     }
+    if (!isObject(evidence.machine_resources) || evidence.machine_resources.verified !== true) {
+      return decision(false, "CODESPACES_MACHINE_RESOURCES_UNVERIFIED");
+    }
+    if (!finite(evidence.machine_resources.memory_mb) ||
+        !finite(evidence.machine_resources.cpu_cores)) {
+      return decision(false, "CODESPACES_MACHINE_RESOURCES_INCOMPLETE");
+    }
+    if (evidence.machine_resources.memory_mb <
+        (finite(requirements.min_memory_mb) ? requirements.min_memory_mb : 0)) {
+      return decision(false, "INSUFFICIENT_MEMORY", {
+        available_memory_mb: evidence.machine_resources.memory_mb,
+      });
+    }
+    if (evidence.machine_resources.cpu_cores <
+        (finite(requirements.min_cpu_cores) ? requirements.min_cpu_cores : 0)) {
+      return decision(false, "INSUFFICIENT_CPU", {
+        available_cpu_cores: evidence.machine_resources.cpu_cores,
+      });
+    }
   } else if (runtimeClass === "persistent_control") {
     if (evidence.queue_authenticated !== true) {
       return decision(false, "QUEUE_AUTH_REQUIRED");
@@ -133,7 +152,7 @@ export function assessProviderRuntime(provider, evidence, requirements = {}, now
     return decision(false, "RUNTIME_CLASS_UNSUPPORTED");
   }
 
-  return decision(true, "RUNTIME_READY", {
+  return decision(true, "RUNTIME_READY_FOR_RECHECK", {
     runtime_class: runtimeClass,
     age_seconds: ageSeconds,
     estimated_cost_usd: evidence.estimated_cost_usd,
@@ -180,7 +199,7 @@ export function selectExecutionSubstrate(task, providers, healthEvidence = {}, n
 
   return {
     ok: Boolean(selected),
-    status: selected ? "READY_TO_DISPATCH" : "BLOCKED",
+    status: selected ? "READY_FOR_RECHECK" : "BLOCKED",
     reason: selected ? "LOWEST_COST_QUALIFIED_PROVIDER" :
       (matches.length ? "NO_PROVIDER_PASSED_LIVE_READINESS" : "NO_CAPABLE_PROVIDER"),
     selected_provider: selected?.provider_id || null,
