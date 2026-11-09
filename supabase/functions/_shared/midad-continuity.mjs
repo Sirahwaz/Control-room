@@ -1,6 +1,13 @@
+/**
+ * @typedef {{context_id: "midad-global", context_version: string, updated_at: string, scope: "midad-global", architecture: {primary: string[], local: string[], optional: string[]}, operating_contract: string[]}} RuntimeContext
+ * @typedef {{ok: true, context: RuntimeContext} | {ok: false, code: string}} RuntimeContextResult
+ * @typedef {{url?: string, now?: number, fetchImpl?: typeof fetch, cacheMs?: number, expectedSha256?: string}} LoadRuntimeContextOptions
+ */
+
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const FUTURE_SKEW_MS = 5 * 60 * 1000;
 
+/** @param {any} document @param {number} [now] @returns {RuntimeContextResult} */
 export function validateRuntimeContext(document, now = Date.now()) {
   if (!document || typeof document !== "object" || Array.isArray(document)) {
     return { ok: false, code: "CONTEXT_MISSING" };
@@ -58,13 +65,9 @@ export function validateRuntimeContext(document, now = Date.now()) {
 let cachedContext = null;
 let cacheExpiresAt = 0;
 
-export async function loadRuntimeContext({
-  url,
-  now = Date.now(),
-  fetchImpl = fetch,
-  cacheMs = 0,
-  expectedSha256
-} = {}) {
+/** @param {LoadRuntimeContextOptions} [options] @returns {Promise<RuntimeContextResult>} */
+export async function loadRuntimeContext(options = {}) {
+  const { url, now = Date.now(), fetchImpl = fetch, cacheMs = 0, expectedSha256 } = options;
   if (cacheMs > 0 && cachedContext && cacheExpiresAt > now) {
     return { ok: true, context: cachedContext };
   }
@@ -98,6 +101,7 @@ export async function loadRuntimeContext({
   }
 }
 
+/** @param {RuntimeContext} context @returns {string} */
 export function continuitySystemInstruction(context) {
   if (!context || context.context_id !== "midad-global") {
     throw new TypeError("Verified MIDAD continuity context is required");
