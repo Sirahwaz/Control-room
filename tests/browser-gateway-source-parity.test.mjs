@@ -12,7 +12,7 @@ const snapshotPath = path.join(root, "supabase/functions/midad_browser_agent_gat
 test("Browser Gateway source snapshot identifies the reconciled deployed version", () => {
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
   assert.match(snapshot, /Last reconciled:\*\*? 2026-11-09/);
-  assert.match(snapshot, /Observed deployment: ACTIVE, version \*\*16\*\*/);
+  assert.ok(snapshot.includes("Observed deployment: ACTIVE, version **16**"));
   assert.doesNotMatch(snapshot, /Deployed version observed: \*\*3\*\*/);
   assert.match(snapshot, /source reconciliation only/i);
 });
