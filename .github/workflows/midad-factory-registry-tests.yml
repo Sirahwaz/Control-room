@@ -10,6 +10,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "mobile/factory/x/**"
       - "mobile/factory/x/agents.registry.json"
       - "mobile/factory/x/agent-bindings.registry.json"
       - "mobile/factory/x/tests/**"
