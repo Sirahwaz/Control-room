@@ -14,9 +14,29 @@ const EVENT = {
   owner_id: 'owner-00000001',
 };
 const b64url = value => Buffer.from(value).toString('base64url');
-function toPem(bytes) {
+function toPem(bytes, label = 'PRIVATE KEY') {
   const b64 = Buffer.from(bytes).toString('base64').match(/.{1,64}/g).join('\n');
-  return '-----BEGIN PRIVATE KEY-----\n' + b64 + '\n-----END PRIVATE KEY-----';
+  return '-----BEGIN ' + label + '-----\n' + b64 + '\n-----END ' + label + '-----';
+}
+function readDerElement(bytes, offset) {
+  const tag = bytes[offset];
+  let cursor = offset + 1;
+  let length = bytes[cursor++];
+  if (length & 0x80) {
+    const count = length & 0x7f;
+    length = 0;
+    for (let i = 0; i < count; i += 1) length = length * 256 + bytes[cursor++];
+  }
+  return { tag, start: cursor, end: cursor + length, next: cursor + length };
+}
+function extractPkcs1FromPkcs8(bytes) {
+  const outer = readDerElement(bytes, 0);
+  let cursor = outer.start;
+  cursor = readDerElement(bytes, cursor).next;
+  cursor = readDerElement(bytes, cursor).next;
+  const privateOctet = readDerElement(bytes, cursor);
+  assert.equal(privateOctet.tag, 0x04);
+  return bytes.slice(privateOctet.start, privateOctet.end);
 }
 async function keyFixture() {
   const pair = await webcrypto.subtle.generateKey(
@@ -24,8 +44,10 @@ async function keyFixture() {
     true,
     ['sign','verify'],
   );
+  const pkcs8 = new Uint8Array(await webcrypto.subtle.exportKey('pkcs8', pair.privateKey));
   return {
-    pem: toPem(await webcrypto.subtle.exportKey('pkcs8', pair.privateKey)),
+    pem: toPem(pkcs8),
+    pkcs1Pem: toPem(extractPkcs1FromPkcs8(pkcs8), 'RSA PRIVATE KEY'),
     publicKey: pair.publicKey,
   };
 }
@@ -106,7 +128,7 @@ test('GitHub App JWT is signed and workflow dispatch carries identifiers only', 
   const result = await dispatchGitHubWorkflow(EVENT, {
     MIDAD_GITHUB_APP_ID: APP_ID,
     MIDAD_GITHUB_INSTALLATION_ID: INSTALLATION_ID,
-    MIDAD_GITHUB_APP_PRIVATE_KEY: keys.pem,
+    MIDAD_GITHUB_APP_PRIVATE_KEY: keys.pkcs1Pem,
   }, fetchMock);
 
   assert.equal(result.dispatched, true);
