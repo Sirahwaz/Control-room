@@ -190,6 +190,75 @@ Do not create a parallel account registry, secrets table, or browser job queue u
 - The current browser UI still says `READ-ONLY DEFAULT`; its control bridge exposes only a narrow set of operator subactions.
 - The worker source supports inspect/navigation/click/fill/submit, but high-impact paths are currently blocked, sessions are memory-only, and a trusted assistant-side bridge is not yet installed.
 
+## Hybrid execution substrate and provider fusion
+
+MIDAD uses one control plane with multiple execution substrates. These are not separate products and must not create separate queues, account registries, policy engines, or evidence stores.
+
+### Control plane
+
+MIDAD Factory X remains the single planner and provider-selection authority. It resolves the mission, reuses connected connectors first, evaluates capability fit and runtime readiness, applies policy and budget limits, dispatches a typed task envelope, and records evidence and outcomes.
+
+The control plane is provider-neutral. A task may move between execution substrates only at a durable checkpoint; the task identity, idempotency key, authorization scope, and evidence chain remain stable.
+
+### Execution substrates
+
+| Substrate | Primary role | Use it for | Do not use it for |
+| --- | --- | --- | --- |
+| Native connected APIs | Deterministic connector execution | GitHub, Supabase, Notion, Dropbox and other structured operations | UI-only behavior that has no supported API |
+| GitHub Actions | Ephemeral CI and build runners | Tests, APK/AAB builds, lint, static analysis, reproducible jobs and artifact creation | Interactive browsing or a persistent worker |
+| GitHub Codespaces | Temporary interactive development workspace | Repository inspection, dependency experiments, isolated debugging, reproducing failures and short-lived tools | An always-on daemon, a production queue consumer, or a permanent browser profile |
+| MIDAD VPS control node | Persistent lightweight coordination | Worker supervision, health checks, secure outbound queue consumption, watchdogs and relay functions when resource checks pass | Chromium/large agent workloads on the currently known 512 MB instance |
+| Dedicated Playwright runner | Browser execution | Authorized site workflows, isolated browser contexts, screenshots and page evidence | General-purpose shell access or unbounded coding-agent execution |
+| Android MIDAD Browser | Local and human-interactive surface | Phone browsing, human verification checkpoints, approvals, offline shell and session handoff | A trusted server-side credential broker |
+| ACP/coding-agent sandbox | Isolated repository work | Bounded code analysis and edits in a disposable worktree/container after isolation and provider readiness are proven | An unisolated shell with inherited MIDAD credentials |
+
+Codespaces availability, included compute/storage quota, and any overage must be checked against the actual GitHub account before a workspace is started. A Codespace is a temporary workspace and may stop or suspend; it is not the worker's persistence layer. The current connected GitHub integration does not expose a verified Codespaces lifecycle operation, so this adapter stays discovery-only until control and cost checks are actually available.
+
+The existing VPS is a resource-constrained node. Keep it in the design as a candidate supervisor/control node, but do not assume it can host Chromium, multiple browser contexts, or coding-agent containers. A resource probe must establish RAM, CPU, storage, swap, process limits, and available disk before assigning those workloads. Heavy or bursty jobs use GitHub Actions or a separately verified temporary workspace instead.
+
+### Unified task envelope
+
+Every dispatchable task carries:
+- `mission_id`, `task_id`, and a stable `idempotency_key`;
+- required capabilities and accepted provider/adapter contract versions;
+- owner, account, exact host/path and data-sensitivity scope;
+- risk class, allowed action set, and optional one-use approval reference;
+- resource constraints: CPU/RAM class, duration, network policy, region and maximum cost;
+- checkpoint, lease owner, attempt count and cancellation state;
+- result contract and evidence references/hashes.
+
+Secrets are never copied into this envelope. An adapter receives only a secret reference that it is authorized to resolve inside its own trusted server boundary.
+
+### Runtime selection and failover
+
+1. Normalize the requested outcome and derive capability, resource, privacy, durability and risk requirements.
+2. Reuse a connected first-party API/connector when it can complete the operation and return authoritative evidence.
+3. Filter candidate adapters by contract compatibility, explicit activation state, live health, capacity, budget and policy.
+4. Choose the lowest-cost qualified substrate that meets the durability and isolation requirements; do not select merely because a provider exists in a registry.
+5. Acquire an atomic lease and idempotency claim before dispatch. Reject duplicate active claims.
+6. Execute with bounded timeouts and at most three attempts per incident. A retry or fallback must not duplicate a non-idempotent external side effect.
+7. Persist checkpoints and sanitized evidence. Verify postconditions before declaring success.
+8. On failure, move to a compatible fallback only when the task can safely resume from the last durable checkpoint; otherwise stop and request a human handoff.
+9. Record actual duration, cost, failure mode and evidence quality to improve future provider selection.
+
+### Readiness is live, not declarative
+
+A registry state such as `online` or `known_available` is not sufficient. A persistent worker is READY only when all of the following are true:
+- heartbeat age is within the configured 45-second threshold;
+- worker version and adapter contract match the expected version;
+- queue authentication and atomic claim are successful;
+- the worker responds to a capability handshake;
+- required browser binaries, storage encryption and profile bindings are available;
+- resource headroom and budget pass the task-specific preflight.
+
+Missing or stale signals produce `PENDING` or `BLOCKED`, never optimistic readiness.
+
+### Current integration boundary
+
+Factory X already supplies the need-first provider registries, bounded parallel planning, cache/reuse policy, and execution-fabric task waves. The Browser Gateway already supplies the browser job/evidence boundary. The remaining integration work is to connect those contracts through live adapter readiness, durable leases/checkpoints, the worker-side scoped policy, a server-trusted assistant invocation bridge, and deployment verification.
+
+Codespaces, VPS, and ACP are candidates/adapters until their exact lifecycle, isolation, credential path, and health contracts are verified. No new paid resource, workspace, VPS, external account, or provider subscription is created by this architecture change.
+
 ## Implementation sequence
 
 1. Integrate and test scoped action policy; replace the global read-only default with owner-configured autonomy modes.
