@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { dispatchGitHubWorkflow } from '../continuity-ledger/github-dispatch.mjs';
+import { executeTaskPayload, runEphemeralTask } from '../ephemeral-runner.mjs';
 import { readFile } from 'node:fs/promises';
 
 const APP_ID = '123456';
@@ -155,4 +156,86 @@ test('ephemeral runner workflow is manual-dispatch only, least privilege and doe
   assert.match(workflow, /midad-ephemeral-runner\.mjs/);
   assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
   assert.doesNotMatch(workflow, /echo .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN|printf .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
+});
+
+test('ephemeral runner executes only bounded allowlisted CPU operations', () => {
+  assert.deepEqual(executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: [1,2,3] } }), {
+    operation: 'SUM_INTEGERS', count: 3, sum: 6,
+  });
+  assert.equal(executeTaskPayload({ operation: 'HASH_TEXT', input: { text: 'midad' } }).sha256.length, 64);
+  assert.equal(executeTaskPayload({ operation: 'RUNNER_SMOKE' }).node_id, 'github-actions-linux');
+  assert.throws(() => executeTaskPayload({ operation: 'RUN_SHELL', input: { command: 'id' } }), /TASK_OPERATION_NOT_ALLOWLISTED/);
+  assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: ['1'] } }), /SUM_INPUT_INVALID/);
+  assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: [1], command: 'whoami' } }), /TASK_PAYLOAD_INVALID/);
+});
+
+test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence and completes it', async () => {
+  const requests = [];
+  const leaseToken = 'c'.repeat(64);
+  const fetchMock = async (url, init) => {
+    const body = JSON.parse(init.body);
+    requests.push({ url: String(url), init, body });
+    if (String(url).endsWith('/v1/nodes/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    if (String(url).endsWith('/v1/tasks/claim')) return new Response(JSON.stringify({
+      ok: true,
+      task: {
+        task_id: 'task-00000001',
+        owner_id: 'owner-00000001',
+        workload: 'CPU_BATCH',
+        payload: { operation: 'SUM_INTEGERS', input: { values: [4,5,6] } },
+        attempt: 1,
+        lease_token: leaseToken,
+      },
+    }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, state: 'COMPLETED' }), { status: 200 });
+  };
+  const result = await runEphemeralTask({
+    env: {
+      MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
+      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
+      MIDAD_INPUT_OWNER_ID: 'owner-00000001',
+      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64),
+      MIDAD_TASK_ID: 'task-00000001',
+      MIDAD_EVENT_ID: 'evt-00000001',
+    },
+    fetchImpl: fetchMock,
+  });
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(result.evidence.task_id, 'task-00000001');
+  assert.equal(requests.length, 4);
+  assert.equal(requests[0].body.capabilities.includes('cpu-batch'), true);
+  assert.equal(requests[1].body.task_id, 'task-00000001');
+  assert.equal(requests[1].body.lease_ttl_seconds, 180);
+  assert.equal(requests[2].body.checkpoint.schema, 'midad-ephemeral-runner-evidence-v1');
+  assert.equal(requests[3].body.result.summary.sum, 15);
+  assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + 'n'.repeat(64)));
+  assert.equal(JSON.stringify(result).includes('n'.repeat(64)), false);
+});
+
+test('ephemeral runner rejects owner mismatch before accessing the ledger', async () => {
+  let calls = 0;
+  await assert.rejects(() => runEphemeralTask({
+    env: {
+      MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
+      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
+      MIDAD_INPUT_OWNER_ID: 'owner-00000002',
+      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64),
+      MIDAD_TASK_ID: 'task-00000001',
+      MIDAD_EVENT_ID: 'evt-00000001',
+    },
+    fetchImpl: async () => { calls += 1; return new Response('{}', { status: 200 }); },
+  }), /OWNER_ID_INPUT_MISMATCH/);
+  assert.equal(calls, 0);
+});
+
+test('ephemeral workflow uses task-targeted workflow dispatch and read-only permissions', async () => {
+  const workflow = await readFile(new URL('../../../../.github/workflows/midad-mncf-ephemeral-runner.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /task_id:/);
+  assert.match(workflow, /event_id:/);
+  assert.match(workflow, /owner_id:/);
+  assert.match(workflow, /contents:\\s*read/);
+  assert.match(workflow, /midad-ephemeral-runner\\.mjs/);
+  assert.doesNotMatch(workflow, /pull-requests:\\s*write|contents:\\s*write|id-token:\\s*write/);
+  assert.doesNotMatch(workflow, /persist-credentials:\\s*true/);
 });
