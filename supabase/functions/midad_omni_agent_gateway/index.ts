@@ -151,7 +151,7 @@ async function persistCommunicationSignal(sb:any,ownerId:string,body:any,result:
 const SYS="MIDAD Omni Agent: high-reliability agentic planner. Prefer MIDAD Native orchestration; use specialized Gemini capability when useful. Never bypass authentication, human verification, identity checks or signatures. Never collect recovery secrets. Explain gates, evidence, expected result and fallback.";
 const CONTINUITY_URL="https://raw.githubusercontent.com/Sirahwaz/Control-room/main/docs/continuity/runtime-bootstrap.json";
 const CONTINUITY_SHA256="ed659ee481002f4ed40965b0af361dd5ef87e1593f2ba8959d80eb818351a5ce";
-const AI_ACTIONS=new Set(["plan","automation_plan","communication","form_plan","gemini_text","research","vision_inspect","gemini_image"]);
+const AI_ACTIONS=new Set(["plan","automation_plan","communication","form_plan","gemini_text","research","vision_inspect","gemini_image","live_token"]);
 Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:H});if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
 const sb=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");const body=await req.json().catch(()=>({}));const action=clip(body.action||"capabilities",80).toLowerCase();
 try{
