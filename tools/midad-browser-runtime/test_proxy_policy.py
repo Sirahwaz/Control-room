@@ -117,6 +117,13 @@ class ProxyPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ProxyPolicyError, "PROXY_AUTH_SECRET_INVALID"):
             build_playwright_proxy(profile, secret_resolver=lambda _ref: {"username": "user"})
 
+
+    def test_proxy_endpoint_scheme_must_match_declared_mode(self):
+        profile = make_config()["proxy_profiles"][0]
+        profile["endpoint"]["scheme"] = "http"
+        with self.assertRaisesRegex(ProxyPolicyError, "PROXY_SCHEME_MISMATCH"):
+            build_playwright_proxy(profile, secret_resolver=lambda _ref: {"username": "u", "password": "p"})
+
     def test_wireguard_requires_a_tunnel_adapter_not_a_fake_playwright_proxy(self):
         profile = make_config()["proxy_profiles"][0]
         profile["mode"] = "WIREGUARD"
