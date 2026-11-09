@@ -156,6 +156,13 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("access_token", str(result))
         self.assertNotIn("id_token", str(result))
 
+    def test_result_url_redacts_sensitive_path_segments(self):
+        result = sanitize_browser_result({
+            "url": "https://example.com/reset/opaque-secret-token-0123456789abcdef"
+        })
+        self.assertNotIn("opaque-secret-token", str(result))
+        self.assertNotIn("reset", result.get("url", ""))
+
     async def test_read_only_browser_task_completes_with_digest_not_page_text(self):
         client = FakeLedgerClient({"operator_hint": "inspect example"})
         operator = FakeOperator({
