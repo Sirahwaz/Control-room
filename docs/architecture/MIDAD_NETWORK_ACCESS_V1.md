@@ -143,3 +143,5 @@ The EnvironmentVaultSecretResolver is an adapter to a host secret manager, not t
 
 
 The Control Room UI shell is now present at midad-network-access.html and is routed through index.html?view=network-access. It is included in the service-worker core cache. It intentionally displays BACKEND NOT CONNECTED and keeps mutation controls disabled until the authenticated Control API and Vault lease service exist. MIDAD Intelligence's separate report remains a local, read-only diagnostics projection.
+
+Proxy-auth resolution now requires exactly one credential binding matching secret reference + account ID + platform ID + exact host + PROXY_AUTH purpose + AUTOMATION scope. Missing or ambiguous bindings fail closed before the environment-backed secret resolver is called. The binding TTL is range-validated; actual expiring/revocable leases remain part of the future Vault service, not this environment adapter.
