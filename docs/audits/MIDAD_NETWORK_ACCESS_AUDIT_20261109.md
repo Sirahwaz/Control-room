@@ -64,7 +64,7 @@ The correct implementation is additive:
 - MIDAD Intelligence full suite passed: 30 tests; sanitized HTML report generation and artifact upload passed.
 - MIDAD Isolated Playwright Runtime Tests: PASS (136 tests across the complete worker suite, including 19 focused proxy policy tests).
 - MIDAD Network Access Contract + Control Room UI: PASS (10/10 tests, including RTL navigation, no secret-entry surface, route and offline-cache checks).
-- Architecture Governance still reports the repository-level ROOT_LICENSE_MISSING finding; the governance report showed no validation errors for the newly added contract paths.
+- Architecture Governance identified ROOT_LICENSE_MISSING (pre-existing) and initially flagged the new root UI files as unowned. The manifest now registers network-access-surface under control-room; a fresh governance run for that ownership correction is still pending.
 
 ## Deferred, intentionally
 
