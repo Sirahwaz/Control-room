@@ -2,7 +2,7 @@ name: MIDAD Continuity — Cloudflare Deploy
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/mncf-zero-daemon-ephemeral-online-20261110]
     paths:
       - "mobile/factory/x/continuity-ledger/**"
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
