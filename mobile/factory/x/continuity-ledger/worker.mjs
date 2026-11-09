@@ -173,8 +173,15 @@ export class MidadContinuityLedger {
           !constantTimeEqual(await sha256(supplied), await sha256(expected))) {
         return response(401, { ok: false, error: 'WAKE_INTERNAL_AUTH_REQUIRED' });
       }
-      try { return this.broadcastWake(normalizeWakeEvent(body)); }
+      let event;
+      try { event = normalizeWakeEvent(body); }
       catch { return response(422, { ok: false, error: 'WAKE_EVENT_INVALID' }); }
+      const persisted = this.one(
+        'SELECT event_id FROM continuity_wake_outbox WHERE event_id=? AND task_id=? AND owner_id=?',
+        event.event_id, event.task_id, event.owner_id
+      );
+      if (!persisted) return response(404, { ok: false, error: 'WAKE_EVENT_NOT_FOUND' });
+      return this.broadcastWake(event);
     }
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
       if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
