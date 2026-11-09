@@ -560,6 +560,93 @@
       "account_action": "server_secret_required",
       "integration": "midad_model_gateway_v3",
       "notes": "OpenAI-compatible chat completions adapter is implemented; enable only after a server-side OPENAI_API_KEY is provisioned and a model route is configured."
+    },
+    {
+      "id": "github-codespaces",
+      "name": "GitHub Codespaces",
+      "kind": "ephemeral_compute",
+      "status": "discover_on_need",
+      "capabilities": [
+        "ephemeral-dev-workspace"
+      ],
+      "strengths": [
+        "repository-linked-workspace",
+        "temporary-development",
+        "interactive-debugging",
+        "reproducible-devcontainer"
+      ],
+      "limitations": [
+        "not_an_always_on_worker",
+        "compute_and_storage_quota_must_be_checked",
+        "current_connector_has_no_verified_codespaces_lifecycle_operation"
+      ],
+      "runtime_class": "ephemeral",
+      "requires_quota_check": true,
+      "always_on_worker": false,
+      "fallbacks": [
+        "github"
+      ],
+      "account_action": "check_account_quota_and_approve_start"
+    },
+    {
+      "id": "midad-vps-control-node",
+      "name": "MIDAD VPS Control Node",
+      "kind": "self_hosted_control_plane",
+      "status": "verification_required",
+      "capabilities": [
+        "persistent-worker-runtime",
+        "durable-task-dispatch"
+      ],
+      "strengths": [
+        "worker_supervision",
+        "health_monitoring",
+        "queue_relay",
+        "process_watchdog"
+      ],
+      "limitations": [
+        "must_probe_resources_before_assignment",
+        "do_not_host_chromium_until_resource_fit_is_proven"
+      ],
+      "runtime_class": "persistent_control",
+      "resource_probe_required": true,
+      "health_requirements": {
+        "heartbeat_max_age_seconds": 45,
+        "capability_handshake": true,
+        "resource_probe": true
+      },
+      "fallbacks": [
+        "github"
+      ],
+      "account_action": "verify_existing_host_and_capacity"
+    },
+    {
+      "id": "midad-playwright-worker",
+      "name": "MIDAD Playwright Worker",
+      "kind": "self_hosted_browser",
+      "status": "verification_required",
+      "capabilities": [
+        "interactive-browser-execution",
+        "persistent-worker-runtime"
+      ],
+      "strengths": [
+        "authorized_ui_automation",
+        "persistent_browser_context",
+        "bounded_operator_commands",
+        "evidence_capture"
+      ],
+      "limitations": [
+        "not_ready_without_fresh_heartbeat",
+        "profile_scoped_only",
+        "high_impact_actions_require_gateway_approval"
+      ],
+      "runtime_class": "persistent_browser",
+      "health_requirements": {
+        "heartbeat_max_age_seconds": 45,
+        "capability_handshake": true,
+        "queue_authentication": true
+      },
+      "fallbacks": [],
+      "account_action": "verify_fresh_heartbeat_before_dispatch"
     }
   ],
   "updated": "2026-10-17"
