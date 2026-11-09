@@ -9,10 +9,23 @@ class BrowserUserApiContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = SOURCE.read_text(encoding="utf-8")
 
-    def test_user_bridge_is_the_only_publicly_authenticated_action(self):
+    def test_public_browser_entries_require_existing_owner_session(self):
         self.assertIn('const userBridge = action === "user_bridge"', self.source)
-        self.assertIn('if (!authorized(req) && !userBridge)', self.source)
+        self.assertIn('const mcpBridge = body.jsonrpc === "2.0" && typeof body.method === "string";', self.source)
+        self.assertIn('if (!authorized(req) && !userBridge && !mcpBridge)', self.source)
         self.assertIn('browser_user_origin_not_allowed', self.source)
+        start = self.source.index("if (mcpBridge) {")
+        end = self.source.index("\n    if (userBridge)", start)
+        mcp = self.source[start:end]
+        self.assertIn("resolveBrowserUserOwner(sb, sessionToken)", mcp)
+        self.assertIn('if (!auth.ok)', mcp)
+        self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", mcp)
+        self.assertNotIn("MIDAD_INGEST_KEY", mcp)
+
+    def test_bearer_authorization_strips_whitespace_prefix(self):
+        # Both MCP and user_bridge paths must parse a standard HTTP Bearer header.
+        self.assertEqual(self.source.count(r'replace(/^Bearer\s+/i, "")'), 2)
+        self.assertNotIn(r'replace(/^Bearer\\s+/i, "")', self.source)
 
     def test_custom_session_is_hashed_and_age_checked(self):
         self.assertIn('control_room_sessions', self.source)

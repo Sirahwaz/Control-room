@@ -7,6 +7,10 @@ on:
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "tools/midad-browser-runtime/test_operator_gateway_mcp_contract.py"
+      - "supabase/functions/midad_browser_agent_gateway/index.ts"
+      - "tools/midad-browser-runtime/test_operator_gateway_mcp_contract.py"
+      - "supabase/functions/midad_browser_agent_gateway/index.ts"
       - ".github/workflows/midad-browser-bridge-ci.yml"
   pull_request:
     paths:
@@ -34,3 +38,5 @@ jobs:
         run: node --check midad-browser-bridge.js
       - name: Check AI Room module syntax
         run: python tools/midad-browser-runtime/check_ai_room_script.py
+      - name: Check deployed Gateway MCP contract
+        run: python tools/midad-browser-runtime/test_operator_gateway_mcp_contract.py -v
