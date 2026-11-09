@@ -45,6 +45,7 @@ jobs:
   deploy:
     if: inputs.operation == 'deploy'
     runs-on: ubuntu-latest
+    environment: cloudflare-production
     timeout-minutes: 20
     defaults:
       run:
