@@ -23,7 +23,8 @@
         "gitlab",
         "bitbucket"
       ],
-      "account_action": "none_by_default"
+      "account_action": "none_by_default",
+      "runtime_class": "stateless_ci"
     },
     {
       "id": "supabase",
