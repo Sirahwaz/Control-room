@@ -42,7 +42,7 @@ class WorkerV2DeploymentContractTests(unittest.TestCase):
 
     def test_readme_does_not_claim_cloudflare_or_android_participant_is_live(self):
         source = README.read_text(encoding="utf-8")
-        self.assertIn("has not been enrolled or started against a live Cloudflare account", source)
+        self.assertIn("has **not** been enrolled or started against a live Cloudflare account", source)
         self.assertIn("P4 Android Participant", source)
         self.assertIn("Central encrypted Vault broker", source)
         self.assertIn("Do not", source)
