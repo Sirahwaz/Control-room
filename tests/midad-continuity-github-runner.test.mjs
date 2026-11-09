@@ -214,7 +214,7 @@ class LocalLedgerStorage {
     this.db = new DatabaseSync(':memory:');
     this.sql = {
       exec: (query, ...args) => {
-        const read = /\\b(SELECT|RETURNING)\\b/i.test(query);
+        const read = /SELECT|RETURNING/i.test(query);
         if (!args.length && !read) {
           this.db.exec(query);
           return new LocalLedgerCursor();
