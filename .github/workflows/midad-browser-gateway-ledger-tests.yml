@@ -32,5 +32,7 @@ jobs:
           deno-version: v2.x
       - name: Run ledger adapter tests
         run: deno test --no-check supabase/functions/midad_browser_agent_gateway/ledger.test.ts
+      - name: Run browser user-origin policy tests
+        run: deno test supabase/functions/_tests/midad-browser-origin-policy.test.ts
       - name: Type-check gateway and ledger adapter
-        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts supabase/functions/midad_browser_gateway_smoke_runner/index.ts
+        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts supabase/functions/midad_browser_agent_gateway/origin-policy.ts supabase/functions/midad_browser_gateway_smoke_runner/index.ts
