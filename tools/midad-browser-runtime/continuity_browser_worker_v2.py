@@ -278,8 +278,16 @@ class ContinuityBrowserWorker:
         if os.name != "nt" and (registry_path.stat().st_mode & 0o077):
             raise ContinuityWorkerError("ACCOUNT_REGISTRY_PERMISSIONS_INVALID")
         registry = AccountRegistry(str(registry_path), set(config.allowed_hosts))
-        if not registry.list_profiles():
+        profiles = registry.list_profiles()
+        if not profiles:
             raise ContinuityWorkerError("NO_APPROVED_BROWSER_ACCOUNT_PROFILES")
+        missing_aliases = [
+            profile.get("password_secret_ref")
+            for profile in profiles
+            if not os.environ.get(str(profile.get("password_secret_ref") or ""), "").strip()
+        ]
+        if missing_aliases:
+            raise ContinuityWorkerError("ACCOUNT_SECRET_ALIASES_MISSING")
         self.session_pool = session_pool or PersistentSessionPool(
             set(config.allowed_hosts), session_store=self.store, owner_id=config.owner_id
         )
