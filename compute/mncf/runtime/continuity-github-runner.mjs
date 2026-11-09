@@ -62,10 +62,10 @@ export function validateClaimedProbeTask(task, expectedOwnerId) {
     throw new Error('CLAIMED_TASK_OPERATION_NOT_ALLOWED');
   }
   return Object.freeze({
-    taskId: task.task_id,
-    ownerId: task.owner_id,
+    task_id: task.task_id,
+    owner_id: task.owner_id,
     attempt: task.attempt,
-    leaseToken: task.lease_token,
+    lease_token: task.lease_token,
     operation: payload.operation,
   });
 }
@@ -205,8 +205,8 @@ export async function runContinuityRunner(input, {
   }
 
   await request('/v1/tasks/checkpoint', {
-    task_id: normalized.taskId,
-    lease_token: normalized.leaseToken,
+    task_id: normalized.task_id,
+    lease_token: normalized.lease_token,
     checkpoint: {
       phase: 'PUBLIC_PROBE_STARTED',
       operation: normalized.operation,
@@ -220,20 +220,20 @@ export async function runContinuityRunner(input, {
   } catch (error) {
     const retryable = error?.retryable === true;
     await request('/v1/tasks/fail', {
-      task_id: normalized.taskId,
-      lease_token: normalized.leaseToken,
+      task_id: normalized.task_id,
+      lease_token: normalized.lease_token,
       retryable,
       reason: safeErrorCode(error),
     });
-    return { status: retryable ? 'RETRY_QUEUED' : 'FAILED', task_id: normalized.taskId };
+    return { status: retryable ? 'RETRY_QUEUED' : 'FAILED', task_id: normalized.task_id };
   }
 
   await request('/v1/tasks/complete', {
-    task_id: normalized.taskId,
-    lease_token: normalized.leaseToken,
+    task_id: normalized.task_id,
+    lease_token: normalized.lease_token,
     result,
   });
-  return { status: 'COMPLETED', task_id: normalized.taskId, evidence: result };
+  return { status: 'COMPLETED', task_id: normalized.task_id, evidence: result };
 }
 
 async function main() {
