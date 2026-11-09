@@ -93,6 +93,14 @@ A short platform name defaults to session startup. Unknown or ambiguous platform
 - Financial actions (payments, transfers, withdrawals and signing) remain disabled. Page content is untrusted data and is never treated as an instruction to the worker.
 - Result previews are bounded and redacted before being recorded; queue events store the hint length rather than its full text.
 
+## Atomic worker claims and lease lifecycle
+
+The operator worker must acquire jobs through the authenticated gateway action `claim_operator_jobs`; it must not use a broad `list_jobs` result as execution authority. The gateway creates a random lease token per claim request, sends the plaintext token only to the authenticated worker, and persists only its SHA-256 digest. Claims use PostgreSQL row locking with `FOR UPDATE SKIP LOCKED`, so two workers cannot acquire the same unexpired operator-job lease.
+
+Every operator `record_event` and `record_command_result` write is checked against the exact job, owner, worker ID, token digest and unexpired lease. The worker renews the lease before browser execution and releases it after recording the result. Renewal and release are also available as explicit gateway actions.
+
+The first lease contract deliberately claims only operator-command jobs in `PREPARING`. An expired `PREPARING` lease can be reclaimed safely because the worker has not yet crossed the recorded `RUNNING` boundary. An expired `RUNNING` job is not automatically replayed: the UI action may have had an external side effect before the worker disappeared. Such jobs require a recovery/reconciliation decision before another execution attempt. This is intentional fail-closed behavior, not a missing retry.
+
 ## Verification limits
 
 Offline unit tests validate command parsing, host scoping, one-shot POST windows, secret-field protection and gateway contracts. They do not prove that a real platform's selectors are correct, that its login works, that a worker is running on a host, or that ChatGPT has been connected to that private bridge. A platform-specific profile must be configured and tested before using that account.

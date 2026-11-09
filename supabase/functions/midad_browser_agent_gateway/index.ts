@@ -8,6 +8,15 @@ import {
   safeSourceUrl,
   sanitizeLedgerEvidence,
 } from "./ledger.ts";
+import {
+  hashLeaseToken,
+  normalizeLeaseJobId,
+  normalizeLeaseLimit,
+  normalizeLeaseOwnerId,
+  normalizeLeaseSeconds,
+  normalizeLeaseToken,
+  normalizeLeaseWorkerId,
+} from "./lease.ts";
 
 const headers = {
   "content-type": "application/json; charset=utf-8",
@@ -278,6 +287,36 @@ async function getJob(sb: any, id: string) {
   return { data: data || null, error: null };
 }
 
+async function validateOperatorLease(sb: any, job: any, body: Record<string, any>) {
+  const inputData = job?.input_data && typeof job.input_data === "object" && !Array.isArray(job.input_data)
+    ? job.input_data
+    : {};
+  const isOperatorJob = Boolean(
+    (inputData.operator_command && typeof inputData.operator_command === "object" && !Array.isArray(inputData.operator_command)) ||
+    (typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())
+  );
+  if (!isOperatorJob) return { ok: true as const };
+
+  const jobId = normalizeLeaseJobId(job?.id);
+  const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+  const workerId = normalizeLeaseWorkerId(body.worker_id);
+  const token = normalizeLeaseToken(body.lease_token);
+  if (!jobId || !ownerUserId || ownerUserId !== String(job?.owner_user_id || "") || !workerId || !token) {
+    return { ok: false as const, status: 409, error: "operator_lease_required" };
+  }
+
+  const tokenHash = await hashLeaseToken(token);
+  const { data, error } = await sb.rpc("midad_browser_validate_operator_lease_v1", {
+    p_job_id: jobId,
+    p_owner_user_id: ownerUserId,
+    p_worker_id: workerId,
+    p_lease_token_sha256: tokenHash,
+  });
+  if (error) return { ok: false as const, status: 503, error: "operator_lease_validation_unavailable" };
+  if (data !== true) return { ok: false as const, status: 409, error: "operator_lease_expired_or_invalid" };
+  return { ok: true as const };
+}
+
 async function resolveBrowserUserOwner(sb: any, token: string) {
   if (token.length < 32 || token.length > 200) {
     return { ok: false as const, status: 401, error: "invalid_session" };
@@ -427,9 +466,10 @@ Deno.serve(async (req: Request) => {
       if (!configuredIngestKey || suppliedIngestKey !== configuredIngestKey) {
         return json({ ok: false, error: "ingest_key_required" }, 403);
       }
-      const ownerUserId = clip(body.owner_user_id, 80);
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ownerUserId)) {
-        return json({ ok: false, error: "valid_owner_user_id_required" }, 400);
+      const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+      const workerId = normalizeLeaseWorkerId(body.worker_id);
+      if (!ownerUserId || !workerId) {
+        return json({ ok: false, error: "valid_owner_and_worker_id_required" }, 400);
       }
       const heartbeatAt = new Date().toISOString();
       const { error } = await sb.from("midad_browser_providers").upsert({
@@ -442,11 +482,72 @@ Deno.serve(async (req: Request) => {
         metadata: {
           owner_user_id: ownerUserId,
           heartbeat_at: heartbeatAt,
-          worker_version: safeCode(body.worker_version, "operator_worker_v1"),
+          worker_version: safeCode(body.worker_version, "operator_worker_v2"),
+          worker_id: workerId,
         },
       }, { onConflict: "provider_key" });
       if (error) return json({ ok: false, error: "worker_heartbeat_write_failed" }, 500);
       return json({ ok: true, heartbeat_at: heartbeatAt });
+    }
+
+    if (action === "claim_operator_jobs") {
+      const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+      const workerId = normalizeLeaseWorkerId(body.worker_id);
+      const leaseSeconds = normalizeLeaseSeconds(body.lease_seconds);
+      const limit = normalizeLeaseLimit(body.limit);
+      if (!ownerUserId || !workerId || leaseSeconds === null || limit === null) {
+        return json({ ok: false, error: "invalid_operator_claim_request" }, 400);
+      }
+
+      // The plaintext token exists only in this request/worker response. The
+      // database receives and stores only its SHA-256 digest.
+      const leaseToken = crypto.randomUUID() + crypto.randomUUID();
+      const tokenHash = await hashLeaseToken(leaseToken);
+      const { data, error } = await sb.rpc("midad_browser_claim_operator_jobs_v1", {
+        p_owner_user_id: ownerUserId,
+        p_worker_id: workerId,
+        p_lease_token_sha256: tokenHash,
+        p_lease_seconds: leaseSeconds,
+        p_limit: limit,
+      });
+      if (error) return json({ ok: false, error: "operator_job_claim_failed" }, 503);
+      const jobs = (Array.isArray(data) ? data : []).map((job: Record<string, any>) => {
+        const { lease_token_sha256: _digest, ...safeJob } = job;
+        return { ...safeJob, worker_id: workerId, lease_token: leaseToken };
+      });
+      return json({ ok: true, worker_id: workerId, lease_seconds: leaseSeconds, jobs });
+    }
+
+    if (action === "renew_operator_lease" || action === "release_operator_lease") {
+      const jobId = normalizeLeaseJobId(body.job_id);
+      const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+      const workerId = normalizeLeaseWorkerId(body.worker_id);
+      const token = normalizeLeaseToken(body.lease_token);
+      if (!jobId || !ownerUserId || !workerId || !token) {
+        return json({ ok: false, error: "invalid_operator_lease_request" }, 400);
+      }
+      const tokenHash = await hashLeaseToken(token);
+      if (action === "renew_operator_lease") {
+        const leaseSeconds = normalizeLeaseSeconds(body.lease_seconds);
+        if (leaseSeconds === null) return json({ ok: false, error: "invalid_operator_lease_duration" }, 400);
+        const { data, error } = await sb.rpc("midad_browser_renew_operator_lease_v1", {
+          p_job_id: jobId,
+          p_owner_user_id: ownerUserId,
+          p_worker_id: workerId,
+          p_lease_token_sha256: tokenHash,
+          p_lease_seconds: leaseSeconds,
+        });
+        if (error) return json({ ok: false, error: "operator_lease_renewal_failed" }, 503);
+        return json({ ok: true, renewed: data === true });
+      }
+      const { data, error } = await sb.rpc("midad_browser_release_operator_lease_v1", {
+        p_job_id: jobId,
+        p_owner_user_id: ownerUserId,
+        p_worker_id: workerId,
+        p_lease_token_sha256: tokenHash,
+      });
+      if (error) return json({ ok: false, error: "operator_lease_release_failed" }, 503);
+      return json({ ok: true, released: data === true });
     }
 
     if (action === "capabilities") {
@@ -458,6 +559,9 @@ Deno.serve(async (req: Request) => {
           "prepare_truthful_profile",
           "create_browser_job",
           "queue_operator_hint",
+          "claim_operator_jobs",
+          "renew_operator_lease",
+          "release_operator_lease",
           "record_command_result",
           "get_operator_result",
           "resume_browser_job",
@@ -648,6 +752,8 @@ Deno.serve(async (req: Request) => {
       if (!(inputData.operator_command && typeof inputData.operator_command === "object") && !(typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())) {
         return json({ ok: false, error: "not_an_operator_command_job" }, 409);
       }
+      const lease = await validateOperatorLease(sb, found.data, body);
+      if (!lease.ok) return json({ ok: false, error: lease.error }, lease.status);
       const result = sanitizeOperatorResult(body.result);
       const currentEvidence = found.data.evidence && typeof found.data.evidence === "object" && !Array.isArray(found.data.evidence)
         ? found.data.evidence
@@ -734,6 +840,8 @@ Deno.serve(async (req: Request) => {
       if (found.error) return json({ ok: false, error: "job_lookup_failed" }, 500);
       if (!found.data) return json({ ok: false, error: "not_found" }, 404);
       const job = found.data;
+      const lease = await validateOperatorLease(sb, job, body);
+      if (!lease.ok) return json({ ok: false, error: lease.error }, lease.status);
 
       const stateInput = targetStateInput(body);
       if (!stateInput.ok) return json({ ok: false, error: "invalid_target_state" }, 400);
