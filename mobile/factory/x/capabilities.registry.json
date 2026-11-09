@@ -1,6 +1,6 @@
 {
   "registry_version": 1,
-  "updated": "2026-10-28",
+  "updated": "2026-11-09",
   "capabilities": [
     {
       "id": "mobile-shell",
@@ -486,6 +486,56 @@
         "server-side-auth"
       ],
       "default_reuse": false
+    },
+    {
+      "id": "ephemeral-dev-workspace",
+      "category": "execution",
+      "criticality": "medium",
+      "tags": [
+        "codespaces",
+        "ephemeral",
+        "repo-workspace",
+        "interactive-debug"
+      ],
+      "default_reuse": true
+    },
+    {
+      "id": "persistent-worker-runtime",
+      "category": "execution",
+      "criticality": "high",
+      "tags": [
+        "long-running-worker",
+        "supervisor",
+        "heartbeat",
+        "queue-consumer",
+        "process-lifecycle"
+      ],
+      "default_reuse": true
+    },
+    {
+      "id": "durable-task-dispatch",
+      "category": "execution",
+      "criticality": "high",
+      "tags": [
+        "idempotency",
+        "atomic-lease",
+        "checkpoints",
+        "bounded-retry",
+        "failover"
+      ],
+      "default_reuse": true
+    },
+    {
+      "id": "interactive-browser-execution",
+      "category": "automation",
+      "criticality": "high",
+      "tags": [
+        "playwright",
+        "persistent-browser-context",
+        "interactive-web",
+        "browser-worker"
+      ],
+      "default_reuse": true
     }
   ]
 }
