@@ -422,7 +422,8 @@ export class MidadContinuityLedger {
     });
     if (!claimed) return response(200, { ok: true, task: null, reason: quarantined ? 'RECONCILIATION_REQUIRED' : 'NO_ELIGIBLE_TASK' });
     return response(200, { ok: true, task: {
-      task_id: claimed.task_id, workload: claimed.workload, payload: JSON.parse(claimed.payload_json),
+      task_id: claimed.task_id, owner_id: claimed.owner_id,
+      workload: claimed.workload, payload: JSON.parse(claimed.payload_json),
       attempt: claimed.attempt, lease_expires_at: new Date(claimed.lease_expires_at_ms).toISOString(), lease_token: token,
     } });
   }
