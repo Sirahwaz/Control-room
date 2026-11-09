@@ -133,6 +133,18 @@ class ScopedAutomationPolicyTests(unittest.TestCase):
         self.assertFalse(path.allowed)
         self.assertEqual(path.reason, "PATH_NOT_ALLOWED")
 
+    def test_empty_path_scope_fails_closed(self):
+        profile = {
+            **PROFILE,
+            "automation_policy": {
+                **PROFILE["automation_policy"],
+                "allowed_paths": [],
+            },
+        }
+        result = evaluate_action("inspect", profile, request("inspect"), now=self.NOW)
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, "PATH_NOT_ALLOWED")
+
     def test_security_bypass_actions_are_never_authorized(self):
         for action in ("bypass_captcha", "bypass_mfa", "bypass_kyc", "bot_evasion"):
             with self.subTest(action=action):
