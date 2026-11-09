@@ -43,7 +43,7 @@ test("routing rules are scoped to explicit hostnames and runtime classes", () =>
   assert.ok(rule.required.includes("hosts"));
   assert.ok(rule.required.includes("scopes"));
   assert.deepEqual(rule.properties.scopes.items.enum, ["BROWSER", "AUTOMATION", "INFRASTRUCTURE"]);
-  assert.match(rule.properties.hosts.items.pattern, /hostname/);
+  assert.match(rule.properties.hosts.items.description, /Exact hostnames only/);
 });
 
 test("route failure defaults to fail-closed and never silently falls back to direct", () => {
