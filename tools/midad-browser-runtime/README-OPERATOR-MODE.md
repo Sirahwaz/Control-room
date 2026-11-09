@@ -93,3 +93,21 @@ A short platform name defaults to session startup. Unknown or ambiguous platform
 ## Verification limits
 
 Offline unit tests validate command parsing, host scoping, one-shot POST windows, secret-field protection and gateway contracts. They do not prove that a real platform's selectors are correct, that its login works, that a worker is running on a host, or that ChatGPT has been connected to that private bridge. A platform-specific profile must be configured and tested before using that account.
+
+
+## Optional Proxy and Vault adapter (v1)
+
+The operator worker can attach a proxy to each new Chromium BrowserContext. This is opt-in and does not change existing deployments when MIDAD_NETWORK_ACCESS_CONFIG is unset.
+
+1. Copy network_access.example.json to a private runtime path such as /var/lib/midad-browser/network-access.json. Edit exact host rules and approved proxy endpoint metadata. Do not place proxy usernames or passwords in this file.
+2. Set MIDAD_NETWORK_ACCESS_CONFIG to that private file path.
+3. Configure MIDAD_VAULT_BINDINGS_JSON as a reference-to-alias map, for example:
+   {"vault://proxy/eu-01/auth":"MIDAD_PROXY_EU01_AUTH"}
+4. Store the actual JSON credential object only in the host secret manager under the alias MIDAD_PROXY_EU01_AUTH. The object shape is {"username":"...","password":"..."}.
+5. Restart the worker and verify its route policy and sanitized diagnostics before using the session.
+
+The current EnvironmentVaultSecretResolver is an environment/host-secret-manager adapter, not an encrypted multi-tenant Vault service. It returns values only in worker memory for Playwright context creation. The alias map contains names only. Do not commit the private config or real secret values.
+
+Routing is exact-host and AUTOMATION-scoped. Missing rules, blocked rules, disabled profiles, missing secret bindings, unsupported tunnel modes and invalid endpoints fail closed. There is no silent Direct fallback. HTTP, HTTPS and SOCKS5 are supported by the Playwright adapter. WireGuard and managed tunnels require a separate tunnel adapter and are rejected rather than misrepresented as per-context proxies.
+
+The proxy is pinned when a persistent account session is created. Changing route configuration requires stopping that session and starting a new one. This first adapter does not yet claim health-based failover or multi-worker queue safety.
