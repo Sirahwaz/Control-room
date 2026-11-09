@@ -127,6 +127,41 @@ def write_private_token(path: Path, token: str, replace_existing: bool = False) 
                 pass
 
 
+def read_admin_key_file(path_value: str) -> str:
+    if not isinstance(path_value, str) or not path_value.strip():
+        raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_REQUIRED")
+    path = Path(path_value).expanduser()
+    if not path.is_absolute() or path.is_symlink():
+        raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID")
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID") from exc
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID")
+        if stat.S_IMODE(info.st_mode) & 0o077:
+            raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_PERMISSIONS_INVALID")
+        if hasattr(os, "getuid") and info.st_uid != os.getuid():
+            raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_OWNER_INVALID")
+        if info.st_size < 32 or info.st_size > 4096:
+            raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID")
+        raw = os.read(fd, 4097)
+        if len(raw) > 4096:
+            raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID")
+    finally:
+        os.close(fd)
+    try:
+        key = raw.decode("ascii").strip()
+    except UnicodeDecodeError as exc:
+        raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID") from exc
+    if len(key) < 32 or any(ord(ch) < 33 or ord(ch) > 126 for ch in key):
+        raise EnrollmentError("LEDGER_ADMIN_KEY_FILE_INVALID")
+    return key
+
+
 def enroll_node(base_url: str, node_id: str, owner_id: str, admin_key: str,
                 token_file: Path, confirm_owner_consent: bool,
                 replace_token_file: bool = False, opener=None) -> dict:
@@ -192,9 +227,10 @@ def main() -> int:
     parser.add_argument("--replace-token-file", action="store_true")
     args = parser.parse_args()
     try:
+        admin_key = read_admin_key_file(os.environ.get("MIDAD_LEDGER_ADMIN_KEY_FILE", ""))
         result = enroll_node(
             args.ledger_url, args.node_id, args.owner_id,
-            os.environ.get("MIDAD_LEDGER_ADMIN_KEY", ""),
+            admin_key,
             args.token_file, args.confirm_owner_consent,
             args.replace_token_file,
         )
