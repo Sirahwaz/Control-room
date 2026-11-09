@@ -26,7 +26,6 @@ on:
       - "mobile/package.json"
       - ".github/workflows/midad-mobile-factory.yml"
       - ".github/workflows/agentation-e2e.yml"
-      - ".github/workflows/midad-mobile-factory.yml"
 
 permissions:
   contents: read
