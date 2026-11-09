@@ -56,7 +56,7 @@ test('existing MIDAD control-plane components are preserved as integrations', ()
 
 test('manifest contains no credentials or secret material', () => {
   const serialized = JSON.stringify(manifest);
-  assert.doesNotMatch(serialized, /(api[_-]?key|secret|token|password|private[_-]?key)\\s*[:=]\\s*["'][^"']+/i);
+  assert.doesNotMatch(serialized, /(api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*["'][^"']+/i);
 });
 test('external technologies are classified without replacing the production stack', () => {
   const review = manifest.external_technology_review;
@@ -108,7 +108,7 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
     manifest.layers.hakios_lab.qemu.uboot_path.boot_command_override.ci_override,
     'hakios load 0x50000000 && hakios boot'
   );
-  assert.match(qemuWorkflow, /boot_path:\\s*\\[\\s*loader-device,\\s*uefi-esp\\s*\\]/);
+  assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
   assert.match(qemuWorkflow, /QEMU_ESP=1/);
   assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
   assert.ok(qemuWorkflow.includes('/usr/share/AAVMF/AAVMF_CODE.fd'));
@@ -153,7 +153,7 @@ test('Forge preserves build diagnostics and submits artifact provenance in the c
   );
   assert.ok(preserveReport >= 0 && preserveReport < cleanup);
   assert.ok(preserveManifest >= 0 && preserveManifest < cleanup);
-  assert.match(forgeWorkflow, /- name: Download Forge artifact\\n        if: always\\(\\)/);
+  assert.match(forgeWorkflow, /- name: Download Forge artifact\n        if: always\(\)/);
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-build-report.json"'));
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json"'));
   assert.ok(forgeWorkflow.includes("'. + {artifact_manifest:$artifact_manifest}'"));
