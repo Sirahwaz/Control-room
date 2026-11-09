@@ -9,11 +9,13 @@ on:
       - 'mobile/factory/x/**'
       - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
   pull_request:
     paths:
       - 'mobile/factory/x/**'
       - 'mobile/factory/factory.config.json'
       - '.github/workflows/mobile-factory-x.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
   workflow_dispatch:
 
 concurrency:
