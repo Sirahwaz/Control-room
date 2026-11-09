@@ -658,7 +658,16 @@
       "runtime_capabilities": [
         "interactive-browser-execution",
         "persistent-worker-runtime"
-      ]
+      ],
+      "required_runtime_capabilities": {
+        "interactive-browser-execution": [
+          "interactive-browser-execution",
+          "persistent-worker-runtime"
+        ],
+        "persistent-worker-runtime": [
+          "persistent-worker-runtime"
+        ]
+      }
     }
   ],
   "updated": "2026-10-17"
