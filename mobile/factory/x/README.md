@@ -28,6 +28,33 @@ Known ecosystem entries include GitHub, Supabase, Dropbox, Figma, Firecrawl, Con
 
 The registry records candidates as options; it does not imply an account connection or licensing.
 
+## Hybrid execution substrates
+
+Factory X treats execution environments as selectable substrates behind one task contract:
+
+- **GitHub Actions** is the stateless CI/build/test runner. It is suitable for repeatable jobs and artifacts, not a persistent agent worker.
+- **GitHub Codespaces** is an ephemeral development workspace. It is discovery-only until the connected account's quota, lifecycle controls and cost ceiling are checked; it must not host the always-on queue consumer.
+- **MIDAD VPS Control Node** is a candidate for a lightweight persistent supervisor, health monitor and queue relay. Resource probing is mandatory before assigning browser or coding-agent workloads.
+- **MIDAD Playwright Worker** is the owned interactive-browser candidate. Dispatch requires a heartbeat no older than 45 seconds, a version/capability handshake, authenticated queue access and sufficient resource headroom.
+- **Android MIDAD Browser** remains the local browsing and human-checkpoint surface. It is not a server-side credential broker.
+
+The capability registry separates `ephemeral-dev-workspace`, `stateless-ci-execution`, `persistent-worker-runtime`, `durable-task-dispatch` and `interactive-browser-execution`. The provider registry describes what an environment could do; the adapter registry controls whether it may execute. Codespaces, the VPS control node and the Playwright worker are deliberately registered as discovery/verification candidates. Their adapters remain `PENDING` with `execution: none` until live checks prove readiness.
+
+A database status label such as `online` is insufficient. Readiness must be based on fresh heartbeat, contract version, authenticated queue access, a capability handshake, resource checks and policy. Missing or stale evidence blocks dispatch. Metered browser providers are not automatic fallbacks for the owned interactive-browser capability.
+
+### Signed runtime evidence and plan-only substrate selection
+
+`execution-fabric.mjs` now reads optional runtime evidence only from the protected runner environment:
+
+- `MIDAD_FACTORY_RUNTIME_EVIDENCE`: path to a local JSON envelope (defaults to `.factory-runtime/runtime-evidence.json` when configured by the runner).
+- `MIDAD_FACTORY_RUNTIME_EVIDENCE_HMAC_KEY`: minimum 32-character HMAC key injected by the trusted runner environment. Never place it in a repository file, task JSON, registry, or client bundle.
+
+The envelope schema is `midad-runtime-evidence-v1` and contains `issued_at`, a provider-keyed `providers` object and an HMAC-SHA256 `signature` over canonical JSON. The verifier rejects missing keys, altered payloads, invalid provider ids, stale envelopes and future timestamps. Only after verification does it mark the contained snapshots as `trusted_runtime_adapter`.
+
+A verified envelope is still only a readiness snapshot. Each candidate is checked for its own heartbeat age, required capability handshake, authenticated queue, resource probe, browser/session-store availability and budget. The resulting substrate plan is informational: `dispatch_allowed=false` and `execution_performed=false` remain explicit until a separate trusted dispatcher rechecks readiness and acquires an atomic task lease.
+
+No runtime evidence file or HMAC key is committed to Git. The CI tests use test-only keys and synthetic snapshots; they do not create a real Codespace, deploy a worker, or contact a production host.
+
 ## Safety boundary
 
 - Server secrets remain server-side.

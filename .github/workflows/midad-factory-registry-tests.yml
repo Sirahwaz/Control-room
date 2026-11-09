@@ -24,4 +24,4 @@ jobs:
         with:
           node-version: 24
       - name: Validate agent and capability bindings
-        run: node --test mobile/factory/x/tests/registries.test.mjs
+        run: node --test mobile/factory/x/tests/*.test.mjs
