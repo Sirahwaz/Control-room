@@ -13,6 +13,7 @@ from agent_policy import validate_profile
 from operator_command_router import validate_operator_command
 from runner import BrowserPolicyError, validate_navigation_url
 from secret_provider import EnvironmentSecretProvider, SecretBinding
+from encrypted_session_store import EncryptedSessionStore, SessionStoreError
 
 class BrowserSessionError(RuntimeError):
     pass
@@ -101,7 +102,8 @@ def _validate_login_profile(profile: dict, global_hosts: set[str]) -> dict:
 
 class PlatformBrowserSession:
     def __init__(self, profile: dict, allowed_hosts: set[str], secret_provider=None,
-                 playwright_factory=None, timeout_ms: int = 12000):
+                 playwright_factory=None, timeout_ms: int = 12000,
+                 session_store: EncryptedSessionStore | None = None, owner_id: str = ""):
         self.profile = _validate_login_profile(profile, {h.strip().lower().rstrip(".") for h in allowed_hosts})
         self.allowed_hosts = set(self.profile["_session_hosts"])
         self.timeout_ms = max(1000, min(int(timeout_ms), 20000))
@@ -110,6 +112,11 @@ class PlatformBrowserSession:
                           self.profile["password_secret_ref"])
         ])
         self.playwright_factory = playwright_factory
+        self.session_store = session_store
+        self.owner_id = str(owner_id or "").strip()
+        if self.session_store is not None and not self.owner_id:
+            raise BrowserSessionError("SESSION_STORE_OWNER_REQUIRED")
+        self.restored_from_encrypted_store = False
         self.playwright = self.browser = self.context = self.page = None
         self.authenticated = False
         self.last_status = "NOT_STARTED"
@@ -134,9 +141,25 @@ class PlatformBrowserSession:
             headless=True,
             args=["--disable-background-networking", "--disable-sync", "--no-first-run"],
         )
-        self.context = await self.browser.new_context(
-            accept_downloads=False, service_workers="block", ignore_https_errors=False
-        )
+        context_options = {
+            "accept_downloads": False,
+            "service_workers": "block",
+            "ignore_https_errors": False,
+        }
+        if self.session_store is not None:
+            try:
+                state = await asyncio.to_thread(
+                    self.session_store.load,
+                    self.owner_id,
+                    self.profile["account_id"],
+                    self.profile["host"],
+                )
+            except SessionStoreError as exc:
+                raise BrowserSessionError(str(exc)) from exc
+            if state is not None:
+                context_options["storage_state"] = state
+                self.restored_from_encrypted_store = True
+        self.context = await self.browser.new_context(**context_options)
         self.page = await self.context.new_page()
         self.page.set_default_navigation_timeout(self.timeout_ms)
         await self.page.route("**/*", self._guard_route)
@@ -197,6 +220,45 @@ class PlatformBrowserSession:
             return None
         return None
 
+    @property
+    def session_storage(self) -> str:
+        return "encrypted_at_rest" if self.session_store is not None else "memory_only"
+
+    async def persist_storage_state(self) -> bool:
+        if self.session_store is None or self.context is None or not self.authenticated:
+            return False
+        try:
+            state = await self.context.storage_state()
+            await asyncio.to_thread(
+                self.session_store.save,
+                self.owner_id,
+                self.profile["account_id"],
+                self.profile["host"],
+                state,
+            )
+            self.last_status = "AUTHENTICATED_ENCRYPTED_AT_REST"
+            return True
+        except SessionStoreError as exc:
+            self.last_status = "SESSION_STORE_PERSIST_FAILED"
+            raise BrowserSessionError(str(exc)) from exc
+        except Exception as exc:
+            self.last_status = "SESSION_STORE_PERSIST_FAILED"
+            raise BrowserSessionError("SESSION_STORE_PERSIST_FAILED") from exc
+
+    async def stop_and_discard(self):
+        await self.close(keep_status=True, persist=False)
+        if self.session_store is not None:
+            try:
+                await asyncio.to_thread(
+                    self.session_store.delete,
+                    self.owner_id,
+                    self.profile["account_id"],
+                    self.profile["host"],
+                )
+            except SessionStoreError as exc:
+                raise BrowserSessionError(str(exc)) from exc
+        self.last_status = "STOPPED"
+
     async def start(self) -> dict:
         if self.authenticated and self.page is not None:
             try:
@@ -212,8 +274,24 @@ class PlatformBrowserSession:
             gate = await self._human_gate_reason()
             if gate:
                 self.last_status = gate
-                await self.close(keep_status=True)
+                await self.close(keep_status=True, persist=False)
                 return {"status": gate, "reason": "Complete the platform's supported verification flow; no bypass was attempted."}
+            if self.restored_from_encrypted_store:
+                try:
+                    restored = await self.page.locator(self.profile["success_selector"]).is_visible()
+                except Exception:
+                    restored = False
+                if restored:
+                    self.authenticated = True
+                    self.last_status = "RESTORED_ENCRYPTED_SESSION"
+                    await self.persist_storage_state()
+                    return {
+                        "status": self.last_status,
+                        "platform_key": self.profile.get("platform_key") or self.profile["host"],
+                        "account_id": self.profile["account_id"],
+                        "host": self.profile["host"],
+                        "session_storage": self.session_storage,
+                    }
             user_selector = self.profile["username_selector"]
             pass_selector = self.profile["password_selector"]
             submit_selector = self.profile["submit_selector"]
@@ -233,7 +311,7 @@ class PlatformBrowserSession:
             gate = await self._human_gate_reason()
             if gate:
                 self.last_status = gate
-                await self.close(keep_status=True)
+                await self.close(keep_status=True, persist=False)
                 return {"status": gate, "reason": "Platform requested a human verification step; the worker stopped safely."}
             try:
                 await self.page.locator(self.profile["success_selector"]).wait_for(
@@ -243,15 +321,16 @@ class PlatformBrowserSession:
                 raise BrowserSessionError("LOGIN_SUCCESS_NOT_CONFIRMED") from exc
             self.authenticated = True
             self.last_status = "AUTHENTICATED_IN_MEMORY"
+            await self.persist_storage_state()
             return {
                 "status": self.last_status,
                 "platform_key": self.profile.get("platform_key") or self.profile["host"],
                 "account_id": self.profile["account_id"],
                 "host": self.profile["host"],
-                "session_storage": "memory_only",
+                "session_storage": self.session_storage,
             }
         except Exception as exc:
-            await self.close(keep_status=True)
+            await self.close(keep_status=True, persist=False)
             if isinstance(exc, BrowserSessionError):
                 self.last_status = str(exc)
                 raise
@@ -264,8 +343,7 @@ class PlatformBrowserSession:
         if action == "start_session":
             return await self.start()
         if action == "stop_session":
-            await self.close()
-            self.last_status = "STOPPED"
+            await self.stop_and_discard()
             return {"status": "STOPPED", "account_id": self.profile["account_id"]}
         if action == "status":
             return {
@@ -347,7 +425,13 @@ class PlatformBrowserSession:
             "text_chars": len(body),
         }
 
-    async def close(self, keep_status: bool = False):
+    async def close(self, keep_status: bool = False, persist: bool = True):
+        persist_error = None
+        if persist and self.session_store is not None and self.authenticated and self.context is not None:
+            try:
+                await self.persist_storage_state()
+            except BrowserSessionError as exc:
+                persist_error = exc
         self.authenticated = False
         for resource in (self.context, self.browser):
             if resource is not None:
@@ -361,17 +445,24 @@ class PlatformBrowserSession:
             except Exception:
                 pass
         self.page = self.context = self.browser = self.playwright = None
-        if not keep_status:
+        if not keep_status and persist_error is None:
             self.last_status = "STOPPED"
+        if persist_error is not None:
+            raise persist_error
 
 class PersistentSessionPool:
-    """Keep authenticated contexts in memory while the single worker is alive."""
+    """Keep authenticated contexts in memory while the worker is alive."""
     def __init__(self, allowed_hosts: set[str], secret_provider_factory=None,
-                 playwright_factory=None, timeout_ms: int = 12000):
+                 playwright_factory=None, timeout_ms: int = 12000,
+                 session_store: EncryptedSessionStore | None = None, owner_id: str = ""):
         self.allowed_hosts = {h.strip().lower().rstrip(".") for h in allowed_hosts}
         self.secret_provider_factory = secret_provider_factory
         self.playwright_factory = playwright_factory
         self.timeout_ms = timeout_ms
+        self.session_store = session_store
+        self.owner_id = str(owner_id or "").strip()
+        if self.session_store is not None and not self.owner_id:
+            raise BrowserSessionError("SESSION_STORE_OWNER_REQUIRED")
         self.sessions: dict[str, PlatformBrowserSession] = {}
 
     async def ensure(self, profile: dict) -> PlatformBrowserSession:
@@ -383,7 +474,8 @@ class PersistentSessionPool:
             provider = self.secret_provider_factory(profile) if self.secret_provider_factory else None
             session = PlatformBrowserSession(
                 profile, self.allowed_hosts, secret_provider=provider,
-                playwright_factory=self.playwright_factory, timeout_ms=self.timeout_ms
+                playwright_factory=self.playwright_factory, timeout_ms=self.timeout_ms,
+                session_store=self.session_store, owner_id=self.owner_id,
             )
             self.sessions[account_id] = session
         if not session.authenticated:
@@ -394,6 +486,12 @@ class PersistentSessionPool:
         return session
 
     async def close_all(self):
+        failures = []
         for session in list(self.sessions.values()):
-            await session.close()
+            try:
+                await session.close()
+            except BrowserSessionError as exc:
+                failures.append(exc)
         self.sessions.clear()
+        if failures:
+            raise BrowserSessionError("SESSION_STORE_CLOSE_FAILED") from failures[0]
