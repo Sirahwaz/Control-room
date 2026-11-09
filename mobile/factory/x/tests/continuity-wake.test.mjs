@@ -133,12 +133,24 @@ test('wake broadcast is owner-scoped and contains no task payload', async () => 
   storage.close();
 });
 
-test('internal wake endpoint rejects public callers without the dedicated wake key', async () => {
-  const { storage, ledger } = setup();
-  const denied = await read(await ledger.fetch(post('/internal/wake', wake())));
+test('internal wake endpoint authenticates and only broadcasts a persisted outbox event', async () => {
+  const queue = { async send() {} };
+  const { storage, ledger } = setup({ CONTINUITY_WAKE_QUEUE: queue });
+  await ledger.fetch(post('/v1/tasks/enqueue', task(), admin()));
+  const persisted = storage.db.prepare('SELECT event_id,task_id,owner_id FROM continuity_wake_outbox').get();
+  const event = { v: 1, event_id: persisted.event_id, task_id: persisted.task_id, owner_id: persisted.owner_id };
+
+  const denied = await read(await ledger.fetch(post('/internal/wake', event)));
   assert.equal(denied.status, 401);
   assert.equal(denied.body.error, 'WAKE_INTERNAL_AUTH_REQUIRED');
-  const allowed = await read(await ledger.fetch(post('/internal/wake', wake(), {
+
+  const forged = await read(await ledger.fetch(post('/internal/wake', {
+    ...event, owner_id: 'owner-b',
+  }, { 'x-midad-wake-key': WAKE_KEY })));
+  assert.equal(forged.status, 404);
+  assert.equal(forged.body.error, 'WAKE_EVENT_NOT_FOUND');
+
+  const allowed = await read(await ledger.fetch(post('/internal/wake', event, {
     'x-midad-wake-key': WAKE_KEY,
   })));
   assert.equal(allowed.status, 200);
