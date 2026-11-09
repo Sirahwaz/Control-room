@@ -129,6 +129,14 @@
       "description": "Browser agent UI and browser bridge surface."
     },
     {
+      "id": "network-access-surface",
+      "paths": [
+        "midad-network-access.html",
+        "midad-network-access.css",
+        "midad-network-access.js"
+      ]
+    },
+    {
       "id": "ai-room-surface",
       "repository": "control-room",
       "domain": "multi-agent-control",
