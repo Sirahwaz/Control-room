@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
+import { MidadContinuityLedger } from '../mobile/factory/x/continuity-ledger/worker.mjs';
 import {
   RUNNER_CAPABILITIES,
   validateRunnerConfig,
@@ -199,4 +201,134 @@ test('runner bounds Cloudflare ledger responses before JSON parsing', async () =
   };
   await assert.rejects(() => runContinuityRunner(config, { fetchImpl }), /RESPONSE_LIMIT_EXCEEDED/);
   assert.equal(count, 1);
+});
+
+
+class LocalLedgerCursor {
+  constructor(rows = []) { this.rows = rows; }
+  toArray() { return this.rows; }
+}
+
+class LocalLedgerStorage {
+  constructor() {
+    this.db = new DatabaseSync(':memory:');
+    this.sql = {
+      exec: (query, ...args) => {
+        const read = /\\b(SELECT|RETURNING)\\b/i.test(query);
+        if (!args.length && !read) {
+          this.db.exec(query);
+          return new LocalLedgerCursor();
+        }
+        const statement = this.db.prepare(query);
+        if (read) return new LocalLedgerCursor(statement.all(...args));
+        statement.run(...args);
+        return new LocalLedgerCursor();
+      },
+    };
+  }
+  transactionSync(fn) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = fn();
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  close() { this.db.close(); }
+}
+
+test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Ledger contract and completes one task', async () => {
+  const storage = new LocalLedgerStorage();
+  const adminKey = 'local-test-admin-key-for-continuity-integration-001';
+  const ledger = new MidadContinuityLedger({ storage }, {
+    MIDAD_LEDGER_ADMIN_KEY: adminKey,
+  });
+  const adminHeaders = {
+    authorization: 'Bearer ' + adminKey,
+    'content-type': 'application/json',
+  };
+
+  try {
+    const enrollmentResponse = await ledger.fetch(new Request('https://ledger.test/v1/nodes/enroll', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        node_id: 'midad-github-hosted-runner',
+        owner_id: 'owner-123',
+        consent_confirmed: true,
+        capabilities: [...RUNNER_CAPABILITIES],
+      }),
+    }));
+    assert.equal(enrollmentResponse.status, 201);
+    const enrollment = await enrollmentResponse.json();
+    assert.equal(enrollment.ok, true);
+
+    const enqueueResponse = await ledger.fetch(new Request('https://ledger.test/v1/tasks/enqueue', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        task_id: 'integration-task-001',
+        owner_id: 'owner-123',
+        idempotency_key: 'integration:public-probe:001',
+        payload: {
+          schema: 'midad-public-probe-v1',
+          operation: 'GET_EXAMPLE_DOMAIN',
+        },
+        workload: 'SINGLE',
+        required_capabilities: ['midad.public-read-only-probe'],
+        min_cpu_cores: 0,
+        min_memory_mb: 0,
+        units: 1,
+        estimated_seconds_per_unit: 15,
+        max_cost_usd: 0,
+        retry_mode: 'AT_LEAST_ONCE_IDEMPOTENT',
+        max_attempts: 3,
+      }),
+    }));
+    assert.equal(enqueueResponse.status, 201);
+    assert.equal((await enqueueResponse.json()).state, 'QUEUED');
+
+    const ledgerFetch = async (url, init) => ledger.fetch(new Request(url, init));
+    const run = await runContinuityRunner({
+      ledgerUrl: 'https://ledger.test',
+      nodeId: 'midad-github-hosted-runner',
+      ownerId: 'owner-123',
+      nodeToken: enrollment.enrollment_token,
+    }, {
+      fetchImpl: ledgerFetch,
+      probeFetch: async (url, options) => {
+        assert.equal(String(url), 'https://example.com/');
+        assert.equal(options.method, 'GET');
+        assert.equal(options.redirect, 'error');
+        return new Response('<html>Example Domain</html>', {
+          status: 200,
+          headers: { 'content-type': 'text/html' },
+        });
+      },
+    });
+
+    assert.equal(run.status, 'COMPLETED');
+    assert.equal(run.task_id, 'integration-task-001');
+    assert.equal(run.evidence.source_host, 'example.com');
+    assert.equal(run.evidence.http_status, 200);
+    assert.match(run.evidence.content_sha256, /^[a-f0-9]{64}$/);
+
+    const row = storage.db.prepare(
+      'SELECT status,attempt,result_json,checkpoint_json FROM continuity_tasks WHERE task_id=?'
+    ).get('integration-task-001');
+    assert.equal(row.status, 'COMPLETED');
+    assert.equal(row.attempt, 1);
+    assert.equal(JSON.parse(row.checkpoint_json).phase, 'PUBLIC_PROBE_STARTED');
+    assert.equal(JSON.parse(row.result_json).content_sha256, run.evidence.content_sha256);
+
+    const events = storage.db.prepare(
+      'SELECT event_type FROM continuity_events WHERE task_id=? ORDER BY event_id'
+    ).all('integration-task-001').map(event => event.event_type);
+    assert.deepEqual(events, ['TASK_ENQUEUED', 'TASK_CLAIMED', 'CHECKPOINT_SAVED', 'TASK_COMPLETED']);
+  } finally {
+    storage.close();
+  }
 });
