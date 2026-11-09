@@ -1,5 +1,10 @@
 name: MIDAD Browser Mesh — Manual Live Chromium Smoke
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/midad-browser-runtime/**"
+      - ".github/workflows/midad-browser-runtime-live-smoke.yml"
   workflow_dispatch:
   push:
     branches: [main]

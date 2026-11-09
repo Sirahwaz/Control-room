@@ -118,3 +118,16 @@ The companion `continuity-ledger/` directory contains a Cloudflare SQLite-backed
 - Browser jobs require encrypted session storage and a runtime version; they are forced to human reconciliation after ambiguous loss.
 - Current transport is authenticated pull-claim. No Cloudflare Queue binding or GitHub wake dispatch is enabled yet.
 - Local SQLite contract tests: 13 cases. Actual Wrangler preview and live Cloudflare deployment remain separate verification gates.
+
+## Zero-daemon online target — MNCF v2
+
+**Target operating model:** always-on logically, ephemeral physically. A persistent Linux/VPS host is not required for baseline online availability.
+
+- Cloudflare Worker + SQLite Durable Object + Queue provide the intended durable coordination path. Their source is merged, but production deployment and health are not verified.
+- GitHub-hosted Linux Actions runners provide disposable compute for bounded builds, tests and browser smoke. The existing Forge runner is retained; its current task intake still uses the existing Supabase Forge OIDC path.
+- The Cloudflare-to-GitHub runner dispatch adapter remains **PENDING**. Until it is implemented and live-tested, do not describe Cloudflare as dispatching GitHub compute.
+- GitHub Playwright smoke is intended to run on pull requests with read-only permissions and no secrets. Browser Run is a separate quota-limited candidate adapter; it is not the general-purpose compute layer.
+- Persistent Linux/Playwright nodes and VPS are optional specialist workers only, selected when a verified workload requires persistent local state, specialised egress or resource headroom.
+- Preserve the existing Forge/Continuity ledgers during migration. No parallel queue, replacement orchestrator or Supabase cutover is authorized by this design note.
+
+**Acceptance gate:** prove task intake → durable lease → ephemeral GitHub runner → checkpoint/result → independent verification → Control Room receipt with no VPS; then inject duplicate delivery, runner loss and expired leases. Production Cloudflare activation and any cutover remain separate approvals.
