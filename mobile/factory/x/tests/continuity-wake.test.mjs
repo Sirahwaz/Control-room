@@ -144,6 +144,18 @@ test('internal wake endpoint rejects public callers without the dedicated wake k
   storage.close();
 });
 
+test('re-enrollment closes a wake socket tied to the previous node credential', async () => {
+  const { storage, ctx, ledger } = setup();
+  const socket = new Socket();
+  ctx.acceptWebSocket(socket, ['owner:owner-a', 'node:node-a']);
+  const enrolled = await read(await ledger.fetch(post('/v1/nodes/enroll', {
+    node_id: 'node-a', owner_id: 'owner-a', consent_confirmed: true, capabilities: ['cpu-batch'],
+  }, admin())));
+  assert.equal(enrolled.status, 201);
+  assert.deepEqual(socket.closed, [{ code: 1008, reason: 'node re-enrolled' }]);
+  storage.close();
+});
+
 test('node revocation closes that node wake sockets immediately', async () => {
   const { storage, ctx, ledger } = setup();
   const socket = new Socket();
