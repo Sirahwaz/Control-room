@@ -164,8 +164,15 @@ class OperatorWorker:
             validated = validate_operator_command(policy_command, profile, set(self.config.allowed_hosts))
             if current_url is None and validated.get("target_url"):
                 current_url = validated["target_url"]
-            await self._record(job, "state_transition", "RUNNING", current_url,
-                               "execute_operator_command", {"policy_code": "COMMAND_ACCEPTED"})
+            await self._record(
+                job, "state_transition", "RUNNING", current_url,
+                "execute_operator_command",
+                {
+                    "policy_code": "COMMAND_POLICY_ALLOWED",
+                    "policy_risk": policy_decision.risk,
+                    "policy_reason": policy_decision.reason,
+                },
+            )
             account_id = profile["account_id"]
             session = self.session_pool.sessions.get(account_id)
             if validated["action"] == "start_session":
