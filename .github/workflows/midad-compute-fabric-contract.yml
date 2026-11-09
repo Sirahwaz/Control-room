@@ -8,15 +8,19 @@ on:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
+      - 'tests/midad-continuity-github-runner.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
   pull_request:
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
+      - 'tests/midad-continuity-github-runner.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
 
 permissions:
   contents: read
@@ -28,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -38,6 +44,10 @@ jobs:
         run: node --test tests/midad-compute-fabric-contract.test.mjs
       - name: MIDAD Linux Worker runtime safety tests
         run: node --test tests/midad-linux-worker.test.mjs
+      - name: GitHub ephemeral Continuity Runner tests
+        run: node --test tests/midad-continuity-github-runner.test.mjs
+      - name: Validate GitHub ephemeral runner syntax
+        run: node --check compute/mncf/runtime/continuity-github-runner.mjs
       - name: Validate MIDAD Linux Worker runtime syntax
         run: node --check compute/mncf/runtime/worker.mjs
       - name: Diff whitespace validation
