@@ -7,7 +7,7 @@
     "principles": [
       "audit-preserve-repair-integrate-upgrade",
       "provider-agnostic",
-      "linux-first-production",
+      "ephemeral-linux-first-production",
       "isolated-hakios-research",
       "evidence-before-capacity-claims"
     ]
@@ -31,10 +31,10 @@
     },
     "linux_compute": {
       "role": "production_compute",
-      "status": "ephemeral_runtime_implemented_persistent_host_pending",
+      "status": "ephemeral_runtime_implemented_serverless_activation_pending",
       "os_family": "Linux",
       "runtime": "node24-bounded-linux-worker",
-      "persistent_server_required_for_online_service": true,
+      "persistent_server_required_for_online_service": false,
       "do_not_claim_persistent_capacity_from_ci": true,
       "runtime_contract": "compute/mncf/runtime/worker.mjs",
       "orchestration": {
@@ -48,7 +48,23 @@
         ],
         "new_queue_created": false,
         "database_schema_changed": false,
-        "live_edge_functions_changed": false
+        "live_edge_functions_changed": false,
+        "workflow_job_permissions": {
+          "claim": [
+            "id-token:write"
+          ],
+          "prepare": [
+            "id-token:write"
+          ],
+          "build": [
+            "contents:read"
+          ],
+          "finalize": [
+            "contents:write",
+            "pull-requests:write",
+            "id-token:write"
+          ]
+        }
       },
       "runner_adapter": {
         "provider": "github-actions-linux",
@@ -91,8 +107,8 @@
         "network_egress": "not_isolated_in_this_iteration"
       },
       "capacity_boundary": {
-        "persistent_host": "not_provisioned",
-        "production_online_service": "blocked_pending_verified_free_linux_host",
+        "persistent_host": "optional_specialist_node_not_provisioned",
+        "production_online_service": "serverless_control_plane_plus_ephemeral_workers_pending_live_dispatch_verification",
         "do_not_infer_persistence_from_github_actions": true
       }
     },
@@ -269,6 +285,51 @@
         "production_status": "not_approved",
         "reason": "Pricing page advertises a no-card always-on Sandbox, but official billing documentation says all users must add a payment method before creating resources. No account/resource creation is authorized or verified; do not assume a no-card path."
       }
+    }
+  },
+  "operating_model": {
+    "availability_pattern": "always-on-logically-ephemeral-physically",
+    "persistent_linux_host_required": false,
+    "status": "target_architecture_end_to_end_activation_pending",
+    "control_plane": {
+      "provider": "cloudflare",
+      "components": [
+        "workers",
+        "sqlite-durable-objects",
+        "queues"
+      ],
+      "source_status": "merged_to_main",
+      "runtime_status": "not_deployed"
+    },
+    "dispatch": {
+      "current_authority": "existing_midad_forge",
+      "current_transport": "existing_supabase_forge_oidc",
+      "cloudflare_to_github_runner": "adapter_pending",
+      "cutover_policy": "preserve_existing_forge_until_cloudflare_runner_adapter_is_live_verified_and_approved"
+    },
+    "compute": {
+      "primary_provider": "github-actions-linux",
+      "persistence": "ephemeral",
+      "workflow": ".github/workflows/midad-forge.yml",
+      "current_status": "bounded_runner_source_implemented_live_queue_path_not_reverified",
+      "persistent_linux_fallback": "optional_specialist_only"
+    },
+    "browser": {
+      "github_playwright": "ephemeral_ci",
+      "github_smoke_workflow": ".github/workflows/midad-browser-runtime-live-smoke.yml",
+      "cloudflare_browser_run": "adapter_pending_quota_limited",
+      "persistent_playwright_node": "optional_specialist_only"
+    },
+    "cost_policy": {
+      "allow_new_paid_resources": false,
+      "require_verified_quota_and_incremental_cost": true,
+      "quota_exhaustion": "defer_or_route_to_another_eligible_node_never_auto_upgrade"
+    },
+    "continuity": {
+      "task_contract": "versioned_owner_bound_idempotent_envelope",
+      "delivery": "at_least_once",
+      "recovery": "lease_expiry_checkpoint_resume_and_independent_reconciliation",
+      "retry_limit": 3
     }
   }
 }
