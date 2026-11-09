@@ -51,7 +51,7 @@ def _deny(reason: str, risk: str = "unknown", requires_approval: bool = False) -
 
 
 def _allow(risk: str) -> PolicyDecision:
-    return PolicyDecision(True, risk, risk == "high_impact", "AUTHORIZED_WITHIN_PROFILE_SCOPE")
+    return PolicyDecision(True, risk, False, "AUTHORIZED_WITHIN_PROFILE_SCOPE")
 
 
 def _normalise_host(value: object) -> str:
@@ -216,6 +216,8 @@ def evaluate_action(
     matched, reason = _approval_matches(approval, request, current)
     if not matched:
         if risk == "high_impact" and reason == "HIGH_IMPACT_APPROVAL_REQUIRED":
-            return _deny(reason, risk, True)
-        return _deny(reason, risk, risk == "high_impact")
+            return _deny("HIGH_IMPACT_APPROVAL_REQUIRED", risk, True)
+        if risk == "reversible" and reason == "HIGH_IMPACT_APPROVAL_REQUIRED":
+            return _deny("INTERACTION_APPROVAL_REQUIRED", risk, True)
+        return _deny(reason, risk, True)
     return _allow(risk)
