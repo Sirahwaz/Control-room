@@ -5,6 +5,10 @@ This module never persists proxy credentials or writes them to logs.
 """
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+import re
 from urllib.parse import urlsplit
 
 CONTRACT_VERSION = "midad.network-access/v1"
@@ -134,3 +138,74 @@ def build_playwright_proxy(profile: dict, secret_resolver=None) -> dict:
         settings["username"] = username
         settings["password"] = password
     return settings
+
+
+class EnvironmentVaultSecretResolver:
+    """Resolve opaque vault:// references to host-managed environment secrets.
+
+    The binding map contains aliases only. Secret values remain in the host's
+    secret manager/environment and are parsed only for the lifetime of a call.
+    """
+    def __init__(self, bindings: dict, environ=None):
+        self._env = os.environ if environ is None else environ
+        if not isinstance(bindings, dict):
+            raise ProxyPolicyError("VAULT_BINDINGS_INVALID")
+        self._bindings = {}
+        for reference, alias in bindings.items():
+            if (not isinstance(reference, str) or not reference.startswith("vault://") or
+                    not isinstance(alias, str) or
+                    not re.fullmatch(r"MIDAD_[A-Z0-9_]{2,96}", alias)):
+                raise ProxyPolicyError("VAULT_BINDING_INVALID")
+            if reference in self._bindings:
+                raise ProxyPolicyError("VAULT_BINDING_DUPLICATE")
+            self._bindings[reference] = alias
+
+    def resolve(self, secret_ref: str) -> dict:
+        alias = self._bindings.get(secret_ref)
+        if not alias:
+            raise ProxyPolicyError("VAULT_REFERENCE_NOT_BOUND")
+        raw = self._env.get(alias)
+        if not isinstance(raw, str) or not raw:
+            raise ProxyPolicyError("VAULT_SECRET_NOT_CONFIGURED")
+        try:
+            value = json.loads(raw)
+        except (TypeError, ValueError) as exc:
+            raise ProxyPolicyError("VAULT_SECRET_FORMAT_INVALID") from exc
+        if not isinstance(value, dict):
+            raise ProxyPolicyError("VAULT_SECRET_FORMAT_INVALID")
+        return value
+
+
+class ProxyRuntime:
+    """Bind the shared route contract to one automation session at runtime."""
+    def __init__(self, config: dict, secret_resolver=None):
+        if not isinstance(config, dict) or config.get("contract_version") != CONTRACT_VERSION:
+            raise ProxyPolicyError("NETWORK_ACCESS_CONTRACT_UNSUPPORTED")
+        self.config = config
+        self.secret_resolver = secret_resolver
+
+    @classmethod
+    def from_env(cls, environ=None):
+        env = os.environ if environ is None else environ
+        config_path = str(env.get("MIDAD_NETWORK_ACCESS_CONFIG", "")).strip()
+        if not config_path:
+            return None
+        try:
+            with Path(config_path).open("r", encoding="utf-8") as stream:
+                config = json.load(stream)
+        except (OSError, ValueError) as exc:
+            raise ProxyPolicyError("NETWORK_ACCESS_CONFIG_UNAVAILABLE") from exc
+        try:
+            bindings = json.loads(env.get("MIDAD_VAULT_BINDINGS_JSON", "{}"))
+        except ValueError as exc:
+            raise ProxyPolicyError("VAULT_BINDINGS_INVALID") from exc
+        resolver = EnvironmentVaultSecretResolver(bindings, env)
+        return cls(config, resolver.resolve)
+
+    def resolve_for_profile(self, account_profile: dict):
+        if not isinstance(account_profile, dict) or not account_profile.get("host"):
+            raise ProxyPolicyError("ACCOUNT_PROFILE_HOST_REQUIRED")
+        route = resolve_proxy_route(self.config, str(account_profile["host"]), "AUTOMATION")
+        if route["action"] == "DIRECT":
+            return None
+        return build_playwright_proxy(route["profile"], self.secret_resolver)
