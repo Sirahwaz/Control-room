@@ -209,7 +209,36 @@ class ProxyRuntime:
     def resolve_for_profile(self, account_profile: dict):
         if not isinstance(account_profile, dict) or not account_profile.get("host"):
             raise ProxyPolicyError("ACCOUNT_PROFILE_HOST_REQUIRED")
-        route = resolve_proxy_route(self.config, str(account_profile["host"]), "AUTOMATION")
+        host = _target_host(str(account_profile["host"]))
+        account_id = str(account_profile.get("account_id") or "").strip()
+        platform_id = str(account_profile.get("platform_key") or account_profile.get("platform_id") or "").strip()
+        if not account_id or not platform_id:
+            raise ProxyPolicyError("ACCOUNT_PROFILE_IDENTITY_REQUIRED")
+
+        route = resolve_proxy_route(self.config, host, "AUTOMATION")
         if route["action"] == "DIRECT":
             return None
-        return build_playwright_proxy(route["profile"], self.secret_resolver)
+
+        profile = route["profile"]
+        secret_ref = profile.get("auth_secret_ref")
+        if secret_ref:
+            bindings = self.config.get("credential_bindings")
+            if not isinstance(bindings, list):
+                raise ProxyPolicyError("VAULT_BINDINGS_INVALID")
+            matches = [
+                binding for binding in bindings
+                if isinstance(binding, dict)
+                and binding.get("secret_ref") == secret_ref
+                and binding.get("account_id") == account_id
+                and binding.get("platform_id") == platform_id
+                and str(binding.get("host") or "").lower().rstrip(".") == host
+                and binding.get("purpose") == "PROXY_AUTH"
+                and binding.get("scope") == "AUTOMATION"
+            ]
+            if len(matches) != 1:
+                raise ProxyPolicyError("VAULT_BINDING_SCOPE_MISMATCH")
+            ttl = matches[0].get("lease_ttl_seconds", 300)
+            if not isinstance(ttl, int) or isinstance(ttl, bool) or not 30 <= ttl <= 86400:
+                raise ProxyPolicyError("VAULT_LEASE_TTL_INVALID")
+
+        return build_playwright_proxy(profile, self.secret_resolver)
