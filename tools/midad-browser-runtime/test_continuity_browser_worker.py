@@ -34,6 +34,7 @@ class FakeLedgerClient:
         return {"ok": True, "task": {
             "task_id": "task-browser-001",
             "owner_id": self.owner,
+            "workload": "BROWSER_SESSION",
             "payload": self.payload,
             "attempt": 1,
             "lease_token": "a" * 64,
