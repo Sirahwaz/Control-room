@@ -35,7 +35,18 @@ def make_config():
                 "action": "BLOCK",
             },
         ],
-        "credential_bindings": [],
+        "credential_bindings": [
+            {
+                "binding_id": "example-proxy-auth",
+                "account_id": "example-account",
+                "platform_id": "example",
+                "host": "example.com",
+                "purpose": "PROXY_AUTH",
+                "scope": "AUTOMATION",
+                "secret_ref": "vault://proxy/eu-01/auth",
+                "lease_ttl_seconds": 300,
+            }
+        ],
         "defaults": {
             "on_no_match": "BLOCK",
             "on_route_failure": "BLOCK",
@@ -130,6 +141,39 @@ class ProxyPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ProxyPolicyError, "TUNNEL_ADAPTER_REQUIRED"):
             build_playwright_proxy(profile, secret_resolver=lambda _ref: {})
 
+
+    def test_proxy_runtime_requires_exact_account_host_purpose_and_scope_binding(self):
+        from proxy_policy import ProxyRuntime
+        config = make_config()
+        runtime = ProxyRuntime(config, secret_resolver=lambda _ref: {"username": "u", "password": "p"})
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_SCOPE_MISMATCH"):
+            runtime.resolve_for_profile({
+                "account_id": "another-account", "platform_key": "example", "host": "example.com"
+            })
+
+    def test_proxy_runtime_rejects_missing_proxy_auth_binding(self):
+        from proxy_policy import ProxyRuntime
+        config = make_config()
+        config["credential_bindings"] = []
+        runtime = ProxyRuntime(config, secret_resolver=lambda _ref: {"username": "u", "password": "p"})
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_SCOPE_MISMATCH"):
+            runtime.resolve_for_profile({
+                "account_id": "example-account", "platform_key": "example", "host": "example.com"
+            })
+
+    def test_proxy_runtime_rejects_wrong_binding_host_or_purpose(self):
+        from proxy_policy import ProxyRuntime
+        for field, value in [("host", "other.example"), ("purpose", "BROWSER_LOGIN"), ("scope", "BROWSER")]:
+            config = make_config()
+            config["credential_bindings"][0][field] = value
+            runtime = ProxyRuntime(
+                config, secret_resolver=lambda _ref: {"username": "u", "password": "p"}
+            )
+            with self.subTest(field=field), self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_SCOPE_MISMATCH"):
+                runtime.resolve_for_profile({
+                    "account_id": "example-account", "platform_key": "example", "host": "example.com"
+                })
+
     def test_environment_vault_resolver_maps_reference_to_host_secret_alias(self):
         from proxy_policy import EnvironmentVaultSecretResolver
         resolver = EnvironmentVaultSecretResolver(
@@ -164,7 +208,9 @@ class ProxyPolicyTests(unittest.TestCase):
             config,
             secret_resolver=lambda _ref: {"username": "proxy-user", "password": "secret-value"},
         )
-        settings = runtime.resolve_for_profile({"host": "example.com"})
+        settings = runtime.resolve_for_profile({
+            "account_id": "example-account", "platform_key": "example", "host": "example.com"
+        })
         self.assertEqual(settings["server"], "https://proxy.example.net:8443")
         self.assertEqual(settings["username"], "proxy-user")
 
