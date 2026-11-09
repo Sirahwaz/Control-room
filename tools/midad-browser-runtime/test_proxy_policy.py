@@ -151,6 +151,7 @@ class ProxyPolicyTests(unittest.TestCase):
     def test_proxy_runtime_resolves_automation_route_and_returns_ephemeral_settings(self):
         from proxy_policy import ProxyRuntime
         config = make_config()
+        config["routing_rules"] = [config["routing_rules"][0]]
         config["routing_rules"][0]["scopes"] = ["AUTOMATION"]
         runtime = ProxyRuntime(
             config,
