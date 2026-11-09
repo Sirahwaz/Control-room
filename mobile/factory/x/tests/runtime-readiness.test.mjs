@@ -87,6 +87,21 @@ test("provider health cannot claim a capability missing from the live handshake"
   );
 });
 
+test("runtime selection requires every declared capability on the same provider", () => {
+  const provider = providers.find(x => x.id === "midad-playwright-worker");
+  const incomplete = evidence({
+    capabilities: ["interactive-browser-execution"],
+    queue_authenticated: true, browser_installed: true,
+    encrypted_session_store: true, available_slots: 1,
+  });
+  assert.equal(
+    assessProviderRuntime(provider, incomplete, {
+      required_capabilities: ["interactive-browser-execution", "persistent-worker-runtime"],
+    }, NOW).reason,
+    "CAPABILITY_NOT_CONFIRMED",
+  );
+});
+
 test("disabled or blocked provider registry states cannot be revived by a stale plan", () => {
   const provider = { ...providers.find(x => x.id === "midad-playwright-worker"), status: "BLOCKED" };
   const good = evidence({
