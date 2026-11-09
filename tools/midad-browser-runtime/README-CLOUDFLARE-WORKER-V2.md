@@ -96,13 +96,17 @@ Before enrollment:
 - confirm the token destination does not already contain an old token;
 - confirm the actual host cost. Do not claim a zero cost unless the host's incremental cost is actually zero.
 
-Run the tool from the repository. Inject `MIDAD_LEDGER_ADMIN_KEY` privately from the operator's secret manager/environment; do not put its value in shell history or a command argument:
+Run the tool from the repository. Materialize the admin key from the trusted operator secret manager into a short-lived file owned by `midad-browser`, mode `0600`; do not put the key in shell history, a command argument, `worker.env`, or a GitHub Actions input. Set only the file path in the environment:
 
 ```sh
-sudo -u midad-browser env MIDAD_LEDGER_ADMIN_KEY="$MIDAD_LEDGER_ADMIN_KEY" /opt/midad/Control-room/.venv/bin/python /opt/midad/Control-room/tools/midad-browser-runtime/enroll_continuity_node.py --ledger-url "$MIDAD_CONTINUITY_LEDGER_URL" --node-id midad-browser-node-01 --owner-id "$MIDAD_CONTINUITY_OWNER_ID" --token-file /etc/midad-browser/node-token --confirm-owner-consent
+# The secret manager writes the key into this file with owner=midad-browser and mode=0600.
+export MIDAD_LEDGER_ADMIN_KEY_FILE=/etc/midad-browser/ledger-admin-key
+sudo -u midad-browser env MIDAD_LEDGER_ADMIN_KEY_FILE=/etc/midad-browser/ledger-admin-key /opt/midad/Control-room/.venv/bin/python /opt/midad/Control-room/tools/midad-browser-runtime/enroll_continuity_node.py --ledger-url "$MIDAD_CONTINUITY_LEDGER_URL" --node-id midad-browser-node-01 --owner-id "$MIDAD_CONTINUITY_OWNER_ID" --token-file /etc/midad-browser/node-token --confirm-owner-consent
+sudo rm -f /etc/midad-browser/ledger-admin-key
+unset MIDAD_LEDGER_ADMIN_KEY_FILE
 ```
 
-The script refuses an existing token file unless a deliberate rotation is requested. A rotation invalidates the previous token at the ledger, so do not use `--replace-token-file` for routine startup. The generated file is mode `0600`; the service reads it through `MIDAD_CONTINUITY_NODE_TOKEN_FILE`. The running worker does not need the admin key.
+The enrollment helper opens the key file without following symlinks and checks that it is a regular file, owned by the enrolling user, mode `0600`, bounded in size and ASCII-safe. The helper never prints the admin key or the one-time node token. The script refuses an existing token file unless a deliberate rotation is requested. A rotation invalidates the previous token at the ledger, so do not use `--replace-token-file` for routine startup. The generated node-token file is mode `0600`; the service reads it through `MIDAD_CONTINUITY_NODE_TOKEN_FILE`. The running worker does not need the admin key.
 
 ## 7. Configure the worker
 
