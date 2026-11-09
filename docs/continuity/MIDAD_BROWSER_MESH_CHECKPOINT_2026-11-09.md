@@ -1,5 +1,50 @@
 # MIDAD Browser Mesh — Short-Term Checkpoint (2026-11-09)
 
+## Latest superseding execution checkpoint — 2026-11-09 13:56 UTC
+
+This section supersedes older head hashes and test counts below where it conflicts. Prior history is retained for provenance.
+
+### P3 — Stateful Browser Worker v2
+
+- Draft PR [#233](https://github.com/Sirahwaz/Control-room/pull/233), branch `feat/midad-browser-cloudflare-worker-v2-main-20261109`.
+- Current exact head: `836f4e1fd0e80e9230e284a5e6182566a929f257`.
+- Added URL-evidence redaction: query strings/fragments are never persisted; sensitive or opaque path segments are redacted; only bounded HTTPS DNS URLs on default/443 port survive.
+- Added a test-first systemd shutdown repair: the regression test first failed because SIGTERM had no registered handler; `register_sigterm_handler` now routes SIGTERM to the worker's stop event, allowing `run_forever` to execute its `finally` path and close/persist authenticated sessions.
+- Exact-head isolated Playwright Runtime CI: **PASS — 162 tests**, run `42628960377`.
+- Exact-head Cloudflare Wrangler bundle pull-request dry-run: **PASS**, run `42628960737`; deploy job and manual workflow_dispatch deploy were skipped. This created no production resources.
+- Exact-head Native Browser APK build/sign/emulator install: **PASS**, run `42628960669`; artifact `13679553165`, SHA-256 `b333baa9e9620e39812ddb42d24735b51b649a74e1fd6c2c393eb2747b58b0e1`. Manifest labels the APK release channel `debug`; it is an installable test build/native shell, not the complete production Browser Mesh.
+- Exact-head Public Target Probe: **PASS**, run `42628960916`.
+- Exact-head Architecture Governance `42628960415`, FIX Contract `42628960455`, Control Room Verify `42628960384`, Factory X Registry `42628960536`, Mobile Factory X `42628960611`, Agentation E2E `42628960558`, Mobile Factory product build `42628960727`, and Omni Agent Android `42628960718`: **PASS**.
+- PR #233 remains Draft/unmerged at this checkpoint. No production Cloudflare deployment, Queue/DO provisioning, node enrollment, Linux worker process, fresh heartbeat or real browser task lifecycle exists.
+
+### Gateway v16 — verified source parity and separate follow-up fix
+
+- PR [#232](https://github.com/Sirahwaz/Control-room/pull/232) remains the exact mirror of deployed Supabase Browser Gateway v16.
+- A fresh read-only fetch of active Supabase function `midad_browser_agent_gateway` (ACTIVE, version 16) was compared directly against the PR #232 branch. `index.ts` and `ledger.ts` are byte-for-byte equal (49,403 and 7,587 characters respectively).
+- PR [#234](https://github.com/Sirahwaz/Control-room/pull/234) is a separate Draft follow-up stacked on #232. It adds shared `stripBearerPrefix` for MCP and User Bridge plus behavior tests. Exact-head Browser Gateway Contract Suite, Ledger Tests and Architecture Governance passed (run IDs `42627442909`, `42627442897`, `42627442974`).
+- The currently deployed Supabase v16 function still contains the original double-escaped Bearer parser defect. PR #234 has not been deployed to Supabase. Keep it separate from the parity baseline; do not merge/deploy it independently of a controlled Supabase release decision.
+- Read-only schema/count check: `profiles=1`, `control_room_sessions=185`, `active sessions=44`. Current owner resolution is deliberately single-profile/fail-closed: the session table has Telegram identity fields but no owner UUID; multiple profile rows would cause owner resolution to return 503 rather than guessing. This fits the current one-owner project state, but is not a multi-tenant identity model and must be redesigned before supporting multiple tenant profiles.
+
+### Live truth and remaining gates
+
+- Cloudflare bundle compilation is verified; Cloudflare production deployment and `/health` remain **NOT VERIFIED**.
+- No Linux/Playwright participant is enrolled or running; no fresh node heartbeat or real claim/checkpoint/complete browser-task evidence exists.
+- P4 Android Participant remains design/pending implementation; owner-authenticated pairing broker, Android Keystore, foreground controls, encrypted offline outbox/replay and revocation remain pending.
+- Central Vault broker, short-lived secret leases, rotation/revocation, Proxy health/failover and Android WebView proxy integration remain pending.
+- No Supabase function deployment, database migration/mutation, Cloudflare resource creation, VPS/host mutation, platform login, payment, transfer, wallet signing or destructive action was performed.
+
+### Next execution order
+
+1. Keep the exact source-parity baseline PR #232 separate from the Bearer behavior change PR #234.
+2. Review and integrate PR #233 only as source/CI code; merging it does not deploy Cloudflare or start a browser node.
+3. Decide the production Supabase release of #234 separately; until deployment, the live Bearer defect remains.
+4. For Cloudflare activation, configure the four required protected environment secrets outside chat, then use the guarded main-only `DEPLOY` workflow and verify live `/health`.
+5. Enroll one owner-consented Linux node with measured host cost, start the non-root service, verify heartbeat, then execute one harmless read-only Browser task lifecycle and restart/restore/stop tests.
+6. Continue Vault/Proxy and P4 Android implementation against the existing contracts.
+
+**Current resume tuple:** `GOAL: distributed MIDAD Online + Offline Browser Mesh` → `LAST VERIFIED: PR #233 head 836f4e1; 162 runtime tests; all 12 exact-head CI workflows PASS; APK shell built and emulator-installed; PR #232 exact parity with live Gateway v16` → `OPEN: no Cloudflare deploy/node heartbeat/task smoke; PR #234 live Supabase fix not deployed; P4/Vault/Proxy pending` → `NEXT: reviewed source integration, then separately approved protected Cloudflare and Supabase production releases` → `NO: claim live runtime from CI, embed secrets, deploy or perform financial/destructive actions without approval`.
+
+
 **Canonical Notion record:** [MIDAD Browser Mesh — Reality Audit & Build Gate](https://app.notion.com/p/400b132b437d81a8aebfe8b38938cee7)  
 **Global boot rules:** [MIDAD Global Continuity](https://app.notion.com/p/3fab132b437d81649bcfe9a5647ebc33)  
 **Active engineering checkpoint:** [MIDAD active engineering checkpoint](https://app.notion.com/p/412b132b437d815aa951ddc66a78aa13)
