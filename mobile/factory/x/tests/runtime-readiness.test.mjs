@@ -16,6 +16,11 @@ function evidence(overrides = {}) {
     capability_handshake: true,
     authenticated: true,
     estimated_cost_usd: 0,
+    capabilities: [
+      "ephemeral-dev-workspace", "persistent-worker-runtime",
+      "durable-task-dispatch", "interactive-browser-execution",
+      "stateless-ci-execution",
+    ],
     ...overrides,
   };
 }
@@ -42,13 +47,13 @@ test("persistent VPS control node requires fresh heartbeat and adequate probed r
   const provider = providers.find(x => x.id === "midad-vps-control-node");
   const lowMemory = evidence({
     queue_authenticated: true,
-    resource_probe: { available_memory_mb: 256, available_disk_mb: 1024 },
+    resource_probe: { verified: true, available_memory_mb: 256, available_disk_mb: 1024 },
   });
   assert.equal(assessProviderRuntime(provider, lowMemory, { min_memory_mb: 512, min_disk_mb: 512 }, NOW).reason, "INSUFFICIENT_MEMORY");
   const stale = evidence({
     observed_at: "2026-11-09T01:58:00.000Z",
     queue_authenticated: true,
-    resource_probe: { available_memory_mb: 2048, available_disk_mb: 4096 },
+    resource_probe: { verified: true, available_memory_mb: 2048, available_disk_mb: 4096 },
   });
   assert.equal(assessProviderRuntime(provider, stale, { min_memory_mb: 512, min_disk_mb: 512 }, NOW).reason, "HEARTBEAT_STALE");
 });
@@ -66,6 +71,28 @@ test("Playwright worker requires heartbeat, queue authentication, browser and en
     encrypted_session_store: true, available_slots: 1,
   });
   assert.equal(assessProviderRuntime(provider, ready, {}, NOW).ready, true);
+});
+
+test("provider health cannot claim a capability missing from the live handshake", () => {
+  const provider = providers.find(x => x.id === "midad-playwright-worker");
+  const mismatch = evidence({
+    capabilities: ["persistent-worker-runtime"],
+    queue_authenticated: true, browser_installed: true,
+    encrypted_session_store: true, available_slots: 1,
+  });
+  assert.equal(
+    assessProviderRuntime(provider, mismatch, { capability: "interactive-browser-execution" }, NOW).reason,
+    "CAPABILITY_NOT_CONFIRMED",
+  );
+});
+
+test("disabled or blocked provider registry states cannot be revived by a stale plan", () => {
+  const provider = { ...providers.find(x => x.id === "midad-playwright-worker"), status: "BLOCKED" };
+  const good = evidence({
+    queue_authenticated: true, browser_installed: true,
+    encrypted_session_store: true, available_slots: 1,
+  });
+  assert.equal(assessProviderRuntime(provider, good, {}, NOW).reason, "PROVIDER_STATUS_BLOCKED");
 });
 
 test("cost ceilings block otherwise healthy metered runtimes", () => {
