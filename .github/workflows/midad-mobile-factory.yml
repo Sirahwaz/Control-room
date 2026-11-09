@@ -143,6 +143,21 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
+      - name: Increase generated Gradle wrapper download timeout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("mobile/android/gradle/wrapper/gradle-wrapper.properties")
+          if not p.is_file():
+              raise SystemExit("Generated Gradle wrapper properties were not found")
+          lines = [line for line in p.read_text().splitlines() if not line.startswith("networkTimeout=")]
+          lines.append("networkTimeout=120000")
+          p.write_text("\\n".join(lines) + "\\n")
+          PY
+          grep -qx 'networkTimeout=120000' mobile/android/gradle/wrapper/gradle-wrapper.properties
+
       - name: Sync Android
         working-directory: mobile
         run: npx cap sync android
