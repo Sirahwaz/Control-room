@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { isAllowedBrowserUserOrigin } from "./origin-policy.ts";
 import {
   makeLedgerEventKey,
   normalizeActorKey,
@@ -310,7 +311,7 @@ Deno.serve(async (req: Request) => {
   const action = clip(body.action || "capabilities", 60).toLowerCase();
   const userBridge = action === "user_bridge";
   if (!authorized(req) && !userBridge) return json({ ok: false, error: "unauthorized" }, 401);
-  if (userBridge && req.headers.get("origin") !== "https://sirahwaz.github.io") {
+  if (userBridge && !isAllowedBrowserUserOrigin(req.headers.get("origin"))) {
     return json({ ok: false, error: "browser_user_origin_not_allowed" }, 403);
   }
 
