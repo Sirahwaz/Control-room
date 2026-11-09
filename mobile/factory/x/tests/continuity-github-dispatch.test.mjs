@@ -166,7 +166,9 @@ test('ephemeral runner executes only bounded allowlisted CPU operations', () => 
   assert.equal(executeTaskPayload({ operation: 'RUNNER_SMOKE' }).node_id, 'github-actions-linux');
   assert.throws(() => executeTaskPayload({ operation: 'RUN_SHELL', input: { command: 'id' } }), /TASK_OPERATION_NOT_ALLOWLISTED/);
   assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: ['1'] } }), /SUM_INPUT_INVALID/);
-  assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: [1], command: 'whoami' } }), /TASK_PAYLOAD_INVALID/);
+  assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: [1], command: 'whoami' } }), /SUM_INPUT_INVALID/);
+  assert.throws(() => executeTaskPayload({ operation: 'HASH_TEXT', input: { text: 'safe', command: 'whoami' } }), /HASH_INPUT_INVALID/);
+  assert.throws(() => executeTaskPayload({ operation: 'RUNNER_SMOKE', input: { command: 'whoami' } }), /RUNNER_SMOKE_INPUT_INVALID/);
 });
 
 test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence and completes it', async () => {
