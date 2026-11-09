@@ -10,7 +10,8 @@
       "capabilities": [
         "ci-cd-mobile",
         "artifact-delivery",
-        "developer-research"
+        "developer-research",
+        "stateless-ci-execution"
       ],
       "strengths": [
         "source_control",
@@ -583,9 +584,7 @@
       "runtime_class": "ephemeral",
       "requires_quota_check": true,
       "always_on_worker": false,
-      "fallbacks": [
-        "github"
-      ],
+      "fallbacks": [],
       "account_action": "check_account_quota_and_approve_start"
     },
     {
@@ -614,9 +613,7 @@
         "capability_handshake": true,
         "resource_probe": true
       },
-      "fallbacks": [
-        "github"
-      ],
+      "fallbacks": [],
       "account_action": "verify_existing_host_and_capacity"
     },
     {
