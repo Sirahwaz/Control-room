@@ -307,11 +307,16 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
     const suppliedToken = authorization.slice('Bearer '.length);
     assert.match(headerNodeId, /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
     assert.equal(suppliedToken, enrollment.enrollment_token);
-    const selectedNode = ledger.one(
+    const directSqlNode = storage.db.prepare(
+      'SELECT * FROM enrolled_nodes WHERE node_id=? AND revoked_at_ms IS NULL AND consent_confirmed=1'
+    ).get(headerNodeId);
+    assert.ok(directSqlNode, 'DIRECT_SQL_NODE_ROW_NOT_FOUND');
+    const adapterSqlNode = ledger.one(
       'SELECT * FROM enrolled_nodes WHERE node_id=? AND revoked_at_ms IS NULL AND consent_confirmed=1',
       headerNodeId
     );
-    assert.ok(selectedNode, 'NODE_ROW_NOT_FOUND');
+    assert.ok(adapterSqlNode, 'LEDGER_SQL_ADAPTER_NODE_ROW_NOT_FOUND');
+    const selectedNode = adapterSqlNode;
     const tokenDigestBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(suppliedToken));
     const tokenDigest = [...new Uint8Array(tokenDigestBytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     assert.equal(tokenDigest, selectedNode.token_hash, 'NODE_TOKEN_DIGEST_MISMATCH');
