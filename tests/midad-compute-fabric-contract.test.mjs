@@ -56,7 +56,7 @@ test('existing MIDAD control-plane components are preserved as integrations', ()
 
 test('manifest contains no credentials or secret material', () => {
   const serialized = JSON.stringify(manifest);
-  assert.doesNotMatch(serialized, /(api[_-]?key|secret|token|password|private[_-]?key)\s*[:=]\s*["'][^"']+/i);
+  assert.doesNotMatch(serialized, /(api[_-]?key|secret|token|password|private[_-]?key)\\s*[:=]\\s*["'][^"']+/i);
 });
 test('external technologies are classified without replacing the production stack', () => {
   const review = manifest.external_technology_review;
@@ -108,7 +108,7 @@ test('HakiOS QEMU smoke compares both documented payload delivery paths in paral
     manifest.layers.hakios_lab.qemu.uboot_path.boot_command_override.ci_override,
     'hakios load 0x50000000 && hakios boot'
   );
-  assert.match(qemuWorkflow, /boot_path:\s*\[\s*loader-device,\s*uefi-esp\s*\]/);
+  assert.match(qemuWorkflow, /boot_path:\\s*\\[\\s*loader-device,\\s*uefi-esp\\s*\\]/);
   assert.match(qemuWorkflow, /QEMU_ESP=1/);
   assert.match(qemuWorkflow, /-d guest_errors,cpu_reset/);
   assert.ok(qemuWorkflow.includes('/usr/share/AAVMF/AAVMF_CODE.fd'));
@@ -141,7 +141,6 @@ test('Linux compute reuses the existing Forge queue through the bounded worker r
   assert.ok(contractWorkflowForRuntime());
 });
 
-
 test('Forge preserves build diagnostics and submits artifact provenance in the completion report', () => {
   const preserveReport = forgeWorkflow.indexOf(
     'cp forge-output/forge-build-report.json "$RUNNER_TEMP/midad-forge-build-report.json"'
@@ -154,7 +153,7 @@ test('Forge preserves build diagnostics and submits artifact provenance in the c
   );
   assert.ok(preserveReport >= 0 && preserveReport < cleanup);
   assert.ok(preserveManifest >= 0 && preserveManifest < cleanup);
-  assert.match(forgeWorkflow, /- name: Download Forge artifact\n        if: always\(\)/);
+  assert.match(forgeWorkflow, /- name: Download Forge artifact\\n        if: always\\(\\)/);
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-build-report.json"'));
   assert.ok(forgeWorkflow.includes('cat "$RUNNER_TEMP/midad-forge-artifact-manifest.json"'));
   assert.ok(forgeWorkflow.includes("'. + {artifact_manifest:$artifact_manifest}'"));
@@ -169,3 +168,43 @@ function contractWorkflowForRuntime() {
   return text.includes('node --test tests/midad-linux-worker.test.mjs') &&
     text.includes('node --check compute/mncf/runtime/worker.mjs');
 }
+
+
+const browserSmokeWorkflow = fs.readFileSync(
+  new URL('../.github/workflows/midad-browser-runtime-live-smoke.yml', import.meta.url),
+  'utf8'
+);
+
+test('MNCF online availability does not depend on a persistent Linux server', () => {
+  const operatingModel = manifest.operating_model;
+  assert.ok(operatingModel, 'operating_model contract is required');
+  assert.equal(operatingModel.availability_pattern, 'always-on-logically-ephemeral-physically');
+  assert.equal(operatingModel.persistent_linux_host_required, false);
+  assert.equal(operatingModel.control_plane.provider, 'cloudflare');
+  assert.equal(operatingModel.control_plane.source_status, 'merged_to_main');
+  assert.equal(operatingModel.control_plane.runtime_status, 'not_deployed');
+  assert.equal(operatingModel.dispatch.current_authority, 'existing_midad_forge');
+  assert.equal(operatingModel.dispatch.cloudflare_to_github_runner, 'adapter_pending');
+  assert.equal(operatingModel.compute.primary_provider, 'github-actions-linux');
+  assert.equal(operatingModel.compute.persistence, 'ephemeral');
+  assert.equal(operatingModel.compute.persistent_linux_fallback, 'optional_specialist_only');
+  assert.equal(operatingModel.browser.github_playwright, 'ephemeral_ci');
+  assert.equal(operatingModel.browser.cloudflare_browser_run, 'adapter_pending_quota_limited');
+  assert.equal(operatingModel.browser.persistent_playwright_node, 'optional_specialist_only');
+  assert.equal(manifest.layers.linux_compute.persistent_server_required_for_online_service, false);
+  assert.equal(
+    manifest.layers.linux_compute.capacity_boundary.production_online_service,
+    'serverless_control_plane_plus_ephemeral_workers_pending_live_dispatch_verification'
+  );
+});
+
+test('live Chromium smoke runs on pull requests in a disposable least-privilege runner', () => {
+  assert.match(browserSmokeWorkflow, /pull_request:/);
+  assert.match(browserSmokeWorkflow, /branches:\s*\[main\]/);
+  assert.match(browserSmokeWorkflow, /runs-on:\s*ubuntu-latest/);
+  assert.match(browserSmokeWorkflow, /permissions:\s*\n\s*contents:\s*read/);
+  assert.match(browserSmokeWorkflow, /timeout-minutes:\s*8/);
+  assert.match(browserSmokeWorkflow, /python live_browser_smoke\.py/);
+  assert.doesNotMatch(browserSmokeWorkflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|MIDAD_LEDGER_ADMIN_KEY/);
+  assert.doesNotMatch(browserSmokeWorkflow, /id-token:\s*write|contents:\s*write|pull-requests:\s*write/);
+});
