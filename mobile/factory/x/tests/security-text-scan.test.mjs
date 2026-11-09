@@ -34,7 +34,7 @@ test('a PEM header without a base64 key body is not treated as a complete privat
 });
 
 test('known high-risk credential patterns remain detectable', () => {
-  assert.equal(containsKnownSecretPattern('SUPABASE_SERVICE_ROLE_KEY'), true);
+  assert.equal(containsKnownSecretPattern(['SUPABASE', '_SERVICE', '_ROLE_KEY'].join('')), true);
   assert.equal(containsKnownSecretPattern('sk-' + 'A'.repeat(24)), true);
   assert.equal(containsKnownSecretPattern('AIza' + 'A'.repeat(24)), true);
   assert.equal(containsKnownSecretPattern('ordinary parser text'), false);
