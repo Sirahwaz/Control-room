@@ -140,3 +140,6 @@ The first worker-side adapter has now been added on the feature branch:
 **Not yet implemented or activated:** central encrypted Vault storage, lease issuance/revocation API, route health monitoring and failover, multi-worker atomic queue claims, Control Room mutation API/UI, live proxy provider configuration, and Android WebView proxy control. No host has been configured with MIDAD_NETWORK_ACCESS_CONFIG, so no proxy is active by this code change alone.
 
 The EnvironmentVaultSecretResolver is an adapter to a host secret manager, not the final encrypted Vault. Keep actual values out of the config JSON, profile registry, Git, APK, logs and browser client.
+
+
+The Control Room UI shell is now present at midad-network-access.html and is routed through index.html?view=network-access. It is included in the service-worker core cache. It intentionally displays BACKEND NOT CONNECTED and keeps mutation controls disabled until the authenticated Control API and Vault lease service exist. MIDAD Intelligence's separate report remains a local, read-only diagnostics projection.
