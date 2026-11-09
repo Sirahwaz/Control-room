@@ -466,9 +466,10 @@ Deno.serve(async (req: Request) => {
       if (!configuredIngestKey || suppliedIngestKey !== configuredIngestKey) {
         return json({ ok: false, error: "ingest_key_required" }, 403);
       }
-      const ownerUserId = clip(body.owner_user_id, 80);
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ownerUserId)) {
-        return json({ ok: false, error: "valid_owner_user_id_required" }, 400);
+      const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+      const workerId = normalizeLeaseWorkerId(body.worker_id);
+      if (!ownerUserId || !workerId) {
+        return json({ ok: false, error: "valid_owner_and_worker_id_required" }, 400);
       }
       const heartbeatAt = new Date().toISOString();
       const { error } = await sb.from("midad_browser_providers").upsert({
@@ -481,7 +482,8 @@ Deno.serve(async (req: Request) => {
         metadata: {
           owner_user_id: ownerUserId,
           heartbeat_at: heartbeatAt,
-          worker_version: safeCode(body.worker_version, "operator_worker_v1"),
+          worker_version: safeCode(body.worker_version, "operator_worker_v2"),
+          worker_id: workerId,
         },
       }, { onConflict: "provider_key" });
       if (error) return json({ ok: false, error: "worker_heartbeat_write_failed" }, 500);
