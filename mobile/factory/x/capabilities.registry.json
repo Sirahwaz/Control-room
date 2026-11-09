@@ -536,6 +536,19 @@
         "browser-worker"
       ],
       "default_reuse": true
+    },
+    {
+      "id": "stateless-ci-execution",
+      "category": "execution",
+      "criticality": "medium",
+      "tags": [
+        "github-actions",
+        "stateless-ci",
+        "build",
+        "test",
+        "ephemeral-runner"
+      ],
+      "default_reuse": true
     }
   ]
 }
