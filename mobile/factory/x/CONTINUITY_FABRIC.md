@@ -1,6 +1,6 @@
 # MIDAD Continuity Fabric v1
 
-**Status:** implemented planner core; durable store and trusted dispatcher remain pending.
+**Status:** planner core and Cloudflare SQLite Durable Object ledger adapter are implemented on the PR branch; no Cloudflare deployment or production connection has been performed. Queue wake-up, trusted external dispatcher and worker-v2 deployment remain pending.
 
 ## Design thesis
 
@@ -95,3 +95,15 @@ No stealth mining, hidden resource use, unauthorized third-party compute, CAPTCH
 ## Performance reality
 
 The Fabric can outperform a single small VPS on **embarrassingly parallel** work when enough real nodes are available. It cannot guarantee supercomputer-class performance, low latency, GPU throughput or availability with no enrolled resources. A serial browser session remains serial; GPU work requires actual GPUs/WebGPU nodes. The innovation is continuity, admission control, resumability and elastic aggregation—not a claim that software abolishes hardware limits.
+
+
+## P1 — Durable ledger adapter (implemented, not deployed)
+
+The companion `continuity-ledger/` directory contains a Cloudflare SQLite-backed Durable Object Worker and Wrangler v1 migration. It persists task state/events and provides authenticated owner-approved node enrollment, heartbeats, atomic claims, lease renewal, checkpoints, completion, failure and revocation. The ledger is a coordinator, not a compute provider.
+
+- Node credentials are issued once and stored only as SHA-256 digests.
+- Each heartbeat is constrained by the owner-approved enrollment capability set.
+- Each task is owner-scoped and has an explicit verified cost ceiling.
+- Browser jobs require encrypted session storage and a runtime version; they are forced to human reconciliation after ambiguous loss.
+- Current transport is authenticated pull-claim. No Cloudflare Queue binding or GitHub wake dispatch is enabled yet.
+- Local SQLite contract tests: 13 cases. Actual Wrangler preview and live Cloudflare deployment remain separate verification gates.
