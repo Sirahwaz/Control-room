@@ -237,6 +237,7 @@ test('GitHub Actions is registered as a scheduled ephemeral Continuity node, not
 test('scheduled GitHub node has a narrow read-only operation and no secret-bearing or write permissions', () => {
   assert.match(continuityRunnerWorkflow, /schedule:\s*\n\s*- cron: "\*\/5 \* \* \* \*"/);
   assert.match(continuityRunnerWorkflow, /workflow_dispatch:/);
+  assert.match(continuityRunnerWorkflow, /github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_NODE_ID != ''/);
   assert.match(continuityRunnerWorkflow, /runs-on:\s*ubuntu-latest/);
   assert.match(continuityRunnerWorkflow, /contents:\s*read/);
   assert.match(continuityRunnerWorkflow, /persist-credentials:\s*false/);
