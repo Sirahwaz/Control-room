@@ -9,20 +9,18 @@ on:
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
       - 'tests/midad-continuity-github-runner.test.mjs'
-      - 'compute/mncf/runtime/continuity-github-runner.mjs'
-      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
-      - 'tests/midad-continuity-github-runner.test.mjs'
-      - 'compute/mncf/runtime/continuity-github-runner.mjs'
-      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
   pull_request:
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
       - 'tests/midad-linux-worker.test.mjs'
+      - 'tests/midad-continuity-github-runner.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
 
 permissions:
   contents: read
@@ -34,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
