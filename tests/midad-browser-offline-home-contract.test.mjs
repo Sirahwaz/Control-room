@@ -22,7 +22,7 @@ test("Android preparation installs the stable AndroidX WebKit asset-loader depen
   const prepare = read("mobile/factory/native/midad-browser/prepare_android.py");
 
   assert.match(prepare, /androidx\.webkit:webkit:1\.18\.0/);
-  assert.match(prepare, /if .*androidx\.webkit:webkit/);
+  assert.ok(prepare.includes('if not re.search(r"androidx\.webkit:webkit:", gradle_text)'));
   assert.match(prepare, /dependencies\s*\{/);
 });
 
