@@ -4,7 +4,10 @@
       "account_id": "example-work-account",
       "platform_key": "example",
       "display_name": "Example",
-      "aliases": ["example.com", "demo portal"],
+      "aliases": [
+        "example.com",
+        "demo portal"
+      ],
       "host": "example.com",
       "username": "operator@example.invalid",
       "password_secret_ref": "MIDAD_EXAMPLE_COM_PASSWORD",
@@ -13,11 +16,35 @@
       "password_selector": "input[name='password']",
       "submit_selector": "button[type='submit']",
       "success_selector": "[data-testid='account-home']",
-      "login_post_paths": ["/login"],
-      "login_post_content_types": ["application/x-www-form-urlencoded", "multipart/form-data"],
+      "login_post_paths": [
+        "/login"
+      ],
+      "login_post_content_types": [
+        "application/x-www-form-urlencoded",
+        "multipart/form-data"
+      ],
       "action_post_paths": [],
       "resource_hosts": [],
-      "notes": "Schema example only. Replace selectors and POST path after inspecting an authorized platform login form. Never put a real password here."
+      "notes": "Schema example only. Replace selectors and POST path after inspecting an authorized platform login form. Never put a real password here.",
+      "automation_policy": {
+        "mode": "read_only",
+        "allowed_hosts": [
+          "example.com"
+        ],
+        "allowed_paths": [
+          "/account"
+        ],
+        "allowed_actions": [
+          "inspect",
+          "read",
+          "navigate",
+          "search",
+          "wait_for_selector",
+          "capture_screenshot",
+          "status",
+          "stop_session"
+        ]
+      }
     }
   ]
 }
