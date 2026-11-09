@@ -124,6 +124,9 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
         raise ContinuityWorkerError("TASK_ID_INVALID")
     if claimed_owner != owner_id:
         raise ContinuityWorkerError("TASK_OWNER_MISMATCH")
+    workload = task.get("workload")
+    if workload != "BROWSER_SESSION":
+        raise ContinuityWorkerError("TASK_WORKLOAD_NOT_ALLOWED")
     if not isinstance(lease, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", lease):
         raise ContinuityWorkerError("TASK_LEASE_TOKEN_INVALID")
     if not isinstance(attempt, int) or isinstance(attempt, bool) or not 1 <= attempt <= 3:
@@ -133,6 +136,7 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
     return {
         "task_id": task_id,
         "owner_id": claimed_owner,
+        "workload": workload,
         "lease_token": lease,
         "attempt": attempt,
         "payload": payload,
