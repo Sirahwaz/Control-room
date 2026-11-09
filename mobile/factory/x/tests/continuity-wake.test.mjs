@@ -14,7 +14,7 @@ class Storage {
     this.sql = { exec: (query, ...args) => {
       if (!args.length) { this.db.exec(query); return new Cursor(); }
       const statement = this.db.prepare(query);
-      if (/\\b(SELECT|RETURNING)\\b/i.test(query)) return new Cursor(statement.all(...args));
+      if (/\b(SELECT|RETURNING)\b/i.test(query)) return new Cursor(statement.all(...args));
       statement.run(...args);
       return new Cursor();
     }};
@@ -120,8 +120,8 @@ test('wake broadcast is owner-scoped and contains no task payload', async () => 
   ctx.acceptWebSocket(ownerSocket, ['owner:owner-a', 'node:node-a']);
   ctx.acceptWebSocket(otherOwnerSocket, ['owner:owner-b', 'node:node-b']);
 
-  const result = await ledger.broadcastWake(wake());
-  assert.equal(result.delivered, 1);
+  const result = await read(await ledger.broadcastWake(wake()));
+  assert.equal(result.body.delivered, 1);
   assert.equal(ownerSocket.sent.length, 1);
   assert.equal(otherOwnerSocket.sent.length, 0);
   assert.deepEqual(JSON.parse(ownerSocket.sent[0]), {
