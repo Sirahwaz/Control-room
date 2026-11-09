@@ -67,8 +67,15 @@ export function selectProviderForCapability({
     }
 
     const snapshot = verified.providers[provider.id];
+    const requiredRuntimeCapabilities = Array.isArray(provider.required_runtime_capabilities?.[required])
+      ? provider.required_runtime_capabilities[required]
+      : [required];
     const assessed = assessProviderRuntime(
-      provider, snapshot, { ...requirements, capability: required }, now
+      provider, snapshot, {
+        ...requirements,
+        capability: required,
+        required_capabilities: requiredRuntimeCapabilities,
+      }, now
     );
     return {
       id: provider.id, name: provider.name, status: provider.status,
