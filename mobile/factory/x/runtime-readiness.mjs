@@ -77,9 +77,12 @@ export function assessProviderRuntime(provider, evidence, requirements = {}, now
   if (evidence.capability_handshake !== true) {
     return decision(false, "CAPABILITY_HANDSHAKE_REQUIRED");
   }
-  const requiredCapability = String(requirements.capability || "").trim();
-  if (requiredCapability &&
-      (!Array.isArray(evidence.capabilities) || !evidence.capabilities.includes(requiredCapability))) {
+  const requiredCapabilities = Array.isArray(requirements.required_capabilities)
+    ? requirements.required_capabilities.map(value => String(value).trim()).filter(Boolean)
+    : [String(requirements.capability || "").trim()].filter(Boolean);
+  if (requiredCapabilities.length &&
+      (!Array.isArray(evidence.capabilities) ||
+       !requiredCapabilities.every(capability => evidence.capabilities.includes(capability)))) {
     return decision(false, "CAPABILITY_NOT_CONFIRMED");
   }
   if (evidence.authenticated !== true) return decision(false, "RUNTIME_AUTH_REQUIRED");
@@ -176,8 +179,12 @@ export function selectExecutionSubstrate(task, providers, healthEvidence = {}, n
       selected_provider: null, candidates: [], dispatch_allowed: false };
   }
 
+  const requiredCapabilities = Array.isArray(task.required_capabilities)
+    ? task.required_capabilities.map(value => String(value).trim()).filter(Boolean)
+    : [capability];
   const matches = providers.filter(provider =>
-    Array.isArray(provider.capabilities) && provider.capabilities.includes(capability)
+    Array.isArray(provider.capabilities) &&
+    requiredCapabilities.every(required => provider.capabilities.includes(required))
   );
   const candidates = matches.map(provider => {
     const snapshot = healthEvidence instanceof Map
