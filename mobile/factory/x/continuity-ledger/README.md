@@ -29,6 +29,26 @@ No Cloudflare account, namespace, DNS record, secret, deployment or billing sett
 5. Verify `GET /health`, then enroll a test node with explicit owner consent, send a fresh heartbeat, connect its authenticated WebSocket, enqueue a harmless test task, and verify the wake hint followed by pull-claim.
 6. Only after validation, connect a MIDAD gateway. Keep the current Supabase gateway and worker unchanged until separate cutover approval.
 
+## GitHub Actions deployment (mobile-friendly)
+
+The repository includes `.github/workflows/midad-continuity-cloudflare-deploy.yml`. It is manual-only: `dry-run` does not need credentials; `deploy` is rejected unless it runs from `main`, the operator types `DEPLOY`, the protected GitHub environment is approved, and all four environment secrets are present. The workflow creates missing Queue resources, deploys the Worker, sets Worker secrets without printing them, then checks `/health`.
+
+This workflow becomes runnable from the Actions tab only after this change reaches the repository's default branch (`main`). Until then, it is safely staged in this PR and is not deployable from the current draft branch.
+
+One-time GitHub setup, after the PR chain reaches `main`:
+
+1. Open **Repository → Settings → Environments** and create `cloudflare-production`. Restrict deployments to `main` and add a required reviewer/approval gate.
+2. Add these as **environment secrets**, not plain variables:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `MIDAD_LEDGER_ADMIN_KEY`
+   - `MIDAD_WAKE_INTERNAL_KEY`
+3. The two MIDAD keys must each be at least 32 characters. Generate them privately; never paste them into chat, issue comments, workflow inputs or repository files.
+4. Create the Cloudflare API token for the intended account. For the first deployment, Wrangler needs Workers product-level **Admin** to create a new Worker, plus account-level **Queues Edit** to create the two Queues. This initial Workers permission is broad. After the Worker exists, replace the token with Workers **Editor** scoped only to `midad-continuity-ledger`, while retaining the required Queues access for the workflow.
+5. Open **Actions → MIDAD Continuity — Cloudflare Deploy → Run workflow** on `main`. Choose `dry-run` first. When account secrets and environment protection are ready, choose `deploy` and type `DEPLOY` in the confirmation field.
+
+The workflow does not print the Cloudflare token or either MIDAD key. It does not touch DNS, Supabase, billing settings or unrelated Workers. Cloudflare documents the API-token/Workers role model and the separate Queues permission here: [Workers roles](https://developers.cloudflare.com/workers/authorization/workers/), [API token permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Wrangler Queue commands](https://developers.cloudflare.com/workers/wrangler/commands/queues/).
+
 ## API
 - `GET /health`
 - Enrolled node bearer + `x-midad-node-id`: `GET /v1/nodes/wake` with `Upgrade: websocket` (requires a fresh READY heartbeat)
