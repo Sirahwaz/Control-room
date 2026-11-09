@@ -58,8 +58,11 @@ class WorkerV2DeploymentContractTests(unittest.TestCase):
     def test_enrollment_tool_never_prints_one_time_token(self):
         source = ENROLLER.read_text(encoding="utf-8")
         self.assertIn("--confirm-owner-consent", source)
+        self.assertIn("MIDAD_LEDGER_ADMIN_KEY_FILE", source)
+        self.assertIn("read_admin_key_file", source)
         self.assertIn("token_file", source)
         self.assertNotRegex(source, r"print\([^\n]*token")
+        self.assertNotIn('os.environ.get("MIDAD_LEDGER_ADMIN_KEY",', source)
         self.assertNotIn("MIDAD_LEDGER_ADMIN_KEY=", source)
 
 
