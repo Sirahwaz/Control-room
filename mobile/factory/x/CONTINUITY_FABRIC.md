@@ -1,6 +1,6 @@
 # MIDAD Continuity Fabric v1
 
-**Status:** planner core and Cloudflare SQLite Durable Object ledger adapter are implemented on the PR branch; no Cloudflare deployment or production connection has been performed. Queue wake-up, trusted external dispatcher and worker-v2 deployment remain pending.
+**Status:** P0 planner, P1 SQLite Durable Object ledger, and P2 Queue/WebSocket wake-on-work source/configuration are implemented on the PR branch. No Cloudflare deployment, Queue resource, secret, or production connection has been created. P3 worker-v2 and P4 Android participant remain pending.
 
 ## Design thesis
 
@@ -74,8 +74,8 @@ The planner always returns `dispatch_allowed: false` and `execution_performed: f
 ## Phased implementation
 
 1. **P0 — Planner core:** pure scheduler, consent/capability/cost checks, deterministic sharding and tests. This PR.
-2. **P1 — Durable ledger adapter:** add a small storage abstraction. Keep Supabase as a compatible adapter only after its write path is healthy; evaluate Cloudflare SQLite-backed Durable Objects / Queues as an optional zero-cost control plane. Do not migrate or mutate production automatically.
-3. **P2 — Wake-on-work runner:** event-triggered GitHub Actions for stateless work and short-lived Playwright smoke jobs. Use only public-safe artifacts; never expose auth state.
+2. **P1 — Durable ledger adapter:** SQLite-backed Durable Object ledger source and local contract tests are ready for review; not deployed. Keep Supabase as a compatible adapter only after its write path is healthy. Do not migrate or mutate production automatically.
+3. **P2 — Wake-on-work transport:** the ledger writes a Queue outbox row in the same SQLite transaction as a new task; a Durable Object alarm publishes a payload-free wake envelope; the Queue consumer authenticates to the ledger and fans out an owner-scoped WebSocket hint. Workers still use pull-claim for the lease. Queue delivery is at-least-once; duplicates are harmless hints. Wrangler preview, Queue resource creation, secrets and live handshake are still required before this is operational. GitHub Actions remains the stateless CI/build runner, not the stateful queue consumer.
 4. **P3 — Stateful browser node:** deploy `operator_worker_v2` to a resource-qualified, explicitly enrolled host; encrypted session storage, authenticated queue, atomic leases, <=45-second heartbeat.
 5. **P4 — Android participant:** visible user-started browser/worker mode, pause/resume and revocation. Background execution remains best-effort under Android policy.
 6. **P5 — Federated scale:** admit additional owner-operated devices only after signed enrollment, capability attestation, quotas, isolation and revocation tests.
@@ -87,6 +87,17 @@ The planner always returns `dispatch_allowed: false` and `execution_performed: f
 - The smoke runner function is intentionally disabled after its prior one-shot test.
 - The 512 MB VPS is not accepted for Chromium until a fresh resource probe proves otherwise.
 - No Codespace or paid compute is assumed or created.
+
+## P2 — Wake-on-work contract (source implemented, not deployed)
+
+- New tasks and their wake-outbox records are inserted in one Durable Object SQLite transaction.
+- The Durable Object alarm publishes up to 50 pending outbox rows per pass. A row is marked published only after Queue accepts the message; failed sends stay pending and are rescheduled.
+- Queue consumers validate the event contract and call the ledger through an internal endpoint protected by a separate `MIDAD_WAKE_INTERNAL_KEY` secret.
+- The ledger broadcasts only `TASK_AVAILABLE` identifiers to authenticated WebSockets tagged to the same owner. Node revocation closes that node's WebSocket.
+- WebSocket messages never contain the task payload, session state, API keys or lease token. A wake is not authorization and does not claim a task.
+- The node must call authenticated `POST /v1/tasks/claim`; existing owner, fresh-heartbeat, capability, resource, cost and lease checks remain authoritative.
+- Queue delivery is at-least-once. A crash after Queue acceptance but before outbox acknowledgement can duplicate the wake; clients deduplicate by `event_id`. The task is not duplicated because the ledger remains the source of truth.
+- If the Queue binding is absent, the ledger health response reports pull-claim fallback. The implementation is not live until the two Queue resources exist, both secrets are set, Wrangler preview passes, and an enrolled node completes a real WebSocket → pull-claim smoke test.
 
 ## Non-goals and safety
 
