@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 const base = new URL("../", import.meta.url);
 const agents = JSON.parse(readFileSync(new URL("agents.registry.json", base), "utf8"));
 const bindings = JSON.parse(readFileSync(new URL("agent-bindings.registry.json", base), "utf8"));
+const providers = JSON.parse(readFileSync(new URL("providers.registry.json", base), "utf8")).providers;
+const capabilities = JSON.parse(readFileSync(new URL("capabilities.registry.json", base), "utf8")).capabilities;
+const adapters = JSON.parse(readFileSync(new URL("adapters.registry.json", base), "utf8")).adapters;
 
 test("Factory X agent and binding identifiers are unique", () => {
   const agentIds = agents.agents.map(x => x.id);
@@ -53,4 +56,43 @@ test("media role exposes cost and rights evidence", () => {
   assert.ok(agent.outputs.includes("voice_and_rights_report"));
   assert.equal(binding.primary, "heygen");
   assert.equal(binding.fallback, "openart");
+});
+
+test("hybrid execution substrates are registered without implying runtime readiness", () => {
+  const capabilityIds = new Set(capabilities.map(x => x.id));
+  for (const id of ["ephemeral-dev-workspace", "persistent-worker-runtime", "durable-task-dispatch"]) {
+    assert.ok(capabilityIds.has(id), `missing execution capability: ${id}`);
+  }
+
+  const codespaces = providers.find(x => x.id === "github-codespaces");
+  assert.ok(codespaces);
+  assert.equal(codespaces.status, "discover_on_need");
+  assert.equal(codespaces.runtime_class, "ephemeral");
+  assert.equal(codespaces.requires_quota_check, true);
+  assert.equal(codespaces.always_on_worker, false);
+
+  const vps = providers.find(x => x.id === "midad-vps-control-node");
+  assert.ok(vps);
+  assert.equal(vps.status, "verification_required");
+  assert.equal(vps.runtime_class, "persistent_control");
+  assert.equal(vps.resource_probe_required, true);
+
+  const browser = providers.find(x => x.id === "midad-playwright-worker");
+  assert.ok(browser);
+  assert.equal(browser.status, "verification_required");
+  assert.equal(browser.health_requirements.heartbeat_max_age_seconds, 45);
+  assert.equal(browser.health_requirements.capability_handshake, true);
+});
+
+test("unverified execution adapters stay fail-closed and cannot dispatch", () => {
+  for (const id of [
+    "github-codespaces-pending",
+    "midad-vps-supervisor-pending",
+    "midad-playwright-worker-pending",
+  ]) {
+    const adapter = adapters.find(x => x.id === id);
+    assert.ok(adapter, `missing pending adapter: ${id}`);
+    assert.equal(adapter.status, "PENDING");
+    assert.equal(adapter.execution, "none");
+  }
 });
