@@ -53,6 +53,13 @@ function requiredCapabilities(task) {
 function rows(cursor) {
   return cursor && typeof cursor.toArray === 'function' ? cursor.toArray() : [];
 }
+function normalizeWakeEvent(value) {
+  if (!isRecord(value) || value.v !== 1 || !validId(value.event_id) ||
+      !validId(value.task_id) || !validId(value.owner_id)) {
+    throw new Error('INVALID_WAKE_EVENT');
+  }
+  return { v: 1, event_id: value.event_id, task_id: value.task_id, owner_id: value.owner_id };
+}
 
 export class MidadContinuityLedger {
   constructor(ctx, env) {
@@ -87,6 +94,12 @@ export class MidadContinuityLedger {
         actor_id TEXT NOT NULL, event_json TEXT NOT NULL, created_at_ms INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS continuity_events_task_idx ON continuity_events(task_id,event_id);
+      CREATE TABLE IF NOT EXISTS continuity_wake_outbox (
+        event_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, owner_id TEXT NOT NULL,
+        created_at_ms INTEGER NOT NULL, published_at_ms INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS continuity_wake_outbox_pending_idx
+        ON continuity_wake_outbox(published_at_ms,created_at_ms);
     `);
   }
   query(sql, ...args) { return rows(this.sql.exec(sql, ...args)); }
@@ -125,13 +138,44 @@ export class MidadContinuityLedger {
   async fetch(req) {
     const path = new URL(req.url).pathname;
     if (req.method === 'GET' && path === '/health') {
-      return response(200, { ok: true, service: 'midad-continuity-ledger', schema: 1, dispatch: 'enrolled-node-pull-claim' });
+      return response(200, {
+        ok: true, service: 'midad-continuity-ledger', schema: 2,
+        dispatch: this.env.CONTINUITY_WAKE_QUEUE ? 'queue-websocket-wake-with-pull-claim' : 'pull-claim-fallback',
+      });
+    }
+    if (req.method === 'GET' && path === '/v1/nodes/wake') {
+      const node = await this.nodeAuth(req);
+      if (!node) return response(401, { ok: false, error: 'ENROLLED_NODE_AUTH_REQUIRED' });
+      if (req.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+        return response(426, { ok: false, error: 'WEBSOCKET_UPGRADE_REQUIRED' });
+      }
+      if (node.state !== 'READY' || !node.heartbeat_at_ms || Date.now() - node.heartbeat_at_ms > 45000 || node.cost_verified !== 1) {
+        return response(409, { ok: false, error: 'FRESH_READY_HEARTBEAT_REQUIRED' });
+      }
+      if (typeof WebSocketPair !== 'function' || typeof this.ctx.acceptWebSocket !== 'function') {
+        return response(501, { ok: false, error: 'WEBSOCKET_RUNTIME_UNAVAILABLE' });
+      }
+      const pair = new WebSocketPair();
+      this.ctx.acceptWebSocket(pair[1], [`owner:${node.owner_id}`, `node:${node.node_id}`]);
+      pair[1].serializeAttachment?.({ owner_id: node.owner_id, node_id: node.node_id });
+      pair[1].send(JSON.stringify({ type: 'SYNC_REQUIRED', v: 1, owner_id: node.owner_id, pull_claim_required: true }));
+      return new Response(null, { status: 101, webSocket: pair[0] });
     }
     if (req.method !== 'POST') return response(405, { ok: false, error: 'METHOD_NOT_ALLOWED' });
     let body;
     try { body = await this.body(req); }
     catch (error) { return response(error.message === 'BODY_TOO_LARGE' ? 413 : 400, { ok: false, error: error.message }); }
 
+    if (path === '/internal/wake') {
+      const expected = this.env.MIDAD_WAKE_INTERNAL_KEY;
+      const supplied = req.headers.get('x-midad-wake-key') || '';
+      if (typeof expected !== 'string' || expected.length < 32 || supplied.length < 32 ||
+          !constantTimeEqual(await sha256(supplied), await sha256(expected))) {
+        return response(401, { ok: false, error: 'WAKE_INTERNAL_AUTH_REQUIRED' });
+      }
+      try { return this.broadcastWake(normalizeWakeEvent(body)); }
+      catch { return response(422, { ok: false, error: 'WAKE_EVENT_INVALID' }); }
+    }
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
       if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
       if (path === '/v1/nodes/enroll') return this.enroll(body);
@@ -185,7 +229,61 @@ export class MidadContinuityLedger {
         this.event(task.task_id, 'NODE_REVOKED', body.node_id, { next_state: next });
       }
     });
+    for (const socket of this.ctx.getWebSockets?.(`node:${body.node_id}`) || []) {
+      try { socket.close(1008, 'node revoked'); } catch {}
+    }
     return response(200, { ok: true, node_id: body.node_id, state: 'REVOKED' });
+  }
+  async scheduleWakeOutbox() {
+    if (typeof this.env.CONTINUITY_WAKE_QUEUE?.send !== 'function' ||
+        typeof this.ctx.storage.setAlarm !== 'function') return false;
+    if (!this.one('SELECT event_id FROM continuity_wake_outbox WHERE published_at_ms IS NULL LIMIT 1')) return false;
+    try {
+      await this.ctx.storage.setAlarm(Date.now() + 1000);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async alarm() {
+    const queue = this.env.CONTINUITY_WAKE_QUEUE;
+    if (typeof queue?.send !== 'function') return;
+    const pending = this.query(
+      'SELECT event_id,task_id,owner_id FROM continuity_wake_outbox WHERE published_at_ms IS NULL ORDER BY created_at_ms,event_id LIMIT 50'
+    );
+    for (const event of pending) {
+      try {
+        await queue.send({ v: 1, event_id: event.event_id, task_id: event.task_id, owner_id: event.owner_id });
+        this.tx(() => this.exec(
+          'UPDATE continuity_wake_outbox SET published_at_ms=? WHERE event_id=? AND published_at_ms IS NULL',
+          Date.now(), event.event_id
+        ));
+      } catch (error) {
+        if (typeof this.ctx.storage.setAlarm === 'function') {
+          await this.ctx.storage.setAlarm(Date.now() + 30000);
+        }
+        throw error;
+      }
+    }
+    if (this.one('SELECT event_id FROM continuity_wake_outbox WHERE published_at_ms IS NULL LIMIT 1') &&
+        typeof this.ctx.storage.setAlarm === 'function') {
+      await this.ctx.storage.setAlarm(Date.now() + 1000);
+    }
+  }
+  broadcastWake(value) {
+    const event = normalizeWakeEvent(value);
+    const sockets = this.ctx.getWebSockets?.(`owner:${event.owner_id}`) || [];
+    let delivered = 0;
+    const payload = JSON.stringify({
+      type: 'TASK_AVAILABLE', v: 1, event_id: event.event_id,
+      task_id: event.task_id, owner_id: event.owner_id,
+      wake_only: true, pull_claim_required: true,
+    });
+    for (const socket of sockets) {
+      try { socket.send(payload); delivered += 1; }
+      catch { try { socket.close(1011, 'wake delivery failed'); } catch {} }
+    }
+    return response(200, { ok: true, event_id: event.event_id, delivered, delivery: 'best_effort_wake_hint' });
   }
   async enqueue(body) {
     if (!validId(body.task_id) || !validId(body.owner_id) ||
@@ -213,6 +311,7 @@ export class MidadContinuityLedger {
     };
     const payloadHash = await sha256(canonical(normalized));
     const now = Date.now();
+    const wakeEventId = randomHex(16);
     let existing;
     this.tx(() => {
       existing = this.one('SELECT * FROM continuity_tasks WHERE idempotency_key=?', body.idempotency_key);
@@ -226,7 +325,12 @@ export class MidadContinuityLedger {
         body.workload, JSON.stringify(required), normalized.min_cpu_cores, normalized.min_memory_mb,
         body.units, body.estimated_seconds_per_unit, body.max_cost_usd, retry, attempts, now, now, now);
       this.event(body.task_id, 'TASK_ENQUEUED', 'admin', { workload: body.workload, units: body.units });
+      this.exec(
+        'INSERT INTO continuity_wake_outbox(event_id,task_id,owner_id,created_at_ms,published_at_ms) VALUES(?,?,?,?,NULL)',
+        wakeEventId, body.task_id, body.owner_id, now
+      );
     });
+    await this.scheduleWakeOutbox();
     if (existing) {
       if (existing.payload_hash !== payloadHash) return response(409, { ok: false, error: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH' });
       return response(200, { ok: true, task_id: existing.task_id, idempotent: true, state: existing.status });
@@ -388,5 +492,32 @@ export default {
     if (!env.CONTINUITY_LEDGER) return response(503, { ok: false, error: 'LEDGER_BINDING_MISSING' });
     const id = env.CONTINUITY_LEDGER.idFromName('midad-global-continuity-ledger-v1');
     return env.CONTINUITY_LEDGER.get(id).fetch(request);
+  },
+  async queue(batch, env) {
+    if (!env.CONTINUITY_LEDGER || typeof env.MIDAD_WAKE_INTERNAL_KEY !== 'string' ||
+        env.MIDAD_WAKE_INTERNAL_KEY.length < 32) {
+      for (const message of batch.messages || []) { try { message.retry(); } catch {} }
+      return { delivered: 0, retried: (batch.messages || []).length };
+    }
+    let delivered = 0, retried = 0;
+    for (const message of batch.messages || []) {
+      try {
+        const event = normalizeWakeEvent(message.body);
+        const id = env.CONTINUITY_LEDGER.idFromName('midad-global-continuity-ledger-v1');
+        const stub = env.CONTINUITY_LEDGER.get(id);
+        const result = await stub.fetch(new Request('https://ledger.internal/internal/wake', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-midad-wake-key': env.MIDAD_WAKE_INTERNAL_KEY },
+          body: JSON.stringify(event),
+        }));
+        if (!result.ok) throw new Error('WAKE_DISPATCH_REJECTED');
+        message.ack();
+        delivered += 1;
+      } catch {
+        try { message.retry(); } catch {}
+        retried += 1;
+      }
+    }
+    return { delivered, retried };
   },
 };
