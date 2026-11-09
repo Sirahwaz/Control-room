@@ -37,10 +37,10 @@ test("Android runtime smoke proves the packaged home loads with Wi-Fi and mobile
   assert.match(smoke, /LOCAL_HOME_LOADED/);
   assert.match(smoke, /svc wifi enable/);
   assert.match(smoke, /svc data enable/);
-  assert.match(activity, /ONLINE_PAGE_LOADED:/);
-  assert.match(activity, /ONLINE_MAIN_FRAME_ERROR:/);
-  assert.match(smoke, /ONLINE_PAGE_LOADED:example\\.com/);
-  assert.match(smoke, /MIDAD_BROWSER_ONLINE_PAGE_PASSED/);
+  assert.ok(activity.includes("ONLINE_PAGE_LOADED:"));
+  assert.ok(activity.includes("ONLINE_MAIN_FRAME_ERROR:"));
+  assert.ok(smoke.includes("ONLINE_PAGE_LOADED:example.com"));
+  assert.ok(smoke.includes("MIDAD_BROWSER_ONLINE_PAGE_PASSED"));
 });
 
 test("the Browser APK workflow packages the local home page and its local CSS and JS", () => {
