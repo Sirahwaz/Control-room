@@ -92,7 +92,7 @@ The planner always returns `dispatch_allowed: false` and `execution_performed: f
 
 - New tasks and their wake-outbox records are inserted in one Durable Object SQLite transaction.
 - The Durable Object alarm publishes up to 50 pending outbox rows per pass. A row is marked published only after Queue accepts the message; failed sends stay pending and are rescheduled.
-- Queue consumers validate the event contract and call the ledger through an internal endpoint protected by a separate `MIDAD_WAKE_INTERNAL_KEY` secret.
+- Queue consumers validate the event contract and call the ledger through an internal endpoint protected by a separate `MIDAD_WAKE_INTERNAL_KEY` secret. Before fanout, the ledger binds the event, task and owner IDs to the persisted outbox record.
 - The ledger broadcasts only `TASK_AVAILABLE` identifiers to authenticated WebSockets tagged to the same owner. Node revocation closes that node's WebSocket.
 - WebSocket messages never contain the task payload, session state, API keys or lease token. A wake is not authorization and does not claim a task.
 - The node must call authenticated `POST /v1/tasks/claim`; existing owner, fresh-heartbeat, capability, resource, cost and lease checks remain authoritative.
