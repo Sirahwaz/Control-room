@@ -4,8 +4,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 export function normalizeLeaseWorkerId(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const workerId = value.trim();
-  return WORKER_ID.test(workerId) ? workerId : null;
+  if (value !== value.trim()) return null;
+  return WORKER_ID.test(value) ? value : null;
 }
 
 export function normalizeLeaseToken(value: unknown): string | null {
