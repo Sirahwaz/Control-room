@@ -93,9 +93,11 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("HUMAN_APPROVAL_REQUIRED")
         if action not in _ALLOWED_ACTIONS:
             raise ContinuityWorkerError("ACTION_NOT_ALLOWED_IN_BROWSER_V2")
+        if "value" in command:
+            raise ContinuityWorkerError("HUMAN_APPROVAL_REQUIRED")
         if set(command) - {
             "version", "action", "platform_key", "account_id", "target_url",
-            "selector", "value", "action_approved", "request_text",
+            "selector", "action_approved", "request_text",
         }:
             raise ContinuityWorkerError("OPERATOR_COMMAND_FIELDS_NOT_ALLOWED")
         request_text = command.get("request_text", "")
@@ -126,7 +128,8 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
         raise ContinuityWorkerError("TASK_LEASE_TOKEN_INVALID")
     if not isinstance(attempt, int) or isinstance(attempt, bool) or not 1 <= attempt <= 3:
         raise ContinuityWorkerError("TASK_ATTEMPT_INVALID")
-    validate_browser_payload(payload)
+    if not isinstance(payload, dict):
+        raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     return {
         "task_id": task_id,
         "owner_id": claimed_owner,
@@ -380,9 +383,10 @@ class ContinuityBrowserWorker:
         lost = asyncio.Event()
         renewer = asyncio.create_task(self._renew_until_done(task_id, lease, done, lost))
         execution = asyncio.create_task(self.operator.process_job(job))
+        lost_waiter = asyncio.create_task(lost.wait())
         try:
-            finished, _ = await asyncio.wait(
-                {execution, asyncio.create_task(lost.wait())},
+            await asyncio.wait(
+                {execution, lost_waiter},
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if lost.is_set():
@@ -407,11 +411,13 @@ class ContinuityBrowserWorker:
             return {"task_id": task_id, "status": status, "ledger_state": completed.get("state", "COMPLETED")}
         finally:
             done.set()
-            renewer.cancel()
-            try:
-                await renewer
-            except asyncio.CancelledError:
-                pass
+            for pending in (renewer, lost_waiter):
+                if not pending.done():
+                    pending.cancel()
+                try:
+                    await pending
+                except asyncio.CancelledError:
+                    pass
 
     async def poll_once(self) -> dict:
         claim = await self.client.claim(lease_ttl_seconds=90)
@@ -428,7 +434,8 @@ class ContinuityBrowserWorker:
                 return {"task_id": task["task_id"], "status": "BLOCKED", "code": reason}
             if reason in {"SENSITIVE_TASK_PAYLOAD_REJECTED", "BROWSER_TASK_PAYLOAD_INVALID",
                           "ACTION_NOT_ALLOWED_IN_BROWSER_V2", "OPERATOR_HINT_INVALID",
-                          "OPERATOR_COMMAND_INVALID", "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED"}:
+                          "OPERATOR_HINT_POLICY_REJECTED", "OPERATOR_COMMAND_INVALID",
+                          "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED"}:
                 await self.client.fail(task["task_id"], task["lease_token"], reason=reason, retryable=False)
                 return {"task_id": task["task_id"], "status": "BLOCKED", "code": reason}
             raise
@@ -437,15 +444,25 @@ class ContinuityBrowserWorker:
         browser_version = await self.runtime_probe()
         await self.heartbeat(browser_version)
         self._last_heartbeat = asyncio.get_running_loop().time()
+        failures = 0
         try:
             while not self._stopping.is_set():
-                now = asyncio.get_running_loop().time()
-                if now - self._last_heartbeat >= self.config.heartbeat_seconds:
-                    await self.heartbeat(browser_version)
-                    self._last_heartbeat = now
-                await self.poll_once()
                 try:
-                    await asyncio.wait_for(self._stopping.wait(), timeout=self.config.poll_seconds)
+                    now = asyncio.get_running_loop().time()
+                    if now - self._last_heartbeat >= self.config.heartbeat_seconds:
+                        await self.heartbeat(browser_version)
+                        self._last_heartbeat = now
+                    await self.poll_once()
+                    failures = 0
+                    delay = self.config.poll_seconds
+                except Exception as exc:
+                    failures = min(failures + 1, 5)
+                    # Only the exception class is observable; never log request bodies or credentials.
+                    import sys
+                    print("continuity_browser_worker_failed:" + type(exc).__name__, file=sys.stderr, flush=True)
+                    delay = min(30.0, self.config.poll_seconds * (2 ** failures))
+                try:
+                    await asyncio.wait_for(self._stopping.wait(), timeout=delay)
                 except asyncio.TimeoutError:
                     pass
         finally:
