@@ -134,7 +134,7 @@ CREATE OR REPLACE FUNCTION public.midad_browser_validate_operator_lease_v1(
 )
 RETURNS boolean
 LANGUAGE sql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $function$
