@@ -142,7 +142,7 @@ test('runner returns IDLE without sending completion when there is no eligible t
   assert.deepEqual(calls, ['heartbeat', 'claim']);
 });
 
-test('runner reports transient read-only probe failures as retryable and never retries unknown workloads', async () => {
+test('runner reports transient read-only probe failures as retryable', async () => {
   const calls = [];
   const fetchImpl = async (url, init) => {
     const path = new URL(url).pathname;
@@ -162,4 +162,41 @@ test('runner reports transient read-only probe failures as retryable and never r
   assert.equal(calls.at(-1).endpoint, 'fail');
   assert.equal(calls.at(-1).body.retryable, true);
   assert.equal(calls.at(-1).body.task_id, 'task-123');
+});
+
+
+test('runner rejects an out-of-contract task without executing it or making it retryable', async () => {
+  const calls = [];
+  let probeCalled = false;
+  const fetchImpl = async (url, init) => {
+    const endpoint = new URL(url).pathname.split('/').at(-1);
+    const body = init.body ? JSON.parse(init.body) : {};
+    calls.push({ endpoint, body });
+    if (endpoint === 'heartbeat') return mockResponse({ ok: true, state: 'READY' });
+    if (endpoint === 'claim') return mockResponse({
+      ok: true,
+      task: task({ payload: { command: 'node -e process.exit(0)' } }),
+    });
+    if (endpoint === 'fail') return mockResponse({ ok: true, state: 'FAILED' });
+    throw new Error('UNEXPECTED_ENDPOINT');
+  };
+  const result = await runContinuityRunner(config, {
+    fetchImpl,
+    probeFetch: async () => { probeCalled = true; throw new Error('MUST_NOT_RUN'); },
+  });
+  assert.equal(result.status, 'REJECTED_TASK');
+  assert.equal(probeCalled, false);
+  assert.equal(calls.at(-1).endpoint, 'fail');
+  assert.equal(calls.at(-1).body.retryable, false);
+  assert.equal(calls.at(-1).body.reason, 'TASK_CONTRACT_REJECTED');
+});
+
+test('runner bounds Cloudflare ledger responses before JSON parsing', async () => {
+  let count = 0;
+  const fetchImpl = async () => {
+    count += 1;
+    return new Response('x'.repeat(70 * 1024), { status: 200 });
+  };
+  await assert.rejects(() => runContinuityRunner(config, { fetchImpl }), /RESPONSE_LIMIT_EXCEEDED/);
+  assert.equal(count, 1);
 });
