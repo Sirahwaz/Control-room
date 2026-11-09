@@ -154,6 +154,8 @@ test('internal wake endpoint authenticates and only broadcasts a persisted outbo
     'x-midad-wake-key': WAKE_KEY,
   })));
   assert.equal(allowed.status, 200);
+  assert.equal(allowed.body.workload, 'CPU_BATCH');
+  assert.equal(allowed.body.runner_dispatchable, true);
   storage.close();
 });
 
