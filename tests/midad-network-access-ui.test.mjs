@@ -8,6 +8,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const html = fs.readFileSync(path.join(root, "midad-network-access.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "midad-network-access.css"), "utf8");
 const js = fs.readFileSync(path.join(root, "midad-network-access.js"), "utf8");
+const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const serviceWorker = fs.readFileSync(path.join(root, "service-worker.js"), "utf8");
 
 test("Control Room network access panel exposes all administration workspaces", () => {
   for (const section of ["overview", "proxy-profiles", "routing-rules", "vault", "diagnostics"]) {
@@ -36,4 +38,11 @@ test("panel is RTL, responsive and supports keyboard-operable navigation", () =>
   assert.match(css, /@media/);
   assert.match(html, /aria-controls/);
   assert.match(js, /addEventListener\(["']click["']/);
+});
+
+test("Control Room route and offline cache expose the network access panel", () => {
+  assert.match(index, /view.*network-access|network-access.*view/i);
+  for (const asset of ["midad-network-access.html", "midad-network-access.css", "midad-network-access.js"]) {
+    assert.ok(serviceWorker.includes(asset), `missing offline core asset: ${asset}`);
+  }
 });
