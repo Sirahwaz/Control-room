@@ -8,6 +8,9 @@
 - Issue node credentials once and persist only SHA-256 digests.
 - Enforce owner-approved capabilities, authenticated heartbeats, resource reports and verified cost declarations.
 - Atomically claim, renew, checkpoint, complete and fail tasks.
+- Transactionally record wake events in a SQLite outbox, publish them through Cloudflare Queues and fan out owner-scoped WebSocket wake hints.
+- Keep Queue notifications payload-free; workers must authenticate and use pull-claim to acquire the authoritative lease.
+- Retry failed outbox publication with Durable Object alarms; tolerate at-least-once duplicate wake delivery.
 - Reclaim expired idempotent work; quarantine uncertain browser side effects for human reconciliation.
 - Prevent a node from claiming another owner's tasks.
 
@@ -20,19 +23,23 @@ No Cloudflare account, namespace, DNS record, secret, deployment or billing sett
 
 ## Deployment gate — not yet performed
 1. Authenticate Wrangler to the intended Cloudflare account.
-2. From this folder, run `wrangler deploy`; `wrangler.jsonc` provisions the SQLite-backed Durable Object class with migration `v1`.
-3. Set a generated 32+ character admin key using `wrangler secret put MIDAD_LEDGER_ADMIN_KEY`. Never commit or paste it into Git.
-4. Verify `GET /health`, then enroll a test node with explicit owner consent.
-5. Only after validation, connect a MIDAD gateway. Keep the current Supabase gateway and worker unchanged until separate cutover approval.
+2. Create the two Queue resources referenced by `wrangler.jsonc`: `wrangler queues create midad-continuity-wake` and `wrangler queues create midad-continuity-wake-dlq`.
+3. Set generated 32+ character secrets using `wrangler secret put MIDAD_LEDGER_ADMIN_KEY` and `wrangler secret put MIDAD_WAKE_INTERNAL_KEY`. Never commit or paste either value into Git.
+4. From this folder, run `wrangler deploy`; `wrangler.jsonc` provisions the SQLite-backed Durable Object class with additive outbox-table initialization and configures the Queue consumer.
+5. Verify `GET /health`, then enroll a test node with explicit owner consent, send a fresh heartbeat, connect its authenticated WebSocket, enqueue a harmless test task, and verify the wake hint followed by pull-claim.
+6. Only after validation, connect a MIDAD gateway. Keep the current Supabase gateway and worker unchanged until separate cutover approval.
 
 ## API
 - `GET /health`
+- Enrolled node bearer + `x-midad-node-id`: `GET /v1/nodes/wake` with `Upgrade: websocket` (requires a fresh READY heartbeat)
 - Admin bearer: `POST /v1/nodes/enroll`, `POST /v1/nodes/revoke`, `POST /v1/tasks/enqueue`
 - Enrolled node bearer + `x-midad-node-id`: `POST /v1/nodes/heartbeat`, `POST /v1/tasks/claim`, `/renew`, `/checkpoint`, `/complete`, `/fail`
 
+Queue delivery is at-least-once. The SQLite outbox marks an event published only after Queue accepts it; a send/mark crash can produce a duplicate, so clients should deduplicate by `event_id`. WebSocket messages contain task/owner/event identifiers only, never task payloads or credentials. Receiving `TASK_AVAILABLE` or `SYNC_REQUIRED` is a wake hint; the worker must call authenticated `POST /v1/tasks/claim` to obtain the authoritative lease. Node revocation closes its wake sockets. When no Queue binding is configured, the existing pull-claim path remains available.
+
 Lease TTL is bounded to 15–300 seconds. Heartbeats older than 45 seconds cannot claim work. Cost estimates require explicit verification and each task has a hard USD ceiling. Browser tasks require enrolled browser capabilities, a browser runtime version and encrypted session storage; they are never automatically replayed.
 
-No Queue wake binding exists in this phase: nodes pull-claim tasks. The subsequent P2 integration must add event wake-up/Queue publishing and a stateless runner. The ledger stores and coordinates work; it does not create CPU, GPU or browser compute.
+P2 — Queue and WebSocket wake-on-work source/configuration are now included in this PR but are not deployed. Queue resources, secrets, Wrangler preview, and a live node handshake remain deployment gates. The ledger stores and coordinates work; it does not create CPU, GPU or browser compute.
 
 ## Tests
-`tests/continuity-ledger.test.mjs` exercises the worker SQL against Node's built-in SQLite engine through a small local Durable Object storage shim. These tests prove SQL/state contracts but are not a substitute for a Cloudflare `wrangler dev` preview or live deployment test.
+`tests/continuity-ledger.test.mjs` exercises the worker SQL against Node's built-in SQLite engine through a small local Durable Object storage shim. `tests/continuity-wake.test.mjs` covers outbox durability/retry, owner-scoped wake payloads, revocation, internal authentication and Queue consumer retry behavior. These tests prove SQL/state contracts but are not a substitute for a Cloudflare `wrangler dev` preview or live deployment test.
