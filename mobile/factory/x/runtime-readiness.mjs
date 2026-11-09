@@ -43,6 +43,10 @@ export function assessProviderRuntime(provider, evidence, requirements = {}, now
   if (!isObject(provider) || !Array.isArray(provider.capabilities)) {
     return decision(false, "PROVIDER_CONTRACT_INVALID");
   }
+  const providerStatus = String(provider.status || "").toUpperCase();
+  if (["BLOCKED", "FAILED", "DISABLED", "PENDING"].includes(providerStatus)) {
+    return decision(false, "PROVIDER_STATUS_BLOCKED");
+  }
   if (!isObject(evidence)) return decision(false, "RUNTIME_EVIDENCE_MISSING");
   if (evidence.source !== "trusted_runtime_adapter" || evidence.signature_verified !== true) {
     return decision(false, "RUNTIME_EVIDENCE_UNVERIFIED");
@@ -72,6 +76,11 @@ export function assessProviderRuntime(provider, evidence, requirements = {}, now
 
   if (evidence.capability_handshake !== true) {
     return decision(false, "CAPABILITY_HANDSHAKE_REQUIRED");
+  }
+  const requiredCapability = String(requirements.capability || "").trim();
+  if (requiredCapability &&
+      (!Array.isArray(evidence.capabilities) || !evidence.capabilities.includes(requiredCapability))) {
+    return decision(false, "CAPABILITY_NOT_CONFIRMED");
   }
   if (evidence.authenticated !== true) return decision(false, "RUNTIME_AUTH_REQUIRED");
 
