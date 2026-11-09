@@ -47,8 +47,17 @@ class FakeGateway:
             return {"ok": True, "job_id": "job-created", "state": "PREPARING"}
         if action == "create_job":
             return {"ok": True, "job": {"id": "job-created", "state": "PREPARING"}}
-        if action == "list_jobs":
-            return {"ok": True, "jobs": self.jobs}
+        if action == "claim_operator_jobs":
+            claimed = [
+                {
+                    **job,
+                    "owner_user_id": payload["owner_user_id"],
+                    "worker_id": payload["worker_id"],
+                    "lease_token": "a" * 64,
+                }
+                for job in self.jobs
+            ]
+            return {"ok": True, "jobs": claimed}
         if action == "record_command_result":
             return {"ok": True}
         return {"ok": True}
@@ -93,7 +102,16 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.gateway = FakeGateway()
         self.pool = FakePool()
         self.worker = OperatorWorker(self.config, "00000000-0000-4000-8000-000000000001",
-                                     self.registry, gateway=self.gateway, session_pool=self.pool)
+                                     self.registry, gateway=self.gateway, session_pool=self.pool,
+                                     worker_id="test-worker-001")
+
+    def claimed(self, job):
+        return {
+            **job,
+            "owner_user_id": self.worker.owner_user_id,
+            "worker_id": self.worker.worker_id,
+            "lease_token": "a" * 64,
+        }
 
     async def test_owner_id_is_resolved_from_private_gateway_when_not_configured(self):
         owner = await resolve_owner_user_id(self.gateway, "")
@@ -124,7 +142,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "account_id": "example-account", "action_approved": False
             }},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "INSPECTED")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
         running = [event for event in self.gateway.events if event["state"] == "RUNNING"]
@@ -142,7 +160,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "action_approved": False,
             }},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "INSPECTED")
         self.assertTrue(self.pool.sessions)
         completed = [event for event in self.gateway.events if event["state"] == "COMPLETED"]
@@ -158,7 +176,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "action_approved": True,
             }},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("READ_ONLY_MODE", result["code"])
         self.assertFalse(self.pool.sessions)
@@ -172,7 +190,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "action_approved": True,
             }},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("HIGH_IMPACT_APPROVAL_REQUIRED", result["code"])
         self.assertFalse(self.pool.sessions)
@@ -182,7 +200,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
             "id": "job-hint", "state": "PREPARING", "platform_key": "operator_router",
             "input_data": {"operator_hint": "Example"},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "AUTHENTICATED_IN_MEMORY")
         self.assertEqual(result["action"], "start_session")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
@@ -192,10 +210,10 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
             "id": "job-unknown-hint", "state": "PREPARING", "platform_key": "operator_router",
             "input_data": {"operator_hint": "Some platform that is not configured"},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "BLOCKED")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
-        again = await self.worker.process_job(job)
+        again = await self.worker.process_job(self.claimed(job))
         self.assertEqual(again["status"], "DUPLICATE_SKIPPED")
 
     async def test_financial_command_is_blocked_and_not_executed(self):
@@ -206,10 +224,39 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "account_id": "example-account", "action_approved": True
             }},
         }
-        result = await self.worker.process_job(job)
+        result = await self.worker.process_job(self.claimed(job))
         self.assertEqual(result["status"], "BLOCKED")
         self.assertFalse(self.pool.sessions)
         self.assertTrue(any(event["state"] == "BLOCKED" for event in self.gateway.events))
+
+    async def test_process_job_requires_a_server_claimed_lease(self):
+        job = {
+            "id": "job-unleased", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "inspect", "platform_key": "example",
+                "account_id": "example-account",
+            }},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["code"], "OPERATOR_LEASE_OWNER_MISMATCH")
+        self.assertFalse(self.pool.sessions)
+        self.assertFalse(any(action == "record_command_result" for action, _ in self.gateway.calls))
+
+    async def test_process_job_releases_claim_after_result_is_recorded(self):
+        job = self.claimed({
+            "id": "job-lease-release", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "inspect", "platform_key": "example",
+                "account_id": "example-account", "action_approved": False
+            }},
+        })
+        await self.worker.process_job(job)
+        release_calls = [payload for action, payload in self.gateway.calls if action == "release_operator_lease"]
+        self.assertEqual(len(release_calls), 1)
+        self.assertEqual(release_calls[0]["job_id"], "job-lease-release")
+        self.assertEqual(release_calls[0]["worker_id"], "test-worker-001")
+        self.assertEqual(release_calls[0]["lease_token"], "a" * 64)
 
     async def test_poll_once_emits_worker_heartbeat_once_per_interval(self):
         await self.worker.poll_once()
@@ -217,6 +264,9 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         heartbeat_calls = [call for call in self.gateway.calls if call[0] == "worker_heartbeat"]
         self.assertEqual(len(heartbeat_calls), 1)
         self.assertEqual(heartbeat_calls[0][1]["owner_user_id"], "00000000-0000-4000-8000-000000000001")
+        self.assertEqual(heartbeat_calls[0][1]["worker_id"], "test-worker-001")
+        claim_calls = [call for call in self.gateway.calls if call[0] == "claim_operator_jobs"]
+        self.assertEqual(len(claim_calls), 2)
 
     async def test_poll_once_ignores_non_operator_jobs(self):
         self.gateway.jobs = [
