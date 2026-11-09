@@ -39,6 +39,8 @@ class FakeProxyPage:
 class FakeProxyContext:
     async def new_page(self):
         return FakeProxyPage()
+    async def close(self):
+        pass
 
 
 class FakeProxyBrowser:
@@ -47,6 +49,8 @@ class FakeProxyBrowser:
     async def new_context(self, **kwargs):
         self.context_options = kwargs
         return FakeProxyContext()
+    async def close(self):
+        pass
 
 
 class FakeProxyChromium:
@@ -59,6 +63,8 @@ class FakeProxyChromium:
 class FakeProxyPlaywright:
     def __init__(self, browser):
         self.chromium = FakeProxyChromium(browser)
+    async def stop(self):
+        pass
 
 
 class FakeProxyPlaywrightManager:
@@ -100,6 +106,18 @@ class PersistentSessionPolicyTests(unittest.IsolatedAsyncioTestCase):
         await session._open()
         self.assertEqual(browser.context_options["proxy"], proxy)
         self.assertFalse(browser.context_options["ignore_https_errors"])
+
+
+    async def test_closing_session_drops_ephemeral_proxy_credentials(self):
+        browser = FakeProxyBrowser()
+        session = PlatformBrowserSession(
+            self.profile, {"example.com"}, secret_provider=object(),
+            playwright_factory=lambda: FakeProxyPlaywrightManager(browser),
+            proxy_settings={"server": "https://proxy.example.net:8443", "username": "u", "password": "p"},
+        )
+        await session._open()
+        await session.close()
+        self.assertIsNone(session.proxy_settings)
 
     async def test_login_post_allowed_once_only_on_declared_main_frame_path(self):
         self.session._login_submit_active = True
