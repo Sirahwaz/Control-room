@@ -119,7 +119,11 @@ def build_playwright_proxy(profile: dict, secret_resolver=None) -> dict:
     if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
         raise ProxyPolicyError("PROXY_ENDPOINT_INVALID")
 
-    settings = {"server": f"{PLAYWRIGHT_MODES[mode]}://{host.strip()}:{port}"}
+    expected_scheme = PLAYWRIGHT_MODES[mode]
+    configured_scheme = endpoint.get("scheme")
+    if configured_scheme is not None and configured_scheme != expected_scheme:
+        raise ProxyPolicyError("PROXY_SCHEME_MISMATCH")
+    settings = {"server": f"{expected_scheme}://{host.strip()}:{port}"}
     secret_ref = profile.get("auth_secret_ref")
     if secret_ref:
         if not callable(secret_resolver):
