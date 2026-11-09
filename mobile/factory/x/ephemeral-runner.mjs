@@ -25,9 +25,11 @@ function validateEnvironment(env) {
   if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
     throw new Error('RUNNER_NODE_TOKEN_MISSING');
   }
+  const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
+  if (env.MIDAD_INPUT_OWNER_ID !== ownerId) throw new Error('OWNER_ID_INPUT_MISMATCH');
   return {
     ledgerOrigin: ledgerUrl.origin,
-    ownerId: requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID'),
+    ownerId,
     taskId: requireId(env.MIDAD_TASK_ID, 'TASK_ID'),
     eventId: requireId(env.MIDAD_EVENT_ID, 'EVENT_ID'),
     token,
