@@ -192,6 +192,14 @@ class OperatorWorker:
             if policy_decision.risk == "reversible":
                 policy_command["action_approved"] = True
             validated = validate_operator_command(policy_command, profile, set(self.config.allowed_hosts))
+            lease_renewal = await self.gateway.call(
+                "renew_operator_lease",
+                job_id=job_id,
+                lease_seconds=180,
+                **self._lease_payload(job),
+            )
+            if not isinstance(lease_renewal, dict) or lease_renewal.get("renewed") is not True:
+                raise CommandRoutingError("OPERATOR_LEASE_LOST")
             if current_url is None and validated.get("target_url"):
                 current_url = validated["target_url"]
             await self._record(
