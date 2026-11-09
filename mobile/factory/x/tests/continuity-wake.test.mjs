@@ -208,6 +208,38 @@ test('Queue consumer forwards validated wake hints to the Durable Object and ack
   assert.deepEqual(seen[0].body, wake());
 });
 
+test('Queue consumer retries a CPU_BATCH wake when GitHub App dispatch is not configured', async () => {
+  const actions = [];
+  const ns = {
+    idFromName(name) { return name; },
+    get(id) {
+      return {
+        async fetch() {
+          return new Response(JSON.stringify({
+            ok: true,
+            workload: 'CPU_BATCH',
+            runner_dispatchable: true,
+          }), { status: 200 });
+        },
+      };
+    },
+  };
+  const message = {
+    body: wake(),
+    ack() { actions.push('ack'); },
+    retry() { actions.push('retry'); },
+  };
+
+  const result = await wakeWorker.queue({ messages: [message] }, {
+    CONTINUITY_LEDGER: ns,
+    MIDAD_WAKE_INTERNAL_KEY: WAKE_KEY,
+  });
+
+  assert.equal(result.delivered, 0);
+  assert.equal(result.retried, 1);
+  assert.deepEqual(actions, ['retry']);
+});
+
 test('Queue consumer retries malformed and transiently failed messages', async () => {
   const actions = [];
   const messages = [
