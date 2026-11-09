@@ -26,6 +26,18 @@ test("Android preparation installs the stable AndroidX WebKit asset-loader depen
   assert.match(prepare, /dependencies\s*\{/);
 });
 
+test("Android runtime smoke proves the packaged home loads with Wi-Fi and mobile data disabled", () => {
+  const activity = read("mobile/factory/native/midad-browser/BrowserActivity.java");
+  const smoke = read("mobile/factory/native/midad-browser/runtime-smoke.sh");
+
+  assert.match(activity, /LOCAL_HOME_LOADED/);
+  assert.match(smoke, /svc wifi disable/);
+  assert.match(smoke, /svc data disable/);
+  assert.match(smoke, /LOCAL_HOME_LOADED/);
+  assert.match(smoke, /svc wifi enable/);
+  assert.match(smoke, /svc data enable/);
+});
+
 test("the Browser APK workflow packages the local home page and its local CSS and JS", () => {
   const workflow = read(".github/workflows/midad-browser-android.yml");
   const manifest = JSON.parse(read("mobile/factory/products/midad-browser.json"));
