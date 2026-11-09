@@ -266,6 +266,31 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
     const enrollment = await enrollmentResponse.json();
     assert.equal(enrollment.ok, true);
 
+    const storedNode = storage.db.prepare(
+      'SELECT token_hash,owner_id,enrolled_capabilities_json FROM enrolled_nodes WHERE node_id=?'
+    ).get('midad-github-hosted-runner');
+    assert.equal(storedNode.owner_id, 'owner-123');
+    assert.equal(
+      storedNode.token_hash,
+      createHash('sha256').update(enrollment.enrollment_token).digest('hex')
+    );
+
+    const directHeartbeat = await ledger.fetch(new Request('https://ledger.test/v1/nodes/heartbeat', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + enrollment.enrollment_token,
+        'x-midad-node-id': 'midad-github-hosted-runner',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        cpu_cores: 1, memory_mb: 512, available_slots: 1,
+        cost_per_hour_usd: 0, cost_estimate_verified: true,
+        encrypted_session_store: false, agent_version: 'midad-gha-continuity-v1',
+        capabilities: [...RUNNER_CAPABILITIES],
+      }),
+    }));
+    assert.equal(directHeartbeat.status, 200);
+
     const enqueueResponse = await ledger.fetch(new Request('https://ledger.test/v1/tasks/enqueue', {
       method: 'POST',
       headers: adminHeaders,
