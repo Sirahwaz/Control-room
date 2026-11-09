@@ -63,3 +63,47 @@ P2 — Queue and WebSocket wake-on-work source/configuration are now included in
 
 ## Tests
 `tests/continuity-ledger.test.mjs` exercises the worker SQL against Node's built-in SQLite engine through a small local Durable Object storage shim. `tests/continuity-wake.test.mjs` covers outbox durability/retry, owner-scoped wake payloads, revocation, internal authentication and Queue consumer retry behavior. These tests prove SQL/state contracts but are not a substitute for a Cloudflare `wrangler dev` preview or live deployment test.
+
+
+## Ephemeral GitHub Actions CPU runner — source integration
+
+The Queue consumer can optionally dispatch eligible `CPU_BATCH` wake events to the fixed workflow `.github/workflows/midad-mncf-ephemeral-runner.yml`.
+
+- The Worker creates a short-lived GitHub App installation token per dispatch. The App is restricted to this repository and requests only the `Actions: write` permission needed for `workflow_dispatch`.
+- The workflow receives only `event_id`, `task_id` and `owner_id`. It never receives a task payload, lease token or node credential in workflow inputs.
+- The ephemeral runner authenticates to the ledger using an owner-approved node token stored as the GitHub Actions secret `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN`.
+- The runner first sends a fresh heartbeat and then calls `POST /v1/tasks/claim` with the exact `task_id`; the ledger filters the claim atomically. Duplicate workflow dispatches cannot obtain the same active lease.
+- The current runner is intentionally narrow: it accepts only `CPU_BATCH` tasks and deterministic `RUNNER_SMOKE`, `SUM_INTEGERS` and `HASH_TEXT` operations. It does not execute arbitrary shell/code, browser sessions, payments, downloads or external side effects.
+- Only CPU_BATCH tasks are dispatched to GitHub. Browser Session tasks continue to require an enrolled browser-capable node with encrypted session storage.
+- The runner is a disposable standard `ubuntu-latest` GitHub-hosted job, not a persistent worker. Keep the repository public and verify the applicable GitHub Actions quota/terms before relying on zero direct runner cost. No paid runner class is selected.
+- Queue delivery and workflow dispatch are at-least-once. The runner task-specific claim, 1-slot node and workflow concurrency group are the duplicate guard; a run that cannot claim the target task exits without executing it.
+
+### GitHub App and environment setup — optional, not yet configured
+
+Create a GitHub App installed only on `Sirahwaz/Control-room`, granting **Actions: write** (no Contents write, Administration, Secrets, or organization-wide permissions). Store these values only as secrets in the protected Cloudflare deployment environment:
+
+- `MIDAD_GITHUB_APP_ID`
+- `MIDAD_GITHUB_INSTALLATION_ID`
+- `MIDAD_GITHUB_APP_PRIVATE_KEY` (PEM)
+
+The deployment workflow accepts either all three values or none. When absent, the Worker preserves WebSocket wake behavior and reports GitHub Actions dispatch as `not_configured`; it does not attempt a paid fallback.
+
+In the GitHub repository, configure:
+- Variable `MIDAD_CONTINUITY_LEDGER_URL`: the verified HTTPS Worker origin.
+- Variable `MIDAD_CONTINUITY_OWNER_ID`: the exact owner UUID used for enrollment.
+- Secret `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN`: the one-time token returned by explicit owner-approved enrollment.
+
+Enroll the node once, only after the Worker is deployed and `/health` passes:
+
+```json
+{
+  "node_id": "github-actions-linux",
+  "owner_id": "<verified-owner-uuid>",
+  "consent_confirmed": true,
+  "capabilities": ["cpu-batch"]
+}
+```
+
+Submit this to `POST /v1/nodes/enroll` using the protected ledger admin credential. Store the returned `enrollment_token` directly in the GitHub Actions secret; never place it in workflow inputs, a task payload, a repository file or chat. Revoking `github-actions-linux` at the ledger invalidates the token and returns/quarantines active work according to the task retry mode.
+
+**Current status:** adapter source and CI contracts are being prepared on a review branch. No GitHub App, Cloudflare secret, deployment, enrolled runner node, workflow dispatch, or live task execution is claimed by this source change.
