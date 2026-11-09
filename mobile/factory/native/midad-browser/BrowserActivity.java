@@ -206,6 +206,9 @@ public final class BrowserActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 address.setText(url);
                 progress.setProgress(100);
+                if (url != null && url.startsWith(MIDAD_HOME)) {
+                    android.util.Log.i("MIDAD_BROWSER", "LOCAL_HOME_LOADED");
+                }
             }
 
             @Override
