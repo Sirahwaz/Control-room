@@ -1,6 +1,6 @@
 # MIDAD Continuity Fabric v1
 
-**Status:** P0 planner, P1 SQLite Durable Object ledger, and P2 Queue/WebSocket wake-on-work source/configuration are implemented on the PR branch. No Cloudflare deployment, Queue resource, secret, or production connection has been created. P3 worker-v2 and P4 Android participant remain pending.
+**Status:** P0 planner, P1 SQLite Durable Object ledger, P2 Queue/WebSocket wake-on-work source/configuration, tests and protected deployment workflow are merged to `main`. No Cloudflare deployment, Queue resource, secret, or production connection has been created. P3 worker-v2 and P4 Android participant remain pending.
 
 ## Design thesis
 
@@ -73,8 +73,8 @@ The planner always returns `dispatch_allowed: false` and `execution_performed: f
 
 ## Phased implementation
 
-1. **P0 — Planner core:** pure scheduler, consent/capability/cost checks, deterministic sharding and tests. This PR.
-2. **P1 — Durable ledger adapter:** SQLite-backed Durable Object ledger source and local contract tests are ready for review; not deployed. Keep Supabase as a compatible adapter only after its write path is healthy. Do not migrate or mutate production automatically.
+1. **P0 — Planner core:** pure scheduler, consent/capability/cost checks, deterministic sharding and tests. Merged to `main`.
+2. **P1 — Durable ledger adapter:** SQLite-backed Durable Object ledger source and local contract tests are merged to `main`; not deployed. Keep Supabase as a compatible adapter only after its write path is healthy. Do not migrate or mutate production automatically.
 3. **P2 — Wake-on-work transport:** the ledger writes a Queue outbox row in the same SQLite transaction as a new task; a Durable Object alarm publishes a payload-free wake envelope; the Queue consumer authenticates to the ledger and fans out an owner-scoped WebSocket hint. Workers still use pull-claim for the lease. Queue delivery is at-least-once; duplicates are harmless hints. Wrangler preview, Queue resource creation, secrets and live handshake are still required before this is operational. GitHub Actions remains the stateless CI/build runner, not the stateful queue consumer.
 4. **P3 — Stateful browser node:** deploy `operator_worker_v2` to a resource-qualified, explicitly enrolled host; encrypted session storage, authenticated queue, atomic leases, <=45-second heartbeat.
 5. **P4 — Android participant:** visible user-started browser/worker mode, pause/resume and revocation. Background execution remains best-effort under Android policy.
@@ -88,7 +88,7 @@ The planner always returns `dispatch_allowed: false` and `execution_performed: f
 - The 512 MB VPS is not accepted for Chromium until a fresh resource probe proves otherwise.
 - No Codespace or paid compute is assumed or created.
 
-## P2 — Wake-on-work contract (source implemented, not deployed)
+## P2 — Wake-on-work contract (source merged to main, not deployed)
 
 - New tasks and their wake-outbox records are inserted in one Durable Object SQLite transaction.
 - The Durable Object alarm publishes up to 50 pending outbox rows per pass. A row is marked published only after Queue accepts the message; failed sends stay pending and are rescheduled.
