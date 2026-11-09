@@ -31,6 +31,6 @@ jobs:
       - name: Public route policy contract tests
         run: node --test supabase/functions/midad_ai_router/public-routing-policy.test.mjs supabase/functions/midad_ai_router/fallback-policy.test.mjs supabase/functions/midad_ai_router/auth-policy.test.mjs
       - name: MIDAD continuity bootstrap contract tests
-        run: node --test supabase/functions/_shared/midad-continuity.test.mjs
+        run: node --test supabase/functions/_shared/midad-continuity.test.mjs supabase/functions/midad_orchestrator/continuity-gate-contract.test.mjs
       - name: AI Router type check
-        run: deno check supabase/functions/midad_ai_router/index.ts
+        run: deno check supabase/functions/midad_ai_router/index.ts supabase/functions/midad_orchestrator/index.ts supabase/functions/midad_omni_agent_gateway/index.ts
