@@ -14,18 +14,59 @@ function encodeJson(value) {
   return encodeBase64Url(new TextEncoder().encode(JSON.stringify(value)));
 }
 
+function derLength(length) {
+  if (length < 0x80) return new Uint8Array([length]);
+  const bytes = [];
+  let remaining = length;
+  while (remaining > 0) {
+    bytes.unshift(remaining & 0xff);
+    remaining = Math.floor(remaining / 256);
+  }
+  return new Uint8Array([0x80 | bytes.length, ...bytes]);
+}
+
+function derElement(tag, bytes) {
+  const length = derLength(bytes.length);
+  const result = new Uint8Array(1 + length.length + bytes.length);
+  result[0] = tag;
+  result.set(length, 1);
+  result.set(bytes, 1 + length.length);
+  return result;
+}
+
+function concatBytes(...parts) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
+
 function pemToDer(value) {
   if (typeof value !== 'string' || value.length > 20000) throw new Error('GITHUB_APP_PRIVATE_KEY_INVALID');
   const normalized = value.replace(/\\n/g, '\n').trim();
+  const pkcs1 = normalized.startsWith('-----BEGIN RSA PRIVATE KEY-----');
+  const pkcs8 = normalized.startsWith('-----BEGIN PRIVATE KEY-----');
+  if (!pkcs1 && !pkcs8) throw new Error('GITHUB_APP_PRIVATE_KEY_INVALID');
   const body = normalized
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, '')
+    .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, '')
     .replace(/\s+/g, '');
   if (!/^[A-Za-z0-9+/=]+$/.test(body)) throw new Error('GITHUB_APP_PRIVATE_KEY_INVALID');
   const binary = atob(body);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+  if (pkcs8) return bytes;
+
+  // WebCrypto imports PKCS#8; wrap the common GitHub App PKCS#1 RSA PEM in PrivateKeyInfo.
+  const rsaEncryptionOid = new Uint8Array([0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01]);
+  const algorithm = derElement(0x30, concatBytes(rsaEncryptionOid, new Uint8Array([0x05,0x00])));
+  const version = new Uint8Array([0x02,0x01,0x00]);
+  const privateKey = derElement(0x04, bytes);
+  return derElement(0x30, concatBytes(version, algorithm, privateKey));
 }
 
 function validateEvent(event) {
