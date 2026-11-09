@@ -2,6 +2,7 @@
 import base64
 import json
 import os
+import signal
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,7 @@ from continuity_browser_worker_v2 import (
     ContinuityWorkerConfig,
     ContinuityWorkerError,
     sanitize_browser_result,
+    register_sigterm_handler,
     validate_browser_payload,
     validate_claimed_task,
 )
@@ -104,6 +106,28 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             poll_seconds=3.0,
             heartbeat_seconds=15.0,
         )
+
+    def test_sigterm_is_connected_to_graceful_worker_stop(self):
+        class FakeLoop:
+            def __init__(self):
+                self.handlers = {}
+
+            def add_signal_handler(self, signum, callback):
+                self.handlers[signum] = callback
+
+        class FakeWorker:
+            def __init__(self):
+                self.stopped = False
+
+            def stop(self):
+                self.stopped = True
+
+        loop = FakeLoop()
+        worker = FakeWorker()
+        register_sigterm_handler(loop, worker)
+        self.assertIn(signal.SIGTERM, loop.handlers)
+        loop.handlers[signal.SIGTERM]()
+        self.assertTrue(worker.stopped)
 
     def test_claim_is_owner_bound_and_requires_lease_token(self):
         claim = {"ok": True, "task": {
