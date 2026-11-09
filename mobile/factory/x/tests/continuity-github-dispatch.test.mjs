@@ -186,7 +186,7 @@ test('ephemeral runner executes only bounded allowlisted CPU operations', () => 
     operation: 'SUM_INTEGERS', count: 3, sum: 6,
   });
   assert.equal(executeTaskPayload({ operation: 'HASH_TEXT', input: { text: 'midad' } }).sha256.length, 64);
-  assert.equal(executeTaskPayload({ operation: 'RUNNER_SMOKE' }).node_id, 'github-actions-linux');
+  assert.equal(executeTaskPayload({ operation: 'RUNNER_SMOKE' }).node_id, 'github-actions-cpu-batch');
   assert.throws(() => executeTaskPayload({ operation: 'RUN_SHELL', input: { command: 'id' } }), /TASK_OPERATION_NOT_ALLOWLISTED/);
   assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: ['1'] } }), /SUM_INPUT_INVALID/);
   assert.throws(() => executeTaskPayload({ operation: 'SUM_INTEGERS', input: { values: [1], command: 'whoami' } }), /SUM_INPUT_INVALID/);
