@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   poll-and-execute-one:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    if: (github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_NODE_ID != '') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
