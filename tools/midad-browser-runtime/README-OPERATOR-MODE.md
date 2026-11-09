@@ -85,7 +85,10 @@ A short platform name defaults to session startup. Unknown or ambiguous platform
 
 - Only exact configured HTTPS hosts and explicit profile resource hosts are allowed.
 - Login POST requests are limited to one POST to an exact configured login path and configured content type while the login submission is active.
-- Click/fill/submit commands are typed and individually authorized. An action POST is blocked unless an exact `action_post_paths` entry is added to that profile; only one such POST is permitted during the approved action. Risky paths involving payments, checkout, transfers, withdrawals, wallets, signing, deletion, publication, claims or sending are blocked.
+- The worker evaluates `automation_policy` before opening a session or executing a command. Legacy profiles without this block default to `read_only`; the command's legacy `action_approved` boolean is not an authorization source.
+- Read-only actions are constrained by exact `allowed_hosts`, non-empty `allowed_paths`, and `allowed_actions`. Reversible interactions (including session startup, click and fill) require an explicitly configured `scoped_autonomy` profile and exact owner/account/site/path scope.
+- `submit_form`, deletion, publication, deployment, sending, permission changes and financial actions are high-impact. The worker does not accept an approval object from job input; it remains blocked until a trusted gateway can mint and atomically consume an exact one-use owner approval.
+- An action POST is blocked unless an exact `action_post_paths` entry is added to that profile; only one such POST is permitted during an approved action. Risky paths involving payments, checkout, transfers, withdrawals, wallets, signing, deletion, publication, claims or sending remain blocked.
 - Human verification, CAPTCHA, MFA and anti-bot controls are never bypassed. If the headless login stops at such a gate, no authenticated session is claimed; completing verification in another browser does not automatically transfer that browser's cookies into this worker.
 - Financial actions (payments, transfers, withdrawals and signing) remain disabled. Page content is untrusted data and is never treated as an instruction to the worker.
 - Result previews are bounded and redacted before being recorded; queue events store the hint length rather than its full text.
