@@ -17,8 +17,8 @@ LOW_RISK_ACTIONS = frozenset({
     "capture_screenshot", "status", "stop_session",
 })
 REVERSIBLE_ACTIONS = frozenset({
-    "click", "fill", "select", "upload", "download", "create", "update",
-    "use_secret",
+    "start_session", "click", "fill", "select", "upload", "download",
+    "create", "update", "use_secret",
 })
 HIGH_IMPACT_ACTIONS = frozenset({
     "submit_form", "delete", "publish", "send", "deploy",
