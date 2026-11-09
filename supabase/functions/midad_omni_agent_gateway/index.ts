@@ -150,13 +150,14 @@ async function persistCommunicationSignal(sb:any,ownerId:string,body:any,result:
 
 const SYS="MIDAD Omni Agent: high-reliability agentic planner. Prefer MIDAD Native orchestration; use specialized Gemini capability when useful. Never bypass authentication, human verification, identity checks or signatures. Never collect recovery secrets. Explain gates, evidence, expected result and fallback.";
 const CONTINUITY_URL="https://raw.githubusercontent.com/Sirahwaz/Control-room/main/docs/continuity/runtime-bootstrap.json";
+const CONTINUITY_SHA256="ed659ee481002f4ed40965b0af361dd5ef87e1593f2ba8959d80eb818351a5ce";
 const AI_ACTIONS=new Set(["plan","automation_plan","communication","form_plan","gemini_text","research","vision_inspect","gemini_image"]);
 Deno.serve(async req=>{if(req.method==="OPTIONS")return new Response("ok",{headers:H});if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
 const sb=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");const body=await req.json().catch(()=>({}));const action=clip(body.action||"capabilities",80).toLowerCase();
 try{
 if(action==="capabilities")return json({ok:true,service:"midad_omni_agent_gateway",version:5,primary:"midad-native",specialists:["gemini","gemini-live-translate","gemini-notebook"],fallbacks:["tinyfish"],capabilities:["plan","automation_plan","communication","communication_memory","profile_snapshot","form_plan","live_token","gemini_text","gemini_image","research","vision_inspect","notebook_route","human_intervention"],secrets:"server-side-only"});
 if(action==="notebook_route")return json({ok:true,provider:"gemini-notebook",mode:"official-ui-handoff",url:"https://notebooklm.google.com/",enterprise_api_ready:Boolean(Deno.env.get("GOOGLE_CLOUD_PROJECT"))});
-const raw=clip(req.headers.get("x-midad-bridge-token")||body.bridge_token,500);const s=await session(sb,raw);if(!s)return json({ok:false,error:"bridge_session_invalid_or_expired"},401);\nconst continuityResult=AI_ACTIONS.has(action)?await loadRuntimeContext({url:CONTINUITY_URL,cacheMs:60000}):null;if(AI_ACTIONS.has(action)&&!continuityResult?.ok)return json({ok:false,error:"continuity_bootstrap_blocked",reason:continuityResult?.code||"CONTEXT_MISSING"},503);const continuity=continuityResult?.context||null;
+const raw=clip(req.headers.get("x-midad-bridge-token")||body.bridge_token,500);const s=await session(sb,raw);if(!s)return json({ok:false,error:"bridge_session_invalid_or_expired"},401);\nconst continuityResult=AI_ACTIONS.has(action)?await loadRuntimeContext({url:CONTINUITY_URL,cacheMs:60000,expectedSha256:CONTINUITY_SHA256}):null;if(AI_ACTIONS.has(action)&&!continuityResult?.ok)return json({ok:false,error:"continuity_bootstrap_blocked",reason:continuityResult?.code||"CONTEXT_MISSING"},503);const continuity=continuityResult?.context||null;
 
 if(action==="live_token"){
   const allowed=["ar","en","fa","fr","de","es","tr","hi","ur","zh-Hans","ja","ko","it","pt","ru","nl","pl"];
