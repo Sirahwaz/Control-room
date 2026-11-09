@@ -124,3 +124,19 @@ Both surfaces consume the same versioned contract. Control Room owns mutations.
 9. Optional VPS deployment after resource, security and cost preflight.
 
 No Supabase schema migration, VPS deployment, external proxy purchase or production secret migration is part of this contract-only stage.
+
+
+## 10. Current implementation status (2026-11-09)
+
+The first worker-side adapter has now been added on the feature branch:
+
+- proxy_policy.py resolves exact-host rules by runtime scope and fails closed on missing, blocked, ambiguous or disabled routes.
+- HTTP, HTTPS and SOCKS5 profiles can be converted into Playwright BrowserContext proxy settings.
+- EnvironmentVaultSecretResolver maps opaque vault:// references to MIDAD_* aliases; the actual JSON username/password object is read from the host secret environment only at runtime.
+- ProxyRuntime is opt-in through MIDAD_NETWORK_ACCESS_CONFIG. When the variable is absent, the existing worker path is preserved. When present, automation sessions require a matching AUTOMATION route.
+- PersistentSessionPool resolves a route when creating an account session and injects the settings into that dedicated Playwright BrowserContext. The proxy is pinned for the lifetime of that session.
+- The adapter explicitly rejects WireGuard and managed tunnel modes until a real tunnel adapter exists.
+
+**Not yet implemented or activated:** central encrypted Vault storage, lease issuance/revocation API, route health monitoring and failover, multi-worker atomic queue claims, Control Room mutation API/UI, live proxy provider configuration, and Android WebView proxy control. No host has been configured with MIDAD_NETWORK_ACCESS_CONFIG, so no proxy is active by this code change alone.
+
+The EnvironmentVaultSecretResolver is an adapter to a host secret manager, not the final encrypted Vault. Keep actual values out of the config JSON, profile registry, Git, APK, logs and browser client.
