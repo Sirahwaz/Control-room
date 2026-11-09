@@ -59,7 +59,7 @@ test("rejects empty or malformed operating contract", () => {
 
 test("loads context from the configured source and validates it", async () => {
   const result = await loadRuntimeContext({
-    url: "https://example.invalid/runtime.json",
+    url: "https://raw.githubusercontent.com/example/repo/main/runtime.json",
     now: Date.parse("2026-11-09T12:00:00.000Z"),
     fetchImpl: async () => new Response(JSON.stringify(valid), { status: 200 })
   });
@@ -67,8 +67,17 @@ test("loads context from the configured source and validates it", async () => {
 });
 
 test("fails closed on HTTP errors and malformed JSON", async () => {
-  const http = await loadRuntimeContext({ url: "https://example.invalid/runtime.json", fetchImpl: async () => new Response("", { status: 503 }) });
+  const http = await loadRuntimeContext({ url: "https://raw.githubusercontent.com/example/repo/main/runtime.json", fetchImpl: async () => new Response("", { status: 503 }) });
   assert.equal(http.code, "CONTEXT_SOURCE_UNAVAILABLE");
-  const malformed = await loadRuntimeContext({ url: "https://example.invalid/runtime.json", fetchImpl: async () => new Response("{", { status: 200 }) });
+  const malformed = await loadRuntimeContext({ url: "https://raw.githubusercontent.com/example/repo/main/runtime.json", fetchImpl: async () => new Response("{", { status: 200 }) });
   assert.equal(malformed.code, "CONTEXT_SOURCE_INVALID");
+});
+
+test("rejects a runtime artifact whose pinned digest does not match", async () => {
+  const result = await loadRuntimeContext({
+    url: "https://raw.githubusercontent.com/example/repo/main/runtime.json",
+    expectedSha256: "0".repeat(64),
+    fetchImpl: async () => new Response(JSON.stringify(valid), { status: 200 })
+  });
+  assert.equal(result.code, "CONTEXT_INTEGRITY_MISMATCH");
 });
