@@ -547,7 +547,11 @@ export default {
         if (!result.ok) throw new Error('WAKE_DISPATCH_REJECTED');
         const wakeResult = await result.json();
         if (wakeResult.runner_dispatchable === true) {
-          await dispatchGitHubWorkflow(event, env);
+          const dispatch = await dispatchGitHubWorkflow(event, env);
+          if (dispatch.dispatched !== true) {
+            // Keep the Queue message retryable; acking here would strand the CPU_BATCH task.
+            throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+          }
         }
         message.ack();
         delivered += 1;
