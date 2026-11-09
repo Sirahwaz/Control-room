@@ -2,6 +2,7 @@ name: MIDAD Factory X Registry Contract
 on:
   pull_request:
     paths:
+      - "mobile/factory/x/**"
       - "mobile/factory/x/agents.registry.json"
       - "mobile/factory/x/agent-bindings.registry.json"
       - "mobile/factory/x/tests/**"
