@@ -85,6 +85,7 @@ class NodeEnrollmentTests(unittest.TestCase):
                 "00000000-0000-4000-8000-000000000001",
                 "admin-key-" + "b" * 48, path, True, opener=opener,
             )
+        self.assertIsNone(opener.request)
         self.assertEqual(path.read_text(encoding="ascii"), "x" * 64)
 
     def test_only_secure_worker_origin_is_accepted(self):
