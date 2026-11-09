@@ -79,10 +79,10 @@ def _normalise_path(value: object) -> str:
 
 
 def _path_in_scope(path: str, scopes: object) -> bool:
-    if not isinstance(scopes, list):
+    # An empty allowlist must deny all paths; treating it as unrestricted is
+    # a fail-open default that defeats owner-configured path isolation.
+    if not isinstance(scopes, list) or not scopes:
         return False
-    if not scopes:
-        return True
     for raw in scopes:
         rule = _normalise_path(raw)
         if not rule:
