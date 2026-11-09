@@ -5,6 +5,7 @@ This directory preserves an auditable, version-controlled continuity record.
 ## Two memory horizons
 
 - [Long-term context](./MIDAD_LONG_TERM_CONTEXT.md): stable architecture, repository boundaries, invariants, security rules, and sources of truth. Update only when a durable decision or architecture boundary changes.
+- [Browser Mesh checkpoint — 2026-11-09](./MIDAD_BROWSER_MESH_CHECKPOINT_2026-11-09.md): current GitHub/Cloudflare/Playwright/Android source, CI, runtime blockers and exact next actions.
 - [Short-term checkpoint — 2026-11-08](./MIDAD_SHORT_TERM_CHECKPOINT_2026-11-08.md): the earlier same-day governance checkpoint; preserve as historical evidence.
 - [Supplemental checkpoint — PR #196 Trading/MIMIC](./MIDAD_SHORT_TERM_CHECKPOINT_2026-11-08-PR196-TRADING-MIMIC.md): post-merge CI, APK, Pages, release-signing and deployed MIMIC security/parity evidence, with remaining blockers.
 
