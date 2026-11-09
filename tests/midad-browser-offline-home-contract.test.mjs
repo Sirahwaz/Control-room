@@ -23,7 +23,7 @@ test("Android preparation installs the stable AndroidX WebKit asset-loader depen
 
   assert.match(prepare, /androidx\.webkit:webkit:1\.18\.0/);
   assert.ok(prepare.includes("if not re.search(r\"androidx\\.webkit:webkit:\", gradle_text)"));
-  assert.match(prepare, /dependency_block = re\\.search/);
+  assert.ok(prepare.includes("dependency_block = re.search"));
   assert.ok(prepare.includes("dependencies"));
 });
 
