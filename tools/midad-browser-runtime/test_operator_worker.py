@@ -86,6 +86,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "allowed_actions": [
                     "start_session", "inspect", "read", "navigate",
                     "wait_for_selector", "status", "stop_session", "click", "fill",
+                    "submit_form",
                 ],
             },
         })
