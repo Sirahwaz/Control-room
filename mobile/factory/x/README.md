@@ -94,3 +94,8 @@ Foundation implementation. SignalScan v0.2 remains the known-good baseline and i
 ## MIDAD Continuity Fabric
 
 The Continuity Fabric separates durable task state from short-lived execution processes. It adds a consent-aware planner for CPU/WebGPU shards and stateful browser sessions, with deterministic idempotency keys, checkpoint contracts, lease recovery and strict cost ceilings. See [CONTINUITY_FABRIC.md](./CONTINUITY_FABRIC.md) and `continuity-planner.mjs`. The planner is intentionally plan-only: it does not dispatch jobs or claim a worker is live. Durable queue storage, wake-on-work dispatch and the deployed worker-v2 remain separate gates.
+
+
+## MIDAD Continuity Fabric — P0/P1
+
+The new `CONTINUITY_FABRIC.md` describes the zero-daemon execution model. P0 planner and P1 Cloudflare SQLite Durable Object ledger sources are in review. The durable ledger is not deployed, and no Queue wake-up or worker-v2 dispatcher is connected. Existing mobile products, browser APK and Supabase gateway remain unchanged until verified cutover.
