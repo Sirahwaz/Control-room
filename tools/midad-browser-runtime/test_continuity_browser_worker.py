@@ -106,13 +106,22 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_claim_is_owner_bound_and_requires_lease_token(self):
         claim = {"ok": True, "task": {
-            "task_id": "task-1", "owner_id": self.owner,
+            "task_id": "task-1", "owner_id": self.owner, "workload": "BROWSER_SESSION",
             "payload": {"operator_hint": "inspect example"},
             "attempt": 1, "lease_token": "a" * 64,
         }}
         self.assertEqual(validate_claimed_task(claim, self.owner)["task_id"], "task-1")
         claim["task"]["owner_id"] = "another-owner"
         with self.assertRaisesRegex(ContinuityWorkerError, "TASK_OWNER_MISMATCH"):
+            validate_claimed_task(claim, self.owner)
+
+    def test_non_browser_workload_is_rejected_before_execution(self):
+        claim = {"ok": True, "task": {
+            "task_id": "task-1", "owner_id": self.owner, "workload": "PYTHON_JOB",
+            "payload": {"operator_hint": "inspect example"},
+            "attempt": 1, "lease_token": "a" * 64,
+        }}
+        with self.assertRaisesRegex(ContinuityWorkerError, "TASK_WORKLOAD_NOT_ALLOWED"):
             validate_claimed_task(claim, self.owner)
 
     def test_browser_v2_only_accepts_read_only_operator_actions(self):
