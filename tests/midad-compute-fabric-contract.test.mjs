@@ -183,7 +183,7 @@ test('MNCF online availability does not depend on a persistent Linux server', ()
   assert.equal(operatingModel.control_plane.provider, 'cloudflare');
   assert.equal(operatingModel.control_plane.source_status, 'merged_to_main');
   assert.equal(operatingModel.control_plane.runtime_status, 'not_deployed');
-  assert.equal(operatingModel.dispatch.current_authority, 'existing_midad_forge');
+  assert.equal(operatingModel.dispatch.current_authority, 'existing_midad_forge_for_forge_builds_and_cloudflare_continuity_queue_for_cpu_batch');
   assert.equal(operatingModel.dispatch.cloudflare_to_github_runner, 'source_implemented_ci_pending_live_activation');
   assert.equal(operatingModel.compute.primary_provider, 'github-actions-linux');
   assert.equal(operatingModel.compute.persistence, 'ephemeral');
