@@ -74,7 +74,7 @@ jobs:
           fi
           if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ||
                 -z "$MIDAD_LEDGER_ADMIN_KEY" || -z "$MIDAD_WAKE_INTERNAL_KEY" ]]; then
-            echo "::error::One or more required repository secrets are missing."
+            echo "::error::One or more required cloudflare-production environment secrets are missing."
             exit 1
           fi
           if [[ "${#MIDAD_LEDGER_ADMIN_KEY}" -lt 32 || "${#MIDAD_WAKE_INTERNAL_KEY}" -lt 32 ]]; then
