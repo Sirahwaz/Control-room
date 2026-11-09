@@ -132,6 +132,12 @@ class OperatorWorker:
                 result = await session.execute(validated)
                 result.update({"action": validated["action"], "account_id": account_id,
                                "platform_key": validated["platform_key"]})
+            if session is not None and bool(getattr(session, "authenticated", False)):
+                persist = getattr(session, "persist_storage_state", None)
+                if callable(persist):
+                    await persist()
+            if session is not None:
+                result.setdefault("session_storage", getattr(session, "session_storage", "memory_only"))
             await self._complete_result(job, result, "COMPLETED")
             return {"job_id": job_id, **result}
         except BrowserSessionError as exc:
