@@ -37,6 +37,7 @@ test("Codespaces is ready only with fresh lifecycle and quota evidence", () => {
   const good = evidence({
     lifecycle_control: true,
     quota_remaining_minutes: 60,
+    machine_resources: { verified: true, memory_mb: 2048, cpu_cores: 4 },
   });
   assert.equal(assessProviderRuntime(provider, good, { duration_minutes: 20, max_cost_usd: 0 }, NOW).ready, true);
   const noQuota = evidence({ lifecycle_control: true });
