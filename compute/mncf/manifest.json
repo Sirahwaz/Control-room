@@ -31,7 +31,7 @@
     },
     "linux_compute": {
       "role": "production_compute",
-      "status": "ephemeral_runtime_implemented_serverless_activation_pending",
+      "status": "ephemeral_runtime_and_continuity_runner_source_implemented_live_enrollment_pending",
       "os_family": "Linux",
       "runtime": "node24-bounded-linux-worker",
       "persistent_server_required_for_online_service": false,
@@ -108,8 +108,36 @@
       },
       "capacity_boundary": {
         "persistent_host": "optional_specialist_node_not_provisioned",
-        "production_online_service": "serverless_control_plane_plus_ephemeral_workers_pending_live_dispatch_verification",
+        "production_online_service": "serverless_control_plane_plus_github_ephemeral_pull_runner_source_implemented_live_ledger_activation_pending",
         "do_not_infer_persistence_from_github_actions": true
+      },
+      "continuity_runner_adapter": {
+        "provider": "github-actions-linux",
+        "workflow": ".github/workflows/midad-continuity-github-ephemeral-node.yml",
+        "runtime": "compute/mncf/runtime/continuity-github-runner.mjs",
+        "tests": "tests/midad-continuity-github-runner.test.mjs",
+        "polling_interval_minutes": 5,
+        "max_tasks_per_run": 1,
+        "persistence": "ephemeral",
+        "node_identity": "owner-approved-enrollment-token-stored-as-github-actions-secret",
+        "cost_per_hour_usd": 0,
+        "cost_estimate_verified": "based_on_public_repository_standard_hosted_runner",
+        "capabilities": [
+          "generic-execution",
+          "midad.public-read-only-probe"
+        ],
+        "workload": "SINGLE",
+        "task_contract": "midad-public-probe-v1",
+        "permitted_operation": "GET_EXAMPLE_DOMAIN",
+        "allowed_network": "fixed_https_example_com_only",
+        "max_response_bytes": 65536,
+        "lease_ttl_seconds": 120,
+        "live_status": "source_implemented_not_enrolled",
+        "activation_requirements": [
+          "deploy_and_health_verify_cloudflare_continuity_ledger",
+          "owner_consented_node_enrollment",
+          "configure_github_variables_and_node_token_secret"
+        ]
       }
     },
     "hakios_lab": {
@@ -199,7 +227,8 @@
         "static-validation",
         "reproducible-build-checks",
         "hakios-prebuilt-qemu-boot-smoke",
-        "midad-forge-builds"
+        "midad-forge-builds",
+        "continuity-public-read-only-probe"
       ],
       "not_a_persistent_server": true
     },
@@ -305,14 +334,29 @@
       "current_authority": "existing_midad_forge",
       "current_transport": "existing_supabase_forge_oidc",
       "cloudflare_to_github_runner": "adapter_pending",
-      "cutover_policy": "preserve_existing_forge_until_cloudflare_runner_adapter_is_live_verified_and_approved"
+      "cutover_policy": "preserve_existing_forge_until_cloudflare_runner_adapter_is_live_verified_and_approved",
+      "github_to_cloudflare_pull_claim": {
+        "status": "source_implemented_live_ledger_activation_pending",
+        "workflow": ".github/workflows/midad-continuity-github-ephemeral-node.yml",
+        "cadence_minutes": 5,
+        "model": "scheduled_pull_claim",
+        "push_trigger_from_cloudflare": false
+      }
     },
     "compute": {
       "primary_provider": "github-actions-linux",
       "persistence": "ephemeral",
       "workflow": ".github/workflows/midad-forge.yml",
       "current_status": "bounded_runner_source_implemented_live_queue_path_not_reverified",
-      "persistent_linux_fallback": "optional_specialist_only"
+      "persistent_linux_fallback": "optional_specialist_only",
+      "github_continuity_node": {
+        "status": "source_implemented_not_enrolled",
+        "workflow": ".github/workflows/midad-continuity-github-ephemeral-node.yml",
+        "runtime": "compute/mncf/runtime/continuity-github-runner.mjs",
+        "one_task_per_run": true,
+        "task_scope": "fixed_public_https_probe_only",
+        "persistent_host_required": false
+      }
     },
     "browser": {
       "github_playwright": "ephemeral_ci",
