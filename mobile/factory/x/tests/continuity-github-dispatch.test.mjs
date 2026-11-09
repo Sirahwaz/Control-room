@@ -161,7 +161,7 @@ test('GitHub App installation must grant Actions write before workflow dispatch'
 test('non-204 workflow dispatch response is surfaced as a retryable failure', async () => {
   const keys = await keyFixture();
   const fetchMock = async url => String(url).includes('/access_tokens')
-    ? new Response(JSON.stringify({ token: 'ghs_test', permissions: { actions: 'write' } }), { status: 201 })
+    ? new Response(JSON.stringify({ token: 'ghs_test_installation_token_1234567890', permissions: { actions: 'write' } }), { status: 201 })
     : new Response(JSON.stringify({ message: 'rate limit' }), { status: 429 });
   await assert.rejects(() => dispatchGitHubWorkflow(EVENT, {
     MIDAD_GITHUB_APP_ID: APP_ID,
@@ -175,7 +175,7 @@ test('ephemeral runner workflow is manual-dispatch only, least privilege and doe
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
-  assert.match(workflow, /midad-ephemeral-runner\.mjs/);
+  assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
   assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
   assert.doesNotMatch(workflow, /echo .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN|printf .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
 });
