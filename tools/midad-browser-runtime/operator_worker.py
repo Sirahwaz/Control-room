@@ -14,18 +14,21 @@ from pathlib import Path
 from account_registry import AccountRegistry
 from operator_command_router import CommandRoutingError, build_operator_request, validate_operator_command
 from persistent_session import BrowserSessionError, PersistentSessionPool
+from proxy_policy import ProxyRuntime
 from runner import BrowserConfig, GatewayClient
 
 class OperatorWorker:
     def __init__(self, config, owner_user_id: str, registry: AccountRegistry, gateway=None,
-                 session_pool=None, poll_interval: float = 3.0):
+                 session_pool=None, poll_interval: float = 3.0, proxy_settings_resolver=None):
         self.config = config
         self.owner_user_id = str(owner_user_id).strip()
         if not self.owner_user_id:
             raise ValueError("MIDAD_OPERATOR_OWNER_USER_ID_REQUIRED")
         self.registry = registry
         self.gateway = gateway or GatewayClient(config)
-        self.session_pool = session_pool or PersistentSessionPool(set(config.allowed_hosts))
+        self.session_pool = session_pool or PersistentSessionPool(
+            set(config.allowed_hosts), proxy_settings_resolver=proxy_settings_resolver
+        )
         self.poll_interval = max(1.0, min(float(poll_interval), 30.0))
         self._processed_ids: set[str] = set()
         self._last_heartbeat: float | None = None
@@ -230,8 +233,12 @@ def main() -> int:
         "/var/lib/midad-browser/accounts.json",
     )
     registry = AccountRegistry(registry_path, set(config.allowed_hosts))
-    worker = OperatorWorker(config, owner, registry, gateway=gateway,
-                            poll_interval=float(os.environ.get("MIDAD_OPERATOR_POLL_SECONDS", "3")))
+    proxy_runtime = ProxyRuntime.from_env()
+    worker = OperatorWorker(
+        config, owner, registry, gateway=gateway,
+        poll_interval=float(os.environ.get("MIDAD_OPERATOR_POLL_SECONDS", "3")),
+        proxy_settings_resolver=proxy_runtime.resolve_for_profile if proxy_runtime else None,
+    )
     try:
         asyncio.run(worker.run_forever())
     except KeyboardInterrupt:
