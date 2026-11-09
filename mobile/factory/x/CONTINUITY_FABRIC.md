@@ -144,7 +144,7 @@ A new optional, disposable GitHub Actions node polls the Cloudflare Continuity L
 - Capabilities: `generic-execution` and `midad.public-read-only-probe`.
 - Task contract: `SINGLE` workload with exact payload `{schema: "midad-public-probe-v1", operation: "GET_EXAMPLE_DOMAIN"}`.
 - Permitted effect: one fixed HTTPS GET to `https://example.com/`, with redirects rejected and the response capped at 64 KiB. The runner returns status, byte count, content type and SHA-256 only; it never returns page content.
-- One task per ephemeral run, 120-second lease, idempotent retry semantics, 3-attempt maximum, no Shell command execution, no arbitrary task URL, no user credentials, no database writes and no financial capabilities.
+- One task per ephemeral run, 120-second lease, idempotent retry semantics, 3-attempt maximum, no Shell command execution, no arbitrary task URL, no user credentials, no Supabase/business-table writes, and no financial capabilities. The only persistent writes are the task, heartbeat, lease, checkpoint and evidence records in the Continuity Ledger.
 - The scheduled poll is a **pull/claim integration**. Cloudflare does not yet push-trigger GitHub Actions; the source for a push-triggered GitHub App bridge remains a separate future adapter.
 - If the ledger variables or node token are absent, the workflow exits as `MIDAD_CONTINUITY_NODE_NOT_ENROLLED` without claiming work.
 
