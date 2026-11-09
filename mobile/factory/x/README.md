@@ -28,6 +28,20 @@ Known ecosystem entries include GitHub, Supabase, Dropbox, Figma, Firecrawl, Con
 
 The registry records candidates as options; it does not imply an account connection or licensing.
 
+## Hybrid execution substrates
+
+Factory X treats execution environments as selectable substrates behind one task contract:
+
+- **GitHub Actions** is the stateless CI/build/test runner. It is suitable for repeatable jobs and artifacts, not a persistent agent worker.
+- **GitHub Codespaces** is an ephemeral development workspace. It is discovery-only until the connected account's quota, lifecycle controls and cost ceiling are checked; it must not host the always-on queue consumer.
+- **MIDAD VPS Control Node** is a candidate for a lightweight persistent supervisor, health monitor and queue relay. Resource probing is mandatory before assigning browser or coding-agent workloads.
+- **MIDAD Playwright Worker** is the owned interactive-browser candidate. Dispatch requires a heartbeat no older than 45 seconds, a version/capability handshake, authenticated queue access and sufficient resource headroom.
+- **Android MIDAD Browser** remains the local browsing and human-checkpoint surface. It is not a server-side credential broker.
+
+The capability registry separates `ephemeral-dev-workspace`, `stateless-ci-execution`, `persistent-worker-runtime`, `durable-task-dispatch` and `interactive-browser-execution`. The provider registry describes what an environment could do; the adapter registry controls whether it may execute. Codespaces, the VPS control node and the Playwright worker are deliberately registered as discovery/verification candidates. Their adapters remain `PENDING` with `execution: none` until live checks prove readiness.
+
+A database status label such as `online` is insufficient. Readiness must be based on fresh heartbeat, contract version, authenticated queue access, a capability handshake, resource checks and policy. Missing or stale evidence blocks dispatch. Metered browser providers are not automatic fallbacks for the owned interactive-browser capability.
+
 ## Safety boundary
 
 - Server secrets remain server-side.
