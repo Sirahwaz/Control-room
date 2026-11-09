@@ -69,7 +69,10 @@ export function executeTaskPayload(payload) {
     throw new Error('TASK_PAYLOAD_INVALID');
   }
   if (payload.operation === 'RUNNER_SMOKE') {
-    if (payload.input !== undefined && (payload.input === null || typeof payload.input !== 'object' || Array.isArray(payload.input))) {
+    if (payload.input !== undefined && (
+      payload.input === null || typeof payload.input !== 'object' ||
+      Array.isArray(payload.input) || Object.keys(payload.input).length !== 0
+    )) {
       throw new Error('RUNNER_SMOKE_INPUT_INVALID');
     }
     return {
@@ -81,8 +84,11 @@ export function executeTaskPayload(payload) {
     };
   }
   if (payload.operation === 'SUM_INTEGERS') {
-    const values = payload.input?.values;
-    if (!Array.isArray(values) || values.length < 1 || values.length > MAX_SUM_ITEMS ||
+    const input = payload.input;
+    const values = input?.values;
+    if (!input || typeof input !== 'object' || Array.isArray(input) ||
+        Object.keys(input).length !== 1 || !Array.isArray(values) ||
+        values.length < 1 || values.length > MAX_SUM_ITEMS ||
         values.some(value => !Number.isSafeInteger(value))) {
       throw new Error('SUM_INPUT_INVALID');
     }
@@ -91,8 +97,11 @@ export function executeTaskPayload(payload) {
     return { operation: 'SUM_INTEGERS', count: values.length, sum };
   }
   if (payload.operation === 'HASH_TEXT') {
-    const value = payload.input?.text;
-    if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > MAX_TEXT_BYTES) {
+    const input = payload.input;
+    const value = input?.text;
+    if (!input || typeof input !== 'object' || Array.isArray(input) ||
+        Object.keys(input).length !== 1 || typeof value !== 'string' ||
+        Buffer.byteLength(value, 'utf8') > MAX_TEXT_BYTES) {
       throw new Error('HASH_INPUT_INVALID');
     }
     return {
