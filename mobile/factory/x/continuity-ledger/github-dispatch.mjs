@@ -137,7 +137,12 @@ export async function dispatchGitHubWorkflow(eventValue, env = {}, fetchImpl = f
         'x-github-api-version': '2022-11-28',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ permissions: { actions: 'write' } }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({
+        repositories: ['Control-room'],
+        permissions: { actions: 'write' },
+      }),
     },
   );
   if (!tokenResponse.ok) throw new Error('GITHUB_APP_TOKEN_MINT_FAILED_' + tokenResponse.status);
@@ -151,6 +156,8 @@ export async function dispatchGitHubWorkflow(eventValue, env = {}, fetchImpl = f
     `${API}/repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/dispatches`,
     {
       method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         accept: 'application/vnd.github+json',
         authorization: 'Bearer ' + tokenBody.token,
