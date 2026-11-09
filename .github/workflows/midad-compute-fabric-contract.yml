@@ -10,6 +10,11 @@ on:
       - 'tests/midad-linux-worker.test.mjs'
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
+      - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
   pull_request:
     paths:
       - 'compute/mncf/**'
@@ -40,5 +45,17 @@ jobs:
         run: node --test tests/midad-linux-worker.test.mjs
       - name: Validate MIDAD Linux Worker runtime syntax
         run: node --check compute/mncf/runtime/worker.mjs
+      - name: Continuity Fabric and ephemeral dispatch contract tests
+        run: |
+          node --test \
+            mobile/factory/x/tests/continuity-ledger.test.mjs \
+            mobile/factory/x/tests/continuity-planner.test.mjs \
+            mobile/factory/x/tests/continuity-wake.test.mjs \
+            mobile/factory/x/tests/continuity-github-dispatch.test.mjs
+      - name: Validate Continuity runtime syntax
+        run: |
+          node --check mobile/factory/x/continuity-ledger/worker.mjs
+          node --check mobile/factory/x/continuity-ledger/github-dispatch.mjs
+          node --check mobile/factory/x/ephemeral-runner.mjs
       - name: Diff whitespace validation
         run: git diff --check
