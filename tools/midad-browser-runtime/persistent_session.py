@@ -369,6 +369,8 @@ class PlatformBrowserSession:
             except Exception:
                 pass
         self.page = self.context = self.browser = self.playwright = None
+        # Drop the transient proxy credential dictionary when a session ends.
+        self.proxy_settings = None
         if not keep_status:
             self.last_status = "STOPPED"
 
