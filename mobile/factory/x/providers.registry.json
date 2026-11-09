@@ -24,7 +24,10 @@
         "bitbucket"
       ],
       "account_action": "none_by_default",
-      "runtime_class": "stateless_ci"
+      "runtime_class": "stateless_ci",
+      "runtime_capabilities": [
+        "stateless-ci-execution"
+      ]
     },
     {
       "id": "supabase",
@@ -586,7 +589,10 @@
       "requires_quota_check": true,
       "always_on_worker": false,
       "fallbacks": [],
-      "account_action": "check_account_quota_and_approve_start"
+      "account_action": "check_account_quota_and_approve_start",
+      "runtime_capabilities": [
+        "ephemeral-dev-workspace"
+      ]
     },
     {
       "id": "midad-vps-control-node",
@@ -615,7 +621,11 @@
         "resource_probe": true
       },
       "fallbacks": [],
-      "account_action": "verify_existing_host_and_capacity"
+      "account_action": "verify_existing_host_and_capacity",
+      "runtime_capabilities": [
+        "persistent-worker-runtime",
+        "durable-task-dispatch"
+      ]
     },
     {
       "id": "midad-playwright-worker",
@@ -644,7 +654,11 @@
         "queue_authentication": true
       },
       "fallbacks": [],
-      "account_action": "verify_fresh_heartbeat_before_dispatch"
+      "account_action": "verify_fresh_heartbeat_before_dispatch",
+      "runtime_capabilities": [
+        "interactive-browser-execution",
+        "persistent-worker-runtime"
+      ]
     }
   ],
   "updated": "2026-10-17"
