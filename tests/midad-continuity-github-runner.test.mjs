@@ -301,6 +301,21 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
         capabilities: [...RUNNER_CAPABILITIES],
       }),
     });
+    const headerNodeId = directRequest.headers.get('x-midad-node-id') || '';
+    const suppliedToken = (directRequest.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');
+    assert.match(headerNodeId, /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
+    assert.equal(suppliedToken, enrollment.enrollment_token);
+    const selectedNode = ledger.one(
+      'SELECT * FROM enrolled_nodes WHERE node_id=? AND revoked_at_ms IS NULL AND consent_confirmed=1',
+      headerNodeId
+    );
+    assert.ok(selectedNode, 'NODE_ROW_NOT_FOUND');
+    const tokenDigestBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(suppliedToken));
+    const tokenDigest = [...new Uint8Array(tokenDigestBytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    assert.equal(tokenDigest, selectedNode.token_hash, 'NODE_TOKEN_DIGEST_MISMATCH');
+    let mismatch = 0;
+    for (let i = 0; i < tokenDigest.length; i += 1) mismatch |= tokenDigest.charCodeAt(i) ^ selectedNode.token_hash.charCodeAt(i);
+    assert.equal(mismatch, 0, 'CONSTANT_TIME_COMPARISON_FAILED');
     const directlyAuthenticatedNode = await ledger.nodeAuth(directRequest);
     assert.ok(directlyAuthenticatedNode, 'NODE_AUTH_REJECTED_BEFORE_ROUTE');
     const directHeartbeat = await ledger.fetch(directRequest);
