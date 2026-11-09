@@ -1,0 +1,31 @@
+name: MIDAD Network Access Contract
+
+on:
+  push:
+    branches: ["main", "feat/midad-network-access-foundation-20261109"]
+    paths:
+      - "contracts/midad-network-access.schema.json"
+      - "tests/midad-network-access-contract.test.mjs"
+      - ".github/workflows/midad-network-access-contract.yml"
+  pull_request:
+    paths:
+      - "contracts/midad-network-access.schema.json"
+      - "tests/midad-network-access-contract.test.mjs"
+      - ".github/workflows/midad-network-access-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate JSON Schema syntax
+        run: node -e "JSON.parse(require('node:fs').readFileSync('contracts/midad-network-access.schema.json','utf8'))"
+      - name: Run network access contract tests
+        run: node --test tests/midad-network-access-contract.test.mjs
