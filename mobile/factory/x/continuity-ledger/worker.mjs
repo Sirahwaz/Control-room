@@ -214,6 +214,9 @@ export class MidadContinuityLedger {
           heartbeat_at_ms=NULL,revoked_at_ms=NULL,updated_at_ms=excluded.updated_at_ms`,
         body.node_id, body.owner_id, digest, JSON.stringify([...new Set(body.capabilities)]), now, now);
     });
+    for (const socket of this.ctx.getWebSockets?.(`node:${body.node_id}`) || []) {
+      try { socket.close(1008, 'node re-enrolled'); } catch {}
+    }
     return response(201, { ok: true, node_id: body.node_id, enrollment_token: token, token_delivery: 'one_time_response_never_persisted_in_plaintext' });
   }
   async revoke(body) {
