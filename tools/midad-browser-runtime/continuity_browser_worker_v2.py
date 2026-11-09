@@ -529,9 +529,18 @@ class ContinuityBrowserWorker:
         self._stopping.set()
 
 
+def register_sigterm_handler(loop, worker) -> None:
+    """Route systemd SIGTERM through the worker's graceful async shutdown path."""
+    try:
+        loop.add_signal_handler(signal.SIGTERM, worker.stop)
+    except (NotImplementedError, RuntimeError, ValueError) as exc:
+        raise ContinuityWorkerError("GRACEFUL_SHUTDOWN_HANDLER_UNAVAILABLE") from exc
+
+
 async def run_from_env():
     config = ContinuityWorkerConfig.from_env()
     worker = ContinuityBrowserWorker(config)
+    register_sigterm_handler(asyncio.get_running_loop(), worker)
     await worker.run_forever()
 
 
