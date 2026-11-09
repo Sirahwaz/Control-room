@@ -275,20 +275,35 @@ test('end-to-end: GitHub ephemeral runner enrolls against the real Continuity Le
       createHash('sha256').update(enrollment.enrollment_token).digest('hex')
     );
 
-    const directHeartbeat = await ledger.fetch(new Request('https://ledger.test/v1/nodes/heartbeat', {
+    const storedIdentity = storage.db.prepare(
+      'SELECT node_id,token_hash,owner_id,consent_confirmed,revoked_at_ms FROM enrolled_nodes WHERE node_id=?'
+    ).get('midad-github-hosted-runner');
+    assert.equal(storedIdentity.node_id, 'midad-github-hosted-runner');
+    assert.equal(storedIdentity.owner_id, 'owner-123');
+    assert.equal(storedIdentity.consent_confirmed, 1);
+    assert.equal(storedIdentity.revoked_at_ms, null);
+    assert.equal(storedIdentity.token_hash.length, 64);
+
+    const directHeaders = new Headers({
+      authorization: 'Bearer ' + enrollment.enrollment_token,
+      'x-midad-node-id': 'midad-github-hosted-runner',
+      'content-type': 'application/json',
+    });
+    assert.equal(directHeaders.get('x-midad-node-id'), 'midad-github-hosted-runner');
+    assert.equal(directHeaders.get('authorization'), 'Bearer ' + enrollment.enrollment_token);
+    const directRequest = new Request('https://ledger.test/v1/nodes/heartbeat', {
       method: 'POST',
-      headers: {
-        authorization: 'Bearer ' + enrollment.enrollment_token,
-        'x-midad-node-id': 'midad-github-hosted-runner',
-        'content-type': 'application/json',
-      },
+      headers: directHeaders,
       body: JSON.stringify({
         cpu_cores: 1, memory_mb: 512, available_slots: 1,
         cost_per_hour_usd: 0, cost_estimate_verified: true,
         encrypted_session_store: false, agent_version: 'midad-gha-continuity-v1',
         capabilities: [...RUNNER_CAPABILITIES],
       }),
-    }));
+    });
+    const directlyAuthenticatedNode = await ledger.nodeAuth(directRequest);
+    assert.ok(directlyAuthenticatedNode, 'NODE_AUTH_REJECTED_BEFORE_ROUTE');
+    const directHeartbeat = await ledger.fetch(directRequest);
     const directHeartbeatBody = await directHeartbeat.json();
     assert.equal(directHeartbeat.headers.get('content-type')?.includes('application/json'), true);
     assert.equal(directHeartbeat.status, 200, directHeartbeatBody.error || 'HEARTBEAT_REJECTED');
