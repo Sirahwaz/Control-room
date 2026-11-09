@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from continuity_browser_worker_v2 import ContinuityBrowserWorkerConfig, ContinuityWorkerConfig, ContinuityWorkerError
+from continuity_browser_worker_v2 import ContinuityWorkerConfig, ContinuityWorkerError
 from enroll_continuity_node import EnrollmentError, enroll_node, validate_base_url
 
 
