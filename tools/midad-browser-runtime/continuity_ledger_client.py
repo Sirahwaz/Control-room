@@ -70,6 +70,9 @@ class ContinuityLedgerClient:
             "/v1/tasks/checkpoint",
             "/v1/tasks/complete",
             "/v1/tasks/fail",
+            "/v1/vault/leases/issue",
+            "/v1/vault/leases/renew",
+            "/v1/vault/leases/release",
         }
         if path not in allowed:
             raise ContinuityLedgerError("LEDGER_ROUTE_NOT_ALLOWED")
