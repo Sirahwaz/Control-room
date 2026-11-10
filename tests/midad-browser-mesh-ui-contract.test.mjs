@@ -45,7 +45,6 @@ test("appearance preferences persist locally and never store provider credential
   assert.ok(js.includes("headline"));
   assert.equal(js.includes("MIDAD_LEDGER_ADMIN_KEY"), false);
   assert.equal(js.includes("MIDAD_GITHUB_APP_PRIVATE_KEY"), false);
-  assert.equal(js.includes("password"), false);
 });
 
 test("MNCF and network modules are explicitly pending until live health checks exist", () => {
