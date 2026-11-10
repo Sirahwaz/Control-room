@@ -224,7 +224,10 @@ class BrowserWorkerV2ProxyWiringTests(unittest.TestCase):
                 )
 
         self.assertIs(worker.session_pool, fake_pool)
-        self.assertIs(captured.get("proxy_settings_resolver"), proxy_runtime.resolve_for_profile)
+        resolver = captured.get("proxy_settings_resolver")
+        self.assertIsNotNone(resolver)
+        self.assertIs(resolver.__self__, proxy_runtime)
+        self.assertIs(resolver.__func__, FakeRuntime.resolve_for_profile)
 
 
 if __name__ == "__main__":
