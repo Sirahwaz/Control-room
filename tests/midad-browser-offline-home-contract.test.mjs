@@ -43,18 +43,25 @@ test("Android runtime smoke proves the packaged home loads with Wi-Fi and mobile
   assert.ok(smoke.includes("MIDAD_BROWSER_ONLINE_PAGE_PASSED"));
 });
 
-test("the Browser APK workflow packages the local home page and its local CSS and JS", () => {
+test("the Browser APK workflow packages the manifest-selected Mesh page and declared local assets", () => {
   const workflow = read(".github/workflows/midad-browser-android.yml");
   const manifest = JSON.parse(read("mobile/factory/products/midad-browser.json"));
-  const html = read("midad-browser.html");
+  const html = read("mobile/web/midad-browser-mesh.html");
+  const css = read("mobile/web/midad-browser-mesh.css");
+  const js = read("mobile/web/midad-browser-mesh.js");
 
-  assert.equal(manifest.web_entry, "midad-browser.html");
-  assert.deepEqual(manifest.web_assets, ["midad-browser.css", "midad-browser.js"]);
-  assert.match(workflow, /cp midad-browser\.html mobile\/www\/index\.html/);
-  assert.match(workflow, /cp midad-browser\.css mobile\/www\//);
-  assert.match(workflow, /cp midad-browser\.js mobile\/www\//);
-  assert.match(html, /href="\.\/midad-browser\.css/);
-  assert.match(html, /src="\.\/midad-browser\.js/);
+  assert.equal(manifest.web_entry, "mobile/web/midad-browser-mesh.html");
+  assert.deepEqual(manifest.web_assets, [
+    "mobile/web/midad-browser-mesh.css",
+    "mobile/web/midad-browser-mesh.js",
+  ]);
+  assert.ok(workflow.includes('WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"'));
+  assert.ok(workflow.includes("cp \"$WEB_ENTRY\" mobile/www/index.html"));
+  assert.ok(workflow.includes("jq -r '.web_assets[]' mobile/factory/runtime-product.json"));
+  assert.ok(workflow.includes('cp "$asset" mobile/www/'));
+  assert.match(html, /href="\.\/midad-browser-mesh\.css/);
+  assert.match(html, /src="\.\/midad-browser-mesh\.js/);
+  assert.ok(css.length > 5000 && js.length > 5000);
 });
 
 test("the Browser APK artifact is uploaded even when emulator verification fails after signing", () => {
