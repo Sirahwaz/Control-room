@@ -12,6 +12,10 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
       - 'mobile/factory/x/continuity-ledger/**'
       - 'mobile/factory/x/tests/continuity-vault.test.mjs'
   pull_request:
@@ -23,6 +27,10 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
       - 'mobile/factory/x/continuity-ledger/**'
       - 'mobile/factory/x/tests/continuity-vault.test.mjs'
 
@@ -56,6 +64,12 @@ jobs:
         run: node --check compute/mncf/runtime/worker.mjs
       - name: Continuity Ledger and encrypted Vault broker tests
         run: node --test mobile/factory/x/tests/continuity-ledger.test.mjs mobile/factory/x/tests/continuity-vault.test.mjs
+      - name: GitHub Actions CPU_BATCH dispatch and runner tests
+        run: node --test mobile/factory/x/tests/continuity-github-dispatch.test.mjs
+      - name: Security text scanner tests
+        run: node --test mobile/factory/x/tests/security-text-scan.test.mjs
+      - name: Validate CPU_BATCH runner and GitHub App dispatch syntax
+        run: node --check mobile/factory/x/ephemeral-runner.mjs && node --check mobile/factory/x/continuity-ledger/github-dispatch.mjs && node --check mobile/factory/x/security-text-scan.mjs
       - name: Continuity Ledger syntax
         run: node --check mobile/factory/x/continuity-ledger/worker.mjs
       - name: Diff whitespace validation
