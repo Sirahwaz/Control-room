@@ -267,7 +267,7 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
   assert.ok(requests.every(x => x.init.redirect === 'error'));
   assert.ok(requests.every(x => x.init.signal instanceof AbortSignal));
   assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + 'a'.repeat(64)));
-  assert.equal(JSON.stringify(result).includes('n'.repeat(64)), false);
+  assert.equal(JSON.stringify(result).includes('a'.repeat(64)), false);
 });
 
 test('ephemeral runner rejects owner mismatch before accessing the ledger', async () => {
@@ -277,7 +277,7 @@ test('ephemeral runner rejects owner mismatch before accessing the ledger', asyn
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
       MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
       MIDAD_INPUT_OWNER_ID: 'owner-00000002',
-      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64),
+      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
       MIDAD_TASK_ID: 'task-00000001',
       MIDAD_EVENT_ID: 'evt-00000001',
     },
