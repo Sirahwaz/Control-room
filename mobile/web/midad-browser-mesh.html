@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark" data-accent="cyan">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07131f">
+  <meta name="description" content="MIDAD Browser Mesh — offline-first browser and distributed runtime control surface">
+  <title>MIDAD Browser Mesh</title>
+  <link rel="stylesheet" href="./midad-browser-mesh.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#overview" aria-label="MIDAD Browser Mesh">
+        <span class="brand-mark"><span>M</span><i></i></span>
+        <span class="brand-copy"><b>MIDAD</b><small>BROWSER MESH</small></span>
+      </a>
+      <div class="header-status">
+        <span class="status-chip local"><i></i><span data-i18n="localReady">المحرك المحلي جاهز</span></span>
+        <span class="status-chip pending"><i></i><span data-i18n="cloudPending">الخدمات السحابية بانتظار التفعيل</span></span>
+        <button class="icon-btn" id="themeQuick" type="button" aria-label="تبديل المظهر" title="Theme">◐</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="overview">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-line"></span>MNCF · DISTRIBUTED RUNTIME · OFFLINE FIRST</div>
+          <h1 id="headline">متصفح مداد <em>Mesh</em></h1>
+          <p id="subtitle">متصفح محلي متصل بمعمارية تشغيل موزعة — دون اشتراط خادم VPS دائم.</p>
+          <div class="hero-actions">
+            <span class="hero-tag"><b>01</b> Android WebView</span>
+            <span class="hero-tag"><b>02</b> MNCF Fabric</span>
+            <span class="hero-tag"><b>03</b> Secure Control Plane</span>
+          </div>
+        </div>
+        <div class="hero-orbit" aria-hidden="true">
+          <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div>
+          <div class="orbit-core"><span>M</span><small>MESH</small></div>
+          <i class="node node-a"></i><i class="node node-b"></i><i class="node node-c"></i><i class="node node-d"></i>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="Browser Mesh sections" role="tablist">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="mesh"><span>⌘</span><b data-i18n="navMesh">الشبكة والتشغيل</b></button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="network"><span>⇄</span><b data-i18n="navNetwork">Proxy & Network</b></button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="vault"><span>◇</span><b data-i18n="navVault">الخزنة الآمنة</b></button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="appearance"><span>◐</span><b data-i18n="navAppearance">المظهر والتخصيص</b></button>
+      </nav>
+
+      <section class="tab-panel active" id="panel-mesh" role="tabpanel" data-panel="mesh">
+        <div class="section-heading">
+          <div><span class="section-kicker">RUNTIME TOPOLOGY</span><h2 data-i18n="runtimeTitle">خريطة التشغيل الموزّع</h2><p data-i18n="runtimeDescription">كل منصة تؤدي دوراً محدداً؛ ولا نفترض جاهزية أي عقدة قبل وصول دليل تشغيل حي.</p></div>
+          <span class="section-stamp">MNCF / v1</span>
+        </div>
+        <div class="runtime-grid" id="runtimeGrid">
+          <article class="runtime-card verified">
+            <div class="card-top"><span class="runtime-icon android">A</span><span class="state-label verified">VERIFIED · LOCAL</span></div>
+            <h3>Android · Local Browser</h3>
+            <p data-i18n="androidDescription">محرك WebView مدمج، صفحة رئيسية محفوظة داخل APK، وتصفح مباشر من شريط العنوان الأصلي.</p>
+            <div class="card-foot"><span>OFFLINE HOME</span><b>READY</b></div>
+          </article>
+          <article class="runtime-card pending" data-runtime-state="pending">
+            <div class="card-top"><span class="runtime-icon cloud">C</span><span class="state-label pending">PENDING · DEPLOY</span></div>
+            <h3>Cloudflare · Continuity Ledger</h3>
+            <p data-i18n="cloudDescription">Durable Objects + Queues لإدارة المهام والـ leases والـ checkpoints والإشارات.</p>
+            <div class="card-foot"><span>CONTROL PLANE</span><b>NOT LIVE</b></div>
+          </article>
+          <article class="runtime-card pending" data-runtime-state="pending">
+            <div class="card-top"><span class="runtime-icon github">G</span><span class="state-label pending">PENDING · ENROLL</span></div>
+            <h3>GitHub · Ephemeral CPU</h3>
+            <p data-i18n="githubDescription">عمال Linux مؤقتون لمهام CPU_BATCH المحددة؛ لا تُشغّل جلسات المتصفح المستمرة هنا.</p>
+            <div class="card-foot"><span>CPU BATCH</span><b>NOT ENROLLED</b></div>
+          </article>
+          <article class="runtime-card pending" data-runtime-state="pending">
+            <div class="card-top"><span class="runtime-icon browser">◎</span><span class="state-label pending">PENDING · QUOTA</span></div>
+            <h3>Cloudflare · Browser Run</h3>
+            <p data-i18n="browserRunDescription">جلسات متصفح سحابية قصيرة العمر كمسار Browser-capable منفصل عن عمال CPU.</p>
+            <div class="card-foot"><span>REMOTE BROWSER</span><b>NOT LIVE</b></div>
+          </article>
+        </div>
+
+        <div class="mesh-layout">
+          <article class="panel topology-panel">
+            <div class="panel-heading"><div><span class="section-kicker">MIDAD NETWORK COMPUTE FABRIC</span><h3 data-i18n="topologyTitle">تدفق العمل بين المنصات</h3></div><span class="mini-state">SOURCE + CI</span></div>
+            <div class="topology">
+              <div class="topology-step"><span class="step-mark local-mark">01</span><div><b>Local Device</b><small data-i18n="topologyLocal">تصفح بشري · Offline Home · واجهة التحكم</small></div><span class="step-state ok">LOCAL</span></div>
+              <div class="topology-connector"><i></i><small>HTTPS / OWNER AUTH</small></div>
+              <div class="topology-step"><span class="step-mark cloud-mark">02</span><div><b>Cloudflare Control Plane</b><small>Task Queue · Atomic Lease · Checkpoint · Evidence</small></div><span class="step-state wait">PENDING</span></div>
+              <div class="topology-connector"><i></i><small>CPU_BATCH ONLY</small></div>
+              <div class="topology-step"><span class="step-mark github-mark">03</span><div><b>GitHub Ephemeral Runner</b><small>Bounded CPU jobs · No arbitrary shell · No persistent browser</small></div><span class="step-state wait">PENDING</span></div>
+              <div class="topology-connector"><i></i><small>BROWSER-CAPABLE ROUTE</small></div>
+              <div class="topology-step"><span class="step-mark browser-mark">04</span><div><b>Browser Run / Optional Specialist Node</b><small>Short-lived remote browser or owner-controlled participant</small></div><span class="step-state wait">PENDING</span></div>
+            </div>
+            <div class="architecture-note"><b data-i18n="noVpsTitle">لا يتطلب VPS دائم</b><span data-i18n="noVpsDescription">يمكن تشغيل المعمارية عبر Control Plane serverless وعمال مؤقتين وجهاز Android المحلي. يبقى VPS أو Linux node خياراً تخصصياً فقط، وليس شرطاً أساسياً.</span></div>
+          </article>
+          <article class="panel live-status-panel">
+            <div class="panel-heading"><div><span class="section-kicker">DEVICE & CONNECTIVITY</span><h3 data-i18n="deviceStateTitle">حالة الجهاز</h3></div><span class="live-dot"></span></div>
+            <div class="status-row"><span data-i18n="appBundle">حزمة التطبيق المحلية</span><b class="value-ok">READY</b></div>
+            <div class="status-row"><span data-i18n="internetState">اتصال الإنترنت</span><b id="internetStatus">CHECKING</b></div>
+            <div class="status-row"><span data-i18n="cloudHealth">فحص Cloudflare Health</span><b class="value-pending">NOT CONFIGURED</b></div>
+            <div class="status-row"><span data-i18n="browserWorker">Browser Worker Heartbeat</span><b class="value-pending">NOT VERIFIED</b></div>
+            <p class="honesty-note" data-i18n="honestyNote">لا يوجد اتصال حي بخدمات MNCF بعد. هذه الواجهة تعرض الكود المتوفر وحالة التفعيل بصدق، ولا تنشئ حالة اتصال وهمية.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-network" role="tabpanel" data-panel="network" hidden>
+        <div class="section-heading">
+          <div><span class="section-kicker">NETWORK ACCESS CONTROL</span><h2 data-i18n="networkTitle">التحكم بالاتصال وProxy</h2><p data-i18n="networkDescription">سياسات واضحة لكل نطاق تشغيل، مع منع التحويل الصامت إلى Direct عند فشل المسار.</p></div>
+          <span class="section-stamp pending-stamp">API PENDING</span>
+        </div>
+        <div class="network-grid">
+          <article class="panel network-main" id="networkPanel" data-service-state="pending">
+            <div class="panel-heading"><div><span class="section-kicker">PROXY ROUTER</span><h3>Proxy Profiles & Routing</h3></div><span class="state-label pending">NOT CONNECTED</span></div>
+            <div class="proxy-visual"><span class="proxy-ring">⇄</span><div><b data-i18n="proxyStatus">لا توجد مسارات Proxy فعّالة</b><small data-i18n="proxyStatusDescription">مصادر السياسة موجودة في المستودع؛ لم يتم ربط API حي أو تفعيل مزوّد.</small></div></div>
+            <div class="protocol-grid"><span>HTTP / HTTPS</span><span>SOCKS5</span><span>WireGuard Adapter</span><span>Managed Gateway</span></div>
+            <div class="policy-list"><div><span>Default route</span><b>BLOCK BY POLICY</b></div><div><span>Route failure</span><b>FAIL CLOSED</b></div><div><span>Silent direct fallback</span><b>DISABLED</b></div></div>
+            <p class="muted-note" data-i18n="proxyNoSecrets">بيانات اعتماد Proxy لا تدخل APK ولا Local Storage. تُحلّ عبر Vault lease من جهة الخادم فقط.</p>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><span class="section-kicker">SCOPE SEPARATION</span><h3 data-i18n="scopeTitle">نطاقات التوجيه</h3></div></div>
+            <div class="scope-item"><span class="scope-symbol">◎</span><div><b>Browser</b><small>Native WebView / Remote Browser</small></div><span class="pending-text">PENDING</span></div>
+            <div class="scope-item"><span class="scope-symbol">⌘</span><div><b>Automation</b><small>Playwright workers / Browser tasks</small></div><span class="pending-text">PENDING</span></div>
+            <div class="scope-item"><span class="scope-symbol">◇</span><div><b>Infrastructure</b><small>MNCF / internal services</small></div><span class="pending-text">PENDING</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-vault" role="tabpanel" data-panel="vault" hidden>
+        <div class="section-heading">
+          <div><span class="section-kicker">CENTRAL SECRET BROKER</span><h2 data-i18n="vaultTitle">الخزنة المركزية الآمنة</h2><p data-i18n="vaultDescription">تخزين مشفر ومراجع أسرار قصيرة العمر، دون إظهار قيمة أي مفتاح في واجهة المستخدم.</p></div>
+          <span class="section-stamp pending-stamp">BACKEND PENDING</span>
+        </div>
+        <article class="panel vault-panel" id="vaultPanel" data-service-state="pending">
+          <div class="vault-emblem">◇</div>
+          <div class="vault-copy"><span class="section-kicker">OWNER-SCOPED · ENCRYPTED · AUDITABLE</span><h3 data-i18n="vaultBrokerTitle">Vault Broker</h3><p data-i18n="vaultBrokerDescription">الكود المركزي يدعم التشفير، ربط المالك والنطاق والغرض، leases محددة المدة، الإبطال والتدقيق. يحتاج نشر Worker ومفاتيح بيئة آمنة قبل التشغيل الحقيقي.</p></div>
+          <span class="state-label pending">NOT LIVE</span>
+          <div class="vault-capabilities"><span>AEAD ENCRYPTION</span><span>SCOPED LEASES</span><span>ROTATION / REVOKE</span><span>AUDIT EVENTS</span></div>
+          <div class="security-banner"><b data-i18n="securityBoundary">حد أمان أساسي</b><span data-i18n="securityBoundaryDescription">لا تُدخل كلمات مرور أو API keys هنا. الـ APK لا يحمل Cloudflare Admin Key أو GitHub App Private Key أو أسرار Proxy.</span></div>
+        </article>
+      </section>
+
+      <section class="tab-panel" id="panel-appearance" role="tabpanel" data-panel="appearance" hidden>
+        <div class="section-heading">
+          <div><span class="section-kicker">PERSONAL WORKSPACE</span><h2 data-i18n="appearanceTitle">المظهر وتخصيص الواجهة</h2><p data-i18n="appearanceDescription">عدّل الإضاءة والألوان وحجم الخط واللغة والنصوص؛ تُحفظ التفضيلات على الجهاز دون حساب سحابي.</p></div>
+          <span class="section-stamp">LOCAL SETTINGS</span>
+        </div>
+        <div class="appearance-grid" id="appearancePanel">
+          <article class="panel settings-card">
+            <div class="setting-group"><label for="themeSelect" data-i18n="themeLabel">نمط الإضاءة</label><select id="themeSelect"><option value="dark">Dark · داكن</option><option value="light">Light · فاتح</option><option value="system">System · تلقائي</option></select></div>
+            <div class="setting-group"><label data-i18n="accentLabel">لون الواجهة</label><div class="accent-options" id="accentOptions">
+              <button type="button" class="accent-choice selected" data-accent="cyan" aria-label="Cyan"><i></i></button>
+              <button type="button" class="accent-choice" data-accent="violet" aria-label="Violet"><i></i></button>
+              <button type="button" class="accent-choice" data-accent="emerald" aria-label="Emerald"><i></i></button>
+              <button type="button" class="accent-choice" data-accent="amber" aria-label="Amber"><i></i></button>
+              <button type="button" class="accent-choice" data-accent="rose" aria-label="Rose"><i></i></button>
+            </div></div>
+            <div class="setting-group"><label for="fontScale" data-i18n="fontLabel">حجم الخط</label><div class="range-line"><input id="fontScale" type="range" min="90" max="125" step="5" value="100"><output id="fontScaleValue">100%</output></div></div>
+            <div class="setting-group"><label for="languageSelect" data-i18n="languageLabel">لغة الواجهة</label><select id="languageSelect"><option value="ar">العربية</option><option value="en">English</option><option value="fa">فارسی</option></select></div>
+          </article>
+          <article class="panel settings-card">
+            <div class="panel-heading"><div><span class="section-kicker">TEXT EDITOR</span><h3 data-i18n="textEditorTitle">تعديل نصوص الصفحة الرئيسية</h3></div><span class="edit-mark">Aa</span></div>
+            <div class="setting-group"><label for="headlineInput" data-i18n="headlineLabel">العنوان الرئيسي</label><input id="headlineInput" maxlength="60" value="متصفح مداد Mesh"></div>
+            <div class="setting-group"><label for="subtitleInput" data-i18n="subtitleLabel">الوصف</label><textarea id="subtitleInput" rows="3" maxlength="180">متصفح محلي متصل بمعمارية تشغيل موزعة — دون اشتراط خادم VPS دائم.</textarea></div>
+            <div class="preview-line"><span data-i18n="previewLabel">معاينة مباشرة</span><b id="previewHeadline">متصفح مداد Mesh</b></div>
+            <div class="settings-actions"><button class="primary-btn" id="saveAppearance" type="button" data-i18n="saveButton">حفظ التغييرات</button><button class="secondary-btn" id="resetAppearance" type="button" data-i18n="resetButton">استعادة الافتراضي</button></div>
+            <p id="settingsFeedback" class="feedback" role="status" aria-live="polite"></p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>MIDAD AI · BROWSER MESH · 0.2.0</span>
+        <span data-i18n="footerTrust">واجهة Offline-first · لا أسرار داخل التطبيق · لا ادعاء تشغيل حي</span>
+        <span id="footerNetwork">DEVICE NETWORK: CHECKING</span>
+      </footer>
+    </main>
+  </div>
+  <script src="./midad-browser-mesh.js" defer></script>
+</body>
+</html>
