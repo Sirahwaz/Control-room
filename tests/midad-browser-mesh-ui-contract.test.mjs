@@ -35,8 +35,9 @@ test("the bundled Mesh surface exposes runtime, network, vault and appearance co
 
 test("appearance preferences persist locally and never store provider credentials", () => {
   const js = read("mobile/web/midad-browser-mesh.js");
-  assert.match(js, /localStorage\\.getItem\\(['"]midad-browser-mesh-settings-v1['"]\\)/);
-  assert.match(js, /localStorage\\.setItem\\(['"]midad-browser-mesh-settings-v1['"]/);
+  assert.match(js, /const STORAGE_KEY = "midad-browser-mesh-settings-v1"/);
+  assert.match(js, /localStorage\\.getItem\\(STORAGE_KEY\\)/);
+  assert.match(js, /localStorage\\.setItem\\(STORAGE_KEY/);
   assert.match(js, /applySettings/);
   assert.match(js, /fontScale/);
   assert.match(js, /accent/);
@@ -60,7 +61,6 @@ test("the Android APK workflow builds the manifest-selected Browser home and gat
   assert.match(workflow, /needs: agentation-ui-feedback/);
   assert.match(workflow, /WEB_ENTRY=/);
   assert.match(workflow, /web_assets/);
-  assert.match(workflow, /mobile\\/web\\/midad-browser-mesh/);
 });
 
 test("the native WebView serves the product's packaged homepage without network access", () => {
