@@ -149,7 +149,7 @@ class ContinuityLedgerClientTests(unittest.IsolatedAsyncioTestCase):
         body = json.loads(opener.request.data.decode())
         self.assertEqual(body, {
             "task_id": "browser-task-01",
-            "task_lease_token": "t" * 64,
+            "task_lease_token": "a" * 64,
             "binding_id": "proxy-binding-01",
             "request_id": "vault-request-0001",
             "host": "example.com",
@@ -172,7 +172,7 @@ class ContinuityLedgerClientTests(unittest.IsolatedAsyncioTestCase):
             lease_id="a" * 32,
             lease_token="l" * 43,
             task_id="browser-task-01",
-            task_lease_token="t" * 64,
+            task_lease_token="b" * 64,
             lease_ttl_seconds=90,
         )
         self.assertEqual(result["lease_token"], "n" * 43)
