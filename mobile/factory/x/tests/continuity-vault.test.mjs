@@ -428,3 +428,51 @@ test('Vault lease release is authenticated, idempotency-safe and closes the leas
   assert.equal(repeated.status, 409);
   storage.close();
 });
+
+
+test('Vault lease renew rotates the token and never outlives its task lease', async () => {
+  const originalNow = Date.now;
+  let now = Date.parse('2026-11-10T03:00:00.000Z');
+  Date.now = () => now;
+  const { storage, ledger } = setup();
+  try {
+    await storeProxySecret(ledger);
+    const token = await enrollBrowserNode(ledger);
+    await heartbeat(ledger, NODE, token);
+    const task = await enqueueAndClaimBrowserTask(ledger, token);
+    const issued = await read(await ledger.fetch(post('/v1/vault/leases/issue',
+      issueRequest(task, 'vault-renew-request-001', { lease_ttl_seconds: 60 }),
+      nodeHeaders(NODE, token))));
+    assert.equal(issued.status, 200);
+
+    now += 40000;
+    await heartbeat(ledger, NODE, token);
+    const renewed = await read(await ledger.fetch(post('/v1/vault/leases/renew', {
+      lease_id: issued.body.lease.lease_id,
+      lease_token: issued.body.lease.lease_token,
+      task_id: task.task_id,
+      task_lease_token: task.lease_token,
+      lease_ttl_seconds: 90,
+    }, nodeHeaders(NODE, token))));
+    assert.equal(renewed.status, 200);
+    assert.notEqual(renewed.body.lease.lease_token, issued.body.lease.lease_token);
+    assert.ok(Date.parse(renewed.body.lease.expires_at) > Date.parse(issued.body.lease.expires_at));
+    assert.ok(Date.parse(renewed.body.lease.expires_at) <= Date.parse(task.lease_expires_at));
+
+    const oldToken = await read(await ledger.fetch(post('/v1/vault/leases/release', {
+      lease_id: issued.body.lease.lease_id,
+      lease_token: issued.body.lease.lease_token,
+    }, nodeHeaders(NODE, token))));
+    assert.equal(oldToken.status, 401);
+
+    const released = await read(await ledger.fetch(post('/v1/vault/leases/release', {
+      lease_id: issued.body.lease.lease_id,
+      lease_token: renewed.body.lease.lease_token,
+    }, nodeHeaders(NODE, token))));
+    assert.equal(released.status, 200);
+    assert.equal(released.body.state, 'RELEASED');
+  } finally {
+    Date.now = originalNow;
+    storage.close();
+  }
+});

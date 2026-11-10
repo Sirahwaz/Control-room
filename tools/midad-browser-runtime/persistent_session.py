@@ -6,6 +6,7 @@ explicit profile paths. All other non-GET/HEAD browser requests are blocked.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import re
 from urllib.parse import urlsplit
 
@@ -114,6 +115,9 @@ class PlatformBrowserSession:
         self.playwright_factory = playwright_factory
         self.session_store = session_store
         self.owner_id = str(owner_id or "").strip()
+        self.proxy_settings = None
+        self.proxy_release_callback = None
+        self.proxy_lease_lost_event = None
         if self.session_store is not None and not self.owner_id:
             raise BrowserSessionError("SESSION_STORE_OWNER_REQUIRED")
         self.restored_from_encrypted_store = False
@@ -126,6 +130,44 @@ class PlatformBrowserSession:
         self._interaction_post_active = False
         self._interaction_post_used = False
         self._action_post_paths = {p.rstrip("/") or "/" for p in self.profile["action_post_paths"]}
+
+    def configure_proxy(self, settings: dict | None, release_callback=None, lease_lost_event=None):
+        """Attach one validated proxy route and optional renewable lease to this BrowserContext."""
+        if settings is None:
+            self.proxy_settings = None
+            self.proxy_release_callback = release_callback
+            self.proxy_lease_lost_event = lease_lost_event
+            return
+        if not isinstance(settings, dict) or set(settings) - {"server", "username", "password"}:
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID")
+        server = settings.get("server")
+        try:
+            endpoint = urlsplit(server if isinstance(server, str) else "")
+            endpoint.port
+        except ValueError as exc:
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID") from exc
+        if (
+            endpoint.scheme.lower() not in {"http", "https", "socks5"}
+            or not endpoint.hostname
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.path not in {"", "/"}
+            or endpoint.query
+            or endpoint.fragment
+        ):
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID")
+        username = settings.get("username")
+        password = settings.get("password")
+        if (username is None) != (password is None):
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID")
+        if username is not None and (
+            not isinstance(username, str) or not username or len(username) > 256
+            or not isinstance(password, str) or not password or len(password) > 1024
+        ):
+            raise BrowserSessionError("PROXY_SETTINGS_INVALID")
+        self.proxy_settings = dict(settings)
+        self.proxy_release_callback = release_callback
+        self.proxy_lease_lost_event = lease_lost_event
 
     async def _open(self):
         if self.browser is not None and self.context is not None and self.page is not None:
@@ -146,6 +188,8 @@ class PlatformBrowserSession:
             "service_workers": "block",
             "ignore_https_errors": False,
         }
+        if self.proxy_settings is not None:
+            context_options["proxy"] = dict(self.proxy_settings)
         if self.session_store is not None:
             try:
                 state = await asyncio.to_thread(
@@ -427,6 +471,7 @@ class PlatformBrowserSession:
 
     async def close(self, keep_status: bool = False, persist: bool = True):
         persist_error = None
+        release_error = None
         if persist and self.session_store is not None and self.authenticated and self.context is not None:
             try:
                 await self.persist_storage_state()
@@ -445,16 +490,30 @@ class PlatformBrowserSession:
             except Exception:
                 pass
         self.page = self.context = self.browser = self.playwright = None
-        if not keep_status and persist_error is None:
+        callback = self.proxy_release_callback
+        self.proxy_release_callback = None
+        self.proxy_lease_lost_event = None
+        if callback is not None:
+            try:
+                await callback()
+            except Exception as exc:
+                release_error = exc
+        if self.proxy_settings is not None:
+            self.proxy_settings.clear()
+        self.proxy_settings = None
+        if not keep_status and persist_error is None and release_error is None:
             self.last_status = "STOPPED"
         if persist_error is not None:
             raise persist_error
+        if release_error is not None:
+            raise BrowserSessionError("PROXY_LEASE_RELEASE_FAILED") from release_error
 
 class PersistentSessionPool:
     """Keep authenticated contexts in memory while the worker is alive."""
     def __init__(self, allowed_hosts: set[str], secret_provider_factory=None,
                  playwright_factory=None, timeout_ms: int = 12000,
-                 session_store: EncryptedSessionStore | None = None, owner_id: str = ""):
+                 session_store: EncryptedSessionStore | None = None, owner_id: str = "",
+                 proxy_settings_resolver=None):
         self.allowed_hosts = {h.strip().lower().rstrip(".") for h in allowed_hosts}
         self.secret_provider_factory = secret_provider_factory
         self.playwright_factory = playwright_factory
@@ -463,6 +522,7 @@ class PersistentSessionPool:
         self.owner_id = str(owner_id or "").strip()
         if self.session_store is not None and not self.owner_id:
             raise BrowserSessionError("SESSION_STORE_OWNER_REQUIRED")
+        self.proxy_settings_resolver = proxy_settings_resolver
         self.sessions: dict[str, PlatformBrowserSession] = {}
 
     async def ensure(self, profile: dict) -> PlatformBrowserSession:
@@ -477,6 +537,34 @@ class PersistentSessionPool:
                 playwright_factory=self.playwright_factory, timeout_ms=self.timeout_ms,
                 session_store=self.session_store, owner_id=self.owner_id,
             )
+            if self.proxy_settings_resolver is not None:
+                resolution = None
+                try:
+                    resolution = self.proxy_settings_resolver(session.profile)
+                    if inspect.isawaitable(resolution):
+                        resolution = await resolution
+                    if hasattr(resolution, "settings") and callable(getattr(resolution, "release", None)):
+                        session.configure_proxy(
+                            resolution.settings,
+                            release_callback=resolution.release,
+                            lease_lost_event=getattr(resolution, "lost_event", None),
+                        )
+                    else:
+                        session.configure_proxy(resolution)
+                except BrowserSessionError:
+                    if resolution is not None and callable(getattr(resolution, "release", None)):
+                        try:
+                            await resolution.release()
+                        except Exception:
+                            pass
+                    raise
+                except Exception as exc:
+                    if resolution is not None and callable(getattr(resolution, "release", None)):
+                        try:
+                            await resolution.release()
+                        except Exception:
+                            pass
+                    raise BrowserSessionError("PROXY_ROUTE_BLOCKED") from exc
             self.sessions[account_id] = session
         if not session.authenticated:
             outcome = await session.start()

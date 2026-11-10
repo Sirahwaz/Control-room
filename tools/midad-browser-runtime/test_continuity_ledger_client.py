@@ -120,5 +120,80 @@ class ContinuityLedgerClientTests(unittest.IsolatedAsyncioTestCase):
             await client.heartbeat({"cpu_cores": 1})
 
 
+    async def test_vault_lease_issue_uses_fixed_route_owner_node_identity_and_no_secret_in_request(self):
+        response = {
+            "ok": True,
+            "lease": {
+                "lease_id": "a" * 32,
+                "lease_token": "l" * 43,
+                "expires_at": "2026-11-10T02:00:00Z",
+                "secret": {"username": "proxy-user", "password": "test-only-secret"},
+            },
+        }
+        opener = FakeOpener(response)
+        client = ContinuityLedgerClient(self.base, self.node_id, self.token, opener=opener)
+        result = await client.issue_vault_lease(
+            task_id="browser-task-01",
+            task_lease_token="a" * 64,
+            binding_id="proxy-binding-01",
+            request_id="vault-request-0001",
+            host="example.com",
+            purpose="PROXY_AUTH",
+            scope="AUTOMATION",
+            lease_ttl_seconds=60,
+        )
+        self.assertEqual(result["lease"]["lease_id"], "a" * 32)
+        self.assertEqual(opener.request.full_url, self.base + "/v1/vault/leases/issue")
+        self.assertEqual(opener.request.get_header("Authorization"), "Bearer " + self.token)
+        self.assertEqual(opener.request.get_header("X-midad-node-id"), self.node_id)
+        body = json.loads(opener.request.data.decode())
+        self.assertEqual(body, {
+            "task_id": "browser-task-01",
+            "task_lease_token": "a" * 64,
+            "binding_id": "proxy-binding-01",
+            "request_id": "vault-request-0001",
+            "host": "example.com",
+            "purpose": "PROXY_AUTH",
+            "scope": "AUTOMATION",
+            "lease_ttl_seconds": 60,
+        })
+        self.assertNotIn("proxy-user", opener.request.data.decode())
+        self.assertNotIn("test-only-secret", opener.request.data.decode())
+
+    async def test_vault_lease_release_and_renew_use_fixed_node_routes(self):
+        opener = FakeOpener({
+            "ok": True,
+            "lease_id": "a" * 32,
+            "lease_token": "n" * 43,
+            "expires_at": "2026-11-10T02:05:00Z",
+        })
+        client = ContinuityLedgerClient(self.base, self.node_id, self.token, opener=opener)
+        result = await client.renew_vault_lease(
+            lease_id="a" * 32,
+            lease_token="l" * 43,
+            task_id="browser-task-01",
+            task_lease_token="b" * 64,
+            lease_ttl_seconds=90,
+        )
+        self.assertEqual(result["lease_token"], "n" * 43)
+        self.assertEqual(opener.request.full_url, self.base + "/v1/vault/leases/renew")
+        await client.release_vault_lease("a" * 32, "n" * 43)
+        self.assertEqual(opener.request.full_url, self.base + "/v1/vault/leases/release")
+        self.assertEqual(json.loads(opener.request.data.decode()), {
+            "lease_id": "a" * 32, "lease_token": "n" * 43,
+        })
+
+    async def test_vault_routes_are_allowlisted_and_invalid_binding_metadata_is_rejected(self):
+        client = ContinuityLedgerClient(self.base, self.node_id, self.token, opener=FakeOpener({"ok": True}))
+        with self.assertRaisesRegex(ContinuityLedgerError, "VAULT_LEASE_CONTRACT_INVALID"):
+            await client.issue_vault_lease(
+                task_id="../task", task_lease_token="t" * 64,
+                binding_id="binding", request_id="request-0001", host="example.com",
+                purpose="PROXY_AUTH", scope="AUTOMATION", lease_ttl_seconds=60,
+            )
+        with self.assertRaisesRegex(ContinuityLedgerError, "VAULT_LEASE_CONTRACT_INVALID"):
+            await client.release_vault_lease("../lease", "x" * 43)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ from encrypted_session_store import EncryptedSessionStore
 from operator_command_router import SAFE_ACTIONS, infer_hint_action
 from operator_worker import OperatorWorker
 from persistent_session import BrowserSessionError, PersistentSessionPool
+from proxy_policy import ProxyRuntime
 
 
 class ContinuityWorkerError(RuntimeError):
@@ -67,10 +68,25 @@ def _contains_sensitive(value: Any, depth: int = 0) -> bool:
 
 
 def validate_browser_payload(payload: Any) -> dict:
-    if not isinstance(payload, dict) or len(payload) != 1:
+    if not isinstance(payload, dict) or set(payload) - {"operator_hint", "operator_command", "credential_binding_ids"}:
         raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     if _contains_sensitive(payload):
         raise ContinuityWorkerError("SENSITIVE_TASK_PAYLOAD_REJECTED")
+    binding_ids = payload.get("credential_binding_ids", [])
+    if (
+        not isinstance(binding_ids, list)
+        or len(binding_ids) > 8
+        or any(
+            not isinstance(value, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value)
+            for value in binding_ids
+        )
+        or len(binding_ids) != len(set(binding_ids))
+    ):
+        raise ContinuityWorkerError("CREDENTIAL_BINDING_IDS_INVALID")
+    action_keys = set(payload) & {"operator_hint", "operator_command"}
+    if len(action_keys) != 1:
+        raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     if "operator_hint" in payload:
         hint = payload["operator_hint"]
         if not isinstance(hint, str) or not hint.strip() or len(hint) > 500:
@@ -83,7 +99,10 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("HUMAN_APPROVAL_REQUIRED")
         if action not in _ALLOWED_ACTIONS:
             raise ContinuityWorkerError("ACTION_NOT_ALLOWED_IN_BROWSER_V2")
-        return {"mode": "hint", "value": hint.strip(), "action": action}
+        return {
+            "mode": "hint", "value": hint.strip(), "action": action,
+            "credential_binding_ids": list(binding_ids),
+        }
     if "operator_command" in payload:
         command = payload["operator_command"]
         if not isinstance(command, dict) or len(command) > 12:
@@ -103,7 +122,10 @@ def validate_browser_payload(payload: Any) -> dict:
         request_text = command.get("request_text", "")
         if not isinstance(request_text, str) or len(request_text) > 500:
             raise ContinuityWorkerError("OPERATOR_COMMAND_TEXT_INVALID")
-        return {"mode": "command", "value": command, "action": action}
+        return {
+            "mode": "command", "value": command, "action": action,
+            "credential_binding_ids": list(binding_ids),
+        }
     raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
 
 
@@ -306,11 +328,17 @@ class _ResultSink:
 
 class ContinuityBrowserWorker:
     def __init__(self, config: ContinuityWorkerConfig, client=None, operator=None,
-                 session_pool=None, runtime_probe=None, resource_probe=None):
+                 session_pool=None, runtime_probe=None, resource_probe=None, proxy_runtime=None):
         self.config = config
         self.client = client or ContinuityLedgerClient(
             config.ledger_url, config.node_id, config.node_token
         )
+        self.proxy_runtime = (
+            proxy_runtime
+            if proxy_runtime is not None
+            else ProxyRuntime.from_env(vault_client=self.client)
+        )
+        self._browser_version = ""
         self.store = EncryptedSessionStore(
             config.session_store_path, config.session_store_key_b64, key_id="v1"
         )
@@ -331,7 +359,12 @@ class ContinuityBrowserWorker:
         if missing_aliases:
             raise ContinuityWorkerError("ACCOUNT_SECRET_ALIASES_MISSING")
         self.session_pool = session_pool or PersistentSessionPool(
-            set(config.allowed_hosts), session_store=self.store, owner_id=config.owner_id
+            set(config.allowed_hosts),
+            session_store=self.store,
+            owner_id=config.owner_id,
+            proxy_settings_resolver=(
+                self.proxy_runtime.resolve_for_profile if self.proxy_runtime is not None else None
+            ),
         )
         self.operator = operator or OperatorWorker(
             SimpleNamespace(allowed_hosts=set(config.allowed_hosts)),
@@ -412,6 +445,10 @@ class ContinuityBrowserWorker:
                 pass
             try:
                 await self.client.renew(task_id, lease_token, lease_ttl_seconds=90)
+                if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+                    if not self._browser_version:
+                        raise ContinuityWorkerError("BROWSER_RUNTIME_VERSION_UNAVAILABLE")
+                    await self.heartbeat(self._browser_version)
             except Exception:
                 lost.set()
                 return
@@ -431,6 +468,12 @@ class ContinuityBrowserWorker:
             "worker_version": "midad-operator-worker-v2.0.0",
             "action": payload["action"],
         })
+        if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+            self.proxy_runtime.set_task_context({
+                "task_id": task_id,
+                "lease_token": lease,
+                "credential_binding_ids": payload["credential_binding_ids"],
+            })
         job = {
             "id": task_id,
             "state": "PREPARING",
@@ -441,22 +484,46 @@ class ContinuityBrowserWorker:
         renewer = asyncio.create_task(self._renew_until_done(task_id, lease, done, lost))
         execution = asyncio.create_task(self.operator.process_job(job))
         lost_waiter = asyncio.create_task(lost.wait())
+        vault_lost_waiter = None
+        central_vault = self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False)
+        if central_vault:
+            vault_lost_waiter = asyncio.create_task(self.proxy_runtime.wait_for_lease_loss())
         try:
-            await asyncio.wait(
-                {execution, lost_waiter},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if lost.is_set():
+            waiters = {execution, lost_waiter}
+            if vault_lost_waiter is not None:
+                waiters.add(vault_lost_waiter)
+            await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+            if lost.is_set() or (vault_lost_waiter is not None and vault_lost_waiter.done()):
                 execution.cancel()
                 try:
                     await execution
                 except asyncio.CancelledError:
                     pass
-                await self.session_pool.close_all()
-                raise ContinuityWorkerError("LEASE_LOST_DURING_BROWSER_TASK")
+                try:
+                    await self.session_pool.close_all()
+                except BrowserSessionError:
+                    pass
+                reason = "VAULT_LEASE_LOST_DURING_BROWSER_TASK" if vault_lost_waiter is not None and vault_lost_waiter.done() else "LEASE_LOST_DURING_BROWSER_TASK"
+                outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
+                return {"task_id": task_id, "status": "BLOCKED", "code": reason,
+                        "ledger_state": outcome.get("state")}
             raw_result = await execution
             result = sanitize_browser_result(raw_result)
             status = str(result.get("status", "FAILED")).upper()
+            if central_vault:
+                # Persist the browser state encrypted, close the context, and release its
+                # short-lived proxy-auth lease before the task is acknowledged.
+                try:
+                    await self.session_pool.close_all()
+                except BrowserSessionError:
+                    outcome = await self.client.fail(
+                        task_id, lease, reason="VAULT_LEASE_RELEASE_FAILED", retryable=False
+                    )
+                    return {
+                        "task_id": task_id, "status": "BLOCKED",
+                        "code": "VAULT_LEASE_RELEASE_FAILED",
+                        "ledger_state": outcome.get("state"),
+                    }
             if status in {"HUMAN_GATE", "FAILED", "TIMEOUT", "CANCELLED"}:
                 outcome = await self.client.fail(
                     task_id, lease,
@@ -468,13 +535,19 @@ class ContinuityBrowserWorker:
             return {"task_id": task_id, "status": status, "ledger_state": completed.get("state", "COMPLETED")}
         finally:
             done.set()
-            for pending in (renewer, lost_waiter):
-                if not pending.done():
+            for pending in (renewer, lost_waiter, vault_lost_waiter):
+                if pending is not None and not pending.done():
                     pending.cancel()
+                if pending is not None:
+                    try:
+                        await pending
+                    except asyncio.CancelledError:
+                        pass
+            if central_vault:
                 try:
-                    await pending
-                except asyncio.CancelledError:
-                    pass
+                    await self.session_pool.close_all()
+                finally:
+                    await self.proxy_runtime.end_task()
 
     async def poll_once(self) -> dict:
         claim = await self.client.claim(lease_ttl_seconds=90)
@@ -499,6 +572,7 @@ class ContinuityBrowserWorker:
 
     async def run_forever(self):
         browser_version = await self.runtime_probe()
+        self._browser_version = browser_version
         await self.heartbeat(browser_version)
         self._last_heartbeat = asyncio.get_running_loop().time()
         failures = 0

@@ -1,4 +1,5 @@
 """End-to-end orchestration tests using fake Cloudflare and Browser adapters."""
+import asyncio
 import base64
 import json
 import os
@@ -157,6 +158,32 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ContinuityWorkerError, "HUMAN_APPROVAL_REQUIRED|ACTION_NOT_ALLOWED"):
                     validate_browser_payload({"operator_command": {"action": action}})
 
+
+    def test_credential_binding_ids_are_accepted_as_non_secret_task_policy_metadata(self):
+        payload = {
+            "operator_hint": "inspect example",
+            "credential_binding_ids": ["proxy-binding-01"],
+        }
+        parsed = validate_browser_payload(payload)
+        self.assertEqual(parsed["action"], "inspect")
+        self.assertEqual(parsed["credential_binding_ids"], ["proxy-binding-01"])
+        self.assertEqual(parsed["value"], "inspect example")
+
+    def test_credential_binding_ids_are_bounded_unique_and_identifier_only(self):
+        valid = {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"]}
+        self.assertEqual(validate_browser_payload(valid)["credential_binding_ids"], ["proxy-binding-01"])
+        invalid_payloads = [
+            {"operator_hint": "inspect example", "credential_binding_ids": ["../secret"]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01", "proxy-binding-01"]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["a" * 129]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"], "password": "no"},
+            {"operator_hint": "inspect example", "operator_command": {"action": "inspect"}},
+        ]
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                with self.assertRaises(ContinuityWorkerError):
+                    validate_browser_payload(payload)
+
     def test_sensitive_payload_is_rejected(self):
         with self.assertRaisesRegex(ContinuityWorkerError, "SENSITIVE_TASK_PAYLOAD_REJECTED"):
             validate_browser_payload({"operator_hint": "inspect example password=hunter2"})
@@ -235,6 +262,110 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ContinuityWorkerError, "TASK_OWNER_MISMATCH"):
             await worker.poll_once()
         self.assertEqual(operator.jobs, [])
+
+
+    async def test_central_vault_context_is_task_bound_but_binding_ids_never_reach_operator_or_checkpoint(self):
+        class FakeCentralRuntime:
+            central_mode = True
+
+            def __init__(self):
+                self.contexts = []
+                self.ended = 0
+                self.lost = asyncio.Event()
+
+            def set_task_context(self, context):
+                self.contexts.append(dict(context))
+
+            async def wait_for_lease_loss(self):
+                await self.lost.wait()
+
+            async def end_task(self):
+                self.ended += 1
+
+        bindings = ["proxy-binding-01"]
+        client = FakeLedgerClient({
+            "operator_hint": "inspect example",
+            "credential_binding_ids": bindings,
+        })
+        operator = FakeOperator({
+            "status": "INSPECTED",
+            "action": "inspect",
+            "account_id": "example-account",
+            "url": "https://example.com/dashboard",
+            "session_storage": "encrypted_at_rest",
+        })
+        pool = FakeSessionPool()
+        runtime = FakeCentralRuntime()
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config,
+                client=client,
+                operator=operator,
+                session_pool=pool,
+                proxy_runtime=runtime,
+            )
+
+        result = await worker.poll_once()
+
+        self.assertEqual(result["status"], "INSPECTED")
+        self.assertEqual(runtime.contexts, [{
+            "task_id": "task-browser-001",
+            "lease_token": "a" * 64,
+            "credential_binding_ids": bindings,
+        }])
+        self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
+        checkpoint = next(call for call in client.calls if call[0] == "checkpoint")[2]
+        self.assertNotIn("credential_binding_ids", str(checkpoint))
+        self.assertNotIn("a" * 64, str(checkpoint))
+        self.assertTrue(pool.closed)
+        self.assertEqual(runtime.ended, 1)
+
+    async def test_central_vault_lease_loss_cancels_browser_task_and_requires_reconciliation(self):
+        class LostRuntime:
+            central_mode = True
+
+            def __init__(self):
+                self.lost = asyncio.Event()
+                self.ended = 0
+
+            def set_task_context(self, _context):
+                asyncio.get_running_loop().call_soon(self.lost.set)
+
+            async def wait_for_lease_loss(self):
+                await self.lost.wait()
+
+            async def end_task(self):
+                self.ended += 1
+
+        class WaitingOperator:
+            def __init__(self):
+                self.cancelled = False
+
+            async def process_job(self, _job):
+                try:
+                    await asyncio.sleep(10)
+                except asyncio.CancelledError:
+                    self.cancelled = True
+                    raise
+
+        client = FakeLedgerClient({
+            "operator_hint": "inspect example",
+            "credential_binding_ids": ["proxy-binding-01"],
+        })
+        operator = WaitingOperator()
+        pool = FakeSessionPool()
+        runtime = LostRuntime()
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator,
+                session_pool=pool, proxy_runtime=runtime,
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["code"], "VAULT_LEASE_LOST_DURING_BROWSER_TASK")
+        self.assertTrue(operator.cancelled)
+        self.assertTrue(pool.closed)
+        self.assertEqual(runtime.ended, 1)
+        self.assertTrue(any(call[0] == "fail" and call[2] == "VAULT_LEASE_LOST_DURING_BROWSER_TASK" for call in client.calls))
 
 
 if __name__ == "__main__":
