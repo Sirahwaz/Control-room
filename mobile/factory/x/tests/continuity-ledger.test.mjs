@@ -54,7 +54,7 @@ function task(id='task-001', overrides={}) {
   };
 }
 const enqueue = async (ledger, value) => read(await ledger.fetch(post('/v1/tasks/enqueue',value,admin())));
-const claim = async (ledger,id,token,ttl=90) => read(await ledger.fetch(post('/v1/tasks/claim',{lease_ttl_seconds:ttl},nodeHeaders(id,token))));
+const claim = async (ledger,id,token,ttl=90,taskId) => read(await ledger.fetch(post('/v1/tasks/claim',{lease_ttl_seconds:ttl,...(taskId?{task_id:taskId}:{})},nodeHeaders(id,token))));
 
 test('health is public but returns no task or credential data', async () => {
   const {storage,ledger}=setup();
