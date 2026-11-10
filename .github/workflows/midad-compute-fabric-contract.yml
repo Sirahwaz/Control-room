@@ -12,6 +12,11 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/continuity-ledger/**'
   pull_request:
     paths:
       - 'compute/mncf/**'
@@ -21,6 +26,11 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - '.github/workflows/midad-continuity-cloudflare-deploy.yml'
+      - '.github/workflows/midad-mncf-ephemeral-runner.yml'
+      - 'mobile/factory/x/ephemeral-runner.mjs'
+      - 'mobile/factory/x/tests/continuity-*.test.mjs'
+      - 'mobile/factory/x/continuity-ledger/**'
 
 permissions:
   contents: read

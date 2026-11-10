@@ -125,7 +125,7 @@ The companion `continuity-ledger/` directory contains a Cloudflare SQLite-backed
 
 - Cloudflare Worker + SQLite Durable Object + Queue provide the intended durable coordination path. Their source is merged, but production deployment and health are not verified.
 - GitHub-hosted Linux Actions runners provide disposable compute for bounded builds, tests and browser smoke. The existing Forge runner is retained; its current task intake still uses the existing Supabase Forge OIDC path.
-- The Cloudflare-to-GitHub runner dispatch adapter remains **PENDING**. Until it is implemented and live-tested, do not describe Cloudflare as dispatching GitHub compute.
+- The CPU_BATCH Cloudflare-to-GitHub dispatch adapter is implemented in this branch but is not yet CI-verified or live-activated. Do not describe Cloudflare as dispatching compute until CI, protected deployment, owner-approved node enrollment and an end-to-end smoke test pass.
 - GitHub Playwright smoke is intended to run on pull requests with read-only permissions and no secrets. Browser Run is a separate quota-limited candidate adapter; it is not the general-purpose compute layer.
 - Persistent Linux/Playwright nodes and VPS are optional specialist workers only, selected when a verified workload requires persistent local state, specialised egress or resource headroom.
 - Preserve the existing Forge/Continuity ledgers during migration. No parallel queue, replacement orchestrator or Supabase cutover is authorized by this design note.
@@ -156,3 +156,17 @@ A new optional, disposable GitHub Actions node polls the Cloudflare Continuity L
 5. Verify node heartbeat, atomic claim, checkpoint, completion evidence and final task state in the ledger. Then test duplicate delivery, runner loss and lease expiry.
 
 **Current status:** source and unit/contract tests are in a draft PR; the Cloudflare Worker is not deployed, no GitHub node is enrolled, no Actions variables/secrets have been configured, and no live end-to-end claim has been performed. The existing Forge/Supabase OIDC queue remains unchanged and authoritative for Forge jobs.
+
+
+## GitHub ephemeral CPU runner adapter — source implemented, live activation pending
+
+- The Cloudflare Queue consumer now keeps the existing owner-scoped WebSocket wake and, for queued `CPU_BATCH` tasks only, dispatches the fixed GitHub Actions workflow.
+- The GitHub App adapter mints a short-lived installation token for each dispatch and requests repository-scoped `Actions: write` only. Its inputs contain only `event_id`, `task_id` and `owner_id`.
+- The GitHub-hosted `ubuntu-latest` runner uses a separately enrolled owner-bound node token from Actions secrets. It heartbeats, claims only the dispatched task ID, writes a checkpoint, returns bounded evidence and completes the task.
+- The current CPU adapter supports only `RUNNER_SMOKE`, `SUM_INTEGERS` and `HASH_TEXT`. It deliberately does not execute arbitrary shell/code or claim Browser Session tasks.
+- The dispatch runner uses the dedicated node identity `github-actions-cpu-batch` and must be separately enrolled with the `cpu-batch` capability; keep its `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN` separate from the scheduled public-probe node identity/token (`MIDAD_CONTINUITY_NODE_ID` / `MIDAD_CONTINUITY_NODE_TOKEN`).
+- The current MIDAD Forge build queue remains intact and separate. This adapter is for Continuity Fabric CPU_BATCH execution, not a replacement Forge orchestrator.
+- Queue/dispatch delivery is at-least-once. Exact-task atomic claims, one runner slot and workflow concurrency constrain duplicate dispatches; uncertain external browser effects are not routed through this CPU path.
+- No App, GitHub secret, owner node enrollment, Cloudflare secret or production Worker is configured by this source change.
+
+**Acceptance gate:** exact-head unit/contract tests and Wrangler PR dry-run must pass. Live activation later requires a repository-scoped GitHub App, verified Cloudflare deployment, explicit node enrollment/secret setup, then one harmless CPU task through enqueue → Queue → GitHub runner → claim → checkpoint → complete. This live task gate is separate from merging source code.

@@ -80,6 +80,7 @@ jobs:
           node --check mobile/factory/x/workforce-runtime.mjs
           node --check mobile/factory/x/plan.mjs
           node --check mobile/factory/x/execution-fabric.mjs
+          node --check mobile/factory/x/security-text-scan.mjs
 
       - name: Workforce role runtime contract tests
         run: node --test mobile/factory/x/tests/*.test.mjs
@@ -169,12 +170,7 @@ jobs:
           NODE
 
       - name: Security text scan
-        run: |
-          if grep -RInE --exclude-dir=.git --exclude='*.lock'             'BEGIN (RSA|OPENSSH|PRIVATE) KEY|SUPABASE_SERVICE_ROLE_KEY|sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}'             mobile/factory/x; then
-            echo "Potential secret pattern found"
-            exit 1
-          fi
-          echo "Security scan PASS"
+        run: node mobile/factory/x/security-text-scan.mjs
 
       - name: Upload Factory X execution artifacts
         uses: actions/upload-artifact@v4

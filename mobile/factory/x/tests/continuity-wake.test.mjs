@@ -154,6 +154,8 @@ test('internal wake endpoint authenticates and only broadcasts a persisted outbo
     'x-midad-wake-key': WAKE_KEY,
   })));
   assert.equal(allowed.status, 200);
+  assert.equal(allowed.body.workload, 'CPU_BATCH');
+  assert.equal(allowed.body.runner_dispatchable, true);
   storage.close();
 });
 
@@ -204,6 +206,38 @@ test('Queue consumer forwards validated wake hints to the Durable Object and ack
   assert.equal(seen[0].request.url, 'https://ledger.internal/internal/wake');
   assert.equal(seen[0].request.headers.get('x-midad-wake-key'), WAKE_KEY);
   assert.deepEqual(seen[0].body, wake());
+});
+
+test('Queue consumer retries a CPU_BATCH wake when GitHub App dispatch is not configured', async () => {
+  const actions = [];
+  const ns = {
+    idFromName(name) { return name; },
+    get(id) {
+      return {
+        async fetch() {
+          return new Response(JSON.stringify({
+            ok: true,
+            workload: 'CPU_BATCH',
+            runner_dispatchable: true,
+          }), { status: 200 });
+        },
+      };
+    },
+  };
+  const message = {
+    body: wake(),
+    ack() { actions.push('ack'); },
+    retry() { actions.push('retry'); },
+  };
+
+  const result = await wakeWorker.queue({ messages: [message] }, {
+    CONTINUITY_LEDGER: ns,
+    MIDAD_WAKE_INTERNAL_KEY: WAKE_KEY,
+  });
+
+  assert.equal(result.delivered, 0);
+  assert.equal(result.retried, 1);
+  assert.deepEqual(actions, ['retry']);
 });
 
 test('Queue consumer retries malformed and transiently failed messages', async () => {
