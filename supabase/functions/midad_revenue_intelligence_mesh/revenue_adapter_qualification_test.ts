@@ -12,7 +12,7 @@ Deno.test("maps explicit region, KYC, identity and individual payout fields with
       reward_is_shared_pool: true,
       submission_fee_usd: 1.5,
       fee_schedule_verified: true,
-      fee_schedule_evidence_url: "https://docs.taskmarket.dev/concepts/fees-payments",
+      fee_schedule_evidence_url: "https://docs.taskmarket.dev/reference/submission-rate-limits",
     }, "taskmarket_api"),
     {
       regionEligible: true,
@@ -25,7 +25,7 @@ Deno.test("maps explicit region, KYC, identity and individual payout fields with
       rewardIsSharedPool: true,
       submissionFee: 1.5,
       feeScheduleVerified: true,
-      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
+      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/reference/submission-rate-limits",
     },
   );
 });
@@ -56,10 +56,10 @@ Deno.test("requires explicit fee-schedule assertion and official provider-domain
   assertEquals(
     extractQualificationEvidence({
       feeScheduleVerified: true,
-      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments",
+      feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/reference/submission-rate-limits",
       submissionFeeUsd: 2,
     }, "taskmarket_api"),
-    { submissionFee: 2, feeScheduleVerified: true, feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/concepts/fees-payments" },
+    { submissionFee: 2, feeScheduleVerified: true, feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/reference/submission-rate-limits" },
   );
 });
 
@@ -68,7 +68,7 @@ Deno.test("does not treat an unverified listing claim as a verified fee schedule
     extractQualificationEvidence({
       submission_fee_usd: 0,
       fee_schedule_verified: false,
-      fee_schedule_evidence_url: "https://docs.taskmarket.dev/concepts/fees-payments",
+      fee_schedule_evidence_url: "https://docs.taskmarket.dev/reference/submission-rate-limits",
     }, "taskmarket_api"),
     { submissionFee: 0 },
   );
@@ -173,14 +173,38 @@ Deno.test("Taskmarket explicit worker submit action with requiresPayment=false p
   });
   assertEquals(evidence.submissionFee, 0);
   assertEquals(evidence.feeScheduleVerified, true);
-  assertEquals(evidence.feeScheduleEvidenceUrl, "https://docs.taskmarket.dev/concepts/fees-payments");
+  assertEquals(evidence.feeScheduleEvidenceUrl, "https://docs.taskmarket.dev/reference/submission-rate-limits");
 });
 
-Deno.test("Taskmarket submit action that requires payment is not incorrectly treated as free", () => {
+Deno.test("Taskmarket submit action that requires payment is recorded as a verified 0.001 token fee", () => {
   assertEquals(taskmarketOfficialFeeEvidence({
     mode: "bounty",
     pendingActions: [
       { role: "worker", action: "submit", requiresPayment: true, paymentAmount: "1000" }
+    ],
+  }), {
+    submissionFee: 0.001,
+    feeScheduleVerified: true,
+    feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/reference/submission-rate-limits",
+  });
+});
+
+Deno.test("Taskmarket task-wide 50-submission cap charges the next submission even for a new worker", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", submissionCount: 49 }), {});
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", submissionCount: 50 }), {
+    submissionFee: 0.001,
+    feeScheduleVerified: true,
+    feeScheduleEvidenceUrl: "https://docs.taskmarket.dev/reference/submission-rate-limits",
+  });
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", submissionCount: 80 }).submissionFee, 0.001);
+});
+
+Deno.test("Taskmarket contradictory task-wide and worker-action fee evidence fails closed", () => {
+  assertEquals(taskmarketOfficialFeeEvidence({
+    mode: "bounty",
+    submissionCount: 50,
+    pendingActions: [
+      { role: "worker", action: "submit", requiresPayment: false }
     ],
   }), {});
 });
@@ -255,6 +279,16 @@ Deno.test("explicit Taskmarket split-prize language is carried as shared-pool ev
       "Up to 2 answers accepted, sharing the $1 USDC escrow equally.",
     ),
     { payoutSplitCount: 2, rewardIsSharedPool: true },
+  );
+});
+
+Deno.test("Taskmarket OUSD prize explicitly split among the top three remains a shared pool", () => {
+  assertEquals(
+    explicitSharedRewardEvidence(
+      "Frontier, the cinematic: 15 seconds, made with video models",
+      "The 100 OUSD prize, paid on Tempo, is split among the top three: 50 / 30 / 20 OUSD.",
+    ),
+    { payoutSplitCount: 3, rewardIsSharedPool: true },
   );
 });
 
