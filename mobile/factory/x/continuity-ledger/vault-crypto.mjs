@@ -123,8 +123,9 @@ async function unwrapDataKey(row, metadata, keyring) {
 
 export async function decryptVaultSecret(row, metadata, env = {}) {
   const keyring = readVaultKeyring(env);
-  const dek = await unwrapDataKey(row, metadata, keyring);
+  let dek = null;
   try {
+    dek = await unwrapDataKey(row, metadata, keyring);
     const dataKey = await importAesKey(dek, ['decrypt']);
     const plaintext = await globalThis.crypto.subtle.decrypt(
       {
@@ -139,10 +140,11 @@ export async function decryptVaultSecret(row, metadata, env = {}) {
     const value = JSON.parse(decoder.decode(plaintext));
     if (!isRecord(value)) throw new Error('VAULT_SECRET_PAYLOAD_INVALID');
     return value;
-  } catch {
+  } catch (error) {
+    if (error?.message === 'VAULT_KEY_VERSION_UNAVAILABLE') throw error;
     throw new Error('VAULT_DECRYPTION_FAILED');
   } finally {
-    dek.fill(0);
+    dek?.fill(0);
   }
 }
 
