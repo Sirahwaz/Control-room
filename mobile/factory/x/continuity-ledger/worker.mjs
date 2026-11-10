@@ -1,3 +1,5 @@
+import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
+
 const WORKLOADS = new Set(['CPU_BATCH', 'WEBGPU_BATCH', 'BROWSER_SESSION', 'SINGLE']);
 const SECRET_KEY = /(?:secret|token|password|private[_-]?key|mnemonic|seed|authorization|cookie)/i;
 const SECRET_VALUE_PATTERNS = [
@@ -101,6 +103,7 @@ export class MidadContinuityLedger {
       CREATE INDEX IF NOT EXISTS continuity_wake_outbox_pending_idx
         ON continuity_wake_outbox(published_at_ms,created_at_ms);
     `);
+    initVaultSchema(this);
   }
   query(sql, ...args) { return rows(this.sql.exec(sql, ...args)); }
   one(sql, ...args) { return this.query(sql, ...args)[0] ?? null; }
@@ -183,6 +186,7 @@ export class MidadContinuityLedger {
       if (!persisted) return response(404, { ok: false, error: 'WAKE_EVENT_NOT_FOUND' });
       return this.broadcastWake(event);
     }
+    if (path.startsWith('/v1/vault/secrets/')) return handleVaultAdmin(this, path, req, body);
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
       if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
       if (path === '/v1/nodes/enroll') return this.enroll(body);
@@ -197,6 +201,7 @@ export class MidadContinuityLedger {
     if (path === '/v1/tasks/checkpoint') return this.checkpoint(node, body);
     if (path === '/v1/tasks/complete') return this.complete(node, body);
     if (path === '/v1/tasks/fail') return this.fail(node, body);
+    if (path.startsWith('/v1/vault/leases/')) return handleVaultNode(this, path, node, body);
     return response(404, { ok: false, error: 'NOT_FOUND' });
   }
   async enroll(body) {
