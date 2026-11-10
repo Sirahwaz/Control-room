@@ -61,5 +61,55 @@ Lease TTL is bounded to 15–300 seconds. Heartbeats older than 45 seconds canno
 
 P2 — Queue and WebSocket wake-on-work source/configuration are now included in this PR but are not deployed. Queue resources, secrets, Wrangler preview, and a live node handshake remain deployment gates. The ledger stores and coordinates work; it does not create CPU, GPU or browser compute.
 
+## Central encrypted Vault broker — source integrated, not deployed
+
+The ledger now includes an additive Vault broker in the same Durable Object and SQLite database. It does not create another queue, worker, database, or provider dependency.
+
+### Cryptographic model
+
+- Each stored secret gets a fresh random 256-bit Data Encryption Key (DEK).
+- Secret JSON is encrypted with AES-256-GCM using a random 96-bit nonce and authenticated metadata (owner, binding, secret reference, platform, exact host, purpose and scope) as Additional Authenticated Data.
+- The DEK is separately wrapped with a versioned 256-bit Key Encryption Key (KEK), also using AES-GCM and a distinct nonce.
+- Only ciphertext, nonces, wrapped DEK, key version and non-secret metadata are stored. Plaintext is returned only to the authenticated worker for the lifetime of a short lease; it is never copied to task payloads, checkpoints, results or audit events.
+- KEKs are supplied only as Cloudflare Worker Secrets. Never commit or send the keyring JSON or key values in chat.
+
+Required Worker Secrets (not configured by this source-only PR):
+- MIDAD_VAULT_KEYRING_JSON: JSON object mapping versions to base64url-encoded 32-byte keys, for example {"v1":"BASE64URL_32_BYTE_KEY"}.
+- MIDAD_VAULT_ACTIVE_KEY_VERSION: the active version identifier, for example v1.
+
+The placeholder above is documentation only; generate keys privately with a cryptographically secure random generator. The keyring is intentionally absent from GitHub, SQL, task payloads and browser clients. A missing or invalid keyring fails closed with HTTP 503.
+
+### API contract
+
+Admin bearer:
+- POST /v1/vault/secrets/store — create one owner-scoped secret binding; requires an idempotency key and returns metadata only.
+- POST /v1/vault/secrets/list — paginated metadata listing. Ciphertext and plaintext are not returned.
+- POST /v1/vault/secrets/revoke — revoke a binding and all active leases for it.
+- POST /v1/vault/secrets/rewrap — batch rewrap DEKs under the configured active KEK; does not decrypt/re-encrypt secret payloads.
+
+Enrolled node bearer + x-midad-node-id:
+- POST /v1/vault/leases/issue — requires an active Browser Session task lease, a binding ID declared in that task's credential_binding_ids, and exact owner/host/purpose/scope matching.
+- POST /v1/vault/leases/release — release the issuing node's active lease using its lease token.
+
+Lease constraints:
+- Browser leases are tied to the same owner, enrolled node, active task, binding, exact host, purpose and runtime scope.
+- The worker must have a fresh READY heartbeat, the approved Browser capabilities, a browser runtime version and encrypted session storage.
+- Only the task's declared binding IDs can be leased. A node cannot enumerate or list secrets.
+- Lease TTL is 30–300 seconds and is capped at the active task lease expiry. The node's lease token is deterministically derived with a versioned HMAC and only its digest is persisted, allowing same-request replay without storing the bearer token in plaintext.
+- Reusing a request ID with a different task or binding is rejected. Releasing or revoking a lease prevents future retrieval. Revocation cannot claw back bytes already delivered to a worker; process memory must be cleared and the bounded lease TTL remains the outer limit.
+- Audit events contain actor, binding, lease ID, host, purpose, scope and key-version metadata only—never the secret or authentication header.
+
+### Key rotation and recovery
+
+1. Provision a new random KEK version in the protected Worker Secret keyring while retaining the prior version.
+2. Set MIDAD_VAULT_ACTIVE_KEY_VERSION to the new version.
+3. Call the admin /v1/vault/secrets/rewrap endpoint in bounded batches.
+4. Verify that no ACTIVE row remains on the prior key version and that the decrypt/lease contract tests pass using only the new key.
+5. Keep the prior KEK available until all outstanding leases issued under its version have expired or been revoked; then remove it from the keyring.
+
+Rewrap updates only the wrapped DEK and key version. Secret ciphertext/nonces remain unchanged. Backups of encrypted rows are not recoverable without the corresponding KEKs; protect and rotate KEKs separately from Durable Object storage.
+
+The existing EnvironmentVaultSecretResolver remains a compatibility adapter for already configured host aliases. It is not the central Vault and will not be silently migrated. Worker v2 integration with central Vault leases and a production cutover remain separate gated tasks. No keyring secrets, credentials, Cloudflare deployment, Queue creation, production migration or Vault activation were performed by this PR.
+
 ## Tests
 `tests/continuity-ledger.test.mjs` exercises the worker SQL against Node's built-in SQLite engine through a small local Durable Object storage shim. `tests/continuity-wake.test.mjs` covers outbox durability/retry, owner-scoped wake payloads, revocation, internal authentication and Queue consumer retry behavior. These tests prove SQL/state contracts but are not a substitute for a Cloudflare `wrangler dev` preview or live deployment test.
