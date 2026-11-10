@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -8,12 +9,29 @@ ANDROID = ROOT / "mobile/android"
 JAVA_SRC = Path(__file__).with_name("BrowserActivity.java")
 JAVA_DST = ANDROID / "app/src/main/java/ai/midad/browser/BrowserActivity.java"
 MANIFEST = ANDROID / "app/src/main/AndroidManifest.xml"
+APP_GRADLE = ANDROID / "app/build.gradle"
+WEBKIT_DEPENDENCY = 'implementation "androidx.webkit:webkit:1.18.0"'
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 ET.register_namespace("android", ANDROID_NS)
 A = f"{{{ANDROID_NS}}}"
 
 if not JAVA_SRC.is_file() or not MANIFEST.is_file():
     raise SystemExit("browser_android_sources_missing")
+if not APP_GRADLE.is_file():
+    raise SystemExit("android_app_gradle_missing")
+
+gradle_text = APP_GRADLE.read_text(encoding="utf-8")
+if not re.search(r"androidx\.webkit:webkit:", gradle_text):
+    dependency_block = re.search(r"(?m)^\s*dependencies\s*\{", gradle_text)
+    if dependency_block is None:
+        raise SystemExit("android_app_dependencies_block_missing")
+    gradle_text = (
+        gradle_text[:dependency_block.end()] + "\n    " +
+        WEBKIT_DEPENDENCY + gradle_text[dependency_block.end():]
+    )
+    APP_GRADLE.write_text(gradle_text, encoding="utf-8")
+if not re.search(r"androidx\.webkit:webkit:", gradle_text):
+    raise SystemExit("androidx_webkit_dependency_not_configured")
 
 JAVA_DST.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(JAVA_SRC, JAVA_DST)
@@ -71,3 +89,4 @@ if "android.permission.INTERNET" not in permissions:
 
 tree.write(MANIFEST, encoding="utf-8", xml_declaration=True)
 print("MIDAD_BROWSER_ANDROID_MANIFEST_PATCHED")
+print("MIDAD_BROWSER_WEBVIEW_ASSET_LOADER_READY")

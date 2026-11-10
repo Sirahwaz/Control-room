@@ -7,6 +7,7 @@ on:
       - "mobile/factory/products/midad-browser.json"
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
+      - "tests/midad-browser-offline-home-contract.test.mjs"
       - "mobile/factory/quality-gate.mjs"
       - "mobile/package.json"
       - "midad-browser.html"
@@ -19,6 +20,7 @@ on:
       - "mobile/factory/products/midad-browser.json"
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
+      - "tests/midad-browser-offline-home-contract.test.mjs"
       - "midad-browser.html"
       - "midad-browser.css"
       - "midad-browser.js"
@@ -40,6 +42,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+
+      - name: Browser offline-home contract tests
+        run: node --test tests/midad-browser-offline-home-contract.test.mjs
 
       - name: Resolve Browser product
         id: product
@@ -144,9 +149,11 @@ jobs:
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v -keystore signing/midad-browser-temp.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Browser, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          EPHEMERAL_KEYSTORE_PASS="$(openssl rand -hex 32)"
+          echo "::add-mask::$EPHEMERAL_KEYSTORE_PASS"
+          keytool -genkeypair -v -keystore signing/midad-browser-temp.jks -storepass "$EPHEMERAL_KEYSTORE_PASS" -keypass "$EPHEMERAL_KEYSTORE_PASS" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Browser, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          "$APKSIGNER" sign --ks signing/midad-browser-temp.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${{ steps.product.outputs.artifact_name }}-release.apk" "$APK_SRC"
+          "$APKSIGNER" sign --ks signing/midad-browser-temp.jks --ks-pass "pass:$EPHEMERAL_KEYSTORE_PASS" --key-pass "pass:$EPHEMERAL_KEYSTORE_PASS" --ks-key-alias midad --out "dist/${{ steps.product.outputs.artifact_name }}-release.apk" "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
           sha256sum "dist/${{ steps.product.outputs.artifact_name }}-release.apk" | tee "dist/${{ steps.product.outputs.artifact_name }}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
@@ -170,9 +177,11 @@ jobs:
           script: bash mobile/factory/native/midad-browser/runtime-smoke.sh "${{ steps.product.outputs.app_id }}" "dist/${{ steps.product.outputs.artifact_name }}-release.apk"
 
       - name: Upload Browser APK and reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.product.outputs.artifact_name }}-release
+          if-no-files-found: ignore
           path: |
             dist/${{ steps.product.outputs.artifact_name }}-release.apk
             dist/${{ steps.product.outputs.artifact_name }}-release.apk.sha256
