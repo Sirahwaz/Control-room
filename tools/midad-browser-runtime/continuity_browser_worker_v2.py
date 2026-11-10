@@ -26,6 +26,7 @@ from encrypted_session_store import EncryptedSessionStore
 from operator_command_router import SAFE_ACTIONS, infer_hint_action
 from operator_worker import OperatorWorker
 from persistent_session import BrowserSessionError, PersistentSessionPool
+from proxy_policy import ProxyRuntime
 
 
 class ContinuityWorkerError(RuntimeError):
@@ -306,8 +307,9 @@ class _ResultSink:
 
 class ContinuityBrowserWorker:
     def __init__(self, config: ContinuityWorkerConfig, client=None, operator=None,
-                 session_pool=None, runtime_probe=None, resource_probe=None):
+                 session_pool=None, runtime_probe=None, resource_probe=None, proxy_runtime=None):
         self.config = config
+        self.proxy_runtime = proxy_runtime if proxy_runtime is not None else ProxyRuntime.from_env()
         self.client = client or ContinuityLedgerClient(
             config.ledger_url, config.node_id, config.node_token
         )
@@ -331,7 +333,12 @@ class ContinuityBrowserWorker:
         if missing_aliases:
             raise ContinuityWorkerError("ACCOUNT_SECRET_ALIASES_MISSING")
         self.session_pool = session_pool or PersistentSessionPool(
-            set(config.allowed_hosts), session_store=self.store, owner_id=config.owner_id
+            set(config.allowed_hosts),
+            session_store=self.store,
+            owner_id=config.owner_id,
+            proxy_settings_resolver=(
+                self.proxy_runtime.resolve_for_profile if self.proxy_runtime is not None else None
+            ),
         )
         self.operator = operator or OperatorWorker(
             SimpleNamespace(allowed_hosts=set(config.allowed_hosts)),
