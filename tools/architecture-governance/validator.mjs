@@ -252,15 +252,8 @@ function isSecretLikeFile(filePath) {
 
 const MAX_SECRET_SCAN_BYTES = 1024 * 1024;
 const PRIVATE_KEY_BLOCK_PATTERNS = [
-  /-----BEGIN PRIVATE KEY-----(?:\\s|\\\\n)*([\\s\\S]*?)(?:\\s|\\\\n)*-----END PRIVATE KEY-----/gi,
-  /-----BEGIN (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----(?:\\s|\\\\n)*([\\s\\S]*?)(?:\\s|\\\\n)*-----END (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----/gi,
-];
-const SECRET_CONTENT_RULES = [
-  { rule: 'GITHUB_TOKEN', pattern: /\bgh[pousr]_[A-Za-z0-9]{30,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b/ },
-  { rule: 'OPENAI_API_KEY', pattern: /\bsk-(?:proj|or-v1|live)[-_][A-Za-z0-9_-]{24,}\b|\bsk-[A-Za-z0-9]{32,}\b/ },
-  { rule: 'STRIPE_SECRET_KEY', pattern: /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/ },
-  { rule: 'AWS_ACCESS_KEY_ID', pattern: /\bAKIA[0-9A-Z]{16}\b/ },
-  { rule: 'SLACK_TOKEN', pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/ },
+  /-----BEGIN PRIVATE KEY-----(?:\s|\\n)*([\s\S]*?)(?:\s|\\n)*-----END PRIVATE KEY-----/gi,
+  /-----BEGIN (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----(?:\s|\\n)*([\s\S]*?)(?:\s|\\n)*-----END (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----/gi,
 ];
 const GENERIC_CREDENTIAL_ASSIGNMENT = /\b([A-Z][A-Z0-9_]*(?:API[_-]?KEY|ACCESS[_-]?TOKEN|CLIENT[_-]?SECRET|PRIVATE[_-]?KEY|PASSWORD|SECRET|TOKEN))\b\s*[:=]\s*["'\x60]([^"'\x60]{32,})["'\x60]/;
 function shannonEntropy(value) {
@@ -293,14 +286,14 @@ export function scanSecretContent(filePath, content) {
   for (const pattern of PRIVATE_KEY_BLOCK_PATTERNS) {
     pattern.lastIndex = 0;
     for (const match of content.matchAll(pattern)) {
-      const encoded = match[1].replace(/\\\\n/g, '').replace(/\\s/g, '');
+      const encoded = match[1].replace(/\\n/g, '').replace(/\s/g, '');
       if (encoded.length >= 32 && /^[A-Za-z0-9+/=]+$/.test(encoded)) {
-        const line = content.slice(0, match.index).split(/\\r?\\n/).length;
+        const line = content.slice(0, match.index).split(/\r?\n/).length;
         findings.push({ code: 'SECRET_CONTENT', rule: 'PRIVATE_KEY_MATERIAL', severity: 'error', path: filePath, line });
       }
     }
   }
-  const lines = content.split(/\\r?\\n/);
+  const lines = content.split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const specificMatches = SECRET_CONTENT_RULES.filter(rule => rule.pattern.test(line));
