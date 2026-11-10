@@ -160,7 +160,7 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
   return out;
 }
 
-const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/concepts/fees-payments";
+const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/reference/submission-rate-limits";
 
 /**
  * Taskmarket's official fee schedule was checked on 2026-10-23.
@@ -173,9 +173,6 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
   const record = asRecord(raw);
   if (!record) return {};
   const mode = typeof record.mode === "string" ? record.mode.trim().toLowerCase() : "";
-  let submissionFeeUsd: number | undefined;
-  // Prefer the task-specific worker action published by Taskmarket itself.
-  // A task-wide submission count must never be treated as this worker's count.
   const pendingActions = Array.isArray(record.pendingActions)
     ? record.pendingActions.map(asRecord).filter((x): x is Record<string, unknown> => x !== null)
     : [];
@@ -183,26 +180,41 @@ export function taskmarketOfficialFeeEvidence(raw: unknown): QualificationEviden
     String(action.role ?? "").trim().toLowerCase() === "worker"
       && String(action.action ?? "").trim().toLowerCase() === "submit"
   );
-  if (workerSubmitAction?.requiresPayment === false) submissionFeeUsd = 0;
-  else if (workerSubmitAction?.requiresPayment === true) {
-    return extractQualificationEvidence(record, "taskmarket_api");
-  } else if (["bounty", "benchmark"].includes(mode)) {
-    const count = explicitNumber(record, ["workerSubmissionCount", "worker_submission_count", "mySubmissionCount", "my_submission_count"]);
-    if (count === undefined) return extractQualificationEvidence(record, "taskmarket_api");
-    submissionFeeUsd = count < 5 ? 0 : 0.001;
-  } else if (mode === "claim") submissionFeeUsd = 0;
-  else if (["pitch", "auction"].includes(mode)) submissionFeeUsd = 0.001;
-  if (submissionFeeUsd === undefined) return extractQualificationEvidence(record, "taskmarket_api");
-  return extractQualificationEvidence({
+  const requiresPayment = workerSubmitAction?.requiresPayment;
+  const taskSubmissionCount = explicitNumber(record, ["submissionCount", "submission_count"]);
+  const workerSubmissionCount = explicitNumber(record, [
+    "workerSubmissionCount",
+    "worker_submission_count",
+    "mySubmissionCount",
+    "my_submission_count",
+  ]);
+  const taskWideFeeApplies = taskSubmissionCount !== undefined && taskSubmissionCount >= 50;
+  const feeEvidence = (submissionFeeUsd: number) => extractQualificationEvidence({
     ...record,
     submissionFeeUsd,
     feeScheduleVerified: true,
     feeScheduleEvidenceUrl: TASKMARKET_FEE_SCHEDULE_URL,
   }, "taskmarket_api");
+
+  // Taskmarket has two independent free allowances: five submissions per
+  // worker and fifty submissions per task. The next submission costs 0.001
+  // payment token once either allowance is exhausted.
+  if (requiresPayment === true) return feeEvidence(0.001);
+  if (requiresPayment === false) {
+    // A live "free" action contradicting the published task-wide cap; do not
+    // waive the documented fee without reconciling the official evidence.
+    if (taskWideFeeApplies) return extractQualificationEvidence(record, "taskmarket_api");
+    return feeEvidence(0);
+  }
+  if (taskWideFeeApplies) return feeEvidence(0.001);
+  if (mode === "claim") return feeEvidence(0);
+  if (["pitch", "auction"].includes(mode)) return feeEvidence(0.001);
+  if (!["bounty", "benchmark"].includes(mode)) return extractQualificationEvidence(record, "taskmarket_api");
+  // Public task submissionCount is task-wide, not the worker's personal count.
+  if (workerSubmissionCount === undefined) return extractQualificationEvidence(record, "taskmarket_api");
+  return feeEvidence(workerSubmissionCount >= 5 ? 0.001 : 0);
 }
 
-
-/** BasedAgents task-level funding evidence only; never infer user eligibility from task metadata. */
 export function basedAgentsQualificationEvidence(raw: unknown): QualificationEvidence {
   const record = asRecord(raw);
   if (!record) return {};
@@ -326,14 +338,25 @@ export function explicitSharedRewardEvidence(
   const text = [title, description]
     .filter((value): value is string => typeof value === "string")
     .join("\n");
+  const hasStablecoin = /\b(?:USDC|USDT|USDG|OUSD)\b/i.test(text);
   const explicitSplit = text.match(
     /\bsplit\s+across\s+(\d+)\s+(?:answers?|winners?|recipients?|submissions?|entries)\b/i,
   );
   const explicitEqualShare = text.match(
-    /\b(?:up to\s+)?(\d+)\s+(?:answers?|winners?|recipients?|submissions?|entries)\b[^\n.]{0,160}\bsharing\b[^\n.]{0,100}\b(?:USDC|USDT|USDG)\b[^\n.]{0,40}\bequally\b/i,
+    /\b(?:up to\s+)?(\d+)\s+(?:answers?|winners?|recipients?|submissions?|entries)\b[^\n.]{0,160}\bsharing\b[^\n.]{0,100}\b(?:USDC|USDT|USDG|OUSD)\b[^\n.]{0,40}\bequally\b/i,
   );
+  const splitAmong = hasStablecoin ? text.match(
+    /\b(?:split|shared|distributed)\s+among\s+(?:the\s+)?(?:top\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i,
+  ) : null;
+  const wordCounts: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  };
+  const splitAmongCount = splitAmong
+    ? (Number(splitAmong[1]) || wordCounts[splitAmong[1].toLowerCase()])
+    : 0;
   const match = explicitSplit ?? explicitEqualShare;
-  const count = match ? Number(match[1]) : 0;
+  const count = match ? Number(match[1]) : splitAmongCount;
   return Number.isSafeInteger(count) && count > 1
     ? { payoutSplitCount: count, rewardIsSharedPool: true }
     : {};
