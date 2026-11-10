@@ -12,6 +12,8 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/tests/continuity-vault.test.mjs'
   pull_request:
     paths:
       - 'compute/mncf/**'
@@ -21,6 +23,8 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/tests/continuity-vault.test.mjs'
 
 permissions:
   contents: read
@@ -50,5 +54,9 @@ jobs:
         run: node --check compute/mncf/runtime/continuity-github-runner.mjs
       - name: Validate MIDAD Linux Worker runtime syntax
         run: node --check compute/mncf/runtime/worker.mjs
+      - name: Continuity Ledger and encrypted Vault broker tests
+        run: node --test mobile/factory/x/tests/continuity-ledger.test.mjs mobile/factory/x/tests/continuity-vault.test.mjs
+      - name: Continuity Ledger syntax
+        run: node --check mobile/factory/x/continuity-ledger/worker.mjs
       - name: Diff whitespace validation
         run: git diff --check
