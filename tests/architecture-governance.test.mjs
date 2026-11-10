@@ -214,11 +214,15 @@ test('detects high-confidence credential material and redacts matched values', a
   const { scanSecretContent } = await import('../tools/architecture-governance/validator.mjs');
   const githubToken = 'ghp_' + 'A'.repeat(40);
   const providerKey = 'sk-proj-' + 'B'.repeat(48);
-  const privateKeyHeader = ['-----BEGIN', 'OPENSSH PRIVATE KEY-----'].join(' ');
+  const privateKeyBlock = [
+    '-----BEGIN OPENSSH PRIVATE KEY-----',
+    'MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQD1234567890ABCDEFGH',
+    '-----END OPENSSH PRIVATE KEY-----',
+  ].join('\n');
   const content = [
     'GITHUB_TOKEN="' + githubToken + '"',
     'OPENAI_API_KEY="' + providerKey + '"',
-    privateKeyHeader,
+    privateKeyBlock,
     'API_KEY="YOUR_API_KEY_HERE"',
   ].join('\n');
   const findings = scanSecretContent('config/runtime.env', content);
@@ -273,4 +277,15 @@ test('checks the current repository license and keeps external repositories expl
     assert.equal(result.repositories.find(x => x.id === 'external').status, 'NOT_CHECKED_EXTERNAL');
     assert.equal(result.issues.length, 0);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
+test('does not mistake PEM parser boundary constants for private-key material', async () => {
+  const { scanSecretContent } = await import('../tools/architecture-governance/validator.mjs');
+  const parserSource = [
+    "const pkcs1 = normalized.startsWith('-----BEGIN RSA PRIVATE KEY-----');",
+    "const pkcs8 = normalized.startsWith('-----BEGIN PRIVATE KEY-----');",
+    ".replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, '')",
+  ].join('\\n');
+  assert.deepEqual(scanSecretContent('mobile/factory/x/continuity-ledger/github-dispatch.mjs', parserSource), []);
 });
