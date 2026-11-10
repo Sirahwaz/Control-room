@@ -115,6 +115,29 @@ test('revoked node is blocked and active jobs are returned or quarantined by ret
   assert.equal(storage.db.prepare('SELECT status FROM continuity_tasks WHERE task_id=?').get('task-001').status,'QUEUED');
   storage.close();
 });
+
+test('ephemeral dispatch can claim only its requested task without consuming another task', async () => {
+  const {storage,ledger}=setup(); const token=await enroll(ledger);
+  await heartbeat(ledger,'node-a',token);
+  await enqueue(ledger,task('task-first'));
+  await enqueue(ledger,task('task-target'));
+  const target=await claim(ledger,'node-a',token,90,'task-target');
+  assert.equal(target.body.task.task_id,'task-target');
+  const first=await claim(ledger,'node-a',token);
+  assert.equal(first.body.task.task_id,'task-first');
+  storage.close();
+});
+
+test('task-specific claim rejects malformed task identifiers', async () => {
+  const {storage,ledger}=setup(); const token=await enroll(ledger);
+  await heartbeat(ledger,'node-a',token);
+  const result=await read(await ledger.fetch(post('/v1/tasks/claim',{
+    task_id:'../another-owner',lease_ttl_seconds:90,
+  },nodeHeaders('node-a',token))));
+  assert.equal(result.status,422);
+  assert.equal(result.body.error,'TASK_ID_INVALID');
+  storage.close();
+});
 test('expired idempotent task is reclaimed with a new lease; old token is invalid', async () => {
   const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
   try {
