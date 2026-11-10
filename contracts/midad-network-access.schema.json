@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://midad.ai/contracts/network-access/v1.schema.json",
+  "title": "MIDAD Network Access Contract",
+  "description": "Versioned, secret-free contract for proxy profiles, routing policies and credential references.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "proxy_profiles", "routing_rules", "credential_bindings", "defaults"],
+  "properties": {
+    "contract_version": { "const": "midad.network-access/v1" },
+    "proxy_profiles": { "type": "array", "items": { "$ref": "#/$defs/proxyProfile" } },
+    "routing_rules": { "type": "array", "items": { "$ref": "#/$defs/routingRule" } },
+    "credential_bindings": { "type": "array", "items": { "$ref": "#/$defs/credentialBinding" } },
+    "defaults": { "$ref": "#/$defs/defaultPolicy" }
+  },
+  "$defs": {
+    "proxyProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "mode", "enabled", "endpoint", "health_policy"],
+      "properties": {
+        "profile_id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{2,63}$" },
+        "display_name": { "type": "string", "maxLength": 100 },
+        "mode": { "enum": ["DIRECT", "HTTP", "HTTPS", "SOCKS5", "WIREGUARD", "MANAGED_GATEWAY"] },
+        "enabled": { "type": "boolean" },
+        "endpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["NONE", "NETWORK", "TUNNEL"] },
+            "host": { "type": "string", "maxLength": 253 },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "scheme": { "enum": ["http", "https", "socks5", "wireguard"] },
+            "server_name": { "type": "string", "maxLength": 253 }
+          }
+        },
+        "auth_secret_ref": {
+          "type": ["string", "null"],
+          "pattern": "^vault://[a-zA-Z0-9._/-]{3,180}$"
+        },
+        "region": { "type": ["string", "null"], "maxLength": 64 },
+        "health_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["on_failure", "max_attempts"],
+          "properties": {
+            "on_failure": { "enum": ["BLOCK", "NEXT_PROXY_ONLY", "DIRECT_IF_EXPLICITLY_ALLOWED"] },
+            "max_attempts": { "type": "integer", "minimum": 1, "maximum": 3 },
+            "health_check_url": { "type": ["string", "null"], "format": "uri" }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "DIRECT" } }, "required": ["mode"] },
+          "then": { "properties": { "endpoint": { "properties": { "kind": { "const": "NONE" } }, "required": ["kind"] } } },
+          "else": { "properties": { "endpoint": { "required": ["host", "port"] } } }
+        }
+      ]
+    },
+    "routingRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "priority", "scopes", "hosts", "action"],
+      "properties": {
+        "rule_id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{2,63}$" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["BROWSER", "AUTOMATION", "INFRASTRUCTURE"] }
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Exact hostnames only. Wildcard patterns and URL user-info are not accepted.",
+          "items": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^(?!\\*\\.)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+          }
+        },
+        "action": { "enum": ["USE_PROXY", "DIRECT", "BLOCK"] },
+        "proxy_profile_id": { "type": "string", "maxLength": 64 },
+        "allow_direct_fallback": { "type": "boolean", "default": false }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "USE_PROXY" } }, "required": ["action"] },
+          "then": { "required": ["proxy_profile_id"] }
+        },
+        {
+          "if": { "properties": { "action": { "enum": ["BLOCK", "DIRECT"] } }, "required": ["action"] },
+          "then": { "not": { "required": ["proxy_profile_id"] } }
+        }
+      ]
+    },
+    "credentialBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding_id", "account_id", "platform_id", "host", "purpose", "scope", "secret_ref"],
+      "properties": {
+        "binding_id": { "type": "string", "maxLength": 80 },
+        "account_id": { "type": "string", "maxLength": 100 },
+        "platform_id": { "type": "string", "maxLength": 100 },
+        "host": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^(?!\\*\\.)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+        },
+        "purpose": { "enum": ["BROWSER_LOGIN", "AGENT_TASK", "API_ACCESS", "PROXY_AUTH"] },
+        "scope": { "enum": ["BROWSER", "AUTOMATION", "INFRASTRUCTURE"] },
+        "secret_ref": { "type": "string", "pattern": "^vault://[a-zA-Z0-9._/-]{3,180}$" },
+        "lease_ttl_seconds": { "type": "integer", "minimum": 30, "maximum": 86400 }
+      }
+    },
+    "defaultPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on_no_match", "on_route_failure", "allow_direct_fallback"],
+      "properties": {
+        "on_no_match": { "enum": ["BLOCK", "DIRECT"], "default": "BLOCK" },
+        "on_route_failure": { "enum": ["BLOCK", "NEXT_PROXY_ONLY"], "default": "BLOCK" },
+        "allow_direct_fallback": { "type": "boolean", "const": false, "default": false },
+        "max_failover_attempts": { "type": "integer", "minimum": 0, "maximum": 3, "default": 1 }
+      }
+    }
+  }
+}

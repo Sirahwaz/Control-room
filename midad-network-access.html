@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-state="pending">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07131d">
+<meta name="description" content="MIDAD Network Access and Vault Control Panel">
+<title>MIDAD Network Access</title>
+<link rel="stylesheet" href="./midad-network-access.css?v=1">
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="MIDAD Control Room">
+      <span class="brand-mark">M</span>
+      <span><b>MIDAD</b><small>NETWORK ACCESS</small></span>
+    </a>
+    <div class="top-actions">
+      <span class="connection-state" role="status"><i></i> BACKEND NOT CONNECTED</span>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="تبديل المظهر">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">CONTROL PLANE · PROXY · VAULT · AUTOMATION</p>
+        <h1>مركز إدارة الوصول الشبكي</h1>
+        <p class="intro">إدارة مسارات الاتصال، سياسات المتصفح والوكلاء، ومراجع الأسرار من مساحة موحّدة.</p>
+      </div>
+      <span class="state-pill">PENDING · API NOT CONNECTED</span>
+    </section>
+
+    <div class="notice" role="note">
+      <strong>حالة التكامل:</strong>
+      هذه واجهة الإدارة الأولية. لم يتم ربط Gateway الإدارة بعد؛ لذلك لا توجد بيانات تشغيل حية ولا يمكن تطبيق تغييرات من هذه الصفحة حالياً.
+      <span class="notice-en">No changes can be applied yet.</span>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="أقسام إدارة الوصول">
+      <button type="button" role="tab" aria-selected="true" aria-controls="panel-overview" data-tab-target="overview">نظرة عامة</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="panel-proxy-profiles" data-tab-target="proxy-profiles" tabindex="-1">Proxy Profiles</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="panel-routing-rules" data-tab-target="routing-rules" tabindex="-1">Routing Rules</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="panel-vault" data-tab-target="vault" tabindex="-1">Secure Vault</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="panel-diagnostics" data-tab-target="diagnostics" tabindex="-1">Diagnostics</button>
+    </nav>
+
+    <section id="panel-overview" class="tab-panel" role="tabpanel" data-panel="overview">
+      <div class="metric-grid">
+        <article class="metric-card"><span>Proxy Profiles</span><b>—</b><small>بانتظار ربط API</small></article>
+        <article class="metric-card"><span>Healthy Routes</span><b>—</b><small>لا توجد قراءة حية</small></article>
+        <article class="metric-card"><span>Active Sessions</span><b>—</b><small>Browser + Agents</small></article>
+        <article class="metric-card"><span>Vault References</span><b>—</b><small>لا يتم عرض قيم الأسرار</small></article>
+      </div>
+
+      <div class="two-column">
+        <article class="panel">
+          <div class="panel-heading"><div><span class="eyebrow">RUNTIME SCOPES</span><h2>نطاقات التوجيه</h2></div><span class="state-pill">NOT CONNECTED</span></div>
+          <div class="scope-row"><span class="scope-icon">◉</span><div><b>Browser</b><small>تصفح المستخدم وWebView</small></div><span class="pending">PENDING</span></div>
+          <div class="scope-row"><span class="scope-icon">⌘</span><div><b>Automation</b><small>Playwright workers والجلسات المعزولة</small></div><span class="pending">PENDING</span></div>
+          <div class="scope-row"><span class="scope-icon">◇</span><div><b>Infrastructure</b><small>VPS وعمليات MIDAD الداخلية</small></div><span class="pending">PENDING</span></div>
+        </article>
+        <article class="panel policy-panel">
+          <div class="panel-heading"><div><span class="eyebrow">DEFAULT POLICY</span><h2>سياسة الأمان</h2></div><span class="shield">🛡️</span></div>
+          <div class="policy-line"><span>عند عدم وجود قاعدة</span><b>BLOCK by default</b></div>
+          <div class="policy-line"><span>عند فشل المسار</span><b>BLOCK</b></div>
+          <div class="policy-line"><span>التحويل التلقائي إلى Direct</span><b>DISABLED</b></div>
+          <p class="muted">لن يتجاوز النظام سياسة المسار أو يحوّل الاتصال بصمت إلى اتصال مباشر.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="panel-proxy-profiles" class="tab-panel" role="tabpanel" data-panel="proxy-profiles" hidden>
+      <div class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">PROVIDER REGISTRY</span><h2>ملفات Proxy</h2></div><button class="primary" type="button" disabled>＋ إضافة ملف</button></div>
+        <div class="empty-state"><b>لا توجد ملفات موصولة بعد</b><p>سيتم عرض نوع البروتوكول، المضيف، المنطقة، الحالة، ومراجع المصادقة بعد ربط Control API.</p></div>
+        <div class="protocol-tags"><span>HTTP / HTTPS</span><span>SOCKS5</span><span>WireGuard Adapter</span><span>Managed Gateway</span></div>
+      </div>
+    </section>
+
+    <section id="panel-routing-rules" class="tab-panel" role="tabpanel" data-panel="routing-rules" hidden>
+      <div class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">POLICY ENGINE</span><h2>قواعد التوجيه</h2></div><button class="primary" type="button" disabled>＋ إضافة قاعدة</button></div>
+        <div class="empty-state"><b>قواعد التوجيه غير موصولة</b><p>ستُعرض القواعد حسب النطاق والمضيف الدقيق والأولوية ومسار الفشل.</p></div>
+        <div class="policy-preview"><span>Browser</span><span>Automation</span><span>Infrastructure</span><span>Exact-host matching</span></div>
+      </div>
+    </section>
+
+    <section id="panel-vault" class="tab-panel" role="tabpanel" data-panel="vault" hidden>
+      <div class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">SECRET BROKER</span><h2>الخزنة الآمنة</h2></div><span class="state-pill">BACKEND PENDING</span></div>
+        <div class="vault-grid">
+          <div><b>Platform Registry</b><small>أسماء المنصات والحسابات والمضيفين</small></div>
+          <div><b>Secret References</b><small>مراجع opaque فقط؛ لا تظهر قيم المفاتيح</small></div>
+          <div><b>Scoped Leases</b><small>صلاحية محددة للحساب والمضيف والغرض</small></div>
+          <div><b>Rotation & Revoke</b><small>إبطال وتدوير وتدقيق الوصول</small></div>
+        </div>
+        <p class="security-note">لن تُحفظ كلمات المرور أو مفاتيح API في الواجهة أو APK أو Git. يحتاج هذا القسم إلى Vault API وخلفية تخزين آمنة قبل تفعيل أي إجراء.</p>
+        <button class="primary" type="button" disabled>إضافة Secret Reference</button>
+      </div>
+    </section>
+
+    <section id="panel-diagnostics" class="tab-panel" role="tabpanel" data-panel="diagnostics" hidden>
+      <div class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">HEALTH & EVIDENCE</span><h2>الفحص والتشخيص</h2></div><span class="state-pill">NO LIVE DATA</span></div>
+        <div class="empty-state"><b>بانتظار أول Health Snapshot</b><p>ستظهر هنا حالة DNS وTLS والـ Latency ونتائج فحص المسار وسجل الأدلة بعد ربط الخدمة.</p></div>
+      </div>
+    </section>
+
+    <footer>
+      <span>MIDAD AI · Network Access v1</span>
+      <a href="./midad-browser.html">MIDAD Browser</a>
+      <span>Secret values never enter this UI</span>
+    </footer>
+  </main>
+</div>
+<script src="./midad-network-access.js?v=1" defer></script>
+</body>
+</html>
