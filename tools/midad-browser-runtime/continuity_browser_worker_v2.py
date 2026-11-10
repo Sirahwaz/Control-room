@@ -330,10 +330,15 @@ class ContinuityBrowserWorker:
     def __init__(self, config: ContinuityWorkerConfig, client=None, operator=None,
                  session_pool=None, runtime_probe=None, resource_probe=None, proxy_runtime=None):
         self.config = config
-        self.proxy_runtime = proxy_runtime if proxy_runtime is not None else ProxyRuntime.from_env()
         self.client = client or ContinuityLedgerClient(
             config.ledger_url, config.node_id, config.node_token
         )
+        self.proxy_runtime = (
+            proxy_runtime
+            if proxy_runtime is not None
+            else ProxyRuntime.from_env(vault_client=self.client)
+        )
+        self._browser_version = ""
         self.store = EncryptedSessionStore(
             config.session_store_path, config.session_store_key_b64, key_id="v1"
         )
@@ -440,6 +445,10 @@ class ContinuityBrowserWorker:
                 pass
             try:
                 await self.client.renew(task_id, lease_token, lease_ttl_seconds=90)
+                if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+                    if not self._browser_version:
+                        raise ContinuityWorkerError("BROWSER_RUNTIME_VERSION_UNAVAILABLE")
+                    await self.heartbeat(self._browser_version)
             except Exception:
                 lost.set()
                 return
@@ -448,6 +457,12 @@ class ContinuityBrowserWorker:
         task_id = task["task_id"]
         lease = task["lease_token"]
         payload = validate_browser_payload(task["payload"])
+        if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+            self.proxy_runtime.set_task_context({
+                "task_id": task_id,
+                "lease_token": lease,
+                "credential_binding_ids": payload["credential_binding_ids"],
+            })
         command_payload = (
             {"operator_hint": payload["value"]}
             if payload["mode"] == "hint"
@@ -469,22 +484,33 @@ class ContinuityBrowserWorker:
         renewer = asyncio.create_task(self._renew_until_done(task_id, lease, done, lost))
         execution = asyncio.create_task(self.operator.process_job(job))
         lost_waiter = asyncio.create_task(lost.wait())
+        vault_lost_waiter = None
+        central_vault = self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False)
+        if central_vault:
+            vault_lost_waiter = asyncio.create_task(self.proxy_runtime.wait_for_lease_loss())
         try:
-            await asyncio.wait(
-                {execution, lost_waiter},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if lost.is_set():
+            waiters = {execution, lost_waiter}
+            if vault_lost_waiter is not None:
+                waiters.add(vault_lost_waiter)
+            await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+            if lost.is_set() or (vault_lost_waiter is not None and vault_lost_waiter.done()):
                 execution.cancel()
                 try:
                     await execution
                 except asyncio.CancelledError:
                     pass
                 await self.session_pool.close_all()
-                raise ContinuityWorkerError("LEASE_LOST_DURING_BROWSER_TASK")
+                reason = "VAULT_LEASE_LOST_DURING_BROWSER_TASK" if vault_lost_waiter is not None and vault_lost_waiter.done() else "LEASE_LOST_DURING_BROWSER_TASK"
+                outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
+                return {"task_id": task_id, "status": "BLOCKED", "code": reason,
+                        "ledger_state": outcome.get("state")}
             raw_result = await execution
             result = sanitize_browser_result(raw_result)
             status = str(result.get("status", "FAILED")).upper()
+            if central_vault:
+                # Persist the browser state encrypted, close the context, and release its
+                # short-lived proxy-auth lease before the task is acknowledged.
+                await self.session_pool.close_all()
             if status in {"HUMAN_GATE", "FAILED", "TIMEOUT", "CANCELLED"}:
                 outcome = await self.client.fail(
                     task_id, lease,
@@ -496,13 +522,19 @@ class ContinuityBrowserWorker:
             return {"task_id": task_id, "status": status, "ledger_state": completed.get("state", "COMPLETED")}
         finally:
             done.set()
-            for pending in (renewer, lost_waiter):
-                if not pending.done():
+            for pending in (renewer, lost_waiter, vault_lost_waiter):
+                if pending is not None and not pending.done():
                     pending.cancel()
+                if pending is not None:
+                    try:
+                        await pending
+                    except asyncio.CancelledError:
+                        pass
+            if central_vault:
                 try:
-                    await pending
-                except asyncio.CancelledError:
-                    pass
+                    await self.session_pool.close_all()
+                finally:
+                    await self.proxy_runtime.end_task()
 
     async def poll_once(self) -> dict:
         claim = await self.client.claim(lease_ttl_seconds=90)
@@ -527,6 +559,7 @@ class ContinuityBrowserWorker:
 
     async def run_forever(self):
         browser_version = await self.runtime_probe()
+        self._browser_version = browser_version
         await self.heartbeat(browser_version)
         self._last_heartbeat = asyncio.get_running_loop().time()
         failures = 0
