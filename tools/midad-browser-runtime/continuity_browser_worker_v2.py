@@ -76,12 +76,12 @@ def validate_browser_payload(payload: Any) -> dict:
     if (
         not isinstance(binding_ids, list)
         or len(binding_ids) > 8
-        or len(binding_ids) != len(set(binding_ids))
         or any(
             not isinstance(value, str)
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value)
             for value in binding_ids
         )
+        or len(binding_ids) != len(set(binding_ids))
     ):
         raise ContinuityWorkerError("CREDENTIAL_BINDING_IDS_INVALID")
     action_keys = set(payload) & {"operator_hint", "operator_command"}
