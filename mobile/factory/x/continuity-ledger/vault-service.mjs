@@ -329,10 +329,11 @@ async function issue(ledger, node, body) {
     return response(422, { ok: false, error: String(error?.message || 'VAULT_ROUTE_INVALID') });
   }
   const secret = ledger.one(
-    "SELECT * FROM vault_secrets WHERE owner_id=? AND binding_id=? AND state='ACTIVE'",
+    'SELECT * FROM vault_secrets WHERE owner_id=? AND binding_id=?',
     task.owner_id, body.binding_id
   );
   if (!secret) return response(404, { ok: false, error: 'VAULT_BINDING_NOT_FOUND' });
+  if (secret.state !== 'ACTIVE') return response(409, { ok: false, error: 'VAULT_SECRET_REVOKED' });
   if (secret.host !== host || secret.purpose !== String(body.purpose).toUpperCase() ||
       secret.scope !== String(body.scope).toUpperCase()) {
     return response(403, { ok: false, error: 'VAULT_BINDING_SCOPE_MISMATCH' });
