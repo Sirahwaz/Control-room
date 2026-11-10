@@ -150,3 +150,94 @@ class ContinuityLedgerClient:
             "reason": reason[:200],
             "retryable": retryable is True,
         })
+
+
+    @staticmethod
+    def _vault_id(value):
+        if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        return value
+
+    @staticmethod
+    def _vault_token(value):
+        if (
+            not isinstance(value, str)
+            or not 32 <= len(value) <= 200
+            or not value.isascii()
+            or any(ord(char) < 33 or ord(char) > 126 for char in value)
+        ):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        return value
+
+    @staticmethod
+    def _vault_ttl(value):
+        if not isinstance(value, int) or isinstance(value, bool) or not 30 <= value <= 300:
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        return value
+
+    async def issue_vault_lease(
+        self,
+        task_id: str,
+        task_lease_token: str,
+        binding_id: str,
+        request_id: str,
+        host: str,
+        purpose: str = "PROXY_AUTH",
+        scope: str = "AUTOMATION",
+        lease_ttl_seconds: int = 60,
+    ) -> dict:
+        task_id = self._vault_id(task_id)
+        binding_id = self._vault_id(binding_id)
+        if not isinstance(task_lease_token, str) or not re.fullmatch(r"[A-Fa-f0-9]{64}", task_lease_token):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{7,127}", request_id):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        host_value = str(host or "").strip().lower().rstrip(".")
+        if not re.fullmatch(
+            r"(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*",
+            host_value,
+        ):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        if purpose != "PROXY_AUTH" or scope != "AUTOMATION":
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        return await self._post("/v1/vault/leases/issue", {
+            "task_id": task_id,
+            "task_lease_token": task_lease_token,
+            "binding_id": binding_id,
+            "request_id": request_id,
+            "host": host_value,
+            "purpose": purpose,
+            "scope": scope,
+            "lease_ttl_seconds": self._vault_ttl(lease_ttl_seconds),
+        })
+
+    async def renew_vault_lease(
+        self,
+        lease_id: str,
+        lease_token: str,
+        task_id: str,
+        task_lease_token: str,
+        lease_ttl_seconds: int = 90,
+    ) -> dict:
+        if not isinstance(lease_id, str) or not re.fullmatch(r"[a-f0-9]{32}", lease_id):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        self._vault_token(lease_token)
+        task_id = self._vault_id(task_id)
+        if not isinstance(task_lease_token, str) or not re.fullmatch(r"[A-Fa-f0-9]{64}", task_lease_token):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        return await self._post("/v1/vault/leases/renew", {
+            "lease_id": lease_id,
+            "lease_token": lease_token,
+            "task_id": task_id,
+            "task_lease_token": task_lease_token,
+            "lease_ttl_seconds": self._vault_ttl(lease_ttl_seconds),
+        })
+
+    async def release_vault_lease(self, lease_id: str, lease_token: str) -> dict:
+        if not isinstance(lease_id, str) or not re.fullmatch(r"[a-f0-9]{32}", lease_id):
+            raise ContinuityLedgerError("VAULT_LEASE_CONTRACT_INVALID")
+        self._vault_token(lease_token)
+        return await self._post("/v1/vault/leases/release", {
+            "lease_id": lease_id,
+            "lease_token": lease_token,
+        })
