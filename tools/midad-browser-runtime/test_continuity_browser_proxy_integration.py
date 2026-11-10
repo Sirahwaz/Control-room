@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from persistent_session import PersistentSessionPool
+from persistent_session import BrowserSessionError, PersistentSessionPool, PlatformBrowserSession
 from proxy_policy import ProxyPolicyError, ProxyRuntime
 
 
@@ -83,6 +83,9 @@ class FakeSession:
         self.authenticated = True
         self.last_status = "AUTHENTICATED_IN_MEMORY"
         return {"status": self.last_status}
+
+    def configure_proxy(self, settings):
+        self.proxy_settings = dict(settings) if settings else None
 
     async def close(self):
         self.authenticated = False
@@ -166,6 +169,34 @@ class PersistentSessionProxyIntegrationTests(unittest.IsolatedAsyncioTestCase):
             session = await pool.ensure(PROFILE)
         self.assertIsNone(session.proxy_settings)
 
+
+
+class PlatformProxyValidationTests(unittest.TestCase):
+    def test_session_rejects_proxy_credentials_embedded_in_server_url(self):
+        with patch("runner.socket.getaddrinfo", return_value=[
+            (2, 1, 6, "", ("93.184.216.34", 443)),
+        ]):
+            session = PlatformBrowserSession(
+                PROFILE, {"example.com"}, secret_provider=object()
+            )
+        with self.assertRaisesRegex(BrowserSessionError, "PROXY_SETTINGS_INVALID"):
+            session.configure_proxy({
+                "server": "https://proxy-user:proxy-password@proxy.example.net:8443",
+            })
+
+    def test_session_accepts_separate_ephemeral_proxy_auth_fields(self):
+        with patch("runner.socket.getaddrinfo", return_value=[
+            (2, 1, 6, "", ("93.184.216.34", 443)),
+        ]):
+            session = PlatformBrowserSession(
+                PROFILE, {"example.com"}, secret_provider=object()
+            )
+        session.configure_proxy({
+            "server": "https://proxy.example.net:8443",
+            "username": "proxy-user",
+            "password": "test-only-proxy-password",
+        })
+        self.assertEqual(session.proxy_settings["server"], "https://proxy.example.net:8443")
 
 
 class BrowserWorkerV2ProxyWiringTests(unittest.TestCase):
