@@ -5,6 +5,8 @@ This module never persists proxy credentials or writes them to logs.
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -180,16 +182,61 @@ class EnvironmentVaultSecretResolver:
         return value
 
 
+class ProxyLeaseBinding:
+    """In-memory BrowserContext binding backed by one Central Vault lease."""
+    def __init__(self, settings: dict, release_callback, lost_event: asyncio.Event):
+        self.settings = dict(settings)
+        self._release_callback = release_callback
+        self.lost_event = lost_event
+        self._released = False
+
+    async def release(self):
+        if self._released:
+            return
+        self._released = True
+        callback = self._release_callback
+        self._release_callback = None
+        if callback is not None:
+            await callback()
+        self.settings.clear()
+
+
 class ProxyRuntime:
-    """Bind the shared route contract to one automation session at runtime."""
-    def __init__(self, config: dict, secret_resolver=None):
+    """Resolve Browser routes from the compatible environment adapter or Central Vault.
+
+    Central mode never falls back to environment aliases. A credential must be
+    declared by the active Browser Session task and is materialized only for
+    the lifetime of an isolated BrowserContext lease.
+    """
+    def __init__(
+        self,
+        config: dict,
+        secret_resolver=None,
+        vault_client=None,
+        vault_mode: str = "environment",
+        renew_interval_seconds: float = 20.0,
+    ):
         if not isinstance(config, dict) or config.get("contract_version") != CONTRACT_VERSION:
             raise ProxyPolicyError("NETWORK_ACCESS_CONTRACT_UNSUPPORTED")
+        if vault_mode not in {"environment", "central"}:
+            raise ProxyPolicyError("VAULT_MODE_INVALID")
+        if vault_mode == "central" and vault_client is None:
+            raise ProxyPolicyError("VAULT_CLIENT_REQUIRED")
         self.config = config
         self.secret_resolver = secret_resolver
+        self.vault_client = vault_client
+        self.vault_mode = vault_mode
+        self.renew_interval_seconds = max(5.0, min(float(renew_interval_seconds), 60.0))
+        self._task_context = None
+        self._task_lost_event = asyncio.Event()
+        self._active_leases = {}
+
+    @property
+    def central_mode(self) -> bool:
+        return self.vault_mode == "central"
 
     @classmethod
-    def from_env(cls, environ=None):
+    def from_env(cls, environ=None, vault_client=None, renew_interval_seconds: float = 20.0):
         env = os.environ if environ is None else environ
         config_path = str(env.get("MIDAD_NETWORK_ACCESS_CONFIG", "")).strip()
         if not config_path:
@@ -199,46 +246,242 @@ class ProxyRuntime:
                 config = json.load(stream)
         except (OSError, ValueError) as exc:
             raise ProxyPolicyError("NETWORK_ACCESS_CONFIG_UNAVAILABLE") from exc
+
+        mode = str(env.get("MIDAD_VAULT_MODE", "environment")).strip().lower()
+        if mode == "central":
+            if vault_client is None:
+                raise ProxyPolicyError("VAULT_CLIENT_REQUIRED")
+            return cls(
+                config,
+                vault_client=vault_client,
+                vault_mode="central",
+                renew_interval_seconds=renew_interval_seconds,
+            )
         try:
             bindings = json.loads(env.get("MIDAD_VAULT_BINDINGS_JSON", "{}"))
         except ValueError as exc:
             raise ProxyPolicyError("VAULT_BINDINGS_INVALID") from exc
         resolver = EnvironmentVaultSecretResolver(bindings, env)
-        return cls(config, resolver.resolve)
+        return cls(
+            config,
+            resolver.resolve,
+            vault_mode="environment",
+            renew_interval_seconds=renew_interval_seconds,
+        )
+
+    def set_task_context(self, task: dict):
+        if not isinstance(task, dict):
+            raise ProxyPolicyError("BROWSER_TASK_CONTEXT_REQUIRED")
+        task_id = task.get("task_id")
+        task_token = task.get("lease_token") or task.get("task_lease_token")
+        binding_ids = task.get("credential_binding_ids", [])
+        if (
+            not isinstance(task_id, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", task_id)
+            or not isinstance(task_token, str)
+            or not re.fullmatch(r"[A-Fa-f0-9]{64}", task_token)
+            or not isinstance(binding_ids, list)
+            or len(binding_ids) > 8
+            or any(
+                not isinstance(value, str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value)
+                for value in binding_ids
+            )
+            or len(binding_ids) != len(set(binding_ids))
+        ):
+            raise ProxyPolicyError("BROWSER_TASK_CONTEXT_INVALID")
+        self._task_context = {
+            "task_id": task_id,
+            "task_lease_token": task_token,
+            "credential_binding_ids": tuple(binding_ids),
+        }
+        self._task_lost_event = asyncio.Event()
+
+    async def wait_for_lease_loss(self):
+        await self._task_lost_event.wait()
+
+    async def end_task(self):
+        leases = list(self._active_leases.values())
+        for binding in leases:
+            try:
+                await binding.release()
+            except Exception:
+                self._task_lost_event.set()
+        self._active_leases.clear()
+        self._task_context = None
+
+    def _find_binding(self, profile: dict, host: str) -> dict | None:
+        account_id = str(profile.get("account_id") or "").strip()
+        platform_id = str(profile.get("platform_key") or profile.get("platform_id") or "").strip()
+        if not account_id or not platform_id:
+            raise ProxyPolicyError("ACCOUNT_PROFILE_IDENTITY_REQUIRED")
+        profile_data = profile.get("profile")
+        secret_ref = profile_data.get("auth_secret_ref") if isinstance(profile_data, dict) else None
+        if not secret_ref:
+            return None
+        bindings = self.config.get("credential_bindings")
+        if not isinstance(bindings, list):
+            raise ProxyPolicyError("VAULT_BINDINGS_INVALID")
+        matches = [
+            binding for binding in bindings
+            if isinstance(binding, dict)
+            and binding.get("secret_ref") == secret_ref
+            and binding.get("account_id") == account_id
+            and binding.get("platform_id") == platform_id
+            and str(binding.get("host") or "").strip().lower().rstrip(".") == host
+            and str(binding.get("purpose") or "").upper() == "PROXY_AUTH"
+            and str(binding.get("scope") or "").upper() == "AUTOMATION"
+        ]
+        if len(matches) != 1:
+            raise ProxyPolicyError("VAULT_BINDING_SCOPE_MISMATCH")
+        binding = matches[0]
+        binding_id = binding.get("binding_id")
+        if not isinstance(binding_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", binding_id):
+            raise ProxyPolicyError("VAULT_BINDING_ID_INVALID")
+        ttl = binding.get("lease_ttl_seconds", 60)
+        if not isinstance(ttl, int) or isinstance(ttl, bool) or not 30 <= ttl <= 300:
+            raise ProxyPolicyError("VAULT_LEASE_TTL_INVALID")
+        return binding
 
     def resolve_for_profile(self, account_profile: dict):
         if not isinstance(account_profile, dict) or not account_profile.get("host"):
             raise ProxyPolicyError("ACCOUNT_PROFILE_HOST_REQUIRED")
         host = _target_host(str(account_profile["host"]))
-        account_id = str(account_profile.get("account_id") or "").strip()
-        platform_id = str(account_profile.get("platform_key") or account_profile.get("platform_id") or "").strip()
-        if not account_id or not platform_id:
-            raise ProxyPolicyError("ACCOUNT_PROFILE_IDENTITY_REQUIRED")
-
         route = resolve_proxy_route(self.config, host, "AUTOMATION")
         if route["action"] == "DIRECT":
             return None
+        if self.central_mode:
+            return self._resolve_central_for_profile(account_profile, host, route)
+        return self._resolve_environment_profile(account_profile, host, route)
 
+    def _resolve_environment_profile(self, account_profile: dict, host: str, route: dict):
+        binding = self._find_binding({**account_profile, "profile": route["profile"]}, host)
+        if route["profile"].get("auth_secret_ref") and binding is None:
+            raise ProxyPolicyError("VAULT_BINDING_SCOPE_MISMATCH")
+        return build_playwright_proxy(route["profile"], self.secret_resolver)
+
+    async def _resolve_central_for_profile(self, account_profile: dict, host: str, route: dict):
+        context = self._task_context
+        if context is None:
+            raise ProxyPolicyError("BROWSER_TASK_CONTEXT_REQUIRED")
         profile = route["profile"]
-        secret_ref = profile.get("auth_secret_ref")
-        if secret_ref:
-            bindings = self.config.get("credential_bindings")
-            if not isinstance(bindings, list):
-                raise ProxyPolicyError("VAULT_BINDINGS_INVALID")
-            matches = [
-                binding for binding in bindings
-                if isinstance(binding, dict)
-                and binding.get("secret_ref") == secret_ref
-                and binding.get("account_id") == account_id
-                and binding.get("platform_id") == platform_id
-                and str(binding.get("host") or "").lower().rstrip(".") == host
-                and binding.get("purpose") == "PROXY_AUTH"
-                and binding.get("scope") == "AUTOMATION"
-            ]
-            if len(matches) != 1:
-                raise ProxyPolicyError("VAULT_BINDING_SCOPE_MISMATCH")
-            ttl = matches[0].get("lease_ttl_seconds", 300)
-            if not isinstance(ttl, int) or isinstance(ttl, bool) or not 30 <= ttl <= 86400:
-                raise ProxyPolicyError("VAULT_LEASE_TTL_INVALID")
+        if not profile.get("auth_secret_ref"):
+            return ProxyLeaseBinding(
+                build_playwright_proxy(profile),
+                release_callback=None,
+                lost_event=self._task_lost_event,
+            )
+        binding = self._find_binding({**account_profile, "profile": profile}, host)
+        if binding is None:
+            raise ProxyPolicyError("VAULT_BINDING_SCOPE_MISMATCH")
+        binding_id = binding["binding_id"]
+        if binding_id not in context["credential_binding_ids"]:
+            raise ProxyPolicyError("VAULT_BINDING_NOT_AUTHORIZED_FOR_TASK")
+        request_id = "vault-" + hashlib.sha256(
+            (context["task_id"] + ":" + binding_id).encode("utf-8")
+        ).hexdigest()[:32]
+        try:
+            result = await self.vault_client.issue_vault_lease(
+                task_id=context["task_id"],
+                task_lease_token=context["task_lease_token"],
+                binding_id=binding_id,
+                request_id=request_id,
+                host=host,
+                purpose="PROXY_AUTH",
+                scope="AUTOMATION",
+                lease_ttl_seconds=min(300, int(binding.get("lease_ttl_seconds", 60))),
+            )
+        except Exception as exc:
+            raise ProxyPolicyError("VAULT_LEASE_ISSUE_FAILED") from exc
+        lease = result.get("lease") if isinstance(result, dict) else None
+        secret = lease.get("secret") if isinstance(lease, dict) else None
+        lease_id = lease.get("lease_id") if isinstance(lease, dict) else None
+        lease_token = lease.get("lease_token") if isinstance(lease, dict) else None
+        if (
+            not isinstance(secret, dict)
+            or set(secret) != {"username", "password"}
+            or not isinstance(secret.get("username"), str)
+            or not secret["username"]
+            or len(secret["username"]) > 256
+            or not isinstance(secret.get("password"), str)
+            or not secret["password"]
+            or len(secret["password"]) > 1024
+            or not isinstance(lease_id, str)
+            or not re.fullmatch(r"[a-f0-9]{32}", lease_id)
+            or not isinstance(lease_token, str)
+            or not 32 <= len(lease_token) <= 200
+        ):
+            raise ProxyPolicyError("VAULT_LEASE_RESPONSE_INVALID")
+        try:
+            settings = build_playwright_proxy(profile, lambda _ref: secret)
+        except Exception:
+            secret.clear()
+            try:
+                await self.vault_client.release_vault_lease(lease_id, lease_token)
+            except Exception:
+                pass
+            raise
 
-        return build_playwright_proxy(profile, self.secret_resolver)
+        stop_event = asyncio.Event()
+        lost_event = self._task_lost_event
+        lease_state = {
+            "lease_id": lease_id,
+            "lease_token": lease_token,
+            "task_id": context["task_id"],
+            "task_lease_token": context["task_lease_token"],
+            "secret": secret,
+            "settings": settings,
+        }
+
+        async def renew_loop():
+            while not stop_event.is_set():
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=self.renew_interval_seconds)
+                    return
+                except asyncio.TimeoutError:
+                    pass
+                if stop_event.is_set():
+                    return
+                try:
+                    renewed = await self.vault_client.renew_vault_lease(
+                        lease_id=lease_state["lease_id"],
+                        lease_token=lease_state["lease_token"],
+                        task_id=lease_state["task_id"],
+                        task_lease_token=lease_state["task_lease_token"],
+                        lease_ttl_seconds=min(300, int(binding.get("lease_ttl_seconds", 60))),
+                    )
+                    renewed_lease = renewed.get("lease") if isinstance(renewed, dict) else None
+                    new_token = renewed_lease.get("lease_token") if isinstance(renewed_lease, dict) else None
+                    if not isinstance(new_token, str) or not 32 <= len(new_token) <= 200:
+                        raise ProxyPolicyError("VAULT_LEASE_RENEW_RESPONSE_INVALID")
+                    lease_state["lease_token"] = new_token
+                except Exception:
+                    lost_event.set()
+                    return
+
+        renew_task = asyncio.create_task(renew_loop())
+
+        async def release_lease():
+            stop_event.set()
+            if not renew_task.done():
+                renew_task.cancel()
+            try:
+                await renew_task
+            except asyncio.CancelledError:
+                pass
+            token = lease_state.get("lease_token")
+            try:
+                await self.vault_client.release_vault_lease(lease_id, token)
+            except Exception as exc:
+                lost_event.set()
+                raise ProxyPolicyError("VAULT_LEASE_RELEASE_FAILED") from exc
+            finally:
+                lease_state["secret"].clear()
+                lease_state["settings"].clear()
+                lease_state["lease_token"] = None
+            self._active_leases.pop(lease_id, None)
+
+        binding_result = ProxyLeaseBinding(settings, release_lease, lost_event)
+        self._active_leases[lease_id] = binding_result
+        return binding_result
+
