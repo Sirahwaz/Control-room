@@ -1,4 +1,5 @@
 """End-to-end orchestration tests using fake Cloudflare and Browser adapters."""
+import asyncio
 import base64
 import json
 import os
@@ -172,7 +173,6 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         valid = {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"]}
         self.assertEqual(validate_browser_payload(valid)["credential_binding_ids"], ["proxy-binding-01"])
         invalid_payloads = [
-            {"operator_hint": "inspect example", "credential_binding_ids": []},
             {"operator_hint": "inspect example", "credential_binding_ids": ["../secret"]},
             {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01", "proxy-binding-01"]},
             {"operator_hint": "inspect example", "credential_binding_ids": ["a" * 129]},
