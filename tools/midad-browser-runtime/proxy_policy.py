@@ -226,7 +226,7 @@ class ProxyRuntime:
         self.secret_resolver = secret_resolver
         self.vault_client = vault_client
         self.vault_mode = vault_mode
-        self.renew_interval_seconds = max(5.0, min(float(renew_interval_seconds), 60.0))
+        self.renew_interval_seconds = max(0.005, min(float(renew_interval_seconds), 60.0))
         self._task_context = None
         self._task_lost_event = asyncio.Event()
         self._active_leases = {}
@@ -287,6 +287,7 @@ class ProxyRuntime:
                 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value)
                 for value in binding_ids
             )
+            or any(not isinstance(value, str) for value in binding_ids)
             or len(binding_ids) != len(set(binding_ids))
         ):
             raise ProxyPolicyError("BROWSER_TASK_CONTEXT_INVALID")
