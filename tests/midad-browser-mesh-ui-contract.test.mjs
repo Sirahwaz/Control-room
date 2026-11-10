@@ -35,15 +35,17 @@ test("the bundled Mesh surface exposes runtime, network, vault and appearance co
 
 test("appearance preferences persist locally and never store provider credentials", () => {
   const js = read("mobile/web/midad-browser-mesh.js");
-  assert.match(js, /const STORAGE_KEY = "midad-browser-mesh-settings-v1"/);
-  assert.match(js, /localStorage\\.getItem\\(STORAGE_KEY\\)/);
-  assert.match(js, /localStorage\\.setItem\\(STORAGE_KEY/);
-  assert.match(js, /applySettings/);
-  assert.match(js, /fontScale/);
-  assert.match(js, /accent/);
-  assert.match(js, /language/);
-  assert.match(js, /headline/);
-  assert.doesNotMatch(js, /MIDAD_LEDGER_ADMIN_KEY|MIDAD_GITHUB_APP_PRIVATE_KEY|password\\s*[:=]/i);
+  assert.ok(js.includes('const STORAGE_KEY = "midad-browser-mesh-settings-v1"'));
+  assert.ok(js.includes("localStorage.getItem(STORAGE_KEY)"));
+  assert.ok(js.includes("localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))"));
+  assert.ok(js.includes("applySettings"));
+  assert.ok(js.includes("fontScale"));
+  assert.ok(js.includes("accent"));
+  assert.ok(js.includes("language"));
+  assert.ok(js.includes("headline"));
+  assert.equal(js.includes("MIDAD_LEDGER_ADMIN_KEY"), false);
+  assert.equal(js.includes("MIDAD_GITHUB_APP_PRIVATE_KEY"), false);
+  assert.equal(js.includes("password"), false);
 });
 
 test("MNCF and network modules are explicitly pending until live health checks exist", () => {
@@ -56,19 +58,19 @@ test("MNCF and network modules are explicitly pending until live health checks e
 
 test("the Android APK workflow builds the manifest-selected Browser home and gates it through Agentation", () => {
   const workflow = read(".github/workflows/midad-browser-android.yml");
-  assert.match(workflow, /uses: \\.\\/\\.github\\/workflows\\/agentation-e2e\\.yml/);
-  assert.match(workflow, /product_key: midad-browser/);
-  assert.match(workflow, /needs: agentation-ui-feedback/);
-  assert.match(workflow, /WEB_ENTRY=/);
-  assert.match(workflow, /web_assets/);
+  assert.ok(workflow.includes("uses: ./.github/workflows/agentation-e2e.yml"));
+  assert.ok(workflow.includes("product_key: midad-browser"));
+  assert.ok(workflow.includes("needs: agentation-ui-feedback"));
+  assert.ok(workflow.includes("WEB_ENTRY="));
+  assert.ok(workflow.includes(".web_assets"));
 });
 
 test("the native WebView serves the product's packaged homepage without network access", () => {
   const activity = read("mobile/factory/native/midad-browser/BrowserActivity.java");
   const smoke = read("mobile/factory/native/midad-browser/runtime-smoke.sh");
-  assert.match(activity, /appassets\\.androidplatform\\.net\\/assets\\/public\\/index\\.html/);
-  assert.match(activity, /WebViewAssetLoader/);
-  assert.match(smoke, /svc wifi disable/);
-  assert.match(smoke, /svc data disable/);
-  assert.match(smoke, /LOCAL_HOME_LOADED/);
+  assert.ok(activity.includes("https://appassets.androidplatform.net/assets/public/index.html"));
+  assert.ok(activity.includes("WebViewAssetLoader"));
+  assert.ok(smoke.includes("svc wifi disable"));
+  assert.ok(smoke.includes("svc data disable"));
+  assert.ok(smoke.includes("LOCAL_HOME_LOADED"));
 });
