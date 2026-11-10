@@ -44,6 +44,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Run Cloudflare Browser Run runtime contract tests
+        run: node --test ../tests/browser-run-runtime.test.mjs
       - name: Validate Cloudflare Worker bundle without credentials or deployment
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 

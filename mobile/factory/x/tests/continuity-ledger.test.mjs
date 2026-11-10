@@ -162,3 +162,67 @@ test('browser claim requires enrolled capabilities, browser runtime version and 
   assert.equal((await claim(ledger,'node-a',token)).body.task,null);
   storage.close();
 });
+
+test('Cloudflare Browser Run endpoints require admin authentication and expose only guarded smoke/close operations', async () => {
+  const storage = new Storage();
+  const calls = [];
+  let accepted = false;
+  let closed = false;
+  const socket = new EventTarget();
+  socket.accept = () => { accepted = true; };
+  socket.send = raw => {
+    const command = JSON.parse(raw);
+    const result = command.method === 'Runtime.evaluate'
+      ? { result: { type: 'object', value: { title: 'Example Domain', url: 'https://example.com/', text: 'Example Domain browser smoke passed' } } }
+      : {};
+    queueMicrotask(() => socket.dispatchEvent(new MessageEvent('message', {
+      data: JSON.stringify({ id: command.id, result }),
+    })));
+  };
+  socket.close = () => { closed = true; };
+  const browser = {
+    async acquire(options) {
+      calls.push(['acquire', options]);
+      return { sessionId: 'browser-session-1', targets: [{ id: 'target-1', type: 'page' }] };
+    },
+    async connectSession(sessionId, options) {
+      calls.push(['connectSession', sessionId, options]);
+      return { webSocket: { fetch: async () => ({ webSocket: socket }) } };
+    },
+    async getLiveView(sessionId, options) {
+      calls.push(['getLiveView', sessionId, options]);
+      return { devtoolsFrontendUrl: 'https://live.browser.run/ui/inspector?jwt=test-only' };
+    },
+    async closeSession(sessionId) {
+      calls.push(['closeSession', sessionId]);
+      return 'closed';
+    },
+  };
+  const ledger = new MidadContinuityLedger({ storage }, { MIDAD_LEDGER_ADMIN_KEY: ADMIN, BROWSER: browser });
+  const body = { target_url: 'https://example.com/', allowed_hosts: ['example.com'] };
+  const denied = await read(await ledger.fetch(post('/v1/browser/run/smoke', body)));
+  assert.equal(denied.status, 401);
+  assert.equal(calls.length, 0);
+
+  const result = await read(await ledger.fetch(post('/v1/browser/run/smoke', body, admin())));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.status, 'PASS');
+  assert.equal(result.body.runtime, 'cloudflare-browser-run');
+  assert.equal(result.body.title, 'Example Domain');
+  assert.equal(result.body.url, 'https://example.com/');
+  assert.match(result.body.live_view_url, /^https:\/\/live\.browser\.run\//);
+  assert.equal(accepted, true);
+  assert.equal(closed, true);
+  assert.deepEqual(calls[0], ['acquire', {
+    keepAlive: 60000, targets: true, liveViewUrlExpiresInMs: 60000,
+    guardrails: { allowedDomains: ['example.com'] },
+  }]);
+
+  const closedResult = await read(await ledger.fetch(post('/v1/browser/run/close',
+    { session_id: 'browser-session-1' }, admin())));
+  assert.equal(closedResult.status, 200);
+  assert.equal(closedResult.body.status, 'CLOSED');
+  assert.equal(calls.some(([name]) => name === 'closeSession'), true);
+
+  storage.close();
+});

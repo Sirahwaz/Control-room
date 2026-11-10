@@ -1,3 +1,4 @@
+import { closeBrowserRunSession, runBrowserRunSmoke } from './browser-run-runtime.mjs';
 import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
 
 const WORKLOADS = new Set(['CPU_BATCH', 'WEBGPU_BATCH', 'BROWSER_SESSION', 'SINGLE']);
@@ -192,6 +193,31 @@ export class MidadContinuityLedger {
       if (path === '/v1/nodes/enroll') return this.enroll(body);
       if (path === '/v1/nodes/revoke') return this.revoke(body);
       return this.enqueue(body);
+    }
+    if (path === '/v1/browser/run/smoke' || path === '/v1/browser/run/close') {
+      if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
+      if (!this.env.BROWSER) return response(503, { ok: false, error: 'BROWSER_RUN_BINDING_MISSING' });
+      if (path === '/v1/browser/run/smoke') {
+        try {
+          const result = await runBrowserRunSmoke({
+            browserBinding: this.env.BROWSER,
+            targetUrl: typeof body.target_url === 'string' ? body.target_url.slice(0, 2048) : '',
+            allowedHosts: Array.isArray(body.allowed_hosts) ? body.allowed_hosts : [],
+          });
+          return response(200, { ok: true, ...result });
+        } catch (error) {
+          const code = String(error?.message || 'BROWSER_RUN_FAILED').slice(0, 200);
+          const invalidInput = /^(TARGET_URL_INVALID|HTTPS_REQUIRED|URL_CREDENTIALS_FORBIDDEN|HTTPS_PORT_NOT_ALLOWED|ALLOWED_HOSTS_REQUIRED|ALLOWED_HOST_INVALID|HOST_NOT_ALLOWLISTED|PUBLIC_HOST_REQUIRED|BROWSER_REDIRECT_HOST_NOT_ALLOWLISTED)$/.test(code);
+          return response(invalidInput ? 422 : 502, { ok: false, error: code });
+        }
+      }
+      try {
+        const result = await closeBrowserRunSession(this.env.BROWSER, body.session_id);
+        return response(200, { ok: true, ...result });
+      } catch (error) {
+        const code = String(error?.message || 'BROWSER_RUN_CLOSE_FAILED').slice(0, 200);
+        return response(code === 'SESSION_ID_INVALID' ? 422 : 502, { ok: false, error: code });
+      }
     }
     const node = await this.nodeAuth(req);
     if (!node) return response(401, { ok: false, error: 'ENROLLED_NODE_AUTH_REQUIRED' });
