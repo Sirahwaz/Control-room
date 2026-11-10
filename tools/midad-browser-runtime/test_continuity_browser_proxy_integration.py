@@ -167,5 +167,65 @@ class PersistentSessionProxyIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(session.proxy_settings)
 
 
+
+class BrowserWorkerV2ProxyWiringTests(unittest.TestCase):
+    def test_worker_v2_passes_the_proxy_resolver_to_its_existing_session_pool(self):
+        from continuity_browser_worker_v2 import ContinuityBrowserWorker, ContinuityWorkerConfig
+
+        class FakeRegistry:
+            def list_profiles(self):
+                return [dict(PROFILE)]
+
+        class FakeRuntime:
+            def resolve_for_profile(self, profile):
+                return None
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            registry_path = root / "accounts.json"
+            registry_path.write_text("{}", encoding="utf-8")
+            os.chmod(registry_path, 0o600)
+            config = ContinuityWorkerConfig(
+                ledger_url="https://ledger.example.workers.dev",
+                node_id="browser-node-1",
+                node_token="b" * 64,
+                owner_id=OWNER,
+                allowed_hosts=frozenset({"example.com"}),
+                account_registry_path=registry_path,
+                session_store_path=root / "sessions",
+                session_store_key_b64="dGVzdA==",
+                enrolled_capabilities=frozenset({
+                    "interactive-browser-execution",
+                    "persistent-browser-session",
+                    "encrypted-session-store",
+                }),
+                cost_per_hour_usd=0.0,
+                poll_seconds=3.0,
+                heartbeat_seconds=15.0,
+            )
+            captured = {}
+            fake_pool = object()
+
+            def pool_factory(*args, **kwargs):
+                captured.update(kwargs)
+                return fake_pool
+
+            with (
+                patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-password"}),
+                patch("continuity_browser_worker_v2.AccountRegistry", return_value=FakeRegistry()),
+                patch("continuity_browser_worker_v2.EncryptedSessionStore", return_value=object()),
+                patch("continuity_browser_worker_v2.PersistentSessionPool", side_effect=pool_factory),
+            ):
+                proxy_runtime = FakeRuntime()
+                worker = ContinuityBrowserWorker(
+                    config,
+                    operator=object(),
+                    proxy_runtime=proxy_runtime,
+                )
+
+        self.assertIs(worker.session_pool, fake_pool)
+        self.assertIs(captured.get("proxy_settings_resolver"), proxy_runtime.resolve_for_profile)
+
+
 if __name__ == "__main__":
     unittest.main()
