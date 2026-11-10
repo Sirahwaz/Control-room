@@ -31,7 +31,7 @@
     },
     "linux_compute": {
       "role": "production_compute",
-      "status": "ephemeral_runtime_and_continuity_runner_source_implemented_live_enrollment_pending",
+      "status": "ephemeral_runtime_pull_runner_and_cpu_batch_dispatch_sources_implemented_live_enrollment_pending",
       "os_family": "Linux",
       "runtime": "node24-bounded-linux-worker",
       "persistent_server_required_for_online_service": false,
@@ -108,7 +108,7 @@
       },
       "capacity_boundary": {
         "persistent_host": "optional_specialist_node_not_provisioned",
-        "production_online_service": "serverless_control_plane_plus_github_ephemeral_pull_runner_source_implemented_live_ledger_activation_pending",
+        "production_online_service": "serverless_control_plane_with_scheduled_pull_runner_and_cpu_batch_dispatch_sources_implemented_live_activation_pending",
         "do_not_infer_persistence_from_github_actions": true
       },
       "continuity_runner_adapter": {
@@ -331,9 +331,9 @@
       "runtime_status": "not_deployed"
     },
     "dispatch": {
-      "current_authority": "existing_midad_forge",
+      "current_authority": "existing_midad_forge_for_forge_builds_and_cloudflare_continuity_queue_for_cpu_batch",
       "current_transport": "existing_supabase_forge_oidc",
-      "cloudflare_to_github_runner": "cloudflare_push_trigger_pending",
+      "cloudflare_to_github_runner": "source_implemented_ci_pending_live_activation",
       "cutover_policy": "preserve_existing_forge_until_cloudflare_runner_adapter_is_live_verified_and_approved",
       "github_to_cloudflare_pull_claim": {
         "status": "source_implemented_live_ledger_activation_pending",
@@ -341,7 +341,9 @@
         "cadence_minutes": 5,
         "model": "scheduled_pull_claim",
         "push_trigger_from_cloudflare": false
-      }
+      },
+      "github_app_auth": "short_lived_installation_token_actions_write_only",
+      "runner_node_auth": "owner_approved_enrolled_node_token"
     },
     "compute": {
       "primary_provider": "github-actions-linux",
@@ -355,6 +357,20 @@
         "runtime": "compute/mncf/runtime/continuity-github-runner.mjs",
         "one_task_per_run": true,
         "task_scope": "fixed_public_https_probe_only",
+        "persistent_host_required": false
+      },
+      "github_actions_adapter": {
+        "workflow": ".github/workflows/midad-mncf-ephemeral-runner.yml",
+        "runner": "ubuntu-latest",
+        "supported_workload": "CPU_BATCH",
+        "task_claim": "owner_bound_task_id_specific_atomic_lease",
+        "supported_operations": [
+          "RUNNER_SMOKE",
+          "SUM_INTEGERS",
+          "HASH_TEXT"
+        ],
+        "arbitrary_shell_execution": false,
+        "live_status": "not_configured_not_deployed",
         "persistent_host_required": false
       }
     },
@@ -374,6 +390,20 @@
       "delivery": "at_least_once",
       "recovery": "lease_expiry_checkpoint_resume_and_independent_reconciliation",
       "retry_limit": 3
+    },
+    "security": {
+      "github_dispatch": {
+        "app_permission": "repository_actions_write_only",
+        "access_token": "short_lived_installation_token_per_dispatch",
+        "workflow_inputs": [
+          "event_id",
+          "task_id",
+          "owner_id"
+        ],
+        "secrets_in_workflow_inputs": false,
+        "runner_credential": "owner_approved_node_token_in_actions_secret",
+        "revocation": "continuity_ledger_node_revoke"
+      }
     }
   }
 }
