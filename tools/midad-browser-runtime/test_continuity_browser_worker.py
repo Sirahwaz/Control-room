@@ -157,6 +157,33 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ContinuityWorkerError, "HUMAN_APPROVAL_REQUIRED|ACTION_NOT_ALLOWED"):
                     validate_browser_payload({"operator_command": {"action": action}})
 
+
+    def test_credential_binding_ids_are_accepted_as_non_secret_task_policy_metadata(self):
+        payload = {
+            "operator_hint": "inspect example",
+            "credential_binding_ids": ["proxy-binding-01"],
+        }
+        parsed = validate_browser_payload(payload)
+        self.assertEqual(parsed["action"], "inspect")
+        self.assertEqual(parsed["credential_binding_ids"], ["proxy-binding-01"])
+        self.assertEqual(parsed["value"], "inspect example")
+
+    def test_credential_binding_ids_are_bounded_unique_and_identifier_only(self):
+        valid = {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"]}
+        self.assertEqual(validate_browser_payload(valid)["credential_binding_ids"], ["proxy-binding-01"])
+        invalid_payloads = [
+            {"operator_hint": "inspect example", "credential_binding_ids": []},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["../secret"]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01", "proxy-binding-01"]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["a" * 129]},
+            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"], "password": "no"},
+            {"operator_hint": "inspect example", "operator_command": {"action": "inspect"}},
+        ]
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                with self.assertRaises(ContinuityWorkerError):
+                    validate_browser_payload(payload)
+
     def test_sensitive_payload_is_rejected(self):
         with self.assertRaisesRegex(ContinuityWorkerError, "SENSITIVE_TASK_PAYLOAD_REJECTED"):
             validate_browser_payload({"operator_hint": "inspect example password=hunter2"})
