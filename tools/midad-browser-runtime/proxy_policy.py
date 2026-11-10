@@ -238,8 +238,13 @@ class ProxyRuntime:
     @classmethod
     def from_env(cls, environ=None, vault_client=None, renew_interval_seconds: float = 20.0):
         env = os.environ if environ is None else environ
+        mode = str(env.get("MIDAD_VAULT_MODE", "environment")).strip().lower()
+        if mode not in {"environment", "central"}:
+            raise ProxyPolicyError("VAULT_MODE_INVALID")
         config_path = str(env.get("MIDAD_NETWORK_ACCESS_CONFIG", "")).strip()
         if not config_path:
+            if mode == "central":
+                raise ProxyPolicyError("NETWORK_ACCESS_CONFIG_REQUIRED")
             return None
         try:
             with Path(config_path).open("r", encoding="utf-8") as stream:
@@ -247,7 +252,6 @@ class ProxyRuntime:
         except (OSError, ValueError) as exc:
             raise ProxyPolicyError("NETWORK_ACCESS_CONFIG_UNAVAILABLE") from exc
 
-        mode = str(env.get("MIDAD_VAULT_MODE", "environment")).strip().lower()
         if mode == "central":
             if vault_client is None:
                 raise ProxyPolicyError("VAULT_CLIENT_REQUIRED")
