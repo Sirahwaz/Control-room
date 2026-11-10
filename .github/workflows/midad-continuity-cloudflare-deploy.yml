@@ -46,8 +46,8 @@ jobs:
           node-version: 24
       - name: Run Cloudflare Browser Run runtime contract tests
         run: node --test ../tests/browser-run-runtime.test.mjs
-      - name: Run Continuity, Vault, Browser Run and GitHub dispatch contract tests
-        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs
+      - name: Run Continuity, Vault, Browser Run, GitHub dispatch and deploy workflow contract tests
+        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs ../tests/continuity-deploy-workflow.test.mjs
       - name: Validate Cloudflare Worker bundle without credentials or deployment
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 
@@ -81,6 +81,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       MIDAD_LEDGER_ADMIN_KEY: ${{ secrets.MIDAD_LEDGER_ADMIN_KEY }}
       MIDAD_WAKE_INTERNAL_KEY: ${{ secrets.MIDAD_WAKE_INTERNAL_KEY }}
+      MIDAD_VAULT_KEYRING_JSON: ${{ secrets.MIDAD_VAULT_KEYRING_JSON }}
+      MIDAD_VAULT_ACTIVE_KEY_VERSION: ${{ secrets.MIDAD_VAULT_ACTIVE_KEY_VERSION }}
       MIDAD_GITHUB_APP_ID: ${{ secrets.MIDAD_GITHUB_APP_ID }}
       MIDAD_GITHUB_INSTALLATION_ID: ${{ secrets.MIDAD_GITHUB_INSTALLATION_ID }}
       MIDAD_GITHUB_APP_PRIVATE_KEY: ${{ secrets.MIDAD_GITHUB_APP_PRIVATE_KEY }}
@@ -102,7 +104,8 @@ jobs:
             exit 1
           fi
           if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ||
-                -z "$MIDAD_LEDGER_ADMIN_KEY" || -z "$MIDAD_WAKE_INTERNAL_KEY" ]]; then
+                -z "$MIDAD_LEDGER_ADMIN_KEY" || -z "$MIDAD_WAKE_INTERNAL_KEY" ||
+                -z "$MIDAD_VAULT_KEYRING_JSON" || -z "$MIDAD_VAULT_ACTIVE_KEY_VERSION" ]]; then
             echo "::error::One or more required cloudflare-production environment secrets are missing."
             exit 1
           fi
@@ -110,6 +113,15 @@ jobs:
             echo "::error::MIDAD worker secrets must each contain at least 32 characters."
             exit 1
           fi
+          node --input-type=module - <<'NODE'
+          import { readVaultKeyring } from './vault-crypto.mjs';
+          const keyring = readVaultKeyring(process.env);
+          console.log(JSON.stringify({
+            vault_keyring_valid: true,
+            active_key_version: keyring.activeVersion,
+            key_versions: keyring.keys.size,
+          }));
+          NODE
           APP_SECRET_COUNT=0
           for value in "$MIDAD_GITHUB_APP_ID" "$MIDAD_GITHUB_INSTALLATION_ID" "$MIDAD_GITHUB_APP_PRIVATE_KEY"; do
             if [[ -n "$value" ]]; then APP_SECRET_COUNT=$((APP_SECRET_COUNT + 1)); fi
@@ -159,8 +171,13 @@ jobs:
           const values = {
             MIDAD_LEDGER_ADMIN_KEY: process.env.MIDAD_LEDGER_ADMIN_KEY,
             MIDAD_WAKE_INTERNAL_KEY: process.env.MIDAD_WAKE_INTERNAL_KEY,
+            MIDAD_VAULT_KEYRING_JSON: process.env.MIDAD_VAULT_KEYRING_JSON,
+            MIDAD_VAULT_ACTIVE_KEY_VERSION: process.env.MIDAD_VAULT_ACTIVE_KEY_VERSION,
           };
-          if (Object.values(values).some(value => typeof value !== 'string' || value.length < 32)) {
+          if (typeof values.MIDAD_LEDGER_ADMIN_KEY !== 'string' || values.MIDAD_LEDGER_ADMIN_KEY.length < 32 ||
+              typeof values.MIDAD_WAKE_INTERNAL_KEY !== 'string' || values.MIDAD_WAKE_INTERNAL_KEY.length < 32 ||
+              typeof values.MIDAD_VAULT_KEYRING_JSON !== 'string' || values.MIDAD_VAULT_KEYRING_JSON.length === 0 ||
+              typeof values.MIDAD_VAULT_ACTIVE_KEY_VERSION !== 'string' || values.MIDAD_VAULT_ACTIVE_KEY_VERSION.length === 0) {
             throw new Error('Worker secret validation failed');
           }
           const appValues = {

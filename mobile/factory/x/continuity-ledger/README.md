@@ -43,9 +43,12 @@ One-time GitHub setup, after the PR chain reaches `main`:
    - `CLOUDFLARE_ACCOUNT_ID`
    - `MIDAD_LEDGER_ADMIN_KEY`
    - `MIDAD_WAKE_INTERNAL_KEY`
+   - `MIDAD_VAULT_KEYRING_JSON`
+   - `MIDAD_VAULT_ACTIVE_KEY_VERSION`
 3. The two MIDAD keys must each be at least 32 characters. Generate them privately; never paste them into chat, issue comments, workflow inputs or repository files. The workflow itself does not reveal their values.
+The ledger admin and wake internal keys must each contain at least 32 characters. The Vault keyring JSON must include one or more base64url-encoded 32-byte keys, and the active version must exist in that keyring. Generate all key material privately; never paste it into chat, issue comments, workflow inputs or repository files.
 4. Create an account-scoped Cloudflare API token for the intended account. For the first deployment, Wrangler needs Workers product-level **Admin** to create a new Worker, plus account-level **Queues Edit** to create the two Queues. This initial Workers permission is broad. After the Worker exists, rotate the token and replace it with Workers **Editor** scoped only to `midad-continuity-ledger`, while retaining account-level Queues access for the workflow. Do not grant DNS, billing, R2, KV or unrelated product permissions.
-5. Open **Actions → MIDAD Continuity — Cloudflare Deploy → Run workflow** on `main`. Choose `dry-run` first. When account secrets and environment protection are ready, choose `deploy` and type `DEPLOY` in the confirmation field.
+5. Open **Actions → MIDAD Continuity — Cloudflare Deploy → Run workflow** on `main`. Choose `dry-run` first. When all six required environment secrets and environment protection are ready, choose `deploy` and type `DEPLOY` in the confirmation field.
 
 The workflow does not print the Cloudflare token or either MIDAD key. It does not touch DNS, Supabase, billing settings or unrelated Workers. Cloudflare documents the API-token/Workers role model and the separate Queues permission here: [Workers roles](https://developers.cloudflare.com/workers/authorization/workers/), [API token permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Wrangler Queue commands](https://developers.cloudflare.com/workers/wrangler/commands/queues/).
 
