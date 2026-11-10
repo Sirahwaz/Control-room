@@ -10,8 +10,10 @@ import json
 import os
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from account_registry import AccountRegistry
+from automation_policy import evaluate_action
 from operator_command_router import CommandRoutingError, build_operator_request, validate_operator_command
 from persistent_session import BrowserSessionError, PersistentSessionPool
 from runner import BrowserConfig, GatewayClient
@@ -45,6 +47,66 @@ class OperatorWorker:
         if expected_platform and expected_platform != actual_platform:
             raise CommandRoutingError("PLATFORM_PROFILE_MISMATCH")
         return profile
+
+    def _evaluate_command_policy(self, job: dict, command: dict, profile: dict,
+                                 current_url: str | None):
+        """Apply owner/account/host/path policy before the legacy router or browser opens."""
+        action = str(command.get("action") or "").strip().lower()
+        declared_owner = str(profile.get("owner_user_id") or "").strip()
+        if declared_owner and declared_owner != self.owner_user_id:
+            raise CommandRoutingError("PROFILE_OWNER_MISMATCH")
+
+        candidate_url = (
+            command.get("target_url")
+            or (profile.get("login_url") if action == "start_session" else None)
+            or current_url
+            or ("https://" + str(profile.get("host") or "") + "/")
+        )
+        try:
+            parsed = urlsplit(str(candidate_url))
+            host = (parsed.hostname or "").lower().rstrip(".")
+            path = parsed.path or "/"
+        except (TypeError, ValueError):
+            raise CommandRoutingError("INVALID_TARGET_URL") from None
+
+        configured = profile.get("automation_policy")
+        if configured is None:
+            # Legacy profiles are kept compatible for inspection, but writes and
+            # login startup require an explicit profile-level autonomy declaration.
+            resource_hosts = profile.get("resource_hosts", [])
+            allowed_hosts = [profile.get("host")]
+            if isinstance(resource_hosts, list):
+                allowed_hosts.extend(resource_hosts)
+            configured = {
+                "mode": "read_only",
+                "allowed_hosts": allowed_hosts,
+                "allowed_paths": profile.get("allowed_paths", ["/"]),
+                "allowed_actions": [
+                    "inspect", "read", "navigate", "search",
+                    "wait_for_selector", "capture_screenshot", "status", "stop_session",
+                    "start_session", "click", "fill", "select", "upload", "download",
+                    "create", "update", "submit_form",
+                ],
+            }
+
+        policy_profile = {
+            **profile,
+            "owner_user_id": self.owner_user_id,
+            "automation_policy": configured,
+        }
+        policy_request = {
+            "owner_user_id": self.owner_user_id,
+            "account_id": str(profile.get("account_id") or ""),
+            "platform_key": str(profile.get("platform_key") or profile.get("display_name") or host),
+            "host": host,
+            "path": path,
+            "task_id": str(job.get("id") or job.get("job_id") or ""),
+            "action": action,
+        }
+        decision = evaluate_action(action, policy_profile, policy_request, approval=None)
+        if not decision.allowed:
+            raise CommandRoutingError(decision.reason)
+        return decision
 
     async def _record(self, job: dict, event_type: str, state: str, current_url: str | None,
                      next_action: str, evidence: dict | None = None, reason: str | None = None):
@@ -93,11 +155,24 @@ class OperatorWorker:
             if not command and isinstance(hint, str):
                 command = build_operator_request(hint[:500], self._profiles())
             profile = self._profile_for(command)
-            validated = validate_operator_command(command, profile, set(self.config.allowed_hosts))
+            policy_decision = self._evaluate_command_policy(job, command, profile, current_url)
+            policy_command = dict(command)
+            # The profile policy supersedes the legacy per-command boolean.
+            # Only a policy-approved reversible action may pass that older gate.
+            if policy_decision.risk == "reversible":
+                policy_command["action_approved"] = True
+            validated = validate_operator_command(policy_command, profile, set(self.config.allowed_hosts))
             if current_url is None and validated.get("target_url"):
                 current_url = validated["target_url"]
-            await self._record(job, "state_transition", "RUNNING", current_url,
-                               "execute_operator_command", {"policy_code": "COMMAND_ACCEPTED"})
+            await self._record(
+                job, "state_transition", "RUNNING", current_url,
+                "execute_operator_command",
+                {
+                    "policy_code": "COMMAND_POLICY_ALLOWED",
+                    "policy_risk": policy_decision.risk,
+                    "policy_reason": policy_decision.reason,
+                },
+            )
             account_id = profile["account_id"]
             session = self.session_pool.sessions.get(account_id)
             if validated["action"] == "start_session":

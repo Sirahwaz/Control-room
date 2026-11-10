@@ -23,12 +23,16 @@ PROFILE = {
 }
 
 class FakeRegistry:
+    def __init__(self, profile=None):
+        self.profile = dict(profile or PROFILE)
+
     def list_profiles(self):
-        return [dict(PROFILE)]
+        return [dict(self.profile)]
+
     def get_profile(self, account_id):
-        if account_id != PROFILE["account_id"]:
+        if account_id != self.profile["account_id"]:
             raise ValueError("not found")
-        return dict(PROFILE)
+        return dict(self.profile)
 
 class FakeGateway:
     def __init__(self, jobs=None):
@@ -73,7 +77,19 @@ class FakePool:
 class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.config = SimpleNamespace(allowed_hosts=frozenset({"example.com"}))
-        self.registry = FakeRegistry()
+        self.registry = FakeRegistry({
+            **PROFILE,
+            "automation_policy": {
+                "mode": "scoped_autonomy",
+                "allowed_hosts": ["example.com"],
+                "allowed_paths": ["/"],
+                "allowed_actions": [
+                    "start_session", "inspect", "read", "navigate",
+                    "wait_for_selector", "status", "stop_session", "click", "fill",
+                    "submit_form",
+                ],
+            },
+        })
         self.gateway = FakeGateway()
         self.pool = FakePool()
         self.worker = OperatorWorker(self.config, "00000000-0000-4000-8000-000000000001",
@@ -111,8 +127,55 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         result = await self.worker.process_job(job)
         self.assertEqual(result["status"], "INSPECTED")
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
-        self.assertTrue(any(event["state"] == "RUNNING" for event in self.gateway.events))
+        running = [event for event in self.gateway.events if event["state"] == "RUNNING"]
+        self.assertEqual(len(running), 1)
+        self.assertEqual(running[0]["evidence"]["policy_risk"], "low")
+        self.assertEqual(running[0]["evidence"]["policy_reason"], "AUTHORIZED_WITHIN_PROFILE_SCOPE")
         self.assertTrue(any(event["state"] == "COMPLETED" for event in self.gateway.events))
+
+    async def test_scoped_autonomy_policy_authorizes_reversible_click_without_per_action_flag(self):
+        job = {
+            "id": "job-click-scoped", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "click", "platform_key": "example",
+                "account_id": "example-account", "selector": "button[data-testid='open']",
+                "action_approved": False,
+            }},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "INSPECTED")
+        self.assertTrue(self.pool.sessions)
+        completed = [event for event in self.gateway.events if event["state"] == "COMPLETED"]
+        self.assertEqual(len(completed), 1)
+
+    async def test_missing_profile_policy_defaults_to_read_only_and_blocks_click(self):
+        self.registry.profile.pop("automation_policy", None)
+        job = {
+            "id": "job-click-default", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "click", "platform_key": "example",
+                "account_id": "example-account", "selector": "button[data-testid='open']",
+                "action_approved": True,
+            }},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("READ_ONLY_MODE", result["code"])
+        self.assertFalse(self.pool.sessions)
+
+    async def test_high_impact_submit_is_blocked_without_gateway_approval(self):
+        job = {
+            "id": "job-submit-no-approval", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "submit_form", "platform_key": "example",
+                "account_id": "example-account", "selector": "form#profile",
+                "action_approved": True,
+            }},
+        }
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("HIGH_IMPACT_APPROVAL_REQUIRED", result["code"])
+        self.assertFalse(self.pool.sessions)
 
     async def test_plain_operator_hint_resolves_profile_in_worker(self):
         job = {
