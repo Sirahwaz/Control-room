@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { MidadContinuityLedger } from '../continuity-ledger/worker.mjs';
+import { encryptVaultSecret, decryptVaultSecret, rewrapVaultSecret } from '../continuity-ledger/vault-crypto.mjs';
 
 class Cursor {
   constructor(rows = []) { this.rows = rows; }
@@ -343,4 +344,61 @@ test('Vault key rotation rewraps data keys without rewriting plaintext or losing
   assert.equal(issued.status, 200);
   assert.equal(issued.body.lease.secret.password, 'proxy-password-never-store-plaintext');
   storage.close();
+});
+
+
+test('Vault AES-GCM ciphertext is bound to its owner, binding and exact host metadata', async () => {
+  const env = {
+    MIDAD_VAULT_ACTIVE_KEY_VERSION: 'v1',
+    MIDAD_VAULT_KEYRING_JSON: JSON.stringify({ v1: KEY_V1 }),
+  };
+  const metadata = {
+    owner_id: OWNER,
+    binding_id: BINDING,
+    secret_ref: SECRET_REF,
+    platform_id: 'example',
+    host: 'example.com',
+    purpose: 'PROXY_AUTH',
+    scope: 'AUTOMATION',
+  };
+  const secret = { username: 'proxy-user', password: 'proxy-password' };
+  const encrypted = await encryptVaultSecret(secret, metadata, env);
+  assert.deepEqual(await decryptVaultSecret(encrypted, metadata, env), secret);
+  await assert.rejects(
+    () => decryptVaultSecret(encrypted, { ...metadata, host: 'other.example' }, env),
+    /VAULT_DECRYPTION_FAILED/,
+  );
+  const tampered = { ...encrypted, ciphertext_b64: encrypted.ciphertext_b64.slice(0, -1) + (encrypted.ciphertext_b64.endsWith('A') ? 'B' : 'A') };
+  await assert.rejects(() => decryptVaultSecret(tampered, metadata, env));
+});
+
+test('Vault DEK rewrap preserves ciphertext and remains decryptable after retiring the old KEK', async () => {
+  const metadata = {
+    owner_id: OWNER,
+    binding_id: BINDING,
+    secret_ref: SECRET_REF,
+    platform_id: 'example',
+    host: 'example.com',
+    purpose: 'PROXY_AUTH',
+    scope: 'AUTOMATION',
+  };
+  const secret = { username: 'rotation-user', password: 'rotation-password' };
+  const v1 = {
+    MIDAD_VAULT_ACTIVE_KEY_VERSION: 'v1',
+    MIDAD_VAULT_KEYRING_JSON: JSON.stringify({ v1: KEY_V1 }),
+  };
+  const encrypted = await encryptVaultSecret(secret, metadata, v1);
+  const rotation = {
+    MIDAD_VAULT_ACTIVE_KEY_VERSION: 'v2',
+    MIDAD_VAULT_KEYRING_JSON: JSON.stringify({ v1: KEY_V1, v2: KEY_V2 }),
+  };
+  const rewrapped = await rewrapVaultSecret(encrypted, metadata, rotation);
+  assert.equal(rewrapped.key_version, 'v2');
+  assert.equal(rewrapped.ciphertext_b64, encrypted.ciphertext_b64);
+  assert.equal(rewrapped.nonce_b64, encrypted.nonce_b64);
+  const v2Only = {
+    MIDAD_VAULT_ACTIVE_KEY_VERSION: 'v2',
+    MIDAD_VAULT_KEYRING_JSON: JSON.stringify({ v2: KEY_V2 }),
+  };
+  assert.deepEqual(await decryptVaultSecret(rewrapped, metadata, v2Only), secret);
 });
