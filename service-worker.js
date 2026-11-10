@@ -1,6 +1,6 @@
 /* Version bump retires stale cache and activates the non-blocking fast-boot login path. */
-const CACHE="midad-control-v21-20261016-login-bindfix";
-const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js","./trust-wallet-link.html","./reown-wallet-connect.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg"];
+const CACHE="midad-control-v22-20261109-network-access-panel";
+const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js","./trust-wallet-link.html","./reown-wallet-connect.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg","./midad-network-access.html","./midad-network-access.css","./midad-network-access.js"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",event=>{

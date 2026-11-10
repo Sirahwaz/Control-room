@@ -1,0 +1,53 @@
+{
+  "contract_version": "midad.network-access/v1",
+  "proxy_profiles": [
+    {
+      "profile_id": "proxy-eu-01",
+      "display_name": "Example HTTPS Proxy",
+      "mode": "HTTPS",
+      "enabled": true,
+      "endpoint": {
+        "kind": "NETWORK",
+        "host": "proxy.example.net",
+        "port": 8443,
+        "scheme": "https"
+      },
+      "auth_secret_ref": "vault://proxy/eu-01/auth",
+      "region": "eu",
+      "health_policy": {
+        "on_failure": "BLOCK",
+        "max_attempts": 1,
+        "health_check_url": null
+      }
+    }
+  ],
+  "routing_rules": [
+    {
+      "rule_id": "automation-example-com",
+      "priority": 100,
+      "scopes": ["AUTOMATION"],
+      "hosts": ["example.com"],
+      "action": "USE_PROXY",
+      "proxy_profile_id": "proxy-eu-01",
+      "allow_direct_fallback": false
+    }
+  ],
+  "credential_bindings": [
+    {
+      "binding_id": "example-proxy-auth",
+      "account_id": "example-work-account",
+      "platform_id": "example",
+      "host": "example.com",
+      "purpose": "PROXY_AUTH",
+      "scope": "AUTOMATION",
+      "secret_ref": "vault://proxy/eu-01/auth",
+      "lease_ttl_seconds": 300
+    }
+  ],
+  "defaults": {
+    "on_no_match": "BLOCK",
+    "on_route_failure": "BLOCK",
+    "allow_direct_fallback": false,
+    "max_failover_attempts": 0
+  }
+}
