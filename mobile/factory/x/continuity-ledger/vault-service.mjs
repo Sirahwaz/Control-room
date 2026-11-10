@@ -353,10 +353,6 @@ async function issue(ledger, node, body) {
   );
   if (!secret) return response(404, { ok: false, error: 'VAULT_BINDING_NOT_FOUND' });
   if (secret.state !== 'ACTIVE') return response(409, { ok: false, error: 'VAULT_SECRET_REVOKED' });
-  if (secret.host !== host || secret.purpose !== String(body.purpose).toUpperCase() ||
-      secret.scope !== String(body.scope).toUpperCase()) {
-    return response(403, { ok: false, error: 'VAULT_BINDING_SCOPE_MISMATCH' });
-  }
   const ttl = Number.isInteger(body.lease_ttl_seconds) ? body.lease_ttl_seconds : 60;
   if (ttl < 30 || ttl > 300) return response(422, { ok: false, error: 'VAULT_LEASE_TTL_INVALID' });
   const expiresAt = Math.min(now + ttl * 1000, task.lease_expires_at_ms);
@@ -364,7 +360,7 @@ async function issue(ledger, node, body) {
   const requestHash = await sha256(canonical({
     owner_id: task.owner_id, node_id: node.node_id, task_id: task.task_id,
     binding_id: body.binding_id, request_id: body.request_id, host,
-    purpose: secret.purpose, scope: secret.scope,
+    purpose: String(body.purpose).toUpperCase(), scope: String(body.scope).toUpperCase(),
   }));
   const previous = ledger.one(
     'SELECT * FROM vault_leases WHERE owner_id=? AND node_id=? AND request_id=?',
@@ -382,6 +378,10 @@ async function issue(ledger, node, body) {
       ok: true, idempotent: true,
       lease: { lease_id: previous.lease_id, lease_token: token, expires_at: new Date(previous.expires_at_ms).toISOString(), secret: secretValue },
     });
+  }
+  if (secret.host !== host || secret.purpose !== String(body.purpose).toUpperCase() ||
+      secret.scope !== String(body.scope).toUpperCase()) {
+    return response(403, { ok: false, error: 'VAULT_BINDING_SCOPE_MISMATCH' });
   }
   const lease = {
     lease_id: crypto.randomUUID().replace(/-/g, ''),
