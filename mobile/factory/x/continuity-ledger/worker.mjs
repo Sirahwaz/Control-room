@@ -1,3 +1,4 @@
+import { dispatchGitHubWorkflow } from './github-dispatch.mjs';
 import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
 
 const WORKLOADS = new Set(['CPU_BATCH', 'WEBGPU_BATCH', 'BROWSER_SESSION', 'SINGLE']);
@@ -529,6 +530,14 @@ export default {
           body: JSON.stringify(event),
         }));
         if (!result.ok) throw new Error('WAKE_DISPATCH_REJECTED');
+        const wakeResult = await result.json();
+        if (wakeResult.runner_dispatchable === true) {
+          const dispatch = await dispatchGitHubWorkflow(event, env);
+          if (dispatch.dispatched !== true) {
+            // Keep the Queue message retryable; acking here would strand the CPU_BATCH task.
+            throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+          }
+        }
         message.ack();
         delivered += 1;
       } catch {
