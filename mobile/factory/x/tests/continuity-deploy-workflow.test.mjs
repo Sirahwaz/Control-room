@@ -17,7 +17,8 @@ test('Cloudflare deploy requires, validates and installs the complete Vault keyr
     'the protected environment active key version must be mapped into the deploy job',
   );
   assert.ok(
-    workflow.includes('if [[ -z "$MIDAD_VAULT_KEYRING_JSON" || -z "$MIDAD_VAULT_ACTIVE_KEY_VERSION" ]]'),
+    workflow.includes('-z "$MIDAD_VAULT_KEYRING_JSON"') &&
+      workflow.includes('-z "$MIDAD_VAULT_ACTIVE_KEY_VERSION"'),
     'deployment must fail closed when either Vault key setting is missing',
   );
   assert.ok(
