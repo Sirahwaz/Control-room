@@ -13,6 +13,7 @@ import {
   taskmarketFixture,
 } from "./provider_adapter_fixtures.ts";
 import {
+  canonicalMidadNetwork,
   isTaskmarketHighCompetitionLowValue,
   normalizeTaskmarketRail,
   shouldPreserveVerifiedTaskmarketProof,
@@ -114,6 +115,13 @@ Deno.test("Superteam listing reward is not proof of payout or region/KYC/identit
   }), {});
 });
 
+
+Deno.test("MIDAD receiving-route lookup canonicalizes provider network identifiers", () => {
+  assertEquals(canonicalMidadNetwork("eip155:8453"), "base");
+  assertEquals(canonicalMidadNetwork("4217"), "tempo");
+  assertEquals(canonicalMidadNetwork("Ethereum"), "ethereum");
+  assertEquals(canonicalMidadNetwork("unrecognized-chain"), "unrecognized-chain");
+});
 
 Deno.test("Taskmarket chainId maps Base USDC and Tempo OUSD without defaulting unknown chains to Base", () => {
   assertEquals(normalizeTaskmarketRail({ chainId: 8453 }), {
