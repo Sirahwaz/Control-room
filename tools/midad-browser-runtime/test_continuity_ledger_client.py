@@ -134,7 +134,7 @@ class ContinuityLedgerClientTests(unittest.IsolatedAsyncioTestCase):
         client = ContinuityLedgerClient(self.base, self.node_id, self.token, opener=opener)
         result = await client.issue_vault_lease(
             task_id="browser-task-01",
-            task_lease_token="t" * 64,
+            task_lease_token="a" * 64,
             binding_id="proxy-binding-01",
             request_id="vault-request-0001",
             host="example.com",
