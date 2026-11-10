@@ -328,6 +328,14 @@ class CentralVaultProxyRuntimeTests(unittest.IsolatedAsyncioTestCase):
             await self.runtime.resolve_for_profile(PROFILE)
         self.assertEqual(self.client.issued, [])
 
+
+    async def test_central_mode_fails_closed_without_network_access_config(self):
+        with self.assertRaisesRegex(ProxyPolicyError, "NETWORK_ACCESS_CONFIG_REQUIRED"):
+            ProxyRuntime.from_env(
+                environ={"MIDAD_VAULT_MODE": "central"},
+                vault_client=self.client,
+            )
+
     async def test_central_vault_mode_requires_a_real_vault_client(self):
         with self.assertRaisesRegex(ProxyPolicyError, "VAULT_CLIENT_REQUIRED"):
             ProxyRuntime.from_env(
