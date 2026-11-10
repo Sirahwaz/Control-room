@@ -23,6 +23,8 @@ on:
       - '.github/workflows/midad-forge.yml'
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
+      - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/tests/continuity-vault.test.mjs'
 
 permissions:
   contents: read
