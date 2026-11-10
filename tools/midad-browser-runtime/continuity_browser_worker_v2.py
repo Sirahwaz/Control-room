@@ -457,12 +457,6 @@ class ContinuityBrowserWorker:
         task_id = task["task_id"]
         lease = task["lease_token"]
         payload = validate_browser_payload(task["payload"])
-        if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
-            self.proxy_runtime.set_task_context({
-                "task_id": task_id,
-                "lease_token": lease,
-                "credential_binding_ids": payload["credential_binding_ids"],
-            })
         command_payload = (
             {"operator_hint": payload["value"]}
             if payload["mode"] == "hint"
@@ -474,6 +468,12 @@ class ContinuityBrowserWorker:
             "worker_version": "midad-operator-worker-v2.0.0",
             "action": payload["action"],
         })
+        if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+            self.proxy_runtime.set_task_context({
+                "task_id": task_id,
+                "lease_token": lease,
+                "credential_binding_ids": payload["credential_binding_ids"],
+            })
         job = {
             "id": task_id,
             "state": "PREPARING",
