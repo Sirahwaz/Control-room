@@ -402,3 +402,29 @@ test('Vault DEK rewrap preserves ciphertext and remains decryptable after retiri
   };
   assert.deepEqual(await decryptVaultSecret(rewrapped, metadata, v2Only), secret);
 });
+
+
+test('Vault lease release is authenticated, idempotency-safe and closes the lease', async () => {
+  const { storage, ledger } = setup();
+  await storeProxySecret(ledger);
+  const token = await enrollBrowserNode(ledger);
+  await heartbeat(ledger, NODE, token);
+  const task = await enqueueAndClaimBrowserTask(ledger, token);
+  const issued = await read(await ledger.fetch(post('/v1/vault/leases/issue',
+    issueRequest(task, 'vault-release-request-001'), nodeHeaders(NODE, token))));
+  assert.equal(issued.status, 200);
+  const released = await read(await ledger.fetch(post('/v1/vault/leases/release', {
+    lease_id: issued.body.lease.lease_id,
+    lease_token: issued.body.lease.lease_token,
+  }, nodeHeaders(NODE, token))));
+  assert.equal(released.status, 200);
+  assert.equal(released.body.state, 'RELEASED');
+  assert.equal(storage.db.prepare('SELECT state FROM vault_leases WHERE lease_id=?')
+    .get(issued.body.lease.lease_id).state, 'RELEASED');
+  const repeated = await read(await ledger.fetch(post('/v1/vault/leases/release', {
+    lease_id: issued.body.lease.lease_id,
+    lease_token: issued.body.lease.lease_token,
+  }, nodeHeaders(NODE, token))));
+  assert.equal(repeated.status, 409);
+  storage.close();
+});
