@@ -71,12 +71,12 @@ export function taskmarketPurchaseRequirement(raw: unknown): {
     record.buyRequired,
     record.buy_required,
   ].some((value) => value === true);
-  const outOfPocket = /\\b(?:entrants?|workers?|participants?)\\s+(?:must\\s+)?pay\\s+(?:their|your)\\s+own\\s+(?:purchase|purchases)(?:\\s+and\\s+network)?\\s+costs?\\b/i.test(text)
-    || /\\b(?:entrants?|workers?|participants?)\\s+(?:must\\s+)?cover\\s+(?:their|your)\\s+own\\s+(?:purchase|purchases|product|products)\\b/i.test(text);
-  const purchaseSteps = /\\b(?:buy|purchase|order)\\b/i.test(text)
-    && /\\b(?:receipt|proof of purchase|guestbook|delivery)\\b/i.test(text);
+  const outOfPocket = /\b(?:entrants?|workers?|participants?)\s+(?:must\s+)?pay\s+(?:their|your)\s+own\s+(?:purchase|purchases)(?:\s+and\s+network)?\s+costs?\b/i.test(text)
+    || /\b(?:entrants?|workers?|participants?)\s+(?:must\s+)?cover\s+(?:their|your)\s+own\s+(?:purchase|purchases|product|products)\b/i.test(text);
+  const purchaseSteps = /\b(?:buy|purchase|order)\b/i.test(text)
+    && /\b(?:receipt|proof of purchase|guestbook|delivery)\b/i.test(text);
   const required = explicit || outOfPocket || purchaseSteps;
-  const quotedMinimum = description.match(/\\$\\s*([0-9]+(?:\\.[0-9]+)?)\\s+(?:help map pass|pass|fee|purchase|product)\\b/i);
+  const quotedMinimum = description.match(/\$\s*([0-9]+(?:\.[0-9]+)?)\s+(?:help map pass|pass|fee|purchase|product)\b/i);
   const costFloorKnown = Boolean(quotedMinimum);
   const costFloorUsd = required
     ? (quotedMinimum ? Number(quotedMinimum[1]) : 1)
@@ -92,7 +92,7 @@ export function taskmarketRegionGate(raw: unknown): string {
   const text = [record.title, record.description]
     .filter((value): value is string => typeof value === "string")
     .join("\n");
-  return /\\b(?:eligible\\s+)?(?:U\\.S\\.|US|United States)\\s+(?:purchasers?|residents?)\\b/i.test(text)
+  return /\b(?:eligible\s+)?(?:U\.S\.|US|United States)\s+(?:purchasers?|residents?)\b/i.test(text)
     ? "US-only"
     : "unknown";
 }
