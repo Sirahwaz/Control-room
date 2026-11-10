@@ -172,6 +172,83 @@ class PersistentSessionProxyIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
 
 
+
+class FakePage:
+    def set_default_navigation_timeout(self, _timeout):
+        pass
+
+    async def route(self, *_args):
+        pass
+
+
+class FakeContext:
+    async def new_page(self):
+        return FakePage()
+
+    async def close(self):
+        pass
+
+
+class FakeBrowser:
+    def __init__(self):
+        self.context_options = None
+
+    async def new_context(self, **kwargs):
+        self.context_options = dict(kwargs)
+        return FakeContext()
+
+    async def close(self):
+        pass
+
+
+class FakeChromium:
+    def __init__(self):
+        self.browser = FakeBrowser()
+
+    async def launch(self, **_kwargs):
+        return self.browser
+
+
+class FakePlaywright:
+    def __init__(self):
+        self.chromium = FakeChromium()
+
+    async def stop(self):
+        pass
+
+
+class FakePlaywrightManager:
+    async def start(self):
+        return FakePlaywright()
+
+
+class PlaywrightContextProxyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_proxy_is_attached_to_browser_context_without_disabling_tls_validation(self):
+        with patch("runner.socket.getaddrinfo", return_value=[
+            (2, 1, 6, "", ("93.184.216.34", 443)),
+        ]):
+            session = PlatformBrowserSession(
+                PROFILE,
+                {"example.com"},
+                secret_provider=object(),
+                playwright_factory=FakePlaywrightManager,
+            )
+        session.configure_proxy({
+            "server": "https://proxy.example.net:8443",
+            "username": "proxy-user",
+            "password": "test-only-proxy-password",
+        })
+        await session._open()
+
+        options = session.browser.context_options
+        self.assertEqual(options["proxy"]["server"], "https://proxy.example.net:8443")
+        self.assertEqual(options["proxy"]["username"], "proxy-user")
+        self.assertEqual(options["proxy"]["password"], "test-only-proxy-password")
+        self.assertFalse(options["ignore_https_errors"])
+
+        await session.close(persist=False)
+
+
 class PlatformProxyValidationTests(unittest.TestCase):
     def test_session_rejects_proxy_credentials_embedded_in_server_url(self):
         with patch("runner.socket.getaddrinfo", return_value=[
