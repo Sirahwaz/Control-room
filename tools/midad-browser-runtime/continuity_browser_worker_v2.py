@@ -68,10 +68,25 @@ def _contains_sensitive(value: Any, depth: int = 0) -> bool:
 
 
 def validate_browser_payload(payload: Any) -> dict:
-    if not isinstance(payload, dict) or len(payload) != 1:
+    if not isinstance(payload, dict) or set(payload) - {"operator_hint", "operator_command", "credential_binding_ids"}:
         raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     if _contains_sensitive(payload):
         raise ContinuityWorkerError("SENSITIVE_TASK_PAYLOAD_REJECTED")
+    binding_ids = payload.get("credential_binding_ids", [])
+    if (
+        not isinstance(binding_ids, list)
+        or len(binding_ids) > 8
+        or len(binding_ids) != len(set(binding_ids))
+        or any(
+            not isinstance(value, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value)
+            for value in binding_ids
+        )
+    ):
+        raise ContinuityWorkerError("CREDENTIAL_BINDING_IDS_INVALID")
+    action_keys = set(payload) & {"operator_hint", "operator_command"}
+    if len(action_keys) != 1:
+        raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     if "operator_hint" in payload:
         hint = payload["operator_hint"]
         if not isinstance(hint, str) or not hint.strip() or len(hint) > 500:
@@ -84,7 +99,10 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("HUMAN_APPROVAL_REQUIRED")
         if action not in _ALLOWED_ACTIONS:
             raise ContinuityWorkerError("ACTION_NOT_ALLOWED_IN_BROWSER_V2")
-        return {"mode": "hint", "value": hint.strip(), "action": action}
+        return {
+            "mode": "hint", "value": hint.strip(), "action": action,
+            "credential_binding_ids": list(binding_ids),
+        }
     if "operator_command" in payload:
         command = payload["operator_command"]
         if not isinstance(command, dict) or len(command) > 12:
@@ -104,7 +122,10 @@ def validate_browser_payload(payload: Any) -> dict:
         request_text = command.get("request_text", "")
         if not isinstance(request_text, str) or len(request_text) > 500:
             raise ContinuityWorkerError("OPERATOR_COMMAND_TEXT_INVALID")
-        return {"mode": "command", "value": command, "action": action}
+        return {
+            "mode": "command", "value": command, "action": action,
+            "credential_binding_ids": list(binding_ids),
+        }
     raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
 
 
