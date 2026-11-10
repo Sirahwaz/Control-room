@@ -39,6 +39,25 @@ test("selected Factory product has a mobile-ready, non-blank WebView surface", a
       viewport,
       visibleTextLength: (body.innerText ?? "").trim().length,
       visibleControls,
+      rootWidth: root.clientWidth,
+      rootScrollWidth: root.scrollWidth,
+      bodyWidth: body.clientWidth,
+      bodyScrollWidth: body.scrollWidth,
+      viewportWidth: win.innerWidth,
+      overflowingElements: [...doc.querySelectorAll("*")].map(element => {
+        const rect = element.getBoundingClientRect();
+        const style = win.getComputedStyle(element);
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id || "",
+          className: typeof element.className === "string" ? element.className.slice(0, 100) : "",
+          left: Math.round(rect.left * 10) / 10,
+          right: Math.round(rect.right * 10) / 10,
+          width: Math.round(rect.width * 10) / 10,
+          position: style.position,
+          overflowX: style.overflowX
+        };
+      }).filter(item => item.width > 0 && (item.left < -1 || item.right > win.innerWidth + 1)).slice(0, 20),
       horizontalOverflow:
         root.scrollWidth > root.clientWidth + 12 ||
         body.scrollWidth > body.clientWidth + 12
