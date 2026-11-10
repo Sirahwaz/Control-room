@@ -296,13 +296,14 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         })
         pool = FakeSessionPool()
         runtime = FakeCentralRuntime()
-        worker = ContinuityBrowserWorker(
-            self.config,
-            client=client,
-            operator=operator,
-            session_pool=pool,
-            proxy_runtime=runtime,
-        )
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config,
+                client=client,
+                operator=operator,
+                session_pool=pool,
+                proxy_runtime=runtime,
+            )
 
         result = await worker.poll_once()
 
@@ -354,10 +355,11 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         operator = WaitingOperator()
         pool = FakeSessionPool()
         runtime = LostRuntime()
-        worker = ContinuityBrowserWorker(
-            self.config, client=client, operator=operator,
-            session_pool=pool, proxy_runtime=runtime,
-        )
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator,
+                session_pool=pool, proxy_runtime=runtime,
+            )
         result = await worker.poll_once()
         self.assertEqual(result["code"], "VAULT_LEASE_LOST_DURING_BROWSER_TASK")
         self.assertTrue(operator.cancelled)
