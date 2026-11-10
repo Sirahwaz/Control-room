@@ -55,7 +55,7 @@ test("the Browser APK workflow packages the manifest-selected Mesh page and decl
     "mobile/web/midad-browser-mesh.css",
     "mobile/web/midad-browser-mesh.js",
   ]);
-  assert.ok(workflow.includes("WEB_ENTRY=\\\"$(jq -r '.web_entry' mobile/factory/runtime-product.json)\\\""));
+  assert.ok(workflow.includes(`WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"`));
   assert.ok(workflow.includes("cp \"$WEB_ENTRY\" mobile/www/index.html"));
   assert.ok(workflow.includes("jq -r '.web_assets[]' mobile/factory/runtime-product.json"));
   assert.ok(workflow.includes('cp "$asset" mobile/www/'));
