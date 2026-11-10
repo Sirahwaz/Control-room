@@ -67,3 +67,11 @@ test("the Browser APK artifact is uploaded even when emulator verification fails
   assert.ok(uploadStep.includes("if: always()"));
   assert.ok(uploadStep.includes("if-no-files-found: ignore"));
 });
+
+test("offline smoke fails closed unless Wi-Fi and mobile data are disabled", () => {
+  const smoke = read("mobile/factory/native/midad-browser/runtime-smoke.sh");
+
+  assert.ok(smoke.includes('trap restore_network EXIT'));
+  assert.ok(smoke.includes('adb shell svc wifi disable >/dev/null 2>&1 || fail "offline-wifi"'));
+  assert.ok(smoke.includes('adb shell svc data disable >/dev/null 2>&1 || fail "offline-data"'));
+});
