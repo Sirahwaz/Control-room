@@ -12,6 +12,13 @@ import {
   superteamFixture,
   taskmarketFixture,
 } from "./provider_adapter_fixtures.ts";
+import {
+  isTaskmarketHighCompetitionLowValue,
+  normalizeTaskmarketRail,
+  shouldPreserveVerifiedTaskmarketProof,
+  taskmarketPurchaseRequirement,
+  taskmarketRegionGate,
+} from "./taskmarket_rail.ts";
 
 Deno.test("Taskmarket public task submissionCount is not the worker's free-submission count", () => {
   assertEquals(taskmarketOfficialFeeEvidence(taskmarketFixture), {});
@@ -105,4 +112,67 @@ Deno.test("Superteam listing reward is not proof of payout or region/KYC/identit
   assertEquals(superteamQualificationEvidence({
     compensation: { amount: 100, asset: "USDC", network: "Solana" },
   }), {});
+});
+
+
+Deno.test("Taskmarket chainId maps Base USDC and Tempo OUSD without defaulting unknown chains to Base", () => {
+  assertEquals(normalizeTaskmarketRail({ chainId: 8453 }), {
+    chainId: 8453, asset: "USDC", network: "Base", supported: true,
+  });
+  assertEquals(normalizeTaskmarketRail({ chain_id: "4217" }), {
+    chainId: 4217, asset: "OUSD", network: "Tempo", supported: true,
+  });
+  assertEquals(normalizeTaskmarketRail({ chainId: 1 }), {
+    chainId: 1, asset: null, network: "1", supported: false,
+  });
+  assertEquals(normalizeTaskmarketRail({}), {
+    chainId: null, asset: null, network: "unknown", supported: false,
+  });
+});
+
+Deno.test("Taskmarket purchase-required listings are blocked with a conservative minimum cost", () => {
+  const requirement = taskmarketPurchaseRequirement({
+    title: "Shop Lumen House",
+    description: "Buy the Manifest Kit, buy an Interface Check, buy any NFT and buy the $1 Help Map pass. Entrants pay their own purchase and network costs. Save your receipt.",
+  });
+  assertEquals(requirement, { required: true, costFloorUsd: 1, costFloorKnown: true });
+  assertEquals(taskmarketPurchaseRequirement({ title: "Write API documentation", description: "Deliver a short report." }), {
+    required: false, costFloorUsd: null, costFloorKnown: false,
+  });
+});
+
+Deno.test("Taskmarket U.S.-purchaser restriction is not treated as globally eligible", () => {
+  assertEquals(taskmarketRegionGate({ description: "The Help Map pass is currently for eligible U.S. purchasers." }), "US-only");
+  assertEquals(taskmarketRegionGate({ description: "Open to all developers." }), "unknown");
+});
+
+Deno.test("Taskmarket high-competition low-value threshold blocks 50+ submissions at 25 or less", () => {
+  assertEquals(isTaskmarketHighCompetitionLowValue({ sourceSlug: "taskmarket_api", competition: 80, amount: 10 }), true);
+  assertEquals(isTaskmarketHighCompetitionLowValue({ sourceSlug: "taskmarket_api", competition: 49, amount: 10 }), false);
+  assertEquals(isTaskmarketHighCompetitionLowValue({ sourceSlug: "taskmarket_api", competition: 80, amount: 100 }), false);
+  assertEquals(isTaskmarketHighCompetitionLowValue({ sourceSlug: "other", competition: 80, amount: 10 }), false);
+});
+
+Deno.test("Taskmarket independently verified escrow is preserved only for the exact same task rail and transaction", () => {
+  const existing = {
+    payout_proof_status: "verified_task_escrow",
+    escrow_funded: true,
+    payment_tx_hash: "0xabc",
+    compensation_asset: "OUSD",
+    payout_network: "Tempo",
+    independent_payout_check: {
+      verified: true,
+      tx_hash: "0xabc",
+      asset: "OUSD",
+      network: "Tempo",
+      confirmations: 12,
+    },
+  };
+  assertEquals(shouldPreserveVerifiedTaskmarketProof(existing, { tx: "0xabc", asset: "OUSD", network: "Tempo" }), true);
+  assertEquals(shouldPreserveVerifiedTaskmarketProof(existing, { tx: "0xdef", asset: "OUSD", network: "Tempo" }), false);
+  assertEquals(shouldPreserveVerifiedTaskmarketProof(existing, { tx: "0xabc", asset: "USDC", network: "Base" }), false);
+  assertEquals(shouldPreserveVerifiedTaskmarketProof({
+    ...existing,
+    independent_payout_check: { ...existing.independent_payout_check, confirmations: 11 },
+  }, { tx: "0xabc", asset: "OUSD", network: "Tempo" }), false);
 });
