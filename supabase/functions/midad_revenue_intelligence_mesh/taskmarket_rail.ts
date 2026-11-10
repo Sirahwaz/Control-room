@@ -26,6 +26,29 @@ function finiteNumber(value: unknown): number | null {
  * Taskmarket reward amounts are denominated in the payment token of the task's
  * chain. Never default a missing or unknown chain to Base/USDC.
  */
+export function canonicalMidadNetwork(raw: unknown): string {
+  const value = String(raw ?? "").trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    "base": "base",
+    "eip155:8453": "base",
+    "8453": "base",
+    "tempo": "tempo",
+    "eip155:4217": "tempo",
+    "4217": "tempo",
+    "ethereum": "ethereum",
+    "mainnet": "ethereum",
+    "eip155:1": "ethereum",
+    "1": "ethereum",
+    "avalanche": "avalanche",
+    "avalanche-c": "avalanche",
+    "eip155:43114": "avalanche",
+    "43114": "avalanche",
+    "solana": "solana",
+    "solana-mainnet": "solana",
+  };
+  return aliases[value] ?? value;
+}
+
 export function normalizeTaskmarketRail(raw: unknown): TaskmarketRail {
   const record = asRecord(raw);
   const rawChainId = record?.chainId ?? record?.chain_id;
