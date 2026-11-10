@@ -74,7 +74,8 @@ def proxy_config():
 
 
 class FakeSession:
-    def __init__(self, *args, proxy_settings=None, **kwargs):
+    def __init__(self, profile, *args, proxy_settings=None, **kwargs):
+        self.profile = dict(profile)
         self.proxy_settings = dict(proxy_settings) if proxy_settings else None
         self.authenticated = False
         self.last_status = "NOT_STARTED"
