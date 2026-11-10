@@ -194,6 +194,37 @@ test('ephemeral runner executes only bounded allowlisted CPU operations', () => 
   assert.throws(() => executeTaskPayload({ operation: 'RUNNER_SMOKE', input: { command: 'whoami' } }), /RUNNER_SMOKE_INPUT_INVALID/);
 });
 
+test('ephemeral runner rejects non-origin HTTPS ledger URLs and non-hex node tokens before network access', async () => {
+  const baseEnv = {
+    MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
+    MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
+    MIDAD_INPUT_OWNER_ID: 'owner-00000001',
+    MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+    MIDAD_TASK_ID: 'task-00000001',
+    MIDAD_EVENT_ID: 'evt-00000001',
+  };
+  for (const ledgerUrl of [
+    'https://ledger.example.workers.dev/path',
+    'https://ledger.example.workers.dev:8443',
+    'https://user:pass@ledger.example.workers.dev',
+    'https://ledger.example.workers.dev?debug=1',
+    'http://ledger.example.workers.dev',
+  ]) {
+    let calls = 0;
+    await assert.rejects(() => runEphemeralTask({
+      env: { ...baseEnv, MIDAD_CONTINUITY_LEDGER_URL: ledgerUrl },
+      fetchImpl: async () => { calls += 1; return new Response('{}'); },
+    }), /LEDGER_URL_MUST_BE_HTTPS_ORIGIN/);
+    assert.equal(calls, 0, 'invalid ledger URL must be rejected before sending node credentials');
+  }
+  let calls = 0;
+  await assert.rejects(() => runEphemeralTask({
+    env: { ...baseEnv, MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64) },
+    fetchImpl: async () => { calls += 1; return new Response('{}'); },
+  }), /RUNNER_NODE_TOKEN_INVALID/);
+  assert.equal(calls, 0, 'invalid node token must be rejected before network access');
+});
+
 test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence and completes it', async () => {
   const requests = [];
   const leaseToken = 'c'.repeat(64);
@@ -219,7 +250,7 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
       MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
       MIDAD_INPUT_OWNER_ID: 'owner-00000001',
-      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64),
+      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
       MIDAD_TASK_ID: 'task-00000001',
       MIDAD_EVENT_ID: 'evt-00000001',
     },
@@ -233,7 +264,9 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
   assert.equal(requests[1].body.lease_ttl_seconds, 180);
   assert.equal(requests[2].body.checkpoint.schema, 'midad-ephemeral-runner-evidence-v1');
   assert.equal(requests[3].body.result.summary.sum, 15);
-  assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + 'n'.repeat(64)));
+  assert.ok(requests.every(x => x.init.redirect === 'error'));
+  assert.ok(requests.every(x => x.init.signal instanceof AbortSignal));
+  assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + 'a'.repeat(64)));
   assert.equal(JSON.stringify(result).includes('n'.repeat(64)), false);
 });
 
