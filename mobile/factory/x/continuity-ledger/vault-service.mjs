@@ -427,6 +427,91 @@ async function issue(ledger, node, body) {
   });
 }
 
+async function renew(ledger, node, body) {
+  if (typeof body.lease_id !== 'string' || !/^[a-f0-9]{32}$/.test(body.lease_id) ||
+      typeof body.lease_token !== 'string' || body.lease_token.length < 32 ||
+      !validId(body.task_id) || typeof body.task_lease_token !== 'string' ||
+      body.task_lease_token.length !== 64) {
+    return response(422, { ok: false, error: 'VAULT_LEASE_RENEW_CONTRACT_INVALID' });
+  }
+  const lease = ledger.one(
+    'SELECT * FROM vault_leases WHERE lease_id=? AND node_id=?',
+    body.lease_id, node.node_id
+  );
+  if (!lease) return response(404, { ok: false, error: 'VAULT_LEASE_NOT_FOUND' });
+  if (lease.state !== 'ACTIVE' || lease.expires_at_ms <= Date.now()) {
+    return response(409, { ok: false, error: 'VAULT_LEASE_NO_LONGER_ACTIVE' });
+  }
+  const task = await ledger.validateLease(node, {
+    task_id: body.task_id,
+    lease_token: body.task_lease_token,
+  });
+  if (!task || task.task_id !== lease.task_id || task.owner_id !== lease.owner_id) {
+    return response(409, { ok: false, error: 'TASK_LEASE_INVALID_OR_EXPIRED' });
+  }
+  const now = Date.now();
+  if (node.state !== 'READY' || node.revoked_at_ms !== null ||
+      !node.heartbeat_at_ms || now - node.heartbeat_at_ms > 45000 ||
+      node.cost_verified !== 1 || node.encrypted_session_store !== 1) {
+    return response(409, { ok: false, error: 'FRESH_READY_BROWSER_NODE_REQUIRED' });
+  }
+  const secret = ledger.one(
+    "SELECT state FROM vault_secrets WHERE owner_id=? AND binding_id=?",
+    lease.owner_id, lease.binding_id
+  );
+  if (!secret || secret.state !== 'ACTIVE' || lease.state === 'REVOKED') {
+    return response(409, { ok: false, error: 'VAULT_SECRET_REVOKED' });
+  }
+  const ttl = Number.isInteger(body.lease_ttl_seconds) ? body.lease_ttl_seconds : 60;
+  if (ttl < 30 || ttl > 300) return response(422, { ok: false, error: 'VAULT_LEASE_TTL_INVALID' });
+  const expiresAt = Math.min(now + ttl * 1000, task.lease_expires_at_ms);
+  if (expiresAt <= now) return response(409, { ok: false, error: 'TASK_LEASE_EXPIRED' });
+  let keyring;
+  try { keyring = readVaultKeyring(ledger.env); }
+  catch { return response(503, { ok: false, error: 'VAULT_KEYRING_UNAVAILABLE' }); }
+  const expected = await deriveVaultLeaseToken(lease, ledger.env);
+  if (!constantTimeEqual(expected, body.lease_token) ||
+      !constantTimeEqual(await sha256(body.lease_token), lease.token_hash)) {
+    return response(401, { ok: false, error: 'VAULT_LEASE_TOKEN_INVALID' });
+  }
+  const nextLease = {
+    ...lease,
+    key_version: keyring.activeVersion,
+    expires_at_ms: expiresAt,
+  };
+  let nextToken;
+  try { nextToken = await deriveVaultLeaseToken(nextLease, ledger.env); }
+  catch { return response(503, { ok: false, error: 'VAULT_LEASE_CRYPTO_UNAVAILABLE' }); }
+  const nextHash = await sha256(nextToken);
+  let updated = false;
+  try {
+    ledger.tx(() => {
+      const row = ledger.one(`UPDATE vault_leases
+        SET key_version=?,token_hash=?,expires_at_ms=?
+        WHERE lease_id=? AND node_id=? AND state='ACTIVE'
+          AND token_hash=? AND expires_at_ms>? RETURNING lease_id`,
+        keyring.activeVersion, nextHash, expiresAt, lease.lease_id, node.node_id,
+        lease.token_hash, now);
+      if (!row) return;
+      updated = true;
+      event(ledger, lease.owner_id, lease.binding_id, 'SECRET_LEASE_RENEWED', node.node_id, {
+        task_id: lease.task_id, expires_at_ms: expiresAt, key_version: keyring.activeVersion,
+      }, lease.lease_id);
+    });
+  } catch {
+    return response(409, { ok: false, error: 'VAULT_LEASE_RENEW_CONFLICT' });
+  }
+  if (!updated) return response(409, { ok: false, error: 'VAULT_LEASE_CHANGED_DURING_RENEWAL' });
+  return response(200, {
+    ok: true,
+    lease: {
+      lease_id: lease.lease_id,
+      lease_token: nextToken,
+      expires_at: new Date(expiresAt).toISOString(),
+    },
+  });
+}
+
 async function release(ledger, node, body) {
   if (typeof body.lease_id !== 'string' || !/^[a-f0-9]{32}$/.test(body.lease_id) ||
       typeof body.lease_token !== 'string' || body.lease_token.length < 32) {
@@ -464,6 +549,7 @@ export async function handleVaultAdmin(ledger, path, req, body) {
 
 export async function handleVaultNode(ledger, path, node, body) {
   if (path === '/v1/vault/leases/issue') return issue(ledger, node, body);
+  if (path === '/v1/vault/leases/renew') return renew(ledger, node, body);
   if (path === '/v1/vault/leases/release') return release(ledger, node, body);
   return response(404, { ok: false, error: 'NOT_FOUND' });
 }
