@@ -140,7 +140,21 @@ sudo journalctl -u midad-continuity-browser-worker-v2 -n 100 --no-pager
 
 The service restarts on failure with a bounded systemd start-rate limit. The worker itself backs off after transient errors and logs only sanitized exception classes. Do not enable multiple replicas for the same owner: this first participant is deliberately single-slot. The Cloudflare ledger enforces leases, but the current Playwright session map is process-local.
 
-## 9. Verification and rollback
+## 9. Optional Proxy adapter (source-integrated, not activated)
+
+The Cloudflare Browser Worker v2 can reuse the shared Network Access contract through the existing `ProxyRuntime` adapter. This integration is opt-in and preserves the current worker/session path when `MIDAD_NETWORK_ACCESS_CONFIG` is unset.
+
+- Store the versioned, secret-free network-access JSON at a private host path, for example `/etc/midad-browser/network-access.json`; it contains exact-host routing rules, proxy endpoint metadata and opaque `vault://...` references only.
+- Set `MIDAD_NETWORK_ACCESS_CONFIG` to that path.
+- Set `MIDAD_VAULT_BINDINGS_JSON` to a JSON map from opaque references to host secret aliases, for example `{"vault://proxy/example/auth":"MIDAD_PROXY_EXAMPLE_AUTH"}`.
+- Inject the alias value (a JSON object with `username` and `password`) from the host secret manager into the worker process environment. Never place the value in the network-access file, account registry, task payload, GitHub workflow inputs, image, logs or chat.
+- A route is resolved against the account's exact `account_id`, `platform_key`, hostname, `PROXY_AUTH` purpose and `AUTOMATION` scope. A missing, ambiguous or mismatched binding blocks session creation.
+- The route is resolved when the session is created and remains pinned to that isolated Playwright BrowserContext. Changing routing requires stopping and recreating that session.
+- HTTP, HTTPS and SOCKS5 are supported by the Playwright adapter. WireGuard and managed tunnels are rejected until a real tunnel adapter exists. There is no implicit Direct fallback; Direct requires an explicit matching policy rule.
+
+This is a host-environment secret resolver adapter, **not a central encrypted Vault**. The secret is passed separately from the proxy URL and is kept in the worker process/BrowserContext lifetime. Central secret leases, rotation/revocation, proxy health checks and bounded proxy-to-proxy failover are still outstanding. The adapter does not configure Android WebView proxy routing. No proxy config, endpoint or secret is created by this source change.
+
+## 10. Verification and rollback
 
 A real activation is VERIFIED only when all are true:
 1. Cloudflare `GET /health` reports the expected service/schema.
