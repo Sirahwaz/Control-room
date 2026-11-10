@@ -3,6 +3,7 @@
   "name": "midad-continuity-ledger",
   "main": "worker.mjs",
   "compatibility_date": "2026-11-09",
+  "browser": { "binding": "BROWSER" },
   "durable_objects": {
     "bindings": [{ "name": "CONTINUITY_LEDGER", "class_name": "MidadContinuityLedger" }]
   },

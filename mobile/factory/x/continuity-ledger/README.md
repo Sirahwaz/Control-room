@@ -49,6 +49,18 @@ One-time GitHub setup, after the PR chain reaches `main`:
 
 The workflow does not print the Cloudflare token or either MIDAD key. It does not touch DNS, Supabase, billing settings or unrelated Workers. Cloudflare documents the API-token/Workers role model and the separate Queues permission here: [Workers roles](https://developers.cloudflare.com/workers/authorization/workers/), [API token permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/), [Wrangler Queue commands](https://developers.cloudflare.com/workers/wrangler/commands/queues/).
 
+## Browser Run session smoke lane
+
+The Worker optionally uses the Cloudflare Browser Run binding named `BROWSER` for a short, guarded browser smoke session. This is a smoke/control-plane endpoint, not yet the persistent Android browser-session adapter.
+
+- `POST /v1/browser/run/smoke` — server-side Admin bearer only; JSON body: `{"target_url":"https://example.com/","allowed_hosts":["example.com"]}`. Returns bounded page evidence and a temporary Live View URL.
+- `POST /v1/browser/run/close` — server-side Admin bearer only; JSON body: `{"session_id":"..."}`. Explicitly closes the session.
+- Each smoke session is limited to a 60-second inactivity window, requires an HTTPS hostname in the request allowlist, blocks URL credentials and non-standard ports, and applies the same hostname guardrail to Browser Run.
+- Live View URLs contain a signed access token. Treat the full URL as a credential: return it only through an authenticated server-to-server path, never log it or place it in GitHub artifacts/issues.
+- The endpoints are not exposed through the public browser UI yet. A later gateway adapter must proxy them without exposing the Admin key or Live View URL in public logs.
+
+**Zero-budget rule:** keep the account on Workers Free and verify its Browser Run usage before the first live call. Cloudflare documents 10 browser minutes/day and 3 concurrent sessions on Workers Free. The Free plan rejects additional use after the quota rather than silently upgrading. Workers Paid includes 10 browser hours/month and 10 average concurrent browsers, then charges $0.09 per extra browser hour and $2 per additional average concurrent browser. Do not upgrade or allow paid overage.
+
 ## API
 - `GET /health`
 - Enrolled node bearer + `x-midad-node-id`: `GET /v1/nodes/wake` with `Upgrade: websocket` (requires a fresh READY heartbeat)
