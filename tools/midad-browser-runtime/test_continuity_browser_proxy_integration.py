@@ -2,6 +2,7 @@
 
 These tests keep the proxy optional and scoped to the existing worker/session path.
 """
+import asyncio
 import json
 import os
 import tempfile
@@ -10,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from persistent_session import BrowserSessionError, PersistentSessionPool, PlatformBrowserSession
-from proxy_policy import ProxyPolicyError, ProxyRuntime
+from proxy_policy import ProxyLeaseBinding, ProxyPolicyError, ProxyRuntime
 
 
 OWNER = "00000000-0000-4000-8000-000000000001"
@@ -85,11 +86,16 @@ class FakeSession:
         self.last_status = "AUTHENTICATED_IN_MEMORY"
         return {"status": self.last_status}
 
-    def configure_proxy(self, settings):
+    def configure_proxy(self, settings, release_callback=None, lease_lost_event=None):
         self.proxy_settings = dict(settings) if settings else None
+        self.release_callback = release_callback
+        self.lease_lost_event = lease_lost_event
 
     async def close(self):
         self.authenticated = False
+        if self.release_callback is not None:
+            await self.release_callback()
+            self.release_callback = None
 
 
 class ProxyRuntimeContractTests(unittest.TestCase):
@@ -220,6 +226,117 @@ class FakePlaywright:
 class FakePlaywrightManager:
     async def start(self):
         return FakePlaywright()
+
+
+class FakeCentralVaultClient:
+    def __init__(self):
+        self.issued = []
+        self.renewed = []
+        self.released = []
+        self.next_token = "renewed-central-vault-token-000000000000000000"
+
+    async def issue_vault_lease(self, **kwargs):
+        self.issued.append(dict(kwargs))
+        return {
+            "ok": True,
+            "lease": {
+                "lease_id": "a" * 32,
+                "lease_token": "initial-central-vault-token-000000000000000",
+                "expires_at": "2026-11-10T03:10:00Z",
+                "secret": {
+                    "username": "central-proxy-user",
+                    "password": "central-proxy-password",
+                },
+            },
+        }
+
+    async def renew_vault_lease(self, **kwargs):
+        self.renewed.append(dict(kwargs))
+        return {
+            "ok": True,
+            "lease": {
+                "lease_id": kwargs["lease_id"],
+                "lease_token": self.next_token,
+                "expires_at": "2026-11-10T03:15:00Z",
+            },
+        }
+
+    async def release_vault_lease(self, lease_id, lease_token):
+        self.released.append((lease_id, lease_token))
+        return {"ok": True, "state": "RELEASED"}
+
+
+class CentralVaultProxyRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addAsyncCleanup(self._cleanup)
+        self.config_path = Path(self.temp.name) / "network-access.json"
+        self.config_path.write_text(json.dumps(proxy_config()), encoding="utf-8")
+        self.client = FakeCentralVaultClient()
+        self.runtime = ProxyRuntime.from_env(
+            environ={
+                "MIDAD_NETWORK_ACCESS_CONFIG": str(self.config_path),
+                "MIDAD_VAULT_MODE": "central",
+            },
+            vault_client=self.client,
+            renew_interval_seconds=0.01,
+        )
+        self.runtime.set_task_context({
+            "task_id": "browser-task-01",
+            "lease_token": "b" * 64,
+            "credential_binding_ids": ["example-proxy-auth"],
+        })
+
+    async def _cleanup(self):
+        await self.runtime.end_task()
+        self.temp.cleanup()
+
+    async def test_central_vault_issues_only_declared_binding_and_returns_browser_context_settings(self):
+        binding = await self.runtime.resolve_for_profile(PROFILE)
+        self.assertIsInstance(binding, ProxyLeaseBinding)
+        self.assertEqual(binding.settings["server"], "https://proxy.example.net:8443")
+        self.assertEqual(binding.settings["username"], "central-proxy-user")
+        self.assertEqual(binding.settings["password"], "central-proxy-password")
+        self.assertEqual(len(self.client.issued), 1)
+        request = self.client.issued[0]
+        self.assertEqual(request["task_id"], "browser-task-01")
+        self.assertEqual(request["task_lease_token"], "b" * 64)
+        self.assertEqual(request["binding_id"], "example-proxy-auth")
+        self.assertEqual(request["host"], "example.com")
+        self.assertEqual(request["purpose"], "PROXY_AUTH")
+        self.assertEqual(request["scope"], "AUTOMATION")
+        self.assertNotIn("secret", request)
+
+    async def test_central_vault_lease_is_renewed_and_release_uses_latest_token(self):
+        binding = await self.runtime.resolve_for_profile(PROFILE)
+        await asyncio.sleep(0.035)
+        self.assertGreaterEqual(len(self.client.renewed), 1)
+        self.assertEqual(self.client.renewed[0]["task_id"], "browser-task-01")
+        await binding.release()
+        self.assertEqual(len(self.client.released), 1)
+        self.assertEqual(self.client.released[0][0], "a" * 32)
+        self.assertEqual(self.client.released[0][1], self.client.next_token)
+
+    async def test_central_vault_never_falls_back_when_task_does_not_declare_proxy_binding(self):
+        await self.runtime.end_task()
+        self.runtime.set_task_context({
+            "task_id": "browser-task-02",
+            "lease_token": "c" * 64,
+            "credential_binding_ids": [],
+        })
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_BINDING_NOT_AUTHORIZED_FOR_TASK"):
+            await self.runtime.resolve_for_profile(PROFILE)
+        self.assertEqual(self.client.issued, [])
+
+    async def test_central_vault_mode_requires_a_real_vault_client(self):
+        with self.assertRaisesRegex(ProxyPolicyError, "VAULT_CLIENT_REQUIRED"):
+            ProxyRuntime.from_env(
+                environ={
+                    "MIDAD_NETWORK_ACCESS_CONFIG": str(self.config_path),
+                    "MIDAD_VAULT_MODE": "central",
+                },
+                vault_client=None,
+            )
 
 
 class PlaywrightContextProxyTests(unittest.IsolatedAsyncioTestCase):
