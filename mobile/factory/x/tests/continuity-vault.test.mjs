@@ -166,7 +166,7 @@ test('Vault store requires admin authentication and a configured encryption keyr
   assert.equal(unauthenticated.status, 401);
   const unavailable = await read(await noKeyring.ledger.fetch(post('/v1/vault/secrets/store', body, admin())));
   assert.equal(unavailable.status, 503);
-  assert.equal(noKeyring.storage.db.prepare('SELECT COUNT(*) AS n FROM sqlite_master WHERE type=? AND name=?').get('table', 'vault_secrets')?.n ?? 0, 0);
+  assert.equal(noKeyring.storage.db.prepare('SELECT COUNT(*) AS n FROM vault_secrets').get().n, 0);
   noKeyring.storage.close();
 });
 
