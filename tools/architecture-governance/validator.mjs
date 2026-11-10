@@ -251,8 +251,11 @@ function isSecretLikeFile(filePath) {
 
 
 const MAX_SECRET_SCAN_BYTES = 1024 * 1024;
+const PRIVATE_KEY_BLOCK_PATTERNS = [
+  /-----BEGIN PRIVATE KEY-----(?:\s|\\n)*([\s\S]*?)(?:\s|\\n)*-----END PRIVATE KEY-----/gi,
+  /-----BEGIN (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----(?:\s|\\n)*([\s\S]*?)(?:\s|\\n)*-----END (?:OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----/gi,
+];
 const SECRET_CONTENT_RULES = [
-  { rule: 'PRIVATE_KEY_MATERIAL', pattern: /-----BEGIN (?:OPENSSH|RSA|EC|DSA|PGP)? ?PRIVATE KEY-----/i },
   { rule: 'GITHUB_TOKEN', pattern: /\bgh[pousr]_[A-Za-z0-9]{30,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b/ },
   { rule: 'OPENAI_API_KEY', pattern: /\bsk-(?:proj|or-v1|live)[-_][A-Za-z0-9_-]{24,}\b|\bsk-[A-Za-z0-9]{32,}\b/ },
   { rule: 'STRIPE_SECRET_KEY', pattern: /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/ },
@@ -287,6 +290,16 @@ const TEXT_EXTENSIONS = new Set([
 export function scanSecretContent(filePath, content) {
   if (typeof filePath !== 'string' || typeof content !== 'string') throw new TypeError('scanSecretContent requires a path and text content');
   const findings = [];
+  for (const pattern of PRIVATE_KEY_BLOCK_PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const match of content.matchAll(pattern)) {
+      const encoded = match[1].replace(/\\n/g, '').replace(/\s/g, '');
+      if (encoded.length >= 32 && /^[A-Za-z0-9+/=]+$/.test(encoded)) {
+        const line = content.slice(0, match.index).split(/\r?\n/).length;
+        findings.push({ code: 'SECRET_CONTENT', rule: 'PRIVATE_KEY_MATERIAL', severity: 'error', path: filePath, line });
+      }
+    }
+  }
   const lines = content.split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];

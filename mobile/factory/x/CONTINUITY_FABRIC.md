@@ -156,3 +156,12 @@ A new optional, disposable GitHub Actions node polls the Cloudflare Continuity L
 5. Verify node heartbeat, atomic claim, checkpoint, completion evidence and final task state in the ledger. Then test duplicate delivery, runner loss and lease expiry.
 
 **Current status:** source and unit/contract tests are in a draft PR; the Cloudflare Worker is not deployed, no GitHub node is enrolled, no Actions variables/secrets have been configured, and no live end-to-end claim has been performed. The existing Forge/Supabase OIDC queue remains unchanged and authoritative for Forge jobs.
+
+
+## MNCF ephemeral CPU dispatch — source integrated, activation pending
+
+- Cloudflare Continuity remains the task/lease/checkpoint authority. Its Queue consumer can dispatch only eligible `CPU_BATCH` wake events to the fixed `.github/workflows/midad-mncf-ephemeral-runner.yml` workflow.
+- GitHub authentication is a repository-scoped App installation token with `Actions: write` only. Workflow inputs contain only event, task and owner identifiers.
+- The runner uses a separately enrolled owner-bound token, claims the exact task ID, and accepts only `RUNNER_SMOKE`, `SUM_INTEGERS`, and `HASH_TEXT`. Arbitrary shell/code and Browser Session tasks are excluded.
+- Browser Run remains a separate Browser-capable service. GitHub CPU runners do not host persistent browser sessions.
+- Source integration does not imply live service: Cloudflare deployment, GitHub App secrets, runner node enrollment, and an end-to-end claim/complete smoke remain pending.

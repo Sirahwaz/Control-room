@@ -3,10 +3,10 @@
   "schema_version": 1,
   "product_key": "midad-browser",
   "display_name": "MIDAD Browser",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "app_id": "ai.midad.browser",
-  "artifact_name": "MIDAD-Browser-v0.1.1",
-  "web_entry": "midad-browser.html",
+  "artifact_name": "MIDAD-Browser-Mesh-v0.2.0",
+  "web_entry": "mobile/web/midad-browser-mesh.html",
   "product_mode": "native-browser",
   "release_channel": "debug",
   "features": {
@@ -25,16 +25,25 @@
     "default_browser_role": true,
     "human_gate_for_captcha_mfa": true,
     "http_and_https_navigation": true,
-    "live_financial_execution": false
+    "offline_operator": true,
+    "event_bus": true,
+    "trust_boundary_ui": true,
+    "evidence_capture": true,
+    "adaptive_recovery": true
   },
   "surfaces": [
     "native-browser",
     "address-bar",
-    "safe-browsing",
-    "midad-ai-control",
-    "remote-playwright-worker",
-    "agent-orchestration",
-    "platform-inspector",
+    "offline-home",
+    "browser-mesh-control-surface",
+    "mncf-distributed-runtime",
+    "cloudflare-continuity-ledger",
+    "github-ephemeral-cpu-runner",
+    "cloudflare-browser-run",
+    "proxy-policy-router",
+    "central-encrypted-vault",
+    "appearance-and-language-settings",
+    "agentation-ui-qa",
     "evidence-ledger",
     "human-gates"
   ],
@@ -57,12 +66,19 @@
     "dynamic_content": true,
     "localization": {
       "default_language": "ar",
-      "supported_seed": ["ar", "en", "fa"],
+      "supported_seed": [
+        "ar",
+        "en",
+        "fa"
+      ],
       "expand_on_demand": true
     },
     "learning": {
       "enabled": true,
-      "scope": ["product", "tenant"],
+      "scope": [
+        "product",
+        "tenant"
+      ],
       "decision_policy": "evidence_weighted",
       "feedback_required": true
     },
@@ -77,11 +93,17 @@
       "sync_strategy": "outbox_then_reconcile"
     },
     "delivery": {
-      "outputs": ["apk", "sha256", "manifest", "build_report", "test_report"]
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report"
+      ]
     }
   },
   "web_assets": [
-    "midad-browser.css",
-    "midad-browser.js"
+    "mobile/web/midad-browser-mesh.css",
+    "mobile/web/midad-browser-mesh.js"
   ]
 }

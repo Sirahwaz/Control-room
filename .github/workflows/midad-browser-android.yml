@@ -8,6 +8,10 @@ on:
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
       - "tests/midad-browser-offline-home-contract.test.mjs"
+      - "mobile/web/midad-browser-mesh.html"
+      - "mobile/web/midad-browser-mesh.css"
+      - "mobile/web/midad-browser-mesh.js"
+      - "tests/midad-browser-mesh-ui-contract.test.mjs"
       - "mobile/factory/quality-gate.mjs"
       - "mobile/package.json"
       - "midad-browser.html"
@@ -21,6 +25,10 @@ on:
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
       - "tests/midad-browser-offline-home-contract.test.mjs"
+      - "mobile/web/midad-browser-mesh.html"
+      - "mobile/web/midad-browser-mesh.css"
+      - "mobile/web/midad-browser-mesh.js"
+      - "tests/midad-browser-mesh-ui-contract.test.mjs"
       - "midad-browser.html"
       - "midad-browser.css"
       - "midad-browser.js"
@@ -31,7 +39,13 @@ permissions:
   contents: read
 
 jobs:
+  agentation-ui-feedback:
+    uses: ./.github/workflows/agentation-e2e.yml
+    with:
+      product_key: midad-browser
+
   build-browser-apk:
+    needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -43,8 +57,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Browser offline-home contract tests
-        run: node --test tests/midad-browser-offline-home-contract.test.mjs
+      - name: Browser Mesh and offline-home contract tests
+        run: node --test tests/midad-browser-offline-home-contract.test.mjs tests/midad-browser-mesh-ui-contract.test.mjs
 
       - name: Resolve Browser product
         id: product
@@ -81,15 +95,23 @@ jobs:
         working-directory: mobile
         run: npm install --no-fund --no-audit
 
-      - name: Prepare bundled MIDAD Browser surface
+      - name: Prepare manifest-selected MIDAD Browser Mesh surface
         shell: bash
         run: |
           set -euo pipefail
+          WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"
+          test -f "$WEB_ENTRY"
           rm -rf mobile/www
           mkdir -p mobile/www
-          cp midad-browser.html mobile/www/index.html
-          cp midad-browser.css mobile/www/
-          cp midad-browser.js mobile/www/
+          cp "$WEB_ENTRY" mobile/www/index.html
+          jq -e '.web_assets | length >= 2' mobile/factory/runtime-product.json >/dev/null
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            test -f "$asset"
+            cp "$asset" mobile/www/
+          done < <(jq -r '.web_assets[]' mobile/factory/runtime-product.json)
+          test -f mobile/www/midad-browser-mesh.css
+          test -f mobile/www/midad-browser-mesh.js
 
       - name: Add Android platform
         working-directory: mobile
@@ -126,7 +148,7 @@ jobs:
         run: node mobile/factory/quality-gate.mjs midad-browser
 
       - name: JavaScript syntax audit
-        run: node --check midad-browser.js
+        run: node --check mobile/web/midad-browser-mesh.js
 
       - name: Native browser source audit
         shell: bash

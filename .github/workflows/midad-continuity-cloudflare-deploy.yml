@@ -46,6 +46,8 @@ jobs:
           node-version: 24
       - name: Run Cloudflare Browser Run runtime contract tests
         run: node --test ../tests/browser-run-runtime.test.mjs
+      - name: Run Continuity, Vault, Browser Run and GitHub dispatch contract tests
+        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs
       - name: Validate Cloudflare Worker bundle without credentials or deployment
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 
@@ -79,6 +81,9 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       MIDAD_LEDGER_ADMIN_KEY: ${{ secrets.MIDAD_LEDGER_ADMIN_KEY }}
       MIDAD_WAKE_INTERNAL_KEY: ${{ secrets.MIDAD_WAKE_INTERNAL_KEY }}
+      MIDAD_GITHUB_APP_ID: ${{ secrets.MIDAD_GITHUB_APP_ID }}
+      MIDAD_GITHUB_INSTALLATION_ID: ${{ secrets.MIDAD_GITHUB_INSTALLATION_ID }}
+      MIDAD_GITHUB_APP_PRIVATE_KEY: ${{ secrets.MIDAD_GITHUB_APP_PRIVATE_KEY }}
       DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
     steps:
       - name: Checkout
@@ -103,6 +108,18 @@ jobs:
           fi
           if [[ "${#MIDAD_LEDGER_ADMIN_KEY}" -lt 32 || "${#MIDAD_WAKE_INTERNAL_KEY}" -lt 32 ]]; then
             echo "::error::MIDAD worker secrets must each contain at least 32 characters."
+            exit 1
+          fi
+          APP_SECRET_COUNT=0
+          for value in "$MIDAD_GITHUB_APP_ID" "$MIDAD_GITHUB_INSTALLATION_ID" "$MIDAD_GITHUB_APP_PRIVATE_KEY"; do
+            if [[ -n "$value" ]]; then APP_SECRET_COUNT=$((APP_SECRET_COUNT + 1)); fi
+          done
+          if [[ "$APP_SECRET_COUNT" -ne 0 && "$APP_SECRET_COUNT" -ne 3 ]]; then
+            echo "::error::GitHub App dispatch requires all three MIDAD_GITHUB_APP_* secrets or none."
+            exit 1
+          fi
+          if [[ -n "$MIDAD_GITHUB_APP_ID" && ( ! "$MIDAD_GITHUB_APP_ID" =~ ^[0-9]{1,20}$ || ! "$MIDAD_GITHUB_INSTALLATION_ID" =~ ^[0-9]{1,20}$ ) ]]; then
+            echo "::error::GitHub App and installation identifiers must be numeric."
             exit 1
           fi
 
@@ -146,6 +163,14 @@ jobs:
           if (Object.values(values).some(value => typeof value !== 'string' || value.length < 32)) {
             throw new Error('Worker secret validation failed');
           }
+          const appValues = {
+            MIDAD_GITHUB_APP_ID: process.env.MIDAD_GITHUB_APP_ID,
+            MIDAD_GITHUB_INSTALLATION_ID: process.env.MIDAD_GITHUB_INSTALLATION_ID,
+            MIDAD_GITHUB_APP_PRIVATE_KEY: process.env.MIDAD_GITHUB_APP_PRIVATE_KEY,
+          };
+          const appPresent = Object.values(appValues).filter(value => typeof value === 'string' && value.length > 0).length;
+          if (appPresent !== 0 && appPresent !== 3) throw new Error('GitHub App dispatch configuration is incomplete');
+          if (appPresent === 3) Object.assign(values, appValues);
           fs.writeFileSync(target, JSON.stringify(values), { mode: 0o600 });
           NODE
           npx --yes wrangler@4.102.0 secret bulk "$SECRET_FILE" --name midad-continuity-ledger

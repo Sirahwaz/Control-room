@@ -1,4 +1,5 @@
 import { closeBrowserRunSession, runBrowserRunSmoke } from './browser-run-runtime.mjs';
+import { dispatchGitHubWorkflow } from './github-dispatch.mjs';
 import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
 
 const WORKLOADS = new Set(['CPU_BATCH', 'WEBGPU_BATCH', 'BROWSER_SESSION', 'SINGLE']);
@@ -145,6 +146,7 @@ export class MidadContinuityLedger {
       return response(200, {
         ok: true, service: 'midad-continuity-ledger', schema: 2,
         dispatch: this.env.CONTINUITY_WAKE_QUEUE ? 'queue-websocket-wake-with-pull-claim' : 'pull-claim-fallback',
+        github_actions_dispatch: [this.env.MIDAD_GITHUB_APP_ID,this.env.MIDAD_GITHUB_INSTALLATION_ID,this.env.MIDAD_GITHUB_APP_PRIVATE_KEY].every(value => typeof value === 'string' && value.length > 0) ? 'configured' : 'not_configured',
       });
     }
     if (req.method === 'GET' && path === '/v1/nodes/wake') {
@@ -185,7 +187,18 @@ export class MidadContinuityLedger {
         event.event_id, event.task_id, event.owner_id
       );
       if (!persisted) return response(404, { ok: false, error: 'WAKE_EVENT_NOT_FOUND' });
-      return this.broadcastWake(event);
+      const task = this.one('SELECT workload,status FROM continuity_tasks WHERE task_id=? AND owner_id=?', event.task_id, event.owner_id);
+      if (!task) return response(404, { ok: false, error: 'WAKE_TASK_NOT_FOUND' });
+      const broadcast = await this.broadcastWake(event);
+      const broadcastBody = await broadcast.json();
+      return response(200, {
+        ok: true,
+        event_id: event.event_id,
+        delivered: broadcastBody.delivered,
+        delivery: broadcastBody.delivery,
+        workload: task.workload,
+        runner_dispatchable: task.status === 'QUEUED' && task.workload === 'CPU_BATCH',
+      });
     }
     if (path.startsWith('/v1/vault/secrets/')) return handleVaultAdmin(this, path, req, body);
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
@@ -405,6 +418,9 @@ export class MidadContinuityLedger {
     return response(200, { ok: true, node_id: node.node_id, state: 'READY', heartbeat_at: new Date(now).toISOString() });
   }
   async claim(node, body) {
+    if (body.task_id !== undefined && !validId(body.task_id)) {
+      return response(422, { ok: false, error: 'TASK_ID_INVALID' });
+    }
     const ttl = Number.isInteger(body.lease_ttl_seconds) ? Math.max(15, Math.min(300, body.lease_ttl_seconds)) : 90;
     const token = randomHex(), tokenHash = await sha256(token), now = Date.now();
     let claimed = null, quarantined = 0;
@@ -413,9 +429,13 @@ export class MidadContinuityLedger {
       if (!n || n.state !== 'READY' || !n.heartbeat_at_ms || now - n.heartbeat_at_ms > 45000 || n.cost_verified !== 1) return;
       const active = this.one("SELECT COUNT(*) AS n FROM continuity_tasks WHERE lease_owner=? AND status='RUNNING' AND lease_expires_at_ms>?", node.node_id, now);
       if (Number(active?.n || 0) >= n.available_slots) return;
-      const candidates = this.query(`SELECT * FROM continuity_tasks
-        WHERE owner_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
-        ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 100`, n.owner_id, now, now);
+      const candidates = body.task_id
+        ? this.query(`SELECT * FROM continuity_tasks
+            WHERE owner_id=? AND task_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+            ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 1`, n.owner_id, body.task_id, now, now)
+        : this.query(`SELECT * FROM continuity_tasks
+            WHERE owner_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+            ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 100`, n.owner_id, now, now);
       for (const candidate of candidates) {
         if (candidate.status === 'RUNNING' && candidate.retry_mode !== 'AT_LEAST_ONCE_IDEMPOTENT') {
           this.exec("UPDATE continuity_tasks SET status='RECONCILIATION_REQUIRED',lease_owner=NULL,lease_token_hash=NULL,lease_expires_at_ms=NULL,updated_at_ms=? WHERE task_id=? AND status='RUNNING'",
@@ -555,6 +575,11 @@ export default {
           body: JSON.stringify(event),
         }));
         if (!result.ok) throw new Error('WAKE_DISPATCH_REJECTED');
+        const wakeResult = await result.json();
+        if (wakeResult.runner_dispatchable === true) {
+          const dispatch = await dispatchGitHubWorkflow(event, env);
+          if (dispatch.dispatched !== true) throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+        }
         message.ack();
         delivered += 1;
       } catch {
