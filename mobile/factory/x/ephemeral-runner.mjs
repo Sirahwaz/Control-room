@@ -16,14 +16,22 @@ function requireId(value, name) {
 }
 
 function validateEnvironment(env) {
-  const ledgerUrl = new URL(env.MIDAD_CONTINUITY_LEDGER_URL || '');
-  if (ledgerUrl.protocol !== 'https:' || ledgerUrl.username || ledgerUrl.password ||
+  let ledgerUrl;
+  try {
+    ledgerUrl = new URL(env.MIDAD_CONTINUITY_LEDGER_URL || '');
+  } catch {
+    throw new Error('LEDGER_URL_MUST_BE_HTTPS_ORIGIN');
+  }
+  if (ledgerUrl.protocol !== 'https:' || !ledgerUrl.hostname ||
+      ledgerUrl.username || ledgerUrl.password ||
+      (ledgerUrl.port && ledgerUrl.port !== '443') ||
+      (ledgerUrl.pathname !== '/' && ledgerUrl.pathname !== '') ||
       ledgerUrl.search || ledgerUrl.hash) {
-    throw new Error('LEDGER_URL_MUST_BE_HTTPS');
+    throw new Error('LEDGER_URL_MUST_BE_HTTPS_ORIGIN');
   }
   const token = env.MIDAD_CONTINUITY_RUNNER_NODE_TOKEN;
-  if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
-    throw new Error('RUNNER_NODE_TOKEN_MISSING');
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
+    throw new Error('RUNNER_NODE_TOKEN_INVALID');
   }
   const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
   if (env.MIDAD_INPUT_OWNER_ID !== ownerId) throw new Error('OWNER_ID_INPUT_MISMATCH');
@@ -46,6 +54,8 @@ function jsonResponseShape(body, status) {
 async function ledgerPost(config, pathName, body, fetchImpl) {
   const response = await fetchImpl(config.ledgerOrigin + pathName, {
     method: 'POST',
+    redirect: 'error',
+    signal: AbortSignal.timeout(10_000),
     headers: {
       authorization: 'Bearer ' + config.token,
       'x-midad-node-id': NODE_ID,
