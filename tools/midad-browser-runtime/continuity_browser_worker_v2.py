@@ -499,7 +499,10 @@ class ContinuityBrowserWorker:
                     await execution
                 except asyncio.CancelledError:
                     pass
-                await self.session_pool.close_all()
+                try:
+                    await self.session_pool.close_all()
+                except BrowserSessionError:
+                    pass
                 reason = "VAULT_LEASE_LOST_DURING_BROWSER_TASK" if vault_lost_waiter is not None and vault_lost_waiter.done() else "LEASE_LOST_DURING_BROWSER_TASK"
                 outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
                 return {"task_id": task_id, "status": "BLOCKED", "code": reason,
@@ -510,7 +513,17 @@ class ContinuityBrowserWorker:
             if central_vault:
                 # Persist the browser state encrypted, close the context, and release its
                 # short-lived proxy-auth lease before the task is acknowledged.
-                await self.session_pool.close_all()
+                try:
+                    await self.session_pool.close_all()
+                except BrowserSessionError:
+                    outcome = await self.client.fail(
+                        task_id, lease, reason="VAULT_LEASE_RELEASE_FAILED", retryable=False
+                    )
+                    return {
+                        "task_id": task_id, "status": "BLOCKED",
+                        "code": "VAULT_LEASE_RELEASE_FAILED",
+                        "ledger_state": outcome.get("state"),
+                    }
             if status in {"HUMAN_GATE", "FAILED", "TIMEOUT", "CANCELLED"}:
                 outcome = await self.client.fail(
                     task_id, lease,
