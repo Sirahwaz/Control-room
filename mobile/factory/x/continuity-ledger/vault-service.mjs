@@ -151,7 +151,8 @@ async function store(ledger, body) {
   if (typeof idempotency !== 'string' || idempotency.length < 8 || idempotency.length > 200) {
     return response(422, { ok: false, error: 'IDEMPOTENCY_KEY_REQUIRED' });
   }
-  const requestHash = await sha256(canonical({ metadata: meta, secret: body.secret }));
+  // Persist a digest of non-secret metadata only; never store an offline-guessable hash of a password.
+  const requestHash = await sha256(canonical(meta));
   const prior = ledger.one(
     'SELECT request_hash,entity_id FROM vault_operations WHERE owner_id=? AND operation=? AND idempotency_key=?',
     meta.owner_id, 'STORE', idempotency
@@ -160,6 +161,11 @@ async function store(ledger, body) {
     if (prior.request_hash !== requestHash) return response(409, { ok: false, error: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH' });
     const existing = ledger.one('SELECT * FROM vault_secrets WHERE owner_id=? AND binding_id=?', meta.owner_id, prior.entity_id);
     if (!existing) return response(409, { ok: false, error: 'VAULT_IDEMPOTENCY_RECORD_INCONSISTENT' });
+    if (existing.state !== 'ACTIVE') return response(409, { ok: false, error: 'VAULT_SECRET_REVOKED' });
+    let priorSecret;
+    try { priorSecret = await decryptVaultSecret(existing, metadataFromRow(existing), ledger.env); }
+    catch { return response(503, { ok: false, error: 'VAULT_DECRYPTION_UNAVAILABLE' }); }
+    if (canonical(priorSecret) !== canonical(body.secret)) return response(409, { ok: false, error: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH' });
     return response(200, { ok: true, idempotent: true, state: existing.state, secret: publicMetadata(existing) });
   }
   let encrypted;
@@ -219,6 +225,13 @@ async function store(ledger, body) {
   }
   if (conflict) return response(409, { ok: false, error: conflict });
   if (!saved) return response(500, { ok: false, error: 'VAULT_STORE_FAILED' });
+  if (replay) {
+    if (saved.state !== 'ACTIVE') return response(409, { ok: false, error: 'VAULT_SECRET_REVOKED' });
+    let priorSecret;
+    try { priorSecret = await decryptVaultSecret(saved, metadataFromRow(saved), ledger.env); }
+    catch { return response(503, { ok: false, error: 'VAULT_DECRYPTION_UNAVAILABLE' }); }
+    if (canonical(priorSecret) !== canonical(body.secret)) return response(409, { ok: false, error: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH' });
+  }
   return response(replay ? 200 : 201, { ok: true, idempotent: replay, state: saved.state, secret: publicMetadata(saved) });
 }
 
