@@ -27,6 +27,12 @@ async function sha256(value) {
   const bytes = await crypto.subtle.digest('SHA-256', encoder.encode(value));
   return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
+function constantTimeEqual(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < left.length; i += 1) mismatch |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  return mismatch === 0;
+}
 function metadata(value) {
   if (!isRecord(value) || !validId(value.owner_id) || !validId(value.binding_id) ||
       typeof value.secret_ref !== 'string' ||
