@@ -6,6 +6,8 @@ on:
     paths:
       - "mobile/factory/x/continuity-ledger/**"
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
+      - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
+      - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
   workflow_dispatch:
     inputs:
       operation:
@@ -46,8 +48,8 @@ jobs:
           node-version: 24
       - name: Run Cloudflare Browser Run runtime contract tests
         run: node --test ../tests/browser-run-runtime.test.mjs
-      - name: Run Continuity, Vault, Browser Run, GitHub dispatch and deploy workflow contract tests
-        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs ../tests/continuity-deploy-workflow.test.mjs
+      - name: Run Continuity, Vault, Browser Run, GitHub dispatch, enrollment and deploy workflow contract tests
+        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs ../tests/continuity-deploy-workflow.test.mjs ../tests/continuity-runner-enrollment-workflow.test.mjs
       - name: Validate Cloudflare Worker bundle without credentials or deployment
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 
@@ -202,9 +204,24 @@ jobs:
             echo "::error::Wrangler did not report a workers.dev URL; inspect the deployment output before marking this deploy verified."
             exit 1
           fi
-          curl --silent --show-error --fail --retry 5 --retry-delay 2 "$WORKER_URL/health" \
-            | tee "$RUNNER_TEMP/midad-continuity-health.json"
-          node - "$RUNNER_TEMP/midad-continuity-health.json" <<'NODE'
+          HEALTH_FILE="$RUNNER_TEMP/midad-continuity-health.json"
+          WORKER_HEALTHY=0
+          HTTP_STATUS="000"
+          for attempt in $(seq 1 15); do
+            HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 10 "$WORKER_URL/health" || true)"
+            if [[ "$HTTP_STATUS" == "200" ]]; then
+              WORKER_HEALTHY=1
+              break
+            fi
+            echo "Worker health pending (attempt $attempt/15, HTTP ${HTTP_STATUS:-000}); waiting for Cloudflare propagation."
+            sleep 4
+          done
+          if [[ "$WORKER_HEALTHY" -ne 1 ]]; then
+            echo "::error::Worker health did not return HTTP 200 after 15 attempts; last status ${HTTP_STATUS:-000}."
+            exit 1
+          fi
+          cat "$HEALTH_FILE"
+          node - "$HEALTH_FILE" <<'NODE'
           const fs = require('node:fs');
           const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (health.ok !== true || health.service !== 'midad-continuity-ledger') {
