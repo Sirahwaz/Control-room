@@ -6,7 +6,7 @@
   "task": "RUNNER_SMOKE",
   "max_cost_usd": 0,
   "authorization_source": "explicit_user_confirmation",
-  "trigger_attempt": 2,
-  "retry_of_run_id": "43297274266",
-  "retry_reason": "first_attempt_failed_before_enrollment"
+  "trigger_attempt": 3,
+  "retry_of_run_id": "43297960296",
+  "retry_reason": "secret_preflight_failed_before_enrollment"
 }
