@@ -71,7 +71,14 @@ export class MidadContinuityLedger {
     this.ctx = ctx;
     this.env = env;
     this.sql = ctx.storage.sql;
+    this.oidcVerifierCache = { keys: null, expiresAt: 0 };
     this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS github_oidc_jwks_cache (
+        cache_id TEXT PRIMARY KEY,
+        jwks_json TEXT NOT NULL,
+        expires_at_ms INTEGER NOT NULL,
+        updated_at_ms INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS enrolled_nodes (
         node_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, token_hash TEXT NOT NULL,
         consent_confirmed INTEGER NOT NULL CHECK(consent_confirmed=1),
@@ -122,6 +129,67 @@ export class MidadContinuityLedger {
     if (typeof expected !== 'string' || expected.length < 32 || supplied.length < 32) return false;
     return constantTimeEqual(await sha256(supplied), await sha256(expected));
   }
+  storeGitHubOidcJwks(body) {
+    const keys = body?.keys;
+    const privateFields = ['d', 'p', 'q', 'dp', 'dq', 'qi', 'oth'];
+    if (!Array.isArray(keys) || keys.length < 1 || keys.length > 32) {
+      return response(422, { ok: false, error: 'GITHUB_OIDC_JWKS_INVALID' });
+    }
+    const seenKids = new Set();
+    const publicKeys = [];
+    for (const key of keys) {
+      if (!isRecord(key) ||
+          privateFields.some(field => Object.hasOwn(key, field)) ||
+          key.kty !== 'RSA' || key.alg !== 'RS256' || key.use !== 'sig' ||
+          typeof key.kid !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(key.kid) ||
+          typeof key.n !== 'string' || !/^[A-Za-z0-9_-]{256,2048}$/.test(key.n) ||
+          typeof key.e !== 'string' || !/^[A-Za-z0-9_-]{2,16}$/.test(key.e) ||
+          seenKids.has(key.kid)) {
+        return response(422, { ok: false, error: 'GITHUB_OIDC_JWKS_INVALID' });
+      }
+      seenKids.add(key.kid);
+      publicKeys.push({ kty: 'RSA', alg: 'RS256', use: 'sig', kid: key.kid, n: key.n, e: key.e });
+    }
+
+    const now = Date.now();
+    const expiresAt = now + 2 * 60 * 60 * 1000;
+    this.tx(() => {
+      this.exec(
+        `INSERT INTO github_oidc_jwks_cache(cache_id,jwks_json,expires_at_ms,updated_at_ms)
+         VALUES('github-actions',?,?,?)
+         ON CONFLICT(cache_id) DO UPDATE SET jwks_json=excluded.jwks_json,
+           expires_at_ms=excluded.expires_at_ms,updated_at_ms=excluded.updated_at_ms`,
+        JSON.stringify(publicKeys), expiresAt, now,
+      );
+    });
+    // Force the next verification to read the freshly synchronized public keys.
+    this.oidcVerifierCache.keys = null;
+    this.oidcVerifierCache.expiresAt = 0;
+    return response(200, { ok: true, key_count: publicKeys.length, expires_at_ms: expiresAt, updated_at_ms: now });
+  }
+  async verifyGitHubOidcToken(token) {
+    const cachedFetch = async url => {
+      if (new URL(url).href !== GITHUB_ACTIONS_OIDC_POLICY.jwksUrl) {
+        throw new Error('GITHUB_OIDC_JWKS_URL_NOT_ALLOWED');
+      }
+      const row = this.one(
+        "SELECT jwks_json,expires_at_ms FROM github_oidc_jwks_cache WHERE cache_id='github-actions'",
+      );
+      if (!row || row.expires_at_ms <= Date.now()) throw new Error('GITHUB_OIDC_JWKS_CACHE_STALE');
+      let keys;
+      try { keys = JSON.parse(row.jwks_json); } catch {
+        throw new Error('GITHUB_OIDC_JWKS_CACHE_INVALID');
+      }
+      return new Response(JSON.stringify({ keys }), {
+        status: 200,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    };
+    return verifyGitHubActionsOidcToken(token, {
+      fetchImpl: cachedFetch,
+      cache: this.oidcVerifierCache,
+    });
+  }
   async nodeAuth(req) {
     const nodeId = req.headers.get('x-midad-node-id') || '';
     const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -141,7 +209,7 @@ export class MidadContinuityLedger {
       return null;
     }
     try {
-      const claims = await verifyGitHubActionsOidcToken(supplied);
+      const claims = await this.verifyGitHubOidcToken(supplied);
       if (node.owner_id !== 'github:' + String(claims.repository_owner_id)) return null;
       return node;
     } catch {
@@ -221,6 +289,10 @@ export class MidadContinuityLedger {
         runner_dispatchable: task.status === 'QUEUED' && task.workload === 'CPU_BATCH',
       });
     }
+    if (path === '/internal/oidc/jwks') {
+      if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
+      return this.storeGitHubOidcJwks(body);
+    }
     if (path === '/internal/oidc/preflight') {
       const nodeId = req.headers.get('x-midad-node-id') || '';
       const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -230,7 +302,7 @@ export class MidadContinuityLedger {
 
       let claims;
       try {
-        claims = await verifyGitHubActionsOidcToken(supplied);
+        claims = await this.verifyGitHubOidcToken(supplied);
       } catch (error) {
         const code = error instanceof Error && /^GITHUB_OIDC_[A-Z_]+$/.test(error.message)
           ? error.message
