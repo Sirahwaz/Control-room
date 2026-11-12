@@ -45,7 +45,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/midad-cpu-enrollment"
           cd "$RUNNER_TEMP/midad-cpu-enrollment"
           npm init -y >/dev/null
-          npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund libsodium-wrappers@0.7.15
+          npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund libsodium-wrappers@0.8.4
 
       - name: Enroll owner-approved CPU node, store token securely, enqueue and dispatch smoke task
         shell: bash
@@ -55,11 +55,11 @@ jobs:
           MIDAD_OWNER_ID_INPUT: ${{ inputs.owner_id }}
           MIDAD_OWNER_CONSENT: ${{ inputs.consent }}
           MIDAD_RUN_ID: ${{ github.run_id }}
-          MIDAD_LIBSODIUM_PATH: ${{ runner.temp }}/midad-cpu-enrollment/node_modules/libsodium-wrappers/dist/modules/libsodium-wrappers.mjs
         run: |
           set -euo pipefail
+          cd "$RUNNER_TEMP/midad-cpu-enrollment"
           node --input-type=module <<'NODE'
-          import sodium from process.env.MIDAD_LIBSODIUM_PATH;
+          import sodium from 'libsodium-wrappers';
           await sodium.ready;
 
           const ownerId = process.env.MIDAD_OWNER_ID_INPUT || '';
@@ -150,7 +150,7 @@ jobs:
           if (enrolled.node_id !== nodeId || typeof enrollmentToken !== 'string' || !/^[a-f0-9]{64}$/i.test(enrollmentToken)) {
             throw new Error('NODE_ENROLLMENT_RESPONSE_INVALID');
           }
-          process.stdout.write('::add-mask::' + enrollmentToken + '\\n');
+          process.stdout.write('::add-mask::' + enrollmentToken + '\n');
 
           const sealed = sodium.crypto_box_seal(
             sodium.from_string(enrollmentToken),
@@ -197,5 +197,5 @@ jobs:
             runner_workflow: 'midad-mncf-ephemeral-runner.yml',
             enrollment_token_stored_as_repository_secret: true,
             ledger_url_stored_as_repository_variable: true,
-          }) + '\\n');
+          }) + '\n');
           NODE
