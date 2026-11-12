@@ -148,7 +148,7 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
     calls.push({ url: parsed, options });
-    if (parsed.hostname === 'pipelinesghubeus6.actions.githubusercontent.com') {
+    if (parsed.hostname === 'run-actions-3-azure-eastus.actions.githubusercontent.com') {
       assert.equal(parsed.searchParams.get('audience'), 'midad-continuity-ledger');
       assert.equal(options.headers.authorization, 'Bearer ' + 'r'.repeat(64));
       return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
@@ -169,7 +169,7 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
       MIDAD_CONTINUITY_LEDGER_URL: 'https://midad-continuity-ledger.midadbot.workers.dev',
       MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
       MIDAD_INPUT_OWNER_ID: 'github:116122510',
-      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelinesghubeus6.actions.githubusercontent.com/runner-test?api-version=2.0',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://run-actions-3-azure-eastus.actions.githubusercontent.com/runner-test?api-version=2.0',
       ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
     },
     fetchImpl,
@@ -186,6 +186,7 @@ test('ephemeral runner refuses missing or untrusted GitHub OIDC token request en
   for (const requestUrl of [
     'https://attacker.example/oidc',
     'https://pipelines.actions.githubusercontent.com.attacker.example/oidc',
+    'https://run-actions-3-azure-eastus.actions.githubusercontent.com.attacker.example/oidc',
   ]) {
     await assert.rejects(runEphemeralTask({
       env: {
