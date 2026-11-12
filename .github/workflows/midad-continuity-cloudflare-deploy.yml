@@ -1,10 +1,22 @@
 name: MIDAD Continuity — Cloudflare Deploy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/factory/x/continuity-ledger/**"
+      - "mobile/factory/x/ephemeral-runner.mjs"
+      - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
+      - ".github/workflows/midad-mncf-ephemeral-runner.yml"
+      - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
+      - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
+      - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
   pull_request:
     branches: [main]
     paths:
       - "mobile/factory/x/continuity-ledger/**"
+      - "mobile/factory/x/ephemeral-runner.mjs"
+      - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
       - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
       - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
@@ -49,7 +61,7 @@ jobs:
       - name: Run Cloudflare Browser Run runtime contract tests
         run: node --test ../tests/browser-run-runtime.test.mjs
       - name: Run Continuity, Vault, Browser Run, GitHub dispatch, enrollment and deploy workflow contract tests
-        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs ../tests/continuity-deploy-workflow.test.mjs ../tests/continuity-runner-enrollment-workflow.test.mjs
+        run: node --test ../tests/continuity-ledger.test.mjs ../tests/continuity-wake.test.mjs ../tests/continuity-vault.test.mjs ../tests/browser-run-runtime.test.mjs ../tests/continuity-github-dispatch.test.mjs ../tests/continuity-deploy-workflow.test.mjs ../tests/continuity-runner-enrollment-workflow.test.mjs ../tests/continuity-github-oidc.test.mjs
       - name: Validate Cloudflare Worker bundle without credentials or deployment
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 
@@ -71,7 +83,7 @@ jobs:
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-dry-run"
 
   deploy:
-    if: inputs.operation == 'deploy'
+    if: inputs.operation == 'deploy' || github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: cloudflare-production
     timeout-minutes: 20
@@ -101,8 +113,12 @@ jobs:
             echo "::error::Deployment is allowed only from refs/heads/main after PR review and merge."
             exit 1
           fi
-          if [[ "$DEPLOY_CONFIRMATION" != "DEPLOY" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$DEPLOY_CONFIRMATION" != "DEPLOY" ]]; then
             echo "::error::Type DEPLOY in the confirmation input to authorize publication."
+            exit 1
+          fi
+          if [[ "$GITHUB_EVENT_NAME" != "push" && "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::Unsupported deployment event."
             exit 1
           fi
           if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ||
@@ -224,13 +240,15 @@ jobs:
           node - "$HEALTH_FILE" <<'NODE'
           const fs = require('node:fs');
           const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          if (health.ok !== true || health.service !== 'midad-continuity-ledger') {
-            throw new Error('Continuity Worker health response is invalid');
+          if (health.ok !== true || health.service !== 'midad-continuity-ledger' ||
+              health.node_auth !== 'github-actions-oidc-v1') {
+            throw new Error('Continuity Worker health response is invalid or lacks the GitHub OIDC CPU runner auth mode');
           }
           console.log(JSON.stringify({
             ok: health.ok,
             service: health.service,
             schema: health.schema,
             dispatch: health.dispatch,
+            node_auth: health.node_auth,
           }));
           NODE

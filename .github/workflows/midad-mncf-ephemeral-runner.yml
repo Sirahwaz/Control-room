@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: midad-mncf-task-${{ inputs.task_id }}
@@ -27,7 +28,7 @@ concurrency:
 
 jobs:
   execute:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_OWNER_ID != ''))
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -44,20 +45,21 @@ jobs:
 
       - name: Claim, execute and complete one bounded CPU task
         env:
-          MIDAD_CONTINUITY_LEDGER_URL: ${{ vars.MIDAD_CONTINUITY_LEDGER_URL }}
-          MIDAD_CONTINUITY_OWNER_ID: ${{ vars.MIDAD_CONTINUITY_OWNER_ID }}
-          MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: ${{ secrets.MIDAD_CONTINUITY_RUNNER_NODE_TOKEN }}
+          MIDAD_CONTINUITY_LEDGER_URL: ${{ vars.MIDAD_CONTINUITY_LEDGER_URL || 'https://midad-continuity-ledger.midadbot.workers.dev' }}
+          MIDAD_CONTINUITY_OWNER_ID: ${{ vars.MIDAD_CONTINUITY_OWNER_ID || 'github:116122510' }}
           MIDAD_EVENT_ID: ${{ inputs.event_id }}
           MIDAD_TASK_ID: ${{ inputs.task_id }}
-          MIDAD_INPUT_OWNER_ID: ${{ github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_OWNER_ID || inputs.owner_id }}
+          MIDAD_INPUT_OWNER_ID: ${{ github.event_name == 'schedule' && (vars.MIDAD_CONTINUITY_OWNER_ID || 'github:116122510') || inputs.owner_id }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${MIDAD_CONTINUITY_LEDGER_URL:-}" ||
-                -z "${MIDAD_CONTINUITY_OWNER_ID:-}" ||
-                -z "${MIDAD_CONTINUITY_RUNNER_NODE_TOKEN:-}" ]]; then
-            echo "MIDAD_CPU_RUNNER_NOT_ENROLLED — scheduled/dispatch run skipped without claiming work"
-            exit 0
+          if [[ -z "${MIDAD_CONTINUITY_LEDGER_URL:-}" || -z "${MIDAD_CONTINUITY_OWNER_ID:-}" ]]; then
+            echo "::error::MIDAD_CPU_RUNNER_CONFIGURATION_MISSING"
+            exit 1
+          fi
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "::error::GITHUB_OIDC_TOKEN_REQUEST_UNAVAILABLE"
+            exit 1
           fi
           test "$MIDAD_CONTINUITY_OWNER_ID" = "$MIDAD_INPUT_OWNER_ID"
           if [[ -n "${MIDAD_TASK_ID:-}" || -n "${MIDAD_EVENT_ID:-}" ]]; then

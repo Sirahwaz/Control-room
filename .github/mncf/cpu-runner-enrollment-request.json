@@ -1,12 +1,12 @@
 {
-  "request_id": "MNCF-CPU-BOOTSTRAP-20261112-001",
+  "request_id": "MNCF-CPU-BOOTSTRAP-20261112-002",
   "owner_id": "github:116122510",
   "consent": "I_APPROVE_CPU_NODE_ENROLLMENT",
   "requested_capability": "cpu-batch",
   "task": "RUNNER_SMOKE",
   "max_cost_usd": 0,
   "authorization_source": "explicit_user_confirmation",
-  "trigger_attempt": 3,
-  "retry_of_run_id": "43297960296",
-  "retry_reason": "secret_preflight_failed_before_enrollment"
+  "trigger_attempt": 4,
+  "retry_of_run_id": "43299128578",
+  "retry_reason": "github_oidc_replaces_github_secrets_api"
 }

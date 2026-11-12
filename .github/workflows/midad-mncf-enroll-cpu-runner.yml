@@ -42,16 +42,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install pinned GitHub secret encryption dependency
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/midad-cpu-enrollment"
-          cd "$RUNNER_TEMP/midad-cpu-enrollment"
-          npm init -y >/dev/null
-          npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund libsodium-wrappers@0.8.4
-
-      - name: Enroll owner-approved CPU node, store token securely, enqueue and dispatch smoke task
+      - name: Wait for the OIDC-enabled Continuity Worker, enroll CPU node and dispatch zero-cost smoke task
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,46 +50,67 @@ jobs:
           MIDAD_OWNER_ID_INPUT: ${{ inputs.owner_id }}
           MIDAD_OWNER_CONSENT: ${{ inputs.consent }}
           MIDAD_RUN_ID: ${{ github.run_id }}
+          MIDAD_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP/midad-cpu-enrollment"
           node --input-type=module <<'NODE'
-          import sodium from 'libsodium-wrappers';
           import { readFileSync } from 'node:fs';
-          await sodium.ready;
+          import { setTimeout as delay } from 'node:timers/promises';
 
-          const bootstrapPush = process.env.GITHUB_EVENT_NAME === 'push';
-          const bootstrapRequestPath = `${process.env.GITHUB_WORKSPACE}/.github/mncf/cpu-runner-enrollment-request.json`;
-          const bootstrapRequest = bootstrapPush
-            ? JSON.parse(readFileSync(bootstrapRequestPath, 'utf8'))
-            : null;
+          const bootstrapPush = process.env.MIDAD_EVENT_NAME === 'push';
+          const requestPath = `${process.env.GITHUB_WORKSPACE}/.github/mncf/cpu-runner-enrollment-request.json`;
+          const request = bootstrapPush ? JSON.parse(readFileSync(requestPath, 'utf8')) : null;
           if (bootstrapPush && (
-            bootstrapRequest?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-001' ||
-            bootstrapRequest?.requested_capability !== 'cpu-batch' ||
-            bootstrapRequest?.task !== 'RUNNER_SMOKE' ||
-            bootstrapRequest?.max_cost_usd !== 0 ||
-            bootstrapRequest?.authorization_source !== 'explicit_user_confirmation' ||
-            bootstrapRequest?.trigger_attempt !== 3 ||
-            bootstrapRequest?.retry_of_run_id !== '43297960296' ||
-            bootstrapRequest?.retry_reason !== 'secret_preflight_failed_before_enrollment'
+            request?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-002' ||
+            request?.owner_id !== 'github:116122510' ||
+            request?.consent !== 'I_APPROVE_CPU_NODE_ENROLLMENT' ||
+            request?.requested_capability !== 'cpu-batch' ||
+            request?.task !== 'RUNNER_SMOKE' ||
+            request?.max_cost_usd !== 0 ||
+            request?.authorization_source !== 'explicit_user_confirmation' ||
+            request?.trigger_attempt !== 4 ||
+            request?.retry_of_run_id !== '43299128578' ||
+            request?.retry_reason !== 'github_oidc_replaces_github_secrets_api'
           )) throw new Error('BOOTSTRAP_REQUEST_NOT_AUTHORIZED');
 
-          const ownerId = bootstrapRequest?.owner_id || process.env.MIDAD_OWNER_ID_INPUT || '';
-          const consent = bootstrapRequest?.consent || process.env.MIDAD_OWNER_CONSENT || '';
+          const ownerId = request?.owner_id || process.env.MIDAD_OWNER_ID_INPUT || '';
+          const consent = request?.consent || process.env.MIDAD_OWNER_CONSENT || '';
           const adminKey = process.env.MIDAD_LEDGER_ADMIN_KEY || '';
           const ghToken = process.env.GH_TOKEN || '';
           const runId = process.env.MIDAD_RUN_ID || '';
           const origin = 'https://midad-continuity-ledger.midadbot.workers.dev';
           const repo = 'Sirahwaz/Control-room';
           const nodeId = 'github-actions-cpu-batch';
-          const secretName = 'MIDAD_CONTINUITY_RUNNER_NODE_TOKEN';
           const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 
-          if (!validId(ownerId)) throw new Error('OWNER_ID_INVALID');
+          if (!validId(ownerId) || ownerId !== 'github:116122510') throw new Error('OWNER_ID_NOT_APPROVED');
           if (consent !== 'I_APPROVE_CPU_NODE_ENROLLMENT') throw new Error('OWNER_CONSENT_REQUIRED');
           if (adminKey.length < 32) throw new Error('LEDGER_ADMIN_KEY_MISSING');
           if (!/^\d+$/.test(runId)) throw new Error('GITHUB_RUN_ID_INVALID');
           if (!ghToken) throw new Error('GITHUB_TOKEN_MISSING');
+
+          // Do not enroll against the old Worker version. The deployment workflow runs in parallel on this merge.
+          let oidcWorkerReady = false;
+          for (let attempt = 1; attempt <= 36; attempt += 1) {
+            try {
+              const healthResponse = await fetch(origin + '/health', {
+                redirect: 'error',
+                signal: AbortSignal.timeout(8000),
+                headers: { accept: 'application/json' },
+              });
+              if (healthResponse.ok) {
+                const health = await healthResponse.json();
+                if (health?.ok === true &&
+                    health?.service === 'midad-continuity-ledger' &&
+                    health?.node_auth === 'github-actions-oidc-v1') {
+                  oidcWorkerReady = true;
+                  break;
+                }
+              }
+            } catch {}
+            await delay(5000);
+          }
+          if (!oidcWorkerReady) throw new Error('LEDGER_OIDC_DEPLOYMENT_NOT_READY');
 
           const github = async (method, apiPath, body) => {
             const response = await fetch('https://api.github.com' + apiPath, {
@@ -118,19 +130,16 @@ jobs:
             return raw ? JSON.parse(raw) : null;
           };
 
-          const existingSecret = await fetch(
-            'https://api.github.com/repos/' + repo + '/actions/secrets/' + secretName,
-            { headers: { authorization: 'Bearer ' + ghToken, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' } },
-          );
-          if (existingSecret.status === 200) throw new Error('CPU_RUNNER_ALREADY_ENROLLED');
-          if (existingSecret.status !== 404) throw new Error('GITHUB_SECRET_STATE_UNAVAILABLE_' + existingSecret.status);
-
           const ledgerPost = async (path, body) => {
             const response = await fetch(origin + path, {
               method: 'POST',
               redirect: 'error',
               signal: AbortSignal.timeout(15000),
-              headers: { authorization: 'Bearer ' + adminKey, 'content-type': 'application/json', accept: 'application/json' },
+              headers: {
+                authorization: 'Bearer ' + adminKey,
+                'content-type': 'application/json',
+                accept: 'application/json',
+              },
               body: JSON.stringify(body),
             });
             let data;
@@ -141,46 +150,19 @@ jobs:
             return data;
           };
 
-          const publicKey = await github('GET', '/repos/' + repo + '/actions/secrets/public-key');
-          if (!publicKey?.key || !publicKey?.key_id) throw new Error('GITHUB_SECRET_PUBLIC_KEY_INVALID');
-
-          const runnerVariables = {
-            MIDAD_CONTINUITY_LEDGER_URL: origin,
-            MIDAD_CONTINUITY_OWNER_ID: ownerId,
-          };
-          for (const [name, value] of Object.entries(runnerVariables)) {
-            const existing = await fetch('https://api.github.com/repos/' + repo + '/actions/variables/' + name, {
-              headers: { authorization: 'Bearer ' + ghToken, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' },
-            });
-            if (existing.status === 200) {
-              await github('PATCH', '/repos/' + repo + '/actions/variables/' + name, { value });
-            } else if (existing.status === 404) {
-              await github('POST', '/repos/' + repo + '/actions/variables', { name, value });
-            } else {
-              throw new Error('GITHUB_VARIABLE_STATE_UNAVAILABLE');
-            }
-          }
-
           const enrolled = await ledgerPost('/v1/nodes/enroll', {
             node_id: nodeId,
             owner_id: ownerId,
             consent_confirmed: true,
             capabilities: ['cpu-batch'],
+            auth_mode: 'github-actions-oidc',
           });
-          const enrollmentToken = enrolled.enrollment_token;
-          if (enrolled.node_id !== nodeId || typeof enrollmentToken !== 'string' || !/^[a-f0-9]{64}$/i.test(enrollmentToken)) {
-            throw new Error('NODE_ENROLLMENT_RESPONSE_INVALID');
+          if (enrolled.node_id !== nodeId ||
+              enrolled.authentication !== 'github-actions-oidc' ||
+              enrolled.token_delivery !== 'none' ||
+              Object.hasOwn(enrolled, 'enrollment_token')) {
+            throw new Error('OIDC_NODE_ENROLLMENT_NOT_CONFIRMED');
           }
-          process.stdout.write('::add-mask::' + enrollmentToken + '\n');
-
-          const sealed = sodium.crypto_box_seal(
-            sodium.from_string(enrollmentToken),
-            sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL),
-          );
-          await github('PUT', '/repos/' + repo + '/actions/secrets/' + secretName, {
-            encrypted_value: sodium.to_base64(sealed, sodium.base64_variants.ORIGINAL),
-            key_id: publicKey.key_id,
-          });
 
           const taskId = 'mncf-cpu-smoke-' + runId;
           const eventId = 'mncf-cpu-event-' + runId;
@@ -199,7 +181,7 @@ jobs:
             retry_mode: 'AT_LEAST_ONCE_IDEMPOTENT',
             max_attempts: 1,
           });
-          if (task.task_id !== taskId || !['QUEUED','COMPLETED'].includes(task.state)) {
+          if (task.task_id !== taskId || !['QUEUED', 'COMPLETED'].includes(task.state)) {
             throw new Error('SMOKE_TASK_ENQUEUE_NOT_CONFIRMED');
           }
 
@@ -209,14 +191,15 @@ jobs:
           });
 
           process.stdout.write(JSON.stringify({
-            status: 'ENROLLED_AND_DISPATCHED',
+            status: 'OIDC_NODE_ENROLLED_AND_DISPATCHED',
             node_id: nodeId,
             owner_id: ownerId,
             capability: 'cpu-batch',
             task_id: taskId,
             task_state: task.state,
             runner_workflow: 'midad-mncf-ephemeral-runner.yml',
-            enrollment_token_stored_as_repository_secret: true,
-            ledger_url_stored_as_repository_variable: true,
+            authentication: 'github-actions-oidc',
+            persistent_runner_secret_created: false,
+            max_cost_usd: 0,
           }) + '\n');
           NODE
