@@ -221,6 +221,40 @@ export class MidadContinuityLedger {
         runner_dispatchable: task.status === 'QUEUED' && task.workload === 'CPU_BATCH',
       });
     }
+    if (path === '/internal/oidc/preflight') {
+      const nodeId = req.headers.get('x-midad-node-id') || '';
+      const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+      if (nodeId !== GITHUB_ACTIONS_OIDC_POLICY.nodeId || supplied.length < 100) {
+        return response(401, { ok: false, error: 'OIDC_PREFLIGHT_AUTH_REQUIRED' });
+      }
+
+      let claims;
+      try {
+        claims = await verifyGitHubActionsOidcToken(supplied);
+      } catch (error) {
+        const code = error instanceof Error && /^GITHUB_OIDC_[A-Z_]+$/.test(error.message)
+          ? error.message
+          : 'GITHUB_OIDC_VERIFICATION_FAILED';
+        return response(401, { ok: false, error: code });
+      }
+
+      const node = this.one(
+        'SELECT node_id,owner_id,consent_confirmed,enrolled_capabilities_json,revoked_at_ms FROM enrolled_nodes WHERE node_id=?',
+        nodeId,
+      );
+      let capabilities = [];
+      try { capabilities = JSON.parse(node?.enrolled_capabilities_json || '[]'); } catch {}
+      return response(200, {
+        ok: true,
+        oidc_verified: true,
+        node_registered: Boolean(node),
+        node_owner_matches: Boolean(node && node.owner_id === GITHUB_ACTIONS_OIDC_POLICY.ownerId),
+        node_consent_confirmed: Boolean(node && node.consent_confirmed === 1),
+        node_not_revoked: Boolean(node && node.revoked_at_ms === null),
+        node_capability_matches: JSON.stringify(capabilities) === JSON.stringify([GITHUB_ACTIONS_OIDC_POLICY.capability]),
+        owner_claim_matches: Boolean(node && node.owner_id === 'github:' + String(claims.repository_owner_id)),
+      });
+    }
     if (path.startsWith('/v1/vault/secrets/')) return handleVaultAdmin(this, path, req, body);
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
       if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });

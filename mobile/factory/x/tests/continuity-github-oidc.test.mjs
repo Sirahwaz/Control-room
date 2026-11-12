@@ -125,6 +125,24 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
     assert.equal(Object.hasOwn(enrolledBody, 'enrollment_token'), false);
 
     const jwt = signedToken();
+    const preflightResponse = await ledger.fetch(post('/internal/oidc/preflight', {}, {
+      authorization: 'Bearer ' + jwt,
+      'x-midad-node-id': 'github-actions-cpu-batch',
+    }));
+    const preflight = await preflightResponse.json();
+    assert.equal(preflightResponse.status, 200);
+    assert.deepEqual(preflight, {
+      ok: true,
+      oidc_verified: true,
+      node_registered: true,
+      node_owner_matches: true,
+      node_consent_confirmed: true,
+      node_not_revoked: true,
+      node_capability_matches: true,
+      owner_claim_matches: true,
+    });
+    assert.equal(JSON.stringify(preflight).includes(jwt), false);
+
     const heartbeat = await ledger.fetch(post('/v1/nodes/heartbeat', {
       cpu_cores: 2,
       memory_mb: 2048,
@@ -147,7 +165,7 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v1');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v2-preflight');
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();
@@ -168,6 +186,19 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
     if (parsed.hostname === 'token.actions.githubusercontent.com') {
       assert.equal(parsed.pathname, '/.well-known/jwks');
       return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    }
+    if (parsed.pathname === '/internal/oidc/preflight') {
+      assert.equal(options.headers.authorization, 'Bearer ' + oidcToken);
+      return new Response(JSON.stringify({
+        ok: true,
+        oidc_verified: true,
+        node_registered: true,
+        node_owner_matches: true,
+        node_consent_confirmed: true,
+        node_not_revoked: true,
+        node_capability_matches: true,
+        owner_claim_matches: true,
+      }), { status: 200 });
     }
     if (parsed.pathname === '/v1/nodes/heartbeat') {
       assert.equal(options.headers.authorization, 'Bearer ' + oidcToken);
@@ -191,9 +222,9 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
     fetchImpl,
   });
   assert.equal(result.status, 'NO_ELIGIBLE_TASK');
-  assert.equal(calls.length, 3);
-  assert.equal(calls[1].url.pathname, '/v1/nodes/heartbeat');
-  assert.equal(calls[2].url.pathname, '/v1/tasks/claim');
+  assert.ok(calls.some(call => call.url.pathname === '/internal/oidc/preflight'));
+  assert.ok(calls.some(call => call.url.pathname === '/v1/nodes/heartbeat'));
+  assert.ok(calls.some(call => call.url.pathname === '/v1/tasks/claim'));
 });
 
 test('ephemeral runner rejects an invalid OIDC signature before contacting the ledger', async () => {

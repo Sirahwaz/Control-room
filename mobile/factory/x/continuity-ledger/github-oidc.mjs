@@ -13,7 +13,7 @@ export const GITHUB_ACTIONS_OIDC_POLICY = Object.freeze({
   ref: 'refs/heads/main',
   subject: 'repo:Sirahwaz/Control-room:ref:refs/heads/main',
   immutableSubject: 'repo:Sirahwaz@116122510/Control-room@1377540065:ref:refs/heads/main',
-  subjectPolicyVersion: 'legacy-and-immutable-v1',
+  subjectPolicyVersion: 'legacy-and-immutable-v2-preflight',
   workflowRef: 'Sirahwaz/Control-room/.github/workflows/midad-mncf-ephemeral-runner.yml@refs/heads/main',
   nodeId: 'github-actions-cpu-batch',
   ownerId: 'github:116122510',
