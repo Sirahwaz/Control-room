@@ -250,7 +250,7 @@ jobs:
             sleep 4
           done
           if [[ "$WORKER_HEALTHY" -ne 1 ]]; then
-            echo "::error::Worker health did not return HTTP 200 after 15 attempts; last status ${HTTP_STATUS:-000}."
+            echo "::error::Worker/DO policy marker did not become healthy after 85 attempts; last status ${HTTP_STATUS:-000}."
             exit 1
           fi
           cat "$HEALTH_FILE"
