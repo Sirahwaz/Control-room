@@ -41,14 +41,24 @@ function decodeJsonSegment(value) {
 
 async function loadJwks(fetchImpl, cache, now, forceRefresh = false) {
   if (!forceRefresh && Array.isArray(cache.keys) && cache.expiresAt > now) return cache.keys;
-  const response = await fetchImpl(OIDC_JWKS_URL, {
-    method: 'GET',
-    redirect: 'error',
-    headers: { accept: 'application/json' },
-    signal: AbortSignal.timeout(8000),
-  });
+  let response;
+  try {
+    response = await fetchImpl(OIDC_JWKS_URL, {
+      method: 'GET',
+      redirect: 'error',
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    throw new Error('GITHUB_OIDC_JWKS_FETCH_FAILED');
+  }
   if (!response.ok) throw new Error('GITHUB_OIDC_JWKS_UNAVAILABLE');
-  const document = await response.json();
+  let document;
+  try {
+    document = await response.json();
+  } catch {
+    throw new Error('GITHUB_OIDC_JWKS_INVALID');
+  }
   if (!Array.isArray(document?.keys) || document.keys.length < 1 || document.keys.length > 32) {
     throw new Error('GITHUB_OIDC_JWKS_INVALID');
   }
@@ -72,7 +82,7 @@ function matchesAudience(aud, expected) {
  */
 export async function verifyGitHubActionsOidcToken(
   token,
-  { fetchImpl = fetch, cache = jwksCache, now = Date.now() } = {},
+  { fetchImpl = fetch, cache = jwksCache, now = Date.now(), cryptoImpl = crypto } = {},
 ) {
   if (typeof token !== 'string' || token.length < 100 || token.length > 16384) {
     throw new Error('GITHUB_OIDC_CLAIMS_INVALID');
@@ -120,7 +130,7 @@ export async function verifyGitHubActionsOidcToken(
 
   let imported;
   try {
-    imported = await crypto.subtle.importKey(
+    imported = await cryptoImpl.subtle.importKey(
       'jwk',
       key,
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
@@ -133,12 +143,17 @@ export async function verifyGitHubActionsOidcToken(
 
   const signature = decodeBase64Url(parts[2]);
   const signedBytes = new TextEncoder().encode(parts[0] + '.' + parts[1]);
-  const valid = await crypto.subtle.verify(
-    { name: 'RSASSA-PKCS1-v1_5' },
-    imported,
-    signature,
-    signedBytes,
-  );
+  let valid;
+  try {
+    valid = await cryptoImpl.subtle.verify(
+      { name: 'RSASSA-PKCS1-v1_5' },
+      imported,
+      signature,
+      signedBytes,
+    );
+  } catch {
+    throw new Error('GITHUB_OIDC_SIGNATURE_CHECK_FAILED');
+  }
   if (!valid) throw new Error('GITHUB_OIDC_SIGNATURE_INVALID');
   return claims;
 }
