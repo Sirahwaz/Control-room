@@ -143,7 +143,7 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
     encrypted_session_store: false,
   }, fetchImpl);
 
-  const claimRequest = { lease_ttl_seconds: 180 };
+  const claimRequest = { workload: 'CPU_BATCH', lease_ttl_seconds: 180 };
   if (config.taskId) claimRequest.task_id = config.taskId;
   const claimed = await ledgerPost(config, '/v1/tasks/claim', claimRequest, fetchImpl);
   if (claimed.task === null) return { status: 'NO_ELIGIBLE_TASK', task_id: config.taskId };
