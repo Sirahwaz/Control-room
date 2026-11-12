@@ -262,6 +262,7 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
   assert.equal(requests.length, 4);
   assert.equal(requests[0].body.capabilities.includes('cpu-batch'), true);
   assert.equal(requests[1].body.task_id, 'task-00000001');
+  assert.equal(requests[1].body.workload, 'CPU_BATCH');
   assert.equal(requests[1].body.lease_ttl_seconds, 180);
   assert.equal(requests[2].body.checkpoint.schema, 'midad-ephemeral-runner-evidence-v1');
   assert.equal(requests[3].body.result.summary.sum, 15);
@@ -351,6 +352,7 @@ test('scheduled pull runner claims one owner-scoped CPU task without a dispatch 
   assert.equal(result.status, 'COMPLETED');
   assert.equal(result.task_id, 'task-from-owner-queue');
   assert.equal(calls.find(call => call.path.endsWith('/claim')).body.task_id, undefined);
+  assert.equal(calls.find(call => call.path.endsWith('/claim')).body.workload, 'CPU_BATCH');
   assert.equal(result.evidence.event_id, undefined);
   assert.equal(calls.length, 4);
 });
