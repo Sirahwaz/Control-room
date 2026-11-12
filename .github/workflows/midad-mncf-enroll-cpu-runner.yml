@@ -68,15 +68,19 @@ jobs:
           await sodium.ready;
 
           const bootstrapPush = process.env.GITHUB_EVENT_NAME === 'push';
+          const bootstrapRequestPath = `${process.env.GITHUB_WORKSPACE}/.github/mncf/cpu-runner-enrollment-request.json`;
           const bootstrapRequest = bootstrapPush
-            ? JSON.parse(readFileSync('.github/mncf/cpu-runner-enrollment-request.json', 'utf8'))
+            ? JSON.parse(readFileSync(bootstrapRequestPath, 'utf8'))
             : null;
           if (bootstrapPush && (
             bootstrapRequest?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-001' ||
             bootstrapRequest?.requested_capability !== 'cpu-batch' ||
             bootstrapRequest?.task !== 'RUNNER_SMOKE' ||
             bootstrapRequest?.max_cost_usd !== 0 ||
-            bootstrapRequest?.authorization_source !== 'explicit_user_confirmation'
+            bootstrapRequest?.authorization_source !== 'explicit_user_confirmation' ||
+            bootstrapRequest?.trigger_attempt !== 2 ||
+            bootstrapRequest?.retry_of_run_id !== '43297274266' ||
+            bootstrapRequest?.retry_reason !== 'first_attempt_failed_before_enrollment'
           )) throw new Error('BOOTSTRAP_REQUEST_NOT_AUTHORIZED');
 
           const ownerId = bootstrapRequest?.owner_id || process.env.MIDAD_OWNER_ID_INPUT || '';
