@@ -1,6 +1,8 @@
-name: MIDAD MNCF — Ephemeral Linux Task Runner
+name: MIDAD MNCF — Ephemeral CPU Task Runner
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       event_id:
@@ -25,7 +27,7 @@ concurrency:
 
 jobs:
   execute:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_OWNER_ID != ''))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -47,12 +49,21 @@ jobs:
           MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: ${{ secrets.MIDAD_CONTINUITY_RUNNER_NODE_TOKEN }}
           MIDAD_EVENT_ID: ${{ inputs.event_id }}
           MIDAD_TASK_ID: ${{ inputs.task_id }}
-          MIDAD_INPUT_OWNER_ID: ${{ inputs.owner_id }}
+          MIDAD_INPUT_OWNER_ID: ${{ github.event_name == 'schedule' && vars.MIDAD_CONTINUITY_OWNER_ID || inputs.owner_id }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$MIDAD_CONTINUITY_LEDGER_URL"
-          test -n "$MIDAD_CONTINUITY_OWNER_ID"
-          test -n "$MIDAD_CONTINUITY_RUNNER_NODE_TOKEN"
+          if [[ -z "${MIDAD_CONTINUITY_LEDGER_URL:-}" ||
+                -z "${MIDAD_CONTINUITY_OWNER_ID:-}" ||
+                -z "${MIDAD_CONTINUITY_RUNNER_NODE_TOKEN:-}" ]]; then
+            echo "MIDAD_CPU_RUNNER_NOT_ENROLLED — scheduled/dispatch run skipped without claiming work"
+            exit 0
+          fi
           test "$MIDAD_CONTINUITY_OWNER_ID" = "$MIDAD_INPUT_OWNER_ID"
+          if [[ -n "${MIDAD_TASK_ID:-}" || -n "${MIDAD_EVENT_ID:-}" ]]; then
+            test -n "$MIDAD_TASK_ID"
+            test -n "$MIDAD_EVENT_ID"
+          else
+            echo "MIDAD_CPU_RUNNER_PULL_MODE — claiming at most one eligible task for the enrolled owner"
+          fi
           node mobile/factory/x/ephemeral-runner.mjs
