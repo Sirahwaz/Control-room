@@ -144,3 +144,18 @@ The CPU_BATCH lane has two wake modes. GitHub App workflow dispatch is the fast 
 - This path does not make Browser Session tasks eligible for CPU runners and does not enable arbitrary shell execution.
 
 Acceptance gates covered by this PR's CI: event-dispatch contract, scheduled-pull contract, exact-owner claim, Queue acknowledgement when the optional GitHub App is absent, and the existing Continuity lease/retry/Vault tests. Live Cloudflare deployment, GitHub App dispatch, node enrollment and end-to-end production execution remain separate gates.
+
+
+### GitHub CPU runner activation (after PR merge and Worker deployment)
+
+The scheduled fallback workflow is `.github/workflows/midad-mncf-ephemeral-runner.yml`. It uses these repository-level settings:
+
+- **Actions Variable** `MIDAD_CONTINUITY_LEDGER_URL`: the deployed HTTPS Worker origin only (no path, query or credentials).
+- **Actions Variable** `MIDAD_CONTINUITY_OWNER_ID`: the exact owner identity used when the node is enrolled.
+- **Actions Secret** `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN`: the one-time enrollment token for node ID `github-actions-cpu-batch`.
+
+Enroll that node through the authenticated Ledger admin endpoint `POST /v1/nodes/enroll` only after the Worker is live and the owner has approved the enrollment. Its capabilities must be exactly `["cpu-batch"]` for this runner. Keep the returned enrollment token private and store it only in the Actions Secret; do not add it to repository files, workflow inputs, artifacts, logs or chat.
+
+When all three settings are absent, the workflow exits without claiming work. Scheduled runs poll every five minutes on a best-effort basis and claim at most one CPU_BATCH task belonging to the configured owner. They do not execute WEBGPU_BATCH, BROWSER_SESSION, arbitrary commands or work for another owner. Manual `workflow_dispatch` runs remain exact-task scoped and require matching owner/task/event inputs.
+
+**Current activation status:** this PR changes source and tests only. The Worker has not been deployed, no `github-actions-cpu-batch` node has been enrolled, and the three Actions settings have not been verified or added by this change. Do not treat scheduled CPU execution as live until the first authenticated task is checkpointed and completed in the deployed ledger.
