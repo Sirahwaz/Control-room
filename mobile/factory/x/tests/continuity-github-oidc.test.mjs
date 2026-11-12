@@ -214,7 +214,7 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v4-jwks-network');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v5-cloudflare-manual-redirect');
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();
