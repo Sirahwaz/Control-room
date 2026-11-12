@@ -43,11 +43,21 @@ function validateEnvironment(env) {
   }
   const allowedOidcPipelineHost =
     /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(oidcRequestUrl.hostname);
+  const oidcEndpointMetadata = {
+    protocol: oidcRequestUrl.protocol,
+    hostname: oidcRequestUrl.hostname,
+    port: oidcRequestUrl.port || 'default',
+    has_credentials: Boolean(oidcRequestUrl.username || oidcRequestUrl.password),
+    has_fragment: Boolean(oidcRequestUrl.hash),
+    allowed_github_pipeline_host: allowedOidcPipelineHost,
+  };
   if (oidcRequestUrl.protocol !== 'https:' ||
       !allowedOidcPipelineHost ||
       oidcRequestUrl.username || oidcRequestUrl.password ||
       (oidcRequestUrl.port && oidcRequestUrl.port !== '443') ||
       oidcRequestUrl.hash) {
+    // Host/protocol metadata only: never log the URL path, query, bootstrap credential or JWT.
+    console.error('GITHUB_OIDC_ENDPOINT_REJECTED ' + JSON.stringify(oidcEndpointMetadata));
     throw new Error('GITHUB_OIDC_TOKEN_REQUEST_URL_INVALID');
   }
   const oidcRequestToken = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
