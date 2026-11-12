@@ -171,14 +171,15 @@ test('non-204 workflow dispatch response is surfaced as a retryable failure', as
   }, fetchMock), /GITHUB_WORKFLOW_DISPATCH_FAILED_429/);
 });
 
-test('ephemeral runner workflow is manual-dispatch only, least privilege and does not expose tokens', async () => {
+test('ephemeral runner workflow supports dispatch and five-minute scheduled pull fallback with least privilege', async () => {
   const workflow = await readFile(new URL('../../../../.github/workflows/midad-mncf-ephemeral-runner.yml', import.meta.url), 'utf8');
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /contents:\s*read/);
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron:\\s*["']\\*\\/5 \\* \\* \\* \\*["']/);
+  assert.match(workflow, /contents:\\s*read/);
   assert.match(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
-  assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
-  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
-  assert.doesNotMatch(workflow, /echo .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN|printf .*MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
+  assert.match(workflow, /node mobile\\/factory\\/x\\/ephemeral-runner\\.mjs/);
+  assert.doesNotMatch(workflow, /pull-requests:\\s*write|contents:\\s*write|id-token:\\s*write/);
 });
 
 test('ephemeral runner executes only bounded allowlisted CPU operations', () => {
@@ -314,4 +315,42 @@ test('installation token with additional repository permissions is rejected befo
     MIDAD_GITHUB_APP_PRIVATE_KEY: keys.pem,
   }, fetchMock), /GITHUB_APP_ACTIONS_WRITE_ONLY_REQUIRED/);
   assert.equal(dispatchCalled, false);
+});
+
+
+test('scheduled pull runner claims one owner-scoped CPU task without a dispatch event id', async () => {
+  const calls = [];
+  const leaseToken = 'd'.repeat(64);
+  const result = await runEphemeralTask({
+    env: {
+      MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
+      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
+      MIDAD_INPUT_OWNER_ID: 'owner-00000001',
+      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+    },
+    fetchImpl: async (url, init) => {
+      const path = new URL(url).pathname;
+      const body = JSON.parse(init.body);
+      calls.push({ path, body });
+      if (path.endsWith('/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      if (path.endsWith('/claim')) return new Response(JSON.stringify({
+        ok: true,
+        task: {
+          task_id: 'task-from-owner-queue',
+          owner_id: 'owner-00000001',
+          workload: 'CPU_BATCH',
+          payload: { operation: 'RUNNER_SMOKE' },
+          attempt: 1,
+          lease_token: leaseToken,
+        },
+      }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, state: 'COMPLETED' }), { status: 200 });
+    },
+  });
+
+  assert.equal(result.status, 'COMPLETED');
+  assert.equal(result.task_id, 'task-from-owner-queue');
+  assert.equal(calls.find(call => call.path.endsWith('/claim')).body.task_id, undefined);
+  assert.equal(result.evidence.event_id, undefined);
+  assert.equal(calls.length, 4);
 });
