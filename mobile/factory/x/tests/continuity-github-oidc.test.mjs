@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DatabaseSync, generateKeyPairSync, sign, webcrypto } from 'node:crypto';
+import { generateKeyPairSync, sign, webcrypto } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { MidadContinuityLedger } from '../continuity-ledger/worker.mjs';
 import { GITHUB_ACTIONS_OIDC_POLICY, verifyGitHubActionsOidcToken } from '../continuity-ledger/github-oidc.mjs';
 import { runEphemeralTask } from '../ephemeral-runner.mjs';
