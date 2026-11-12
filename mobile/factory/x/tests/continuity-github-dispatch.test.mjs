@@ -177,7 +177,8 @@ test('ephemeral runner workflow supports dispatch and five-minute scheduled pull
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /cron:\s*["']\*\/5 \* \* \* \*["']/);
   assert.match(workflow, /contents:\s*read/);
-  assert.match(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
+  assert.doesNotMatch(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
+  assert.match(workflow, /id-token:\\s*write/);
   assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
   assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
 });
@@ -198,9 +199,10 @@ test('ephemeral runner executes only bounded allowlisted CPU operations', () => 
 test('ephemeral runner rejects non-origin HTTPS ledger URLs and non-hex node tokens before network access', async () => {
   const baseEnv = {
     MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
-    MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
-    MIDAD_INPUT_OWNER_ID: 'owner-00000001',
-    MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+    MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+    MIDAD_INPUT_OWNER_ID: 'github:116122510',
+    ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test',
+    ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
     MIDAD_TASK_ID: 'task-00000001',
     MIDAD_EVENT_ID: 'evt-00000001',
   };
@@ -220,24 +222,30 @@ test('ephemeral runner rejects non-origin HTTPS ledger URLs and non-hex node tok
   }
   let calls = 0;
   await assert.rejects(() => runEphemeralTask({
-    env: { ...baseEnv, MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'n'.repeat(64) },
+    env: { ...baseEnv, ACTIONS_ID_TOKEN_REQUEST_URL: 'https://untrusted.example/oidc' },
     fetchImpl: async () => { calls += 1; return new Response('{}'); },
-  }), /RUNNER_NODE_TOKEN_INVALID/);
-  assert.equal(calls, 0, 'invalid node token must be rejected before network access');
+  }), /GITHUB_OIDC_TOKEN_REQUEST_URL_INVALID/);
+  assert.equal(calls, 0, 'an untrusted OIDC endpoint must be rejected before network access');
 });
 
 test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence and completes it', async () => {
   const requests = [];
   const leaseToken = 'c'.repeat(64);
-  const fetchMock = async (url, init) => {
+  const oidcToken = 'header.' + 'p'.repeat(120) + '.' + 's'.repeat(120);
+  const fetchMock = async (url, init = {}) => {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
+      assert.equal(parsed.searchParams.get('audience'), 'midad-continuity-ledger');
+      return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
+    }
     const body = JSON.parse(init.body);
     requests.push({ url: String(url), init, body });
-    if (String(url).endsWith('/v1/nodes/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    if (String(url).endsWith('/v1/tasks/claim')) return new Response(JSON.stringify({
+    if (parsed.pathname.endsWith('/v1/nodes/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    if (parsed.pathname.endsWith('/v1/tasks/claim')) return new Response(JSON.stringify({
       ok: true,
       task: {
         task_id: 'task-00000001',
-        owner_id: 'owner-00000001',
+        owner_id: 'github:116122510',
         workload: 'CPU_BATCH',
         payload: { operation: 'SUM_INTEGERS', input: { values: [4,5,6] } },
         attempt: 1,
@@ -249,9 +257,10 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
   const result = await runEphemeralTask({
     env: {
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
-      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
-      MIDAD_INPUT_OWNER_ID: 'owner-00000001',
-      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+      MIDAD_INPUT_OWNER_ID: 'github:116122510',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
       MIDAD_TASK_ID: 'task-00000001',
       MIDAD_EVENT_ID: 'evt-00000001',
     },
@@ -268,7 +277,7 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
   assert.equal(requests[3].body.result.summary.sum, 15);
   assert.ok(requests.every(x => x.init.redirect === 'error'));
   assert.ok(requests.every(x => x.init.signal instanceof AbortSignal));
-  assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + 'a'.repeat(64)));
+  assert.ok(requests.every(x => x.init.headers.authorization === 'Bearer ' + oidcToken));
   assert.equal(JSON.stringify(result).includes('a'.repeat(64)), false);
 });
 
@@ -277,9 +286,10 @@ test('ephemeral runner rejects owner mismatch before accessing the ledger', asyn
   await assert.rejects(() => runEphemeralTask({
     env: {
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
-      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
-      MIDAD_INPUT_OWNER_ID: 'owner-00000002',
-      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+      MIDAD_INPUT_OWNER_ID: 'github:116122511',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
       MIDAD_TASK_ID: 'task-00000001',
       MIDAD_EVENT_ID: 'evt-00000001',
     },
@@ -322,23 +332,29 @@ test('installation token with additional repository permissions is rejected befo
 test('scheduled pull runner claims one owner-scoped CPU task without a dispatch event id', async () => {
   const calls = [];
   const leaseToken = 'd'.repeat(64);
+  const oidcToken = 'header.' + 'p'.repeat(120) + '.' + 's'.repeat(120);
   const result = await runEphemeralTask({
     env: {
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
-      MIDAD_CONTINUITY_OWNER_ID: 'owner-00000001',
-      MIDAD_INPUT_OWNER_ID: 'owner-00000001',
-      MIDAD_CONTINUITY_RUNNER_NODE_TOKEN: 'a'.repeat(64),
+      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+      MIDAD_INPUT_OWNER_ID: 'github:116122510',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
     },
-    fetchImpl: async (url, init) => {
-      const path = new URL(url).pathname;
+    fetchImpl: async (url, init = {}) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
+        return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
+      }
+      const path = parsed.pathname;
       const body = JSON.parse(init.body);
-      calls.push({ path, body });
+      calls.push({ path, body, init });
       if (path.endsWith('/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
       if (path.endsWith('/claim')) return new Response(JSON.stringify({
         ok: true,
         task: {
           task_id: 'task-from-owner-queue',
-          owner_id: 'owner-00000001',
+          owner_id: 'github:116122510',
           workload: 'CPU_BATCH',
           payload: { operation: 'RUNNER_SMOKE' },
           attempt: 1,
@@ -355,4 +371,5 @@ test('scheduled pull runner claims one owner-scoped CPU task without a dispatch 
   assert.equal(calls.find(call => call.path.endsWith('/claim')).body.workload, 'CPU_BATCH');
   assert.equal(result.evidence.event_id, undefined);
   assert.equal(calls.length, 4);
+  assert.ok(calls.every(call => call.init.headers.authorization === 'Bearer ' + oidcToken));
 });
