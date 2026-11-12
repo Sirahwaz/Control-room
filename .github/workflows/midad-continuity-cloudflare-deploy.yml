@@ -223,17 +223,34 @@ jobs:
           HEALTH_FILE="$RUNNER_TEMP/midad-continuity-health.json"
           WORKER_HEALTHY=0
           HTTP_STATUS="000"
-          for attempt in $(seq 1 15); do
-            HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 10 "$WORKER_URL/health" || true)"
-            if [[ "$HTTP_STATUS" == "200" ]]; then
+          # Cloudflare Durable Object class updates may propagate after the Worker script deploy.
+          # Require the exact policy marker from the DO code, not only the pre-existing auth marker.
+          for attempt in $(seq 1 85); do
+            HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 5 "$WORKER_URL/health" || true)"
+            if [[ "$HTTP_STATUS" == "200" ]] && node - "$HEALTH_FILE" <<'NODE'
+          const fs = require('node:fs');
+          try {
+            const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+            process.exit(
+              health.ok === true &&
+              health.service === 'midad-continuity-ledger' &&
+              health.node_auth === 'github-actions-oidc-v1' &&
+              health.oidc_subject_policy === 'legacy-and-immutable-v1'
+                ? 0 : 1
+            );
+          } catch {
+            process.exit(1);
+          }
+          NODE
+            then
               WORKER_HEALTHY=1
               break
             fi
-            echo "Worker health pending (attempt $attempt/15, HTTP ${HTTP_STATUS:-000}); waiting for Cloudflare propagation."
+            echo "Worker/DO policy rollout pending (attempt $attempt/85, HTTP ${HTTP_STATUS:-000}); waiting for propagation."
             sleep 4
           done
           if [[ "$WORKER_HEALTHY" -ne 1 ]]; then
-            echo "::error::Worker health did not return HTTP 200 after 15 attempts; last status ${HTTP_STATUS:-000}."
+            echo "::error::Worker/DO policy marker did not become healthy after 85 attempts; last status ${HTTP_STATUS:-000}."
             exit 1
           fi
           cat "$HEALTH_FILE"
@@ -241,7 +258,8 @@ jobs:
           const fs = require('node:fs');
           const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (health.ok !== true || health.service !== 'midad-continuity-ledger' ||
-              health.node_auth !== 'github-actions-oidc-v1') {
+              health.node_auth !== 'github-actions-oidc-v1' ||
+              health.oidc_subject_policy !== 'legacy-and-immutable-v1') {
             throw new Error('Continuity Worker health response is invalid or lacks the GitHub OIDC CPU runner auth mode');
           }
           console.log(JSON.stringify({
@@ -250,5 +268,6 @@ jobs:
             schema: health.schema,
             dispatch: health.dispatch,
             node_auth: health.node_auth,
+            oidc_subject_policy: health.oidc_subject_policy,
           }));
           NODE

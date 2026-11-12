@@ -91,18 +91,20 @@ jobs:
 
           // Do not enroll against the old Worker version. The deployment workflow runs in parallel on this merge.
           let oidcWorkerReady = false;
-          for (let attempt = 1; attempt <= 36; attempt += 1) {
+          // Wait for the new Durable Object code, not just a health marker retained by an older DO instance.
+          for (let attempt = 1; attempt <= 64; attempt += 1) {
             try {
               const healthResponse = await fetch(origin + '/health', {
                 redirect: 'error',
-                signal: AbortSignal.timeout(8000),
+                signal: AbortSignal.timeout(4000),
                 headers: { accept: 'application/json' },
               });
               if (healthResponse.ok) {
                 const health = await healthResponse.json();
                 if (health?.ok === true &&
                     health?.service === 'midad-continuity-ledger' &&
-                    health?.node_auth === 'github-actions-oidc-v1') {
+                    health?.node_auth === 'github-actions-oidc-v1' &&
+                    health?.oidc_subject_policy === 'legacy-and-immutable-v1') {
                   oidcWorkerReady = true;
                   break;
                 }
