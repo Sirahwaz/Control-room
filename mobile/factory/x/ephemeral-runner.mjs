@@ -35,11 +35,18 @@ function validateEnvironment(env) {
   }
   const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
   if (env.MIDAD_INPUT_OWNER_ID !== ownerId) throw new Error('OWNER_ID_INPUT_MISMATCH');
+  const taskId = typeof env.MIDAD_TASK_ID === 'string' && env.MIDAD_TASK_ID.length > 0
+    ? requireId(env.MIDAD_TASK_ID, 'TASK_ID')
+    : null;
+  const eventId = typeof env.MIDAD_EVENT_ID === 'string' && env.MIDAD_EVENT_ID.length > 0
+    ? requireId(env.MIDAD_EVENT_ID, 'EVENT_ID')
+    : null;
+  if (Boolean(taskId) !== Boolean(eventId)) throw new Error('DISPATCH_IDENTIFIERS_INCOMPLETE');
   return {
     ledgerOrigin: ledgerUrl.origin,
     ownerId,
-    taskId: requireId(env.MIDAD_TASK_ID, 'TASK_ID'),
-    eventId: requireId(env.MIDAD_EVENT_ID, 'EVENT_ID'),
+    taskId,
+    eventId,
     token,
   };
 }
@@ -136,15 +143,15 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
     encrypted_session_store: false,
   }, fetchImpl);
 
-  const claimed = await ledgerPost(config, '/v1/tasks/claim', {
-    task_id: config.taskId,
-    lease_ttl_seconds: 180,
-  }, fetchImpl);
+  const claimRequest = { workload: 'CPU_BATCH', lease_ttl_seconds: 180 };
+  if (config.taskId) claimRequest.task_id = config.taskId;
+  const claimed = await ledgerPost(config, '/v1/tasks/claim', claimRequest, fetchImpl);
   if (claimed.task === null) return { status: 'NO_ELIGIBLE_TASK', task_id: config.taskId };
   const task = claimed.task;
-  if (!task || task.task_id !== config.taskId || task.owner_id !== config.ownerId ||
+  if (!task || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(task.task_id || '') ||
+      (config.taskId && task.task_id !== config.taskId) || task.owner_id !== config.ownerId ||
       task.workload !== 'CPU_BATCH' || typeof task.lease_token !== 'string' ||
-      task.lease_token.length !== 64) {
+      !/^[a-f0-9]{64}$/i.test(task.lease_token)) {
     throw new Error('CLAIMED_TASK_IDENTITY_OR_WORKLOAD_MISMATCH');
   }
 
@@ -163,7 +170,7 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
 
   const evidence = {
     schema: 'midad-ephemeral-runner-evidence-v1',
-    event_id: config.eventId,
+    ...(config.eventId ? { event_id: config.eventId } : { trigger_mode: 'SCHEDULED_PULL' }),
     task_id: task.task_id,
     attempt: task.attempt,
     runner: NODE_ID,

@@ -421,6 +421,9 @@ export class MidadContinuityLedger {
     if (body.task_id !== undefined && !validId(body.task_id)) {
       return response(422, { ok: false, error: 'TASK_ID_INVALID' });
     }
+    if (body.workload !== undefined && !WORKLOADS.has(body.workload)) {
+      return response(422, { ok: false, error: 'WORKLOAD_INVALID' });
+    }
     const ttl = Number.isInteger(body.lease_ttl_seconds) ? Math.max(15, Math.min(300, body.lease_ttl_seconds)) : 90;
     const token = randomHex(), tokenHash = await sha256(token), now = Date.now();
     let claimed = null, quarantined = 0;
@@ -430,12 +433,20 @@ export class MidadContinuityLedger {
       const active = this.one("SELECT COUNT(*) AS n FROM continuity_tasks WHERE lease_owner=? AND status='RUNNING' AND lease_expires_at_ms>?", node.node_id, now);
       if (Number(active?.n || 0) >= n.available_slots) return;
       const candidates = body.task_id
-        ? this.query(`SELECT * FROM continuity_tasks
-            WHERE owner_id=? AND task_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
-            ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 1`, n.owner_id, body.task_id, now, now)
-        : this.query(`SELECT * FROM continuity_tasks
-            WHERE owner_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
-            ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 100`, n.owner_id, now, now);
+        ? (body.workload
+          ? this.query(`SELECT * FROM continuity_tasks
+              WHERE owner_id=? AND task_id=? AND workload=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+              ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 1`, n.owner_id, body.task_id, body.workload, now, now)
+          : this.query(`SELECT * FROM continuity_tasks
+              WHERE owner_id=? AND task_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+              ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 1`, n.owner_id, body.task_id, now, now))
+        : (body.workload
+          ? this.query(`SELECT * FROM continuity_tasks
+              WHERE owner_id=? AND workload=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+              ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 100`, n.owner_id, body.workload, now, now)
+          : this.query(`SELECT * FROM continuity_tasks
+              WHERE owner_id=? AND ((status='QUEUED' AND available_at_ms<=?) OR (status='RUNNING' AND lease_expires_at_ms<=?))
+              ORDER BY available_at_ms ASC,created_at_ms ASC LIMIT 100`, n.owner_id, now, now));
       for (const candidate of candidates) {
         if (candidate.status === 'RUNNING' && candidate.retry_mode !== 'AT_LEAST_ONCE_IDEMPOTENT') {
           this.exec("UPDATE continuity_tasks SET status='RECONCILIATION_REQUIRED',lease_owner=NULL,lease_token_hash=NULL,lease_expires_at_ms=NULL,updated_at_ms=? WHERE task_id=? AND status='RUNNING'",
@@ -561,9 +572,9 @@ export default {
     if (!env.CONTINUITY_LEDGER || typeof env.MIDAD_WAKE_INTERNAL_KEY !== 'string' ||
         env.MIDAD_WAKE_INTERNAL_KEY.length < 32) {
       for (const message of batch.messages || []) { try { message.retry(); } catch {} }
-      return { delivered: 0, retried: (batch.messages || []).length };
+      return { delivered: 0, retried: (batch.messages || []).length, pull_fallback: 0 };
     }
-    let delivered = 0, retried = 0;
+    let delivered = 0, retried = 0, pullFallback = 0;
     for (const message of batch.messages || []) {
       try {
         const event = normalizeWakeEvent(message.body);
@@ -578,7 +589,15 @@ export default {
         const wakeResult = await result.json();
         if (wakeResult.runner_dispatchable === true) {
           const dispatch = await dispatchGitHubWorkflow(event, env);
-          if (dispatch.dispatched !== true) throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+          if (dispatch.dispatched !== true) {
+            if (dispatch.reason === 'GITHUB_APP_NOT_CONFIGURED') {
+              // The authenticated wake has already reached the ledger/WebSocket.
+              // Let the enrolled scheduled pull runner provide the free fallback.
+              pullFallback += 1;
+            } else {
+              throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+            }
+          }
         }
         message.ack();
         delivered += 1;
@@ -587,6 +606,6 @@ export default {
         retried += 1;
       }
     }
-    return { delivered, retried };
+    return { delivered, retried, pull_fallback: pullFallback };
   },
 };

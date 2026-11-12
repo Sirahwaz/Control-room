@@ -165,3 +165,30 @@ A new optional, disposable GitHub Actions node polls the Cloudflare Continuity L
 - The runner uses a separately enrolled owner-bound token, claims the exact task ID, and accepts only `RUNNER_SMOKE`, `SUM_INTEGERS`, and `HASH_TEXT`. Arbitrary shell/code and Browser Session tasks are excluded.
 - Browser Run remains a separate Browser-capable service. GitHub CPU runners do not host persistent browser sessions.
 - Source integration does not imply live service: Cloudflare deployment, GitHub App secrets, runner node enrollment, and an end-to-end claim/complete smoke remain pending.
+
+
+## MNCF Elastic Runtime v2 — event fast path + scheduled recovery path
+
+The CPU_BATCH execution lane now has two independent wake mechanisms over the same durable task/lease authority:
+
+1. **Fast path:** Cloudflare Queue validates the persisted wake event and invokes the allowlisted GitHub Actions workflow through the repository-scoped GitHub App with Actions: write only.
+2. **Fallback path:** if the optional GitHub App integration is entirely absent, the Queue acknowledges the already validated/broadcast wake instead of retrying it into the DLQ. The GitHub-hosted CPU runner polls the same ledger on a five-minute schedule and claims at most one eligible task for its enrolled owner.
+
+The runner uses the existing github-actions-cpu-batch identity, owner-bound enrollment token, cpu-batch capability, task allowlist, atomic lease, checkpoint and evidence path in both modes. Event-triggered runs claim the exact task ID; scheduled runs omit the task filter and rely on the ledger's authenticated node owner scope and capability/resource/cost checks. A scheduled invocation without owner variables or an enrollment token exits without claiming work.
+
+This is logical continuity with replaceable ephemeral runners, not an always-open process. Scheduled triggers are best-effort and can be delayed by GitHub; the fallback does not guarantee a task starts at an exact five-minute boundary. It does not execute Browser Session or WebGPU tasks, run arbitrary shell/code, create a second queue, start a VPS, or enable paid services. A partially configured GitHub App remains fail-closed and is surfaced as a retryable dispatch failure rather than silently falling back.
+
+**Source status:** implemented in PR #248; production Cloudflare resources/secrets, the GitHub App integration, the enrolled CPU node token and a live task completion remain unverified/pending.
+
+
+### CPU ephemeral node — activation checklist (source in PR #248)
+
+After the PR is merged and the Continuity Worker is deployed:
+
+1. Confirm the public `/health` response reports the expected Continuity service and schema.
+2. Enroll `github-actions-cpu-batch` through the protected admin API with explicit owner consent and only the `cpu-batch` capability.
+3. Save the one-time enrollment token as GitHub Actions Secret `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN`.
+4. Save the HTTPS Worker origin as repository Variable `MIDAD_CONTINUITY_LEDGER_URL`; save the same `owner_id` used for enrollment as Variable `MIDAD_CONTINUITY_OWNER_ID`.
+5. Trigger one harmless allowlisted `CPU_BATCH` task and verify heartbeat → CPU-only claim → checkpoint → completion receipt. Then test duplicate wake delivery and expired lease recovery.
+
+No token or enrollment is included in this repository change. Until this checklist is completed against a deployed Worker, the scheduled fallback is **source-ready / activation-pending**, not live.
