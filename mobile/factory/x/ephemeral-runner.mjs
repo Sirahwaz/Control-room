@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { verifyGitHubActionsOidcToken } from './continuity-ledger/github-oidc.mjs';
 
 const NODE_ID = 'github-actions-cpu-batch';
 const AGENT_VERSION = 'midad-actions-0.1.0';
@@ -188,6 +189,15 @@ export function executeTaskPayload(payload) {
 export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } = {}) {
   const config = validateEnvironment(env);
   const oidcToken = await requestGitHubOidcToken(config, fetchImpl);
+  try {
+    await verifyGitHubActionsOidcToken(oidcToken, { fetchImpl });
+    process.stdout.write('MIDAD_GITHUB_OIDC_LOCAL_VERIFICATION=PASSED\\n');
+  } catch (error) {
+    const reason = error instanceof Error && /^GITHUB_OIDC_[A-Z_]+$/.test(error.message)
+      ? error.message
+      : 'GITHUB_OIDC_LOCAL_VERIFICATION_FAILED';
+    throw new Error(reason);
+  }
   await ledgerPost(config, '/v1/nodes/heartbeat', {
     cpu_cores: Math.max(1, os.cpus().length),
     memory_mb: Math.max(512, Math.floor(os.totalmem() / 1024 / 1024)),
