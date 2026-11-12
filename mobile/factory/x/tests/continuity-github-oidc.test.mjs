@@ -78,6 +78,17 @@ test('GitHub OIDC accepts only a fresh signed CPU runner token for the exact rep
   assert.equal(claims.workflow_ref, GITHUB_ACTIONS_OIDC_POLICY.workflowRef);
 });
 
+test('GitHub OIDC accepts the immutable GitHub subject bound to exact owner and repository IDs', async () => {
+  const immutableSubject = 'repo:Sirahwaz@116122510/Control-room@1377540065:ref:refs/heads/main';
+  const claims = await verifyGitHubActionsOidcToken(
+    signedToken({ sub: immutableSubject }),
+    { fetchImpl: jwksFetch(), cache: { keys: null, expiresAt: 0 } },
+  );
+  assert.equal(claims.sub, immutableSubject);
+  assert.equal(claims.repository_id, '1377540065');
+  assert.equal(claims.repository_owner_id, '116122510');
+});
+
 test('GitHub OIDC rejects wrong workflow, wrong repository, wrong owner, expired token and invalid signature', async () => {
   const cases = [
     signedToken({ workflow_ref: 'Sirahwaz/Control-room/.github/workflows/another.yml@refs/heads/main' }),
