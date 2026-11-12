@@ -50,13 +50,13 @@ test('Cloudflare Worker deploy runs after a reviewed main merge and validates th
   assert.ok(deployWorkflow.includes('branches: [main]'));
   assert.ok(deployWorkflow.includes("if: inputs.operation == 'deploy' || github.event_name == 'push'"));
   assert.ok(deployWorkflow.includes("health.node_auth !== 'github-actions-oidc-v1'"));
-  assert.ok(deployWorkflow.includes("health.oidc_subject_policy !== 'legacy-and-immutable-v2-preflight'"));
+  assert.ok(deployWorkflow.includes("health.oidc_subject_policy !== 'legacy-and-immutable-v3-oidc-errors'"));
   assert.ok(deployWorkflow.includes('for attempt in $(seq 1 85)'));
-  assert.ok(enrollWorkflow.includes("health?.oidc_subject_policy === 'legacy-and-immutable-v2-preflight'"));
+  assert.ok(enrollWorkflow.includes("health?.oidc_subject_policy === 'legacy-and-immutable-v3-oidc-errors'"));
   assert.ok(enrollWorkflow.includes('attempt <= 64'));
   assert.ok(deployWorkflow.includes('DEPLOY_CONFIRMATION'));
   assert.ok(deployWorkflow.includes('for attempt in $(seq 1 85)'));
-  assert.ok(deployWorkflow.includes('health.oidc_subject_policy === \'legacy-and-immutable-v2-preflight\''));
+  assert.ok(deployWorkflow.includes('health.oidc_subject_policy === \'legacy-and-immutable-v3-oidc-errors\''));
 });
 
 test('one-time bootstrap request matches the explicitly approved owner and zero-cost CPU scope', () => {
