@@ -321,7 +321,8 @@
       "domain": "ci-cd",
       "kind": "automation",
       "paths": [
-        ".github/workflows/"
+        ".github/workflows/",
+        ".github/mncf/"
       ],
       "status": "active",
       "description": "Build, test, deployment, research and controlled automation workflows."
@@ -856,7 +857,8 @@
       "supabase/",
       "tests/",
       "tools/",
-      "architecture/governance/"
+      "architecture/governance/",
+      ".github/mncf/"
     ],
     "rootAssetExtensions": [
       ".html",

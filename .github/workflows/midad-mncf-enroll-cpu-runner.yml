@@ -1,6 +1,10 @@
 name: MIDAD MNCF — Enroll CPU Runner and Execute Smoke Task
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/mncf/cpu-runner-enrollment-request.json"
   workflow_dispatch:
     inputs:
       owner_id:
@@ -60,10 +64,23 @@ jobs:
           cd "$RUNNER_TEMP/midad-cpu-enrollment"
           node --input-type=module <<'NODE'
           import sodium from 'libsodium-wrappers';
+          import { readFileSync } from 'node:fs';
           await sodium.ready;
 
-          const ownerId = process.env.MIDAD_OWNER_ID_INPUT || '';
-          const consent = process.env.MIDAD_OWNER_CONSENT || '';
+          const bootstrapPush = process.env.GITHUB_EVENT_NAME === 'push';
+          const bootstrapRequest = bootstrapPush
+            ? JSON.parse(readFileSync('.github/mncf/cpu-runner-enrollment-request.json', 'utf8'))
+            : null;
+          if (bootstrapPush && (
+            bootstrapRequest?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-001' ||
+            bootstrapRequest?.requested_capability !== 'cpu-batch' ||
+            bootstrapRequest?.task !== 'RUNNER_SMOKE' ||
+            bootstrapRequest?.max_cost_usd !== 0 ||
+            bootstrapRequest?.authorization_source !== 'explicit_user_confirmation'
+          )) throw new Error('BOOTSTRAP_REQUEST_NOT_AUTHORIZED');
+
+          const ownerId = bootstrapRequest?.owner_id || process.env.MIDAD_OWNER_ID_INPUT || '';
+          const consent = bootstrapRequest?.consent || process.env.MIDAD_OWNER_CONSENT || '';
           const adminKey = process.env.MIDAD_LEDGER_ADMIN_KEY || '';
           const ghToken = process.env.GH_TOKEN || '';
           const runId = process.env.MIDAD_RUN_ID || '';
