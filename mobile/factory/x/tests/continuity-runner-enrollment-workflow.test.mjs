@@ -53,9 +53,9 @@ test('one-time bootstrap request matches the explicitly approved owner and zero-
     task: 'RUNNER_SMOKE',
     max_cost_usd: 0,
     authorization_source: 'explicit_user_confirmation',
-    trigger_attempt: 2,
-    retry_of_run_id: '43297274266',
-    retry_reason: 'first_attempt_failed_before_enrollment',
+    trigger_attempt: 3,
+    retry_of_run_id: '43297960296',
+    retry_reason: 'secret_preflight_failed_before_enrollment',
   });
 });
 
@@ -64,8 +64,8 @@ test('the bootstrap runs only for the main-branch request file and validates the
   assert.ok(enrollWorkflow.includes("process.env.GITHUB_EVENT_NAME === 'push'"));
   assert.ok(enrollWorkflow.includes("const bootstrapRequestPath = `${process.env.GITHUB_WORKSPACE}/.github/mncf/cpu-runner-enrollment-request.json`;"));
   assert.ok(enrollWorkflow.includes("JSON.parse(readFileSync(bootstrapRequestPath, 'utf8'))"));
-  assert.ok(enrollWorkflow.includes("bootstrapRequest?.trigger_attempt !== 2"));
-  assert.ok(enrollWorkflow.includes("bootstrapRequest?.retry_of_run_id !== '43297274266'"));
+  assert.ok(enrollWorkflow.includes("bootstrapRequest?.trigger_attempt !== 3"));
+  assert.ok(enrollWorkflow.includes("bootstrapRequest?.retry_of_run_id !== '43297960296'"));
   assert.ok(enrollWorkflow.includes("bootstrapRequest?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-001'"));
   assert.ok(enrollWorkflow.includes("bootstrapRequest?.max_cost_usd !== 0"));
 });
