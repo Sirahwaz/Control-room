@@ -111,7 +111,7 @@ test('GitHub OIDC reports a stable JWKS fetch error when Worker egress fails', a
       fetchImpl: async () => { throw new TypeError('network details must not escape'); },
       cache: { keys: null, expiresAt: 0 },
     }),
-    /GITHUB_OIDC_JWKS_FETCH_FAILED/,
+    /GITHUB_OIDC_JWKS_FETCH_NETWORK/,
   );
 });
 
