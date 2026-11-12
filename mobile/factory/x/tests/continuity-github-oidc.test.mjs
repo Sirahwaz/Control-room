@@ -183,15 +183,20 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
 test('ephemeral runner refuses missing or untrusted GitHub OIDC token request endpoints before ledger access', async () => {
   let calls = 0;
   const fetchImpl = async () => { calls += 1; throw new Error('NETWORK_MUST_NOT_BE_REACHED'); };
-  await assert.rejects(runEphemeralTask({
-    env: {
-      MIDAD_CONTINUITY_LEDGER_URL: 'https://midad-continuity-ledger.midadbot.workers.dev',
-      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
-      MIDAD_INPUT_OWNER_ID: 'github:116122510',
-      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://attacker.example/oidc',
-      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
-    },
-    fetchImpl,
-  }), /GITHUB_OIDC_TOKEN_REQUEST_URL_INVALID/);
+  for (const requestUrl of [
+    'https://attacker.example/oidc',
+    'https://pipelines.actions.githubusercontent.com.attacker.example/oidc',
+  ]) {
+    await assert.rejects(runEphemeralTask({
+      env: {
+        MIDAD_CONTINUITY_LEDGER_URL: 'https://midad-continuity-ledger.midadbot.workers.dev',
+        MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+        MIDAD_INPUT_OWNER_ID: 'github:116122510',
+        ACTIONS_ID_TOKEN_REQUEST_URL: requestUrl,
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
+      },
+      fetchImpl,
+    }), /GITHUB_OIDC_TOKEN_REQUEST_URL_INVALID/);
+  }
   assert.equal(calls, 0);
 });
