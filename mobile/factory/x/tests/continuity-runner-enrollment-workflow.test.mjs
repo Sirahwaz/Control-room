@@ -63,3 +63,9 @@ test('the bootstrap runs only for the main-branch request file and validates the
   assert.ok(enrollWorkflow.includes("bootstrapRequest?.request_id !== 'MNCF-CPU-BOOTSTRAP-20261112-001'"));
   assert.ok(enrollWorkflow.includes("bootstrapRequest?.max_cost_usd !== 0"));
 });
+
+test('bootstrap request is resolved from the checked-out workspace even after npm switches to a temp directory', () => {
+  assert.ok(enrollWorkflow.includes("const bootstrapRequestPath = `${process.env.GITHUB_WORKSPACE}/.github/mncf/cpu-runner-enrollment-request.json`;"));
+  assert.ok(enrollWorkflow.includes("JSON.parse(readFileSync(bootstrapRequestPath, 'utf8'))"));
+  assert.ok(enrollWorkflow.includes('cd "$RUNNER_TEMP/midad-cpu-enrollment"'));
+});
