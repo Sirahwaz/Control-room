@@ -280,6 +280,18 @@ test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence a
     if (parsed.hostname === 'token.actions.githubusercontent.com') {
       return new Response(JSON.stringify({ keys: [runnerOidcJwk] }), { status: 200 });
     }
+    if (parsed.pathname === '/internal/oidc/preflight') {
+      return new Response(JSON.stringify({
+        ok: true,
+        oidc_verified: true,
+        node_registered: true,
+        node_owner_matches: true,
+        node_consent_confirmed: true,
+        node_not_revoked: true,
+        node_capability_matches: true,
+        owner_claim_matches: true,
+      }), { status: 200 });
+    }
     const body = JSON.parse(init.body);
     requests.push({ url: String(url), init, body });
     if (parsed.pathname.endsWith('/v1/nodes/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -390,6 +402,18 @@ test('scheduled pull runner claims one owner-scoped CPU task without a dispatch 
       }
       if (parsed.hostname === 'token.actions.githubusercontent.com') {
         return new Response(JSON.stringify({ keys: [runnerOidcJwk] }), { status: 200 });
+      }
+      if (parsed.pathname === '/internal/oidc/preflight') {
+        return new Response(JSON.stringify({
+        ok: true,
+        oidc_verified: true,
+        node_registered: true,
+        node_owner_matches: true,
+        node_consent_confirmed: true,
+        node_not_revoked: true,
+        node_capability_matches: true,
+        owner_claim_matches: true,
+      }), { status: 200 });
       }
       const path = parsed.pathname;
       const body = JSON.parse(init.body);
