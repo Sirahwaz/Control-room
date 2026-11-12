@@ -50,3 +50,10 @@ test('Cloudflare deployment health verification retries transient 404 while prop
   assert.match(deployWorkflow, /sleep 4/);
   assert.match(deployWorkflow, /HEALTH_FILE/);
 });
+
+test('authorized one-time bootstrap can run from a reviewed main push without an interactive browser session', () => {
+  assert.match(enrollWorkflow, /push:[\s\S]*branches: \[main\][\s\S]*cpu-runner-enrollment-request\.json/);
+  assert.match(enrollWorkflow, /readFileSync\([^\n]*cpu-runner-enrollment-request\.json/);
+  assert.match(enrollWorkflow, /GITHUB_EVENT_NAME/);
+  assert.match(enrollWorkflow, /I_APPROVE_CPU_NODE_ENROLLMENT/);
+});
