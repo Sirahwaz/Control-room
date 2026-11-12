@@ -148,7 +148,7 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
   const fetchImpl = async (url, options = {}) => {
     const parsed = new URL(url);
     calls.push({ url: parsed, options });
-    if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
+    if (parsed.hostname === 'pipelinesghubeus6.actions.githubusercontent.com') {
       assert.equal(parsed.searchParams.get('audience'), 'midad-continuity-ledger');
       assert.equal(options.headers.authorization, 'Bearer ' + 'r'.repeat(64));
       return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
@@ -169,7 +169,7 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
       MIDAD_CONTINUITY_LEDGER_URL: 'https://midad-continuity-ledger.midadbot.workers.dev',
       MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
       MIDAD_INPUT_OWNER_ID: 'github:116122510',
-      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test?api-version=2.0',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelinesghubeus6.actions.githubusercontent.com/runner-test?api-version=2.0',
       ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
     },
     fetchImpl,
