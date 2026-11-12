@@ -55,7 +55,8 @@ test('Cloudflare Worker deploy runs after a reviewed main merge and validates th
   assert.ok(enrollWorkflow.includes("health?.oidc_subject_policy === 'legacy-and-immutable-v1'"));
   assert.ok(enrollWorkflow.includes('attempt <= 72'));
   assert.ok(deployWorkflow.includes('DEPLOY_CONFIRMATION'));
-  assert.ok(deployWorkflow.includes('for attempt in $(seq 1 15)'));
+  assert.ok(deployWorkflow.includes('for attempt in $(seq 1 85)'));
+  assert.ok(deployWorkflow.includes('health.oidc_subject_policy === \'legacy-and-immutable-v1\''));
 });
 
 test('one-time bootstrap request matches the explicitly approved owner and zero-cost CPU scope', () => {
