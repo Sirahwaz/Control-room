@@ -178,7 +178,7 @@ test('ephemeral runner workflow supports dispatch and five-minute scheduled pull
   assert.match(workflow, /cron:\s*["']\*\/5 \* \* \* \*["']/);
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
-  assert.match(workflow, /id-token:\\s*write/);
+  assert.ok(workflow.includes('id-token: write'));
   assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
   assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
 });
