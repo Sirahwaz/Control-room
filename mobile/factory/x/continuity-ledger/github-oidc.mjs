@@ -13,7 +13,7 @@ export const GITHUB_ACTIONS_OIDC_POLICY = Object.freeze({
   ref: 'refs/heads/main',
   subject: 'repo:Sirahwaz/Control-room:ref:refs/heads/main',
   immutableSubject: 'repo:Sirahwaz@116122510/Control-room@1377540065:ref:refs/heads/main',
-  subjectPolicyVersion: 'legacy-and-immutable-v4-jwks-network',
+  subjectPolicyVersion: 'legacy-and-immutable-v5-jwks-cache',
   workflowRef: 'Sirahwaz/Control-room/.github/workflows/midad-mncf-ephemeral-runner.yml@refs/heads/main',
   nodeId: 'github-actions-cpu-batch',
   ownerId: 'github:116122510',
@@ -50,6 +50,7 @@ async function loadJwks(fetchImpl, cache, now, forceRefresh = false) {
       signal: AbortSignal.timeout(8000),
     });
   } catch (error) {
+    if (error instanceof Error && /^GITHUB_OIDC_[A-Z_]+$/.test(error.message)) throw error;
     const name = error && typeof error.name === 'string' ? error.name : '';
     if (name === 'AbortError' || name === 'TimeoutError') {
       throw new Error('GITHUB_OIDC_JWKS_FETCH_TIMEOUT');
