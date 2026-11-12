@@ -374,7 +374,7 @@ test('installation token with additional repository permissions is rejected befo
 test('scheduled pull runner claims one owner-scoped CPU task without a dispatch event id', async () => {
   const calls = [];
   const leaseToken = 'd'.repeat(64);
-  const oidcToken = 'header.' + 'p'.repeat(120) + '.' + 's'.repeat(120);
+  const oidcToken = await signedRunnerOidcToken();
   const result = await runEphemeralTask({
     env: {
       MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
