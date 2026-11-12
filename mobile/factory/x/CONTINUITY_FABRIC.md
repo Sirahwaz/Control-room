@@ -179,3 +179,16 @@ The runner uses the existing github-actions-cpu-batch identity, owner-bound enro
 This is logical continuity with replaceable ephemeral runners, not an always-open process. Scheduled triggers are best-effort and can be delayed by GitHub; the fallback does not guarantee a task starts at an exact five-minute boundary. It does not execute Browser Session or WebGPU tasks, run arbitrary shell/code, create a second queue, start a VPS, or enable paid services. A partially configured GitHub App remains fail-closed and is surfaced as a retryable dispatch failure rather than silently falling back.
 
 **Source status:** implemented in PR #248; production Cloudflare resources/secrets, the GitHub App integration, the enrolled CPU node token and a live task completion remain unverified/pending.
+
+
+### CPU ephemeral node — activation checklist (source in PR #248)
+
+After the PR is merged and the Continuity Worker is deployed:
+
+1. Confirm the public `/health` response reports the expected Continuity service and schema.
+2. Enroll `github-actions-cpu-batch` through the protected admin API with explicit owner consent and only the `cpu-batch` capability.
+3. Save the one-time enrollment token as GitHub Actions Secret `MIDAD_CONTINUITY_RUNNER_NODE_TOKEN`.
+4. Save the HTTPS Worker origin as repository Variable `MIDAD_CONTINUITY_LEDGER_URL`; save the same `owner_id` used for enrollment as Variable `MIDAD_CONTINUITY_OWNER_ID`.
+5. Trigger one harmless allowlisted `CPU_BATCH` task and verify heartbeat → CPU-only claim → checkpoint → completion receipt. Then test duplicate wake delivery and expired lease recovery.
+
+No token or enrollment is included in this repository change. Until this checklist is completed against a deployed Worker, the scheduled fallback is **source-ready / activation-pending**, not live.
