@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { MidadContinuityLedger } from '../continuity-ledger/worker.mjs';
 import { GITHUB_ACTIONS_OIDC_POLICY, verifyGitHubActionsOidcToken } from '../continuity-ledger/github-oidc.mjs';
 import { runEphemeralTask } from '../ephemeral-runner.mjs';
+import { syncGitHubActionsOidcJwks } from '../continuity-ledger/sync-github-oidc-jwks.mjs';
 
 if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto });
 
@@ -132,11 +133,73 @@ test('GitHub OIDC reports a stable signature-check error when WebCrypto verify t
   );
 });
 
+test('GitHub OIDC JWKS sync fetches official public keys and sends only public RSA fields to Worker admin route', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    const parsed = new URL(url);
+    calls.push({ url: parsed, options });
+    if (parsed.pathname === '/health') {
+      return new Response(JSON.stringify({
+        ok: true,
+        service: 'midad-continuity-ledger',
+        node_auth: 'github-actions-oidc-v1',
+        oidc_subject_policy: 'legacy-and-immutable-v5-jwks-cache',
+      }), { status: 200 });
+    }
+    if (parsed.hostname === 'token.actions.githubusercontent.com') {
+      return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    }
+    if (parsed.pathname === '/internal/oidc/jwks') {
+      const posted = JSON.parse(options.body);
+      assert.deepEqual(posted.keys, [{
+        kty: 'RSA', alg: 'RS256', use: 'sig', kid: jwk.kid, n: jwk.n, e: jwk.e,
+      }]);
+      assert.equal(options.headers.authorization, 'Bearer ' + ADMIN);
+      return new Response(JSON.stringify({ ok: true, key_count: 1, expires_at_ms: Date.now() + 7200000 }), { status: 200 });
+    }
+    throw new Error('UNEXPECTED_SYNC_REQUEST');
+  };
+  const result = await syncGitHubActionsOidcJwks({
+    origin: 'https://midad-continuity-ledger.midadbot.workers.dev',
+    adminKey: ADMIN,
+    fetchImpl,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.key_count, 1);
+  assert.equal(calls.length, 3);
+});
+
+test('GitHub OIDC JWKS sync rejects private key material before contacting the Worker', async () => {
+  const calls = [];
+  const fetchImpl = async url => {
+    const parsed = new URL(url);
+    calls.push(parsed.pathname);
+    if (parsed.pathname === '/health') {
+      return new Response(JSON.stringify({
+        ok: true,
+        service: 'midad-continuity-ledger',
+        node_auth: 'github-actions-oidc-v1',
+        oidc_subject_policy: 'legacy-and-immutable-v5-jwks-cache',
+      }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ keys: [{ ...jwk, d: 'PRIVATE_MATERIAL' }] }), { status: 200 });
+  };
+  await assert.rejects(
+    syncGitHubActionsOidcJwks({
+      origin: 'https://midad-continuity-ledger.midadbot.workers.dev',
+      adminKey: ADMIN,
+      fetchImpl,
+    }),
+    /GITHUB_OIDC_JWKS_INVALID/,
+  );
+  assert.equal(calls.includes('/internal/oidc/jwks'), false);
+});
+
 test('OIDC-only CPU enrollment returns no node secret and authenticates the exact GitHub Actions runner', async () => {
   const storage = new Storage();
   const ledger = new MidadContinuityLedger({ storage }, { MIDAD_LEDGER_ADMIN_KEY: ADMIN });
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = jwksFetch();
+  globalThis.fetch = async () => { throw new Error('CLOUDFLARE_EXTERNAL_EGRESS_MUST_NOT_BE_USED'); };
   try {
     const enrolled = await ledger.fetch(post('/v1/nodes/enroll', {
       node_id: 'github-actions-cpu-batch',
@@ -150,6 +213,18 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
     assert.equal(enrolledBody.authentication, 'github-actions-oidc');
     assert.equal(enrolledBody.token_delivery, 'none');
     assert.equal(Object.hasOwn(enrolledBody, 'enrollment_token'), false);
+
+    const unauthenticatedSync = await ledger.fetch(post('/internal/oidc/jwks', { keys: [jwk] }));
+    assert.equal(unauthenticatedSync.status, 401);
+
+    const invalidSync = await ledger.fetch(post('/internal/oidc/jwks', { keys: [{ ...jwk, d: 'PRIVATE_MATERIAL' }] }, admin()));
+    assert.equal(invalidSync.status, 422);
+
+    const synced = await ledger.fetch(post('/internal/oidc/jwks', { keys: [jwk] }, admin()));
+    const syncedBody = await synced.json();
+    assert.equal(synced.status, 200);
+    assert.equal(syncedBody.ok, true);
+    assert.equal(syncedBody.key_count, 1);
 
     const jwt = signedToken();
     const preflightResponse = await ledger.fetch(post('/internal/oidc/preflight', {}, {
@@ -192,7 +267,25 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v4-jwks-network');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v5-jwks-cache');
+  } finally {
+    globalThis.fetch = originalFetch;
+    storage.close();
+  }
+});
+
+test('Worker fails closed when the synchronized GitHub OIDC JWKS cache is missing or expired', async () => {
+  const storage = new Storage();
+  const ledger = new MidadContinuityLedger({ storage }, { MIDAD_LEDGER_ADMIN_KEY: ADMIN });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('EXTERNAL_EGRESS_MUST_NOT_BE_USED'); };
+  try {
+    const result = await ledger.fetch(post('/internal/oidc/preflight', {}, {
+      authorization: 'Bearer ' + signedToken(),
+      'x-midad-node-id': 'github-actions-cpu-batch',
+    }));
+    assert.equal(result.status, 401);
+    assert.deepEqual(await result.json(), { ok: false, error: 'GITHUB_OIDC_JWKS_CACHE_STALE' });
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();
