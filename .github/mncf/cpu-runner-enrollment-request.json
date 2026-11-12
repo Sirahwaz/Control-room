@@ -5,5 +5,8 @@
   "requested_capability": "cpu-batch",
   "task": "RUNNER_SMOKE",
   "max_cost_usd": 0,
-  "authorization_source": "explicit_user_confirmation"
+  "authorization_source": "explicit_user_confirmation",
+  "trigger_attempt": 2,
+  "retry_of_run_id": "43297274266",
+  "retry_reason": "first_attempt_failed_before_enrollment"
 }
