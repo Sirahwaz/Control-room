@@ -249,3 +249,49 @@ test('Cloudflare Browser Run endpoints require admin authentication and expose o
 
   storage.close();
 });
+
+
+test('workload-scoped pull claims leave unrelated exhausted tasks untouched', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger, 'cpu-only-node', 'owner-a', ['cpu-batch']);
+    await heartbeat(ledger, 'cpu-only-node', token, { capabilities: ['cpu-batch'] });
+
+    await enqueue(ledger, task('webgpu-exhausted', {
+      workload: 'WEBGPU_BATCH',
+      required_capabilities: ['webgpu-compute'],
+      max_attempts: 1,
+    }));
+    await enqueue(ledger, task('cpu-ready'));
+    storage.db.prepare('UPDATE continuity_tasks SET attempt=1 WHERE task_id=?').run('webgpu-exhausted');
+
+    const result = await read(await ledger.fetch(post('/v1/tasks/claim', {
+      workload: 'CPU_BATCH',
+      lease_ttl_seconds: 90,
+    }, nodeHeaders('cpu-only-node', token))));
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.task.task_id, 'cpu-ready');
+    assert.equal(
+      storage.db.prepare('SELECT status FROM continuity_tasks WHERE task_id=?').get('webgpu-exhausted').status,
+      'QUEUED',
+      'a CPU-only claim must not fail or otherwise mutate a WebGPU task',
+    );
+  } finally {
+    storage.close();
+  }
+});
+
+test('claim rejects unsupported workload filters before scanning the queue', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    const result = await read(await ledger.fetch(post('/v1/tasks/claim', {
+      workload: 'ARBITRARY_CODE',
+    }, nodeHeaders('node-a', token))));
+    assert.equal(result.status, 422);
+    assert.equal(result.body.error, 'WORKLOAD_INVALID');
+  } finally {
+    storage.close();
+  }
+});
