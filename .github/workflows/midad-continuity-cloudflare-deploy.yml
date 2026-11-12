@@ -227,7 +227,22 @@ jobs:
           # Require the exact policy marker from the DO code, not only the pre-existing auth marker.
           for attempt in $(seq 1 85); do
             HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 10 "$WORKER_URL/health" || true)"
-            if [[ "$HTTP_STATUS" == "200" ]]; then
+            if [[ "$HTTP_STATUS" == "200" ]] && node - "$HEALTH_FILE" <<'NODE'
+          const fs = require('node:fs');
+          try {
+            const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+            process.exit(
+              health.ok === true &&
+              health.service === 'midad-continuity-ledger' &&
+              health.node_auth === 'github-actions-oidc-v1' &&
+              health.oidc_subject_policy === 'legacy-and-immutable-v1'
+                ? 0 : 1
+            );
+          } catch {
+            process.exit(1);
+          }
+          NODE
+            then
               WORKER_HEALTHY=1
               break
             fi
