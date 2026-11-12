@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const root = new URL('../../../', import.meta.url);
+const root = new URL('../../../../', import.meta.url);
 const enrollWorkflow = readFileSync(
   new URL('.github/workflows/midad-mncf-enroll-cpu-runner.yml', root),
   'utf8',
