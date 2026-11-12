@@ -226,7 +226,7 @@ jobs:
           # Cloudflare Durable Object class updates may propagate after the Worker script deploy.
           # Require the exact policy marker from the DO code, not only the pre-existing auth marker.
           for attempt in $(seq 1 85); do
-            HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 10 "$WORKER_URL/health" || true)"
+            HTTP_STATUS="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 5 "$WORKER_URL/health" || true)"
             if [[ "$HTTP_STATUS" == "200" ]] && node - "$HEALTH_FILE" <<'NODE'
           const fs = require('node:fs');
           try {
