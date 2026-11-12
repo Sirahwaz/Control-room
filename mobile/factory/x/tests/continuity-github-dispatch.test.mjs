@@ -175,11 +175,11 @@ test('ephemeral runner workflow supports dispatch and five-minute scheduled pull
   const workflow = await readFile(new URL('../../../../.github/workflows/midad-mncf-ephemeral-runner.yml', import.meta.url), 'utf8');
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /schedule:/);
-  assert.match(workflow, /cron:\\s*["']\\*\\/5 \\* \\* \\* \\*["']/);
-  assert.match(workflow, /contents:\\s*read/);
+  assert.match(workflow, /cron:\s*["']\*\/5 \* \* \* \*["']/);
+  assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
-  assert.match(workflow, /node mobile\\/factory\\/x\\/ephemeral-runner\\.mjs/);
-  assert.doesNotMatch(workflow, /pull-requests:\\s*write|contents:\\s*write|id-token:\\s*write/);
+  assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
+  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
 });
 
 test('ephemeral runner executes only bounded allowlisted CPU operations', () => {
