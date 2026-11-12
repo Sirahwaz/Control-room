@@ -29,12 +29,29 @@ function validateEnvironment(env) {
       ledgerUrl.search || ledgerUrl.hash) {
     throw new Error('LEDGER_URL_MUST_BE_HTTPS_ORIGIN');
   }
-  const token = env.MIDAD_CONTINUITY_RUNNER_NODE_TOKEN;
-  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
-    throw new Error('RUNNER_NODE_TOKEN_INVALID');
+
+  let oidcRequestUrl;
+  try {
+    oidcRequestUrl = new URL(env.ACTIONS_ID_TOKEN_REQUEST_URL || '');
+  } catch {
+    throw new Error('GITHUB_OIDC_TOKEN_REQUEST_UNAVAILABLE');
   }
+  if (oidcRequestUrl.protocol !== 'https:' ||
+      oidcRequestUrl.hostname !== 'pipelines.actions.githubusercontent.com' ||
+      oidcRequestUrl.username || oidcRequestUrl.password ||
+      (oidcRequestUrl.port && oidcRequestUrl.port !== '443') ||
+      oidcRequestUrl.hash) {
+    throw new Error('GITHUB_OIDC_TOKEN_REQUEST_URL_INVALID');
+  }
+  const oidcRequestToken = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+  if (typeof oidcRequestToken !== 'string' || oidcRequestToken.length < 32) {
+    throw new Error('GITHUB_OIDC_TOKEN_REQUEST_UNAVAILABLE');
+  }
+
   const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
-  if (env.MIDAD_INPUT_OWNER_ID !== ownerId) throw new Error('OWNER_ID_INPUT_MISMATCH');
+  if (ownerId !== 'github:116122510' || env.MIDAD_INPUT_OWNER_ID !== ownerId) {
+    throw new Error('OWNER_ID_INPUT_MISMATCH');
+  }
   const taskId = typeof env.MIDAD_TASK_ID === 'string' && env.MIDAD_TASK_ID.length > 0
     ? requireId(env.MIDAD_TASK_ID, 'TASK_ID')
     : null;
@@ -47,8 +64,32 @@ function validateEnvironment(env) {
     ownerId,
     taskId,
     eventId,
-    token,
+    oidcRequestUrl: oidcRequestUrl.toString(),
+    oidcRequestToken,
   };
+}
+
+async function requestGitHubOidcToken(config, fetchImpl) {
+  const url = new URL(config.oidcRequestUrl);
+  url.searchParams.set('audience', 'midad-continuity-ledger');
+  const response = await fetchImpl(url.toString(), {
+    method: 'GET',
+    redirect: 'error',
+    signal: AbortSignal.timeout(10_000),
+    headers: {
+      authorization: 'Bearer ' + config.oidcRequestToken,
+      accept: 'application/json',
+    },
+  });
+  let body;
+  try { body = jsonResponseShape(await response.json(), response.status); }
+  catch { throw new Error('GITHUB_OIDC_TOKEN_RESPONSE_INVALID'); }
+  if (!response.ok || typeof body.value !== 'string' ||
+      body.value.length < 100 || body.value.length > 16384 ||
+      body.value.split('.').length !== 3) {
+    throw new Error('GITHUB_OIDC_TOKEN_RESPONSE_INVALID');
+  }
+  return body.value;
 }
 
 function jsonResponseShape(body, status) {
@@ -58,13 +99,13 @@ function jsonResponseShape(body, status) {
   return body;
 }
 
-async function ledgerPost(config, pathName, body, fetchImpl) {
+async function ledgerPost(config, pathName, body, fetchImpl, oidcToken) {
   const response = await fetchImpl(config.ledgerOrigin + pathName, {
     method: 'POST',
     redirect: 'error',
     signal: AbortSignal.timeout(10_000),
     headers: {
-      authorization: 'Bearer ' + config.token,
+      authorization: 'Bearer ' + oidcToken,
       'x-midad-node-id': NODE_ID,
       'content-type': 'application/json',
       accept: 'application/json',
@@ -132,6 +173,7 @@ export function executeTaskPayload(payload) {
 
 export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } = {}) {
   const config = validateEnvironment(env);
+  const oidcToken = await requestGitHubOidcToken(config, fetchImpl);
   await ledgerPost(config, '/v1/nodes/heartbeat', {
     cpu_cores: Math.max(1, os.cpus().length),
     memory_mb: Math.max(512, Math.floor(os.totalmem() / 1024 / 1024)),
@@ -141,11 +183,11 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
     capabilities: ['cpu-batch'],
     agent_version: AGENT_VERSION,
     encrypted_session_store: false,
-  }, fetchImpl);
+  }, fetchImpl, oidcToken);
 
   const claimRequest = { workload: 'CPU_BATCH', lease_ttl_seconds: 180 };
   if (config.taskId) claimRequest.task_id = config.taskId;
-  const claimed = await ledgerPost(config, '/v1/tasks/claim', claimRequest, fetchImpl);
+  const claimed = await ledgerPost(config, '/v1/tasks/claim', claimRequest, fetchImpl, oidcToken);
   if (claimed.task === null) return { status: 'NO_ELIGIBLE_TASK', task_id: config.taskId };
   const task = claimed.task;
   if (!task || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(task.task_id || '') ||
@@ -164,7 +206,7 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
       lease_token: task.lease_token,
       retryable: true,
       reason: error instanceof Error ? error.message.slice(0, 120) : 'TASK_EXECUTION_FAILED',
-    }, fetchImpl);
+    }, fetchImpl, oidcToken);
     return { status: 'FAILED_RETRYABLE', task_id: task.task_id };
   }
 
@@ -181,12 +223,12 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
     task_id: task.task_id,
     lease_token: task.lease_token,
     checkpoint: evidence,
-  }, fetchImpl);
+  }, fetchImpl, oidcToken);
   await ledgerPost(config, '/v1/tasks/complete', {
     task_id: task.task_id,
     lease_token: task.lease_token,
     result: { ...evidence, summary: result },
-  }, fetchImpl);
+  }, fetchImpl, oidcToken);
 
   return { status: 'COMPLETED', task_id: task.task_id, evidence };
 }
