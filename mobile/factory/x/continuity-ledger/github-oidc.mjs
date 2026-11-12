@@ -12,6 +12,7 @@ export const GITHUB_ACTIONS_OIDC_POLICY = Object.freeze({
   repositoryOwnerId: '116122510',
   ref: 'refs/heads/main',
   subject: 'repo:Sirahwaz/Control-room:ref:refs/heads/main',
+  immutableSubject: 'repo:Sirahwaz@116122510/Control-room@1377540065:ref:refs/heads/main',
   workflowRef: 'Sirahwaz/Control-room/.github/workflows/midad-mncf-ephemeral-runner.yml@refs/heads/main',
   nodeId: 'github-actions-cpu-batch',
   ownerId: 'github:116122510',
@@ -64,7 +65,7 @@ function matchesAudience(aud, expected) {
 
 /**
  * Verify a short-lived GitHub Actions OIDC assertion for the one MNCF CPU runner.
- * This intentionally binds trust to repository, immutable repository IDs, main ref,
+ * This intentionally binds trust to repository, immutable repository IDs and subject, main ref,
  * event type, audience and the exact workflow file; no other GitHub workflow can
  * authenticate as this enrolled node.
  */
@@ -81,7 +82,7 @@ export async function verifyGitHubActionsOidcToken(
   const claims = decodeJsonSegment(parts[1]);
   if (header?.alg !== 'RS256' || typeof header.kid !== 'string' ||
       claims?.iss !== OIDC_ISSUER || !matchesAudience(claims?.aud, OIDC_AUDIENCE) ||
-      claims?.sub !== GITHUB_ACTIONS_OIDC_POLICY.subject ||
+      ![GITHUB_ACTIONS_OIDC_POLICY.subject, GITHUB_ACTIONS_OIDC_POLICY.immutableSubject].includes(claims?.sub) ||
       !Number.isFinite(claims?.exp) || !Number.isFinite(claims?.iat) ||
       (claims.nbf !== undefined && !Number.isFinite(claims.nbf))) {
     throw new Error('GITHUB_OIDC_CLAIMS_INVALID');
