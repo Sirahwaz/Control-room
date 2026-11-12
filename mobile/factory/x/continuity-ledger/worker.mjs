@@ -561,9 +561,9 @@ export default {
     if (!env.CONTINUITY_LEDGER || typeof env.MIDAD_WAKE_INTERNAL_KEY !== 'string' ||
         env.MIDAD_WAKE_INTERNAL_KEY.length < 32) {
       for (const message of batch.messages || []) { try { message.retry(); } catch {} }
-      return { delivered: 0, retried: (batch.messages || []).length };
+      return { delivered: 0, retried: (batch.messages || []).length, pull_fallback: 0 };
     }
-    let delivered = 0, retried = 0;
+    let delivered = 0, retried = 0, pullFallback = 0;
     for (const message of batch.messages || []) {
       try {
         const event = normalizeWakeEvent(message.body);
@@ -578,7 +578,15 @@ export default {
         const wakeResult = await result.json();
         if (wakeResult.runner_dispatchable === true) {
           const dispatch = await dispatchGitHubWorkflow(event, env);
-          if (dispatch.dispatched !== true) throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+          if (dispatch.dispatched !== true) {
+            if (dispatch.reason === 'GITHUB_APP_NOT_CONFIGURED') {
+              // The authenticated wake has already reached the ledger/WebSocket.
+              // Let the enrolled scheduled pull runner provide the free fallback.
+              pullFallback += 1;
+            } else {
+              throw new Error(dispatch.reason || 'GITHUB_ACTIONS_DISPATCH_NOT_CONFIRMED');
+            }
+          }
         }
         message.ack();
         delivered += 1;
@@ -587,6 +595,6 @@ export default {
         retried += 1;
       }
     }
-    return { delivered, retried };
+    return { delivered, retried, pull_fallback: pullFallback };
   },
 };
