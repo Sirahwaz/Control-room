@@ -41,18 +41,19 @@ function validateEnvironment(env) {
   } catch {
     throw new Error('GITHUB_OIDC_TOKEN_REQUEST_UNAVAILABLE');
   }
-  const allowedOidcPipelineHost =
-    /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(oidcRequestUrl.hostname);
+  const allowedOidcActionsHost =
+    /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/.test(oidcRequestUrl.hostname) ||
+    /^run-actions-[0-9]+-[a-z0-9-]+\.actions\.githubusercontent\.com$/.test(oidcRequestUrl.hostname);
   const oidcEndpointMetadata = {
     protocol: oidcRequestUrl.protocol,
     hostname: oidcRequestUrl.hostname,
     port: oidcRequestUrl.port || 'default',
     has_credentials: Boolean(oidcRequestUrl.username || oidcRequestUrl.password),
     has_fragment: Boolean(oidcRequestUrl.hash),
-    allowed_github_pipeline_host: allowedOidcPipelineHost,
+    allowed_github_actions_host: allowedOidcActionsHost,
   };
   if (oidcRequestUrl.protocol !== 'https:' ||
-      !allowedOidcPipelineHost ||
+      !allowedOidcActionsHost ||
       oidcRequestUrl.username || oidcRequestUrl.password ||
       (oidcRequestUrl.port && oidcRequestUrl.port !== '443') ||
       oidcRequestUrl.hash) {
