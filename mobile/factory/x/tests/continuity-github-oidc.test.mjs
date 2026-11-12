@@ -153,6 +153,10 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
       assert.equal(options.headers.authorization, 'Bearer ' + 'r'.repeat(64));
       return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
     }
+    if (parsed.hostname === 'token.actions.githubusercontent.com') {
+      assert.equal(parsed.pathname, '/.well-known/jwks');
+      return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    }
     if (parsed.pathname === '/v1/nodes/heartbeat') {
       assert.equal(options.headers.authorization, 'Bearer ' + oidcToken);
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -178,6 +182,33 @@ test('ephemeral runner obtains an audience-bound GitHub OIDC token and uses it f
   assert.equal(calls.length, 3);
   assert.equal(calls[1].url.pathname, '/v1/nodes/heartbeat');
   assert.equal(calls[2].url.pathname, '/v1/tasks/claim');
+});
+
+test('ephemeral runner rejects an invalid OIDC signature before contacting the ledger', async () => {
+  const badToken = signedToken({}, generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey);
+  let ledgerCalls = 0;
+  const fetchImpl = async url => {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'run-actions-3-azure-eastus.actions.githubusercontent.com') {
+      return new Response(JSON.stringify({ value: badToken }), { status: 200 });
+    }
+    if (parsed.hostname === 'token.actions.githubusercontent.com') {
+      return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+    }
+    ledgerCalls += 1;
+    return new Response(JSON.stringify({ ok: false, error: 'ENROLLED_NODE_AUTH_REQUIRED' }), { status: 401 });
+  };
+  await assert.rejects(runEphemeralTask({
+    env: {
+      MIDAD_CONTINUITY_LEDGER_URL: 'https://midad-continuity-ledger.midadbot.workers.dev',
+      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+      MIDAD_INPUT_OWNER_ID: 'github:116122510',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://run-actions-3-azure-eastus.actions.githubusercontent.com/runner-test?api-version=2.0',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
+    },
+    fetchImpl,
+  }), /GITHUB_OIDC_SIGNATURE_INVALID/);
+  assert.equal(ledgerCalls, 0);
 });
 
 test('ephemeral runner refuses missing or untrusted GitHub OIDC token request endpoints before ledger access', async () => {
