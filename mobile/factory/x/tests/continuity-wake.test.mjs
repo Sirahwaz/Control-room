@@ -238,6 +238,7 @@ test('acknowledges a CPU_BATCH wake without GitHub App so enrolled pull runners 
 
   assert.equal(result.delivered, 1);
   assert.equal(result.retried, 0);
+  assert.equal(result.pull_fallback, 1);
   assert.deepEqual(actions, ['ack']);
 });
 
