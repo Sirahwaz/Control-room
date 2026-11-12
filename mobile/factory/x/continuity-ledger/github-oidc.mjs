@@ -13,7 +13,7 @@ export const GITHUB_ACTIONS_OIDC_POLICY = Object.freeze({
   ref: 'refs/heads/main',
   subject: 'repo:Sirahwaz/Control-room:ref:refs/heads/main',
   immutableSubject: 'repo:Sirahwaz@116122510/Control-room@1377540065:ref:refs/heads/main',
-  subjectPolicyVersion: 'legacy-and-immutable-v4-jwks-network',
+  subjectPolicyVersion: 'legacy-and-immutable-v5-cloudflare-manual-redirect',
   workflowRef: 'Sirahwaz/Control-room/.github/workflows/midad-mncf-ephemeral-runner.yml@refs/heads/main',
   nodeId: 'github-actions-cpu-batch',
   ownerId: 'github:116122510',
@@ -45,7 +45,7 @@ async function loadJwks(fetchImpl, cache, now, forceRefresh = false) {
   try {
     response = await fetchImpl(OIDC_JWKS_URL, {
       method: 'GET',
-      redirect: 'error',
+      redirect: 'manual',
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(8000),
     });
@@ -58,6 +58,9 @@ async function loadJwks(fetchImpl, cache, now, forceRefresh = false) {
       throw new Error('GITHUB_OIDC_JWKS_FETCH_NETWORK');
     }
     throw new Error('GITHUB_OIDC_JWKS_FETCH_OTHER');
+  }
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error('GITHUB_OIDC_JWKS_REDIRECT_REJECTED');
   }
   if (!response.ok) throw new Error('GITHUB_OIDC_JWKS_UNAVAILABLE');
   let document;
