@@ -30,6 +30,11 @@ function validateEnvironment(env) {
     throw new Error('LEDGER_URL_MUST_BE_HTTPS_ORIGIN');
   }
 
+  const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
+  if (ownerId !== 'github:116122510' || env.MIDAD_INPUT_OWNER_ID !== ownerId) {
+    throw new Error('OWNER_ID_INPUT_MISMATCH');
+  }
+
   let oidcRequestUrl;
   try {
     oidcRequestUrl = new URL(env.ACTIONS_ID_TOKEN_REQUEST_URL || '');
@@ -48,10 +53,6 @@ function validateEnvironment(env) {
     throw new Error('GITHUB_OIDC_TOKEN_REQUEST_UNAVAILABLE');
   }
 
-  const ownerId = requireId(env.MIDAD_CONTINUITY_OWNER_ID, 'OWNER_ID');
-  if (ownerId !== 'github:116122510' || env.MIDAD_INPUT_OWNER_ID !== ownerId) {
-    throw new Error('OWNER_ID_INPUT_MISMATCH');
-  }
   const taskId = typeof env.MIDAD_TASK_ID === 'string' && env.MIDAD_TASK_ID.length > 0
     ? requireId(env.MIDAD_TASK_ID, 'TASK_ID')
     : null;
