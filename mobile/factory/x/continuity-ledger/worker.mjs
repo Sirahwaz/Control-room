@@ -223,7 +223,7 @@ export class MidadContinuityLedger {
     }
     if (path === '/internal/oidc/preflight') {
       const nodeId = req.headers.get('x-midad-node-id') || '';
-      const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');
+      const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
       if (nodeId !== GITHUB_ACTIONS_OIDC_POLICY.nodeId || supplied.length < 100) {
         return response(401, { ok: false, error: 'OIDC_PREFLIGHT_AUTH_REQUIRED' });
       }
