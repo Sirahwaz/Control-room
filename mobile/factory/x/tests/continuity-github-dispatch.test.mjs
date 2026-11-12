@@ -14,6 +14,45 @@ const EVENT = {
   owner_id: 'owner-00000001',
 };
 const b64url = value => Buffer.from(value).toString('base64url');
+if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto });
+const runnerOidcKeyPair = await webcrypto.subtle.generateKey(
+  { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1,0,1]), hash: 'SHA-256' },
+  true,
+  ['sign', 'verify'],
+);
+const runnerOidcJwk = {
+  ...await webcrypto.subtle.exportKey('jwk', runnerOidcKeyPair.publicKey),
+  kid: 'midad-dispatch-runner-test-key',
+  alg: 'RS256',
+  use: 'sig',
+};
+async function signedRunnerOidcToken() {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: runnerOidcJwk.kid }));
+  const claims = {
+    iss: 'https://token.actions.githubusercontent.com',
+    aud: 'midad-continuity-ledger',
+    sub: 'repo:Sirahwaz/Control-room:ref:refs/heads/main',
+    repository: 'Sirahwaz/Control-room',
+    repository_id: '1377540065',
+    repository_owner: 'Sirahwaz',
+    repository_owner_id: '116122510',
+    ref: 'refs/heads/main',
+    workflow_ref: 'Sirahwaz/Control-room/.github/workflows/midad-mncf-ephemeral-runner.yml@refs/heads/main',
+    event_name: 'workflow_dispatch',
+    iat: now - 5,
+    nbf: now - 5,
+    exp: now + 300,
+  };
+  const payload = b64url(JSON.stringify(claims));
+  const message = header + '.' + payload;
+  const signature = await webcrypto.subtle.sign(
+    { name: 'RSASSA-PKCS1-v1_5' },
+    runnerOidcKeyPair.privateKey,
+    new TextEncoder().encode(message),
+  );
+  return message + '.' + Buffer.from(signature).toString('base64url');
+}
 function toPem(bytes, label = 'PRIVATE KEY') {
   const b64 = Buffer.from(bytes).toString('base64').match(/.{1,64}/g).join('\n');
   return '-----BEGIN ' + label + '-----\n' + b64 + '\n-----END ' + label + '-----';
@@ -231,12 +270,15 @@ test('ephemeral runner rejects non-origin HTTPS ledger URLs and non-hex node tok
 test('ephemeral runner heartbeats, claims the exact task, checkpoints evidence and completes it', async () => {
   const requests = [];
   const leaseToken = 'c'.repeat(64);
-  const oidcToken = 'header.' + 'p'.repeat(120) + '.' + 's'.repeat(120);
+  const oidcToken = await signedRunnerOidcToken();
   const fetchMock = async (url, init = {}) => {
     const parsed = new URL(url);
     if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
       assert.equal(parsed.searchParams.get('audience'), 'midad-continuity-ledger');
       return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
+    }
+    if (parsed.hostname === 'token.actions.githubusercontent.com') {
+      return new Response(JSON.stringify({ keys: [runnerOidcJwk] }), { status: 200 });
     }
     const body = JSON.parse(init.body);
     requests.push({ url: String(url), init, body });
@@ -345,6 +387,9 @@ test('scheduled pull runner claims one owner-scoped CPU task without a dispatch 
       const parsed = new URL(url);
       if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
         return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
+      }
+      if (parsed.hostname === 'token.actions.githubusercontent.com') {
+        return new Response(JSON.stringify({ keys: [runnerOidcJwk] }), { status: 200 });
       }
       const path = parsed.pathname;
       const body = JSON.parse(init.body);
