@@ -24,7 +24,7 @@ test('CPU runner enrollment is explicitly owner-scoped and consent-gated', () =>
 test('CPU runner enrollment stores the node token as an encrypted Actions secret and never logs it', () => {
   assert.match(enrollWorkflow, /crypto_box_seal\(/);
   assert.match(enrollWorkflow, /\/actions\/secrets\/public-key/);
-  assert.match(enrollWorkflow, /\/actions\/secrets\/\$\{?secretName/);
+  assert.ok(enrollWorkflow.includes("'/actions/secrets/' + secretName"));
   assert.match(enrollWorkflow, /::add-mask::/);
   assert.match(enrollWorkflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
   assert.match(enrollWorkflow, /MIDAD_CONTINUITY_LEDGER_URL/);
