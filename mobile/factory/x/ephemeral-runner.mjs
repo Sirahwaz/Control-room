@@ -198,6 +198,28 @@ export async function runEphemeralTask({ env = process.env, fetchImpl = fetch } 
       : 'GITHUB_OIDC_LOCAL_VERIFICATION_FAILED';
     throw new Error(reason);
   }
+
+  const workerPreflight = await ledgerPost(
+    config,
+    '/internal/oidc/preflight',
+    {},
+    fetchImpl,
+    oidcToken,
+  );
+  const preflightChecks = [
+    ['oidc_verified', 'CPU_NODE_OIDC_VERIFICATION_FAILED'],
+    ['node_registered', 'CPU_NODE_REGISTRATION_MISSING'],
+    ['node_owner_matches', 'CPU_NODE_OWNER_MISMATCH'],
+    ['node_consent_confirmed', 'CPU_NODE_CONSENT_MISSING'],
+    ['node_not_revoked', 'CPU_NODE_REVOKED'],
+    ['node_capability_matches', 'CPU_NODE_CAPABILITY_MISMATCH'],
+    ['owner_claim_matches', 'CPU_NODE_OWNER_CLAIM_MISMATCH'],
+  ];
+  for (const [field, reason] of preflightChecks) {
+    if (workerPreflight[field] !== true) throw new Error(reason);
+  }
+  process.stdout.write('MIDAD_WORKER_OIDC_PREFLIGHT=PASSED\\n');
+
   await ledgerPost(config, '/v1/nodes/heartbeat', {
     cpu_cores: Math.max(1, os.cpus().length),
     memory_mb: Math.max(512, Math.floor(os.totalmem() / 1024 / 1024)),
