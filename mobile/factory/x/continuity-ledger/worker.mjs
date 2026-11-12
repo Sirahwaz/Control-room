@@ -167,6 +167,7 @@ export class MidadContinuityLedger {
         dispatch: this.env.CONTINUITY_WAKE_QUEUE ? 'queue-websocket-wake-with-pull-claim' : 'pull-claim-fallback',
         github_actions_dispatch: [this.env.MIDAD_GITHUB_APP_ID,this.env.MIDAD_GITHUB_INSTALLATION_ID,this.env.MIDAD_GITHUB_APP_PRIVATE_KEY].every(value => typeof value === 'string' && value.length > 0) ? 'configured' : 'not_configured',
         node_auth: 'github-actions-oidc-v1',
+        oidc_subject_policy: GITHUB_ACTIONS_OIDC_POLICY.subjectPolicyVersion,
       });
     }
     if (req.method === 'GET' && path === '/v1/nodes/wake') {
