@@ -130,7 +130,9 @@ export class MidadContinuityLedger {
     if (!node) return null;
 
     // Existing owner-enrolled nodes keep their established one-time bearer token.
-    if (constantTimeEqual(await sha256(supplied), node.token_hash)) return node;
+    // The dedicated Actions CPU node is OIDC-only and never accepts the legacy bearer path.
+    if (node.node_id !== GITHUB_ACTIONS_OIDC_POLICY.nodeId &&
+        constantTimeEqual(await sha256(supplied), node.token_hash)) return node;
 
     // GitHub OIDC is deliberately limited to the dedicated, CPU-only Actions node.
     if (node.node_id !== GITHUB_ACTIONS_OIDC_POLICY.nodeId ||
