@@ -180,7 +180,7 @@ test('ephemeral runner workflow supports dispatch and five-minute scheduled pull
   assert.doesNotMatch(workflow, /MIDAD_CONTINUITY_RUNNER_NODE_TOKEN/);
   assert.ok(workflow.includes('id-token: write'));
   assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
-  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
+  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write/);
 });
 
 test('ephemeral runner executes only bounded allowlisted CPU operations', () => {
@@ -306,7 +306,7 @@ test('ephemeral workflow uses task-targeted workflow dispatch and read-only perm
   assert.match(workflow, /owner_id:/);
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /node mobile\/factory\/x\/ephemeral-runner\.mjs/);
-  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write|id-token:\s*write/);
+  assert.doesNotMatch(workflow, /pull-requests:\s*write|contents:\s*write/);
   assert.doesNotMatch(workflow, /persist-credentials:\s*true/);
 });
 
