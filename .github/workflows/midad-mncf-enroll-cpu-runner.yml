@@ -104,7 +104,7 @@ jobs:
                 if (health?.ok === true &&
                     health?.service === 'midad-continuity-ledger' &&
                     health?.node_auth === 'github-actions-oidc-v1' &&
-                    health?.oidc_subject_policy === 'legacy-and-immutable-v3-oidc-errors') {
+                    health?.oidc_subject_policy === 'legacy-and-immutable-v4-jwks-network') {
                   oidcWorkerReady = true;
                   break;
                 }
