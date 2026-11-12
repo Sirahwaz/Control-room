@@ -128,3 +128,19 @@ The existing EnvironmentVaultSecretResolver remains a compatibility adapter for 
 
 ## Tests
 `tests/continuity-ledger.test.mjs` exercises the worker SQL against Node's built-in SQLite engine through a small local Durable Object storage shim. `tests/continuity-wake.test.mjs` covers outbox durability/retry, owner-scoped wake payloads, revocation, internal authentication and Queue consumer retry behavior. These tests prove SQL/state contracts but are not a substitute for a Cloudflare `wrangler dev` preview or live deployment test.
+
+
+## MNCF Elastic Runtime v2 — scheduled pull fallback
+
+**Status:** contract tests staged; implementation pending validation in the feature branch.
+
+The CPU_BATCH lane is being extended with a scheduled pull fallback. The GitHub App dispatch remains the fast path; when the App is not configured, the Queue acknowledges the authenticated wake after the Durable Object records/broadcasts it, while an enrolled GitHub-hosted runner polls the same ledger every five minutes and claims at most one eligible owner-scoped task. The runner remains ephemeral and uses the existing atomic lease, task allowlist, retry cap and checkpoint/evidence path.
+
+- No second queue or database.
+- No always-on VM, VPS, or paid compute.
+- No broad task payload in GitHub workflow inputs; dispatch inputs remain identifiers only.
+- Missing runner enrollment/secret means the scheduled job exits without claiming work.
+- A scheduled poll is a fallback, not a guarantee of immediate execution. Pending work still requires a live enrolled node and available free runner capacity.
+- This path does not make Browser Session tasks eligible for CPU runners and does not enable arbitrary shell execution.
+
+Acceptance gates: verify both event-dispatch and scheduled-pull modes; confirm that the scheduled runner omits a task filter and receives only the configured owner's CPU_BATCH task; confirm absent GitHub App credentials no longer send an otherwise valid wake to the dead-letter queue; run the full Continuity contract suite. Production deployment and node enrollment remain separate gates.
