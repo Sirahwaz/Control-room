@@ -105,6 +105,33 @@ test('GitHub OIDC rejects wrong workflow, wrong repository, wrong owner, expired
   }
 });
 
+test('GitHub OIDC reports a stable JWKS fetch error when Worker egress fails', async () => {
+  await assert.rejects(
+    verifyGitHubActionsOidcToken(signedToken(), {
+      fetchImpl: async () => { throw new TypeError('network details must not escape'); },
+      cache: { keys: null, expiresAt: 0 },
+    }),
+    /GITHUB_OIDC_JWKS_FETCH_FAILED/,
+  );
+});
+
+test('GitHub OIDC reports a stable signature-check error when WebCrypto verify throws', async () => {
+  const cryptoImpl = {
+    subtle: {
+      importKey: async () => ({ testKey: true }),
+      verify: async () => { throw new TypeError('provider details must not escape'); },
+    },
+  };
+  await assert.rejects(
+    verifyGitHubActionsOidcToken(signedToken(), {
+      fetchImpl: jwksFetch(),
+      cache: { keys: null, expiresAt: 0 },
+      cryptoImpl,
+    }),
+    /GITHUB_OIDC_SIGNATURE_CHECK_FAILED/,
+  );
+});
+
 test('OIDC-only CPU enrollment returns no node secret and authenticates the exact GitHub Actions runner', async () => {
   const storage = new Storage();
   const ledger = new MidadContinuityLedger({ storage }, { MIDAD_LEDGER_ADMIN_KEY: ADMIN });
@@ -165,7 +192,7 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v2-preflight');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v3-oidc-errors');
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();
