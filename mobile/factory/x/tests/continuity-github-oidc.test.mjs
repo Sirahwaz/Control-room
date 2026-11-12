@@ -115,6 +115,28 @@ test('GitHub OIDC reports a stable JWKS fetch error when Worker egress fails', a
   );
 });
 
+test('Cloudflare-compatible JWKS fetch uses manual redirects and rejects every redirect', async () => {
+  let requests = 0;
+  let redirectMode;
+  await assert.rejects(
+    verifyGitHubActionsOidcToken(signedToken(), {
+      fetchImpl: async (url, options) => {
+        requests += 1;
+        assert.equal(new URL(url).href, GITHUB_ACTIONS_OIDC_POLICY.jwksUrl);
+        redirectMode = options.redirect;
+        return new Response(null, {
+          status: 302,
+          headers: { location: 'https://attacker.example/redirected-jwks' },
+        });
+      },
+      cache: { keys: null, expiresAt: 0 },
+    }),
+    /GITHUB_OIDC_JWKS_REDIRECT_REJECTED/,
+  );
+  assert.equal(redirectMode, 'manual');
+  assert.equal(requests, 1, 'the verifier must not follow a JWKS redirect');
+});
+
 test('GitHub OIDC reports a stable signature-check error when WebCrypto verify throws', async () => {
   const cryptoImpl = {
     subtle: {
@@ -192,7 +214,7 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v4-jwks-network');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v5-cloudflare-manual-redirect');
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();

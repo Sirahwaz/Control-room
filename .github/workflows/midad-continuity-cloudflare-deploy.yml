@@ -235,7 +235,7 @@ jobs:
               health.ok === true &&
               health.service === 'midad-continuity-ledger' &&
               health.node_auth === 'github-actions-oidc-v1' &&
-              health.oidc_subject_policy === 'legacy-and-immutable-v4-jwks-network'
+              health.oidc_subject_policy === 'legacy-and-immutable-v5-cloudflare-manual-redirect'
                 ? 0 : 1
             );
           } catch {
@@ -259,7 +259,7 @@ jobs:
           const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           if (health.ok !== true || health.service !== 'midad-continuity-ledger' ||
               health.node_auth !== 'github-actions-oidc-v1' ||
-              health.oidc_subject_policy !== 'legacy-and-immutable-v4-jwks-network') {
+              health.oidc_subject_policy !== 'legacy-and-immutable-v5-cloudflare-manual-redirect') {
             throw new Error('Continuity Worker health response is invalid or lacks the GitHub OIDC CPU runner auth mode');
           }
           console.log(JSON.stringify({
