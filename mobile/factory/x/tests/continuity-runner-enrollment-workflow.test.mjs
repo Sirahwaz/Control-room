@@ -11,6 +11,10 @@ const deployWorkflow = readFileSync(
   new URL('.github/workflows/midad-continuity-cloudflare-deploy.yml', root),
   'utf8',
 );
+const bootstrapRequest = JSON.parse(readFileSync(
+  new URL('.github/mncf/cpu-runner-enrollment-request.json', root),
+  'utf8',
+));
 
 test('CPU runner enrollment is explicitly owner-scoped and consent-gated', () => {
   assert.match(enrollWorkflow, /owner_id:[\s\S]*required: true[\s\S]*type: string/);
@@ -56,4 +60,22 @@ test('authorized one-time bootstrap can run from a reviewed main push without an
   assert.match(enrollWorkflow, /readFileSync\([^\n]*cpu-runner-enrollment-request\.json/);
   assert.match(enrollWorkflow, /GITHUB_EVENT_NAME/);
   assert.match(enrollWorkflow, /I_APPROVE_CPU_NODE_ENROLLMENT/);
+});
+
+test('one-time bootstrap request matches the explicitly approved owner and zero-cost CPU scope', () => {
+  assert.equal(bootstrapRequest.request_id, 'MNCF-CPU-BOOTSTRAP-20261112-001');
+  assert.equal(bootstrapRequest.owner_id, 'github:116122510');
+  assert.equal(bootstrapRequest.consent, 'I_APPROVE_CPU_NODE_ENROLLMENT');
+  assert.equal(bootstrapRequest.requested_capability, 'cpu-batch');
+  assert.equal(bootstrapRequest.task, 'RUNNER_SMOKE');
+  assert.equal(bootstrapRequest.max_cost_usd, 0);
+  assert.equal(bootstrapRequest.authorization_source, 'explicit_user_confirmation');
+});
+
+test('the one-time bootstrap trigger reads only the main-branch authorization request file', () => {
+  assert.match(enrollWorkflow, /push:[\\s\\S]*branches: \\[main\\][\\s\\S]*cpu-runner-enrollment-request\\.json/);
+  assert.match(enrollWorkflow, /GITHUB_EVENT_NAME === 'push'/);
+  assert.match(enrollWorkflow, /BOOTSTRAP_REQUEST_NOT_AUTHORIZED/);
+  assert.match(enrollWorkflow, /MNCF-CPU-BOOTSTRAP-20261112-001/);
+  assert.match(enrollWorkflow, /readFileSync\\('.github\\/mncf\\/cpu-runner-enrollment-request\\.json'/);
 });
