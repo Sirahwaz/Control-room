@@ -86,7 +86,7 @@ jobs:
           if (!validId(ownerId) || ownerId !== 'github:116122510') throw new Error('OWNER_ID_NOT_APPROVED');
           if (consent !== 'I_APPROVE_CPU_NODE_ENROLLMENT') throw new Error('OWNER_CONSENT_REQUIRED');
           if (adminKey.length < 32) throw new Error('LEDGER_ADMIN_KEY_MISSING');
-          if (!/^\\d+$/.test(runId)) throw new Error('GITHUB_RUN_ID_INVALID');
+          if (!/^\d+$/.test(runId)) throw new Error('GITHUB_RUN_ID_INVALID');
           if (!ghToken) throw new Error('GITHUB_TOKEN_MISSING');
 
           // Do not enroll against the old Worker version. The deployment workflow runs in parallel on this merge.
@@ -201,5 +201,5 @@ jobs:
             authentication: 'github-actions-oidc',
             persistent_runner_secret_created: false,
             max_cost_usd: 0,
-          }) + '\\n');
+          }) + '\n');
           NODE
