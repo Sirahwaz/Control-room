@@ -49,8 +49,15 @@ async function loadJwks(fetchImpl, cache, now, forceRefresh = false) {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(8000),
     });
-  } catch {
-    throw new Error('GITHUB_OIDC_JWKS_FETCH_FAILED');
+  } catch (error) {
+    const name = error && typeof error.name === 'string' ? error.name : '';
+    if (name === 'AbortError' || name === 'TimeoutError') {
+      throw new Error('GITHUB_OIDC_JWKS_FETCH_TIMEOUT');
+    }
+    if (name === 'TypeError') {
+      throw new Error('GITHUB_OIDC_JWKS_FETCH_NETWORK');
+    }
+    throw new Error('GITHUB_OIDC_JWKS_FETCH_OTHER');
   }
   if (!response.ok) throw new Error('GITHUB_OIDC_JWKS_UNAVAILABLE');
   let document;
