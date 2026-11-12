@@ -111,7 +111,7 @@ test('GitHub OIDC reports a stable JWKS fetch error when Worker egress fails', a
       fetchImpl: async () => { throw new TypeError('network details must not escape'); },
       cache: { keys: null, expiresAt: 0 },
     }),
-    /GITHUB_OIDC_JWKS_FETCH_FAILED/,
+    /GITHUB_OIDC_JWKS_FETCH_NETWORK/,
   );
 });
 
@@ -192,7 +192,7 @@ test('OIDC-only CPU enrollment returns no node secret and authenticates the exac
 
     const health = await (await ledger.fetch(new Request('https://ledger.test/health'))).json();
     assert.equal(health.node_auth, 'github-actions-oidc-v1');
-    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v3-oidc-errors');
+    assert.equal(health.oidc_subject_policy, 'legacy-and-immutable-v4-jwks-network');
   } finally {
     globalThis.fetch = originalFetch;
     storage.close();
