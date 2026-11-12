@@ -1,6 +1,7 @@
 import { closeBrowserRunSession, runBrowserRunSmoke } from './browser-run-runtime.mjs';
 import { dispatchGitHubWorkflow } from './github-dispatch.mjs';
 import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
+import { GITHUB_ACTIONS_OIDC_POLICY, verifyGitHubActionsOidcToken } from './github-oidc.mjs';
 
 const WORKLOADS = new Set(['CPU_BATCH', 'WEBGPU_BATCH', 'BROWSER_SESSION', 'SINGLE']);
 const SECRET_KEY = /(?:secret|token|password|private[_-]?key|mnemonic|seed|authorization|cookie)/i;
@@ -123,11 +124,27 @@ export class MidadContinuityLedger {
   }
   async nodeAuth(req) {
     const nodeId = req.headers.get('x-midad-node-id') || '';
-    const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');
     if (!validId(nodeId) || supplied.length < 32) return null;
     const node = this.one('SELECT * FROM enrolled_nodes WHERE node_id=? AND revoked_at_ms IS NULL AND consent_confirmed=1', nodeId);
-    if (!node || !constantTimeEqual(await sha256(supplied), node.token_hash)) return null;
-    return node;
+    if (!node) return null;
+
+    // Existing owner-enrolled nodes keep their established one-time bearer token.
+    if (constantTimeEqual(await sha256(supplied), node.token_hash)) return node;
+
+    // GitHub OIDC is deliberately limited to the dedicated, CPU-only Actions node.
+    if (node.node_id !== GITHUB_ACTIONS_OIDC_POLICY.nodeId ||
+        node.owner_id !== GITHUB_ACTIONS_OIDC_POLICY.ownerId ||
+        JSON.stringify(JSON.parse(node.enrolled_capabilities_json || '[]')) !== JSON.stringify([GITHUB_ACTIONS_OIDC_POLICY.capability])) {
+      return null;
+    }
+    try {
+      const claims = await verifyGitHubActionsOidcToken(supplied);
+      if (node.owner_id !== 'github:' + String(claims.repository_owner_id)) return null;
+      return node;
+    } catch {
+      return null;
+    }
   }
   async body(req) {
     const raw = await req.text();
@@ -147,6 +164,7 @@ export class MidadContinuityLedger {
         ok: true, service: 'midad-continuity-ledger', schema: 2,
         dispatch: this.env.CONTINUITY_WAKE_QUEUE ? 'queue-websocket-wake-with-pull-claim' : 'pull-claim-fallback',
         github_actions_dispatch: [this.env.MIDAD_GITHUB_APP_ID,this.env.MIDAD_GITHUB_INSTALLATION_ID,this.env.MIDAD_GITHUB_APP_PRIVATE_KEY].every(value => typeof value === 'string' && value.length > 0) ? 'configured' : 'not_configured',
+        node_auth: 'github-actions-oidc-v1',
       });
     }
     if (req.method === 'GET' && path === '/v1/nodes/wake') {
@@ -251,6 +269,24 @@ export class MidadContinuityLedger {
         body.capabilities.some(x => typeof x !== 'string' || !/^[a-z0-9][a-z0-9._:-]{0,79}$/.test(x))) {
       return response(422, { ok: false, error: 'NODE_CAPABILITIES_INVALID' });
     }
+
+    const oidcOnly = body.auth_mode === 'github-actions-oidc';
+    if (body.auth_mode !== undefined && !oidcOnly) {
+      return response(422, { ok: false, error: 'NODE_AUTH_MODE_INVALID' });
+    }
+    if ((body.node_id === GITHUB_ACTIONS_OIDC_POLICY.nodeId) !== oidcOnly) {
+      return response(422, { ok: false, error: 'CPU_RUNNER_REQUIRES_GITHUB_OIDC_AUTH' });
+    }
+    if (oidcOnly && (
+      body.owner_id !== GITHUB_ACTIONS_OIDC_POLICY.ownerId ||
+      body.capabilities.length !== 1 ||
+      body.capabilities[0] !== GITHUB_ACTIONS_OIDC_POLICY.capability
+    )) {
+      return response(422, { ok: false, error: 'GITHUB_OIDC_CPU_NODE_POLICY_MISMATCH' });
+    }
+
+    // OIDC node records retain only a random, unusable hash to preserve the common schema.
+    // No long-lived bearer token is created, returned, stored in Actions, or logged.
     const token = randomHex();
     const digest = await sha256(token);
     const now = Date.now();
@@ -268,7 +304,20 @@ export class MidadContinuityLedger {
     for (const socket of this.ctx.getWebSockets?.(`node:${body.node_id}`) || []) {
       try { socket.close(1008, 'node re-enrolled'); } catch {}
     }
-    return response(201, { ok: true, node_id: body.node_id, enrollment_token: token, token_delivery: 'one_time_response_never_persisted_in_plaintext' });
+    if (oidcOnly) {
+      return response(201, {
+        ok: true,
+        node_id: body.node_id,
+        authentication: 'github-actions-oidc',
+        token_delivery: 'none',
+      });
+    }
+    return response(201, {
+      ok: true,
+      node_id: body.node_id,
+      enrollment_token: token,
+      token_delivery: 'one_time_response_never_persisted_in_plaintext',
+    });
   }
   async revoke(body) {
     if (!validId(body.node_id)) return response(422, { ok: false, error: 'NODE_ID_REQUIRED' });
