@@ -46,7 +46,7 @@ test('bootstrap enqueues only a bounded zero-cost CPU smoke task and dispatches 
 test('Cloudflare deployment health verification retries transient 404 while propagation completes', () => {
   assert.match(deployWorkflow, /for attempt in \$\(seq 1 15\)/);
   assert.match(deployWorkflow, /HTTP_STATUS/);
-  assert.match(deployWorkflow, /HTTP_STATUS.*200/);
+  assert.match(deployWorkflow, /HTTP_STATUS[\s\S]*== "200"/);
   assert.match(deployWorkflow, /sleep 4/);
   assert.match(deployWorkflow, /HEALTH_FILE/);
 });
