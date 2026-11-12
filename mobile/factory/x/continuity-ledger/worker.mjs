@@ -124,7 +124,7 @@ export class MidadContinuityLedger {
   }
   async nodeAuth(req) {
     const nodeId = req.headers.get('x-midad-node-id') || '';
-    const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');
+    const supplied = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     if (!validId(nodeId) || supplied.length < 32) return null;
     const node = this.one('SELECT * FROM enrolled_nodes WHERE node_id=? AND revoked_at_ms IS NULL AND consent_confirmed=1', nodeId);
     if (!node) return null;
