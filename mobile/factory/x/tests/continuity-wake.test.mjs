@@ -209,7 +209,7 @@ test('Queue consumer forwards validated wake hints to the Durable Object and ack
 });
 
 
-test('Queue consumer retries a CPU_BATCH wake when GitHub App dispatch is not configured', async () => {
+test('acknowledges a CPU_BATCH wake without GitHub App so enrolled pull runners can drain it', async () => {
   const actions = [];
   const ns = {
     idFromName(name) { return name; },
@@ -236,9 +236,9 @@ test('Queue consumer retries a CPU_BATCH wake when GitHub App dispatch is not co
     MIDAD_WAKE_INTERNAL_KEY: WAKE_KEY,
   });
 
-  assert.equal(result.delivered, 0);
-  assert.equal(result.retried, 1);
-  assert.deepEqual(actions, ['retry']);
+  assert.equal(result.delivered, 1);
+  assert.equal(result.retried, 0);
+  assert.deepEqual(actions, ['ack']);
 });
 
 test('Queue consumer retries malformed and transiently failed messages', async () => {
