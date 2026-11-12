@@ -92,11 +92,11 @@ jobs:
           // Do not enroll against the old Worker version. The deployment workflow runs in parallel on this merge.
           let oidcWorkerReady = false;
           // Wait for the new Durable Object code, not just a health marker retained by an older DO instance.
-          for (let attempt = 1; attempt <= 72; attempt += 1) {
+          for (let attempt = 1; attempt <= 64; attempt += 1) {
             try {
               const healthResponse = await fetch(origin + '/health', {
                 redirect: 'error',
-                signal: AbortSignal.timeout(8000),
+                signal: AbortSignal.timeout(4000),
                 headers: { accept: 'application/json' },
               });
               if (healthResponse.ok) {
