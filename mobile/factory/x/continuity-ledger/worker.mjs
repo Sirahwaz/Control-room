@@ -1,4 +1,4 @@
-import { closeBrowserRunSession, runBrowserRunSmoke } from './browser-run-runtime.mjs';
+import { closeBrowserRunSession, createBrowserRunLiveView, runBrowserRunSmoke, validateBrowserRunTarget } from './browser-run-runtime.mjs';
 import { dispatchGitHubWorkflow } from './github-dispatch.mjs';
 import { initVaultSchema, handleVaultAdmin, handleVaultNode } from './vault-service.mjs';
 import { GITHUB_ACTIONS_OIDC_POLICY, verifyGitHubActionsOidcToken } from './github-oidc.mjs';
@@ -11,6 +11,11 @@ const SECRET_VALUE_PATTERNS = [
   /\bBearer\s+[A-Za-z0-9._~+/=-]{24,}/i,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
 ];
+const BROWSER_USER_GATEWAY_URL = 'https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_browser_agent_gateway';
+const BROWSER_UI_ALLOWED_ORIGINS = new Set([
+  'https://sirahwaz.github.io',
+  'https://appassets.androidplatform.net',
+]);
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonNegative = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
@@ -99,6 +104,13 @@ export class MidadContinuityLedger {
         actor_id TEXT NOT NULL, event_json TEXT NOT NULL, created_at_ms INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS continuity_events_task_idx ON continuity_events(task_id,event_id);
+      CREATE TABLE IF NOT EXISTS browser_run_ui_sessions (
+        session_id TEXT PRIMARY KEY, owner_token_hash TEXT NOT NULL,
+        target_id TEXT NOT NULL, target_host TEXT NOT NULL, page_title TEXT NOT NULL DEFAULT '',
+        created_at_ms INTEGER NOT NULL, closed_at_ms INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS browser_run_ui_owner_idx
+        ON browser_run_ui_sessions(owner_token_hash,closed_at_ms,created_at_ms);
       CREATE TABLE IF NOT EXISTS continuity_wake_outbox (
         event_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, owner_id TEXT NOT NULL,
         created_at_ms INTEGER NOT NULL, published_at_ms INTEGER
@@ -158,6 +170,154 @@ export class MidadContinuityLedger {
       if (isRecord(value[key]) && containsSensitive(value[key])) throw new Error('SENSITIVE_FIELDS_NOT_ALLOWED');
     }
     return value;
+  }
+  async browserUiAuth(req, body) {
+    const origin = req.headers.get('origin') || '';
+    if (!BROWSER_UI_ALLOWED_ORIGINS.has(origin)) return { ok: false, status: 403, error: 'BROWSER_UI_ORIGIN_NOT_ALLOWED' };
+    const sessionToken = typeof body.session_token === 'string' ? body.session_token : '';
+    if (sessionToken.length < 32 || sessionToken.length > 200) {
+      return { ok: false, status: 401, error: 'MIDAD_SESSION_REQUIRED' };
+    }
+    try {
+      const upstream = await fetch(BROWSER_USER_GATEWAY_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin },
+        body: JSON.stringify({
+          action: 'user_bridge',
+          subaction: 'capabilities',
+          token: sessionToken,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || result?.ok !== true) {
+        const status = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : 503;
+        return { ok: false, status, error: status === 401 ? 'MIDAD_SESSION_EXPIRED' : 'MIDAD_BROWSER_AUTH_REJECTED' };
+      }
+      return { ok: true, tokenHash: await sha256(sessionToken) };
+    } catch {
+      return { ok: false, status: 503, error: 'MIDAD_BROWSER_AUTH_UNAVAILABLE' };
+    }
+  }
+  async browserUi(req, path, body) {
+    const auth = await this.browserUiAuth(req, body);
+    if (!auth.ok) return response(auth.status, { ok: false, error: auth.error });
+    if (!this.env.BROWSER) return response(503, { ok: false, error: 'BROWSER_RUN_BINDING_MISSING' });
+
+    if (path === '/v1/browser/ui/status') {
+      const row = this.one(
+        'SELECT session_id,target_id,target_host,page_title,created_at_ms FROM browser_run_ui_sessions WHERE owner_token_hash=? AND closed_at_ms IS NULL ORDER BY created_at_ms DESC LIMIT 1',
+        auth.tokenHash,
+      );
+      if (!row) return response(200, { ok: true, active: false, runtime: 'cloudflare-browser-run' });
+      if (typeof this.env.BROWSER.getSession === 'function') {
+        const active = await this.env.BROWSER.getSession(row.session_id).catch(() => null);
+        if (!active) {
+          this.exec('UPDATE browser_run_ui_sessions SET closed_at_ms=? WHERE session_id=? AND closed_at_ms IS NULL',
+            Date.now(), row.session_id);
+          return response(200, { ok: true, active: false, runtime: 'cloudflare-browser-run', expired: true });
+        }
+      }
+      return response(200, {
+        ok: true, active: true, runtime: 'cloudflare-browser-run',
+        session_id: row.session_id, target_host: row.target_host,
+        title: row.page_title, created_at_ms: row.created_at_ms,
+      });
+    }
+
+    if (path === '/v1/browser/ui/start') {
+      const targetUrl = typeof body.target_url === 'string' ? body.target_url.slice(0, 2048) : '';
+      const rawHosts = Array.isArray(body.allowed_hosts) ? body.allowed_hosts : [];
+      if (rawHosts.length < 1 || rawHosts.length > 20 ||
+          rawHosts.some(host => typeof host !== 'string' || host.includes('*'))) {
+        return response(422, { ok: false, error: 'EXPLICIT_EXACT_HOST_ALLOWLIST_REQUIRED' });
+      }
+      const allowedHosts = [...new Set(rawHosts.map(host => host.trim().toLowerCase()))];
+      let normalizedUrl;
+      try {
+        normalizedUrl = validateBrowserRunTarget(targetUrl, allowedHosts);
+      } catch (error) {
+        const code = String(error?.message || 'TARGET_URL_INVALID').slice(0, 100);
+        return response(422, { ok: false, error: code });
+      }
+      const active = this.one(
+        'SELECT session_id FROM browser_run_ui_sessions WHERE owner_token_hash=? AND closed_at_ms IS NULL LIMIT 1',
+        auth.tokenHash,
+      );
+      if (active) return response(409, { ok: false, error: 'BROWSER_RUN_SESSION_ALREADY_ACTIVE' });
+      try {
+        const result = await runBrowserRunSmoke({
+          browserBinding: this.env.BROWSER,
+          targetUrl: normalizedUrl,
+          allowedHosts,
+          keepAliveMs: 300000,
+          liveViewUrlExpiresInMs: 300000,
+          liveViewMode: 'tab',
+        });
+        const now = Date.now();
+        try {
+          this.exec(
+            'INSERT INTO browser_run_ui_sessions(session_id,owner_token_hash,target_id,target_host,page_title,created_at_ms,closed_at_ms) VALUES(?,?,?,?,?,?,NULL)',
+            result.session_id, auth.tokenHash, result.target_id,
+            new URL(result.url).hostname, String(result.title || '').slice(0, 200), now,
+          );
+        } catch {
+          try { await closeBrowserRunSession(this.env.BROWSER, result.session_id); } catch {}
+          return response(503, { ok: false, error: 'BROWSER_SESSION_OWNERSHIP_PERSIST_FAILED' });
+        }
+        return response(201, {
+          ok: true, active: true, runtime: 'cloudflare-browser-run',
+          session_id: result.session_id, target_id: result.target_id,
+          title: result.title, url: result.url, text_preview: result.text_preview,
+          live_view_url: result.live_view_url, live_view_expires_in_ms: 300000,
+          keep_alive_ms: 300000, created_at_ms: now,
+        });
+      } catch (error) {
+        const code = String(error?.message || 'BROWSER_RUN_FAILED').slice(0, 120);
+        const invalidInput = /^(TARGET_URL_INVALID|HTTPS_REQUIRED|URL_CREDENTIALS_FORBIDDEN|HTTPS_PORT_NOT_ALLOWED|ALLOWED_HOSTS_REQUIRED|ALLOWED_HOST_INVALID|HOST_NOT_ALLOWLISTED|PUBLIC_HOST_REQUIRED|BROWSER_REDIRECT_HOST_NOT_ALLOWLISTED|BROWSER_KEEP_ALIVE_INVALID|BROWSER_LIVE_VIEW_TTL_INVALID|BROWSER_LIVE_VIEW_MODE_INVALID)$/.test(code);
+        return response(invalidInput ? 422 : 502, { ok: false, error: code });
+      }
+    }
+
+    const sessionId = typeof body.session_id === 'string' ? body.session_id : '';
+    if (!validId(sessionId)) return response(422, { ok: false, error: 'SESSION_ID_INVALID' });
+    const row = this.one(
+      'SELECT session_id,target_id FROM browser_run_ui_sessions WHERE session_id=? AND owner_token_hash=? AND closed_at_ms IS NULL',
+      sessionId, auth.tokenHash,
+    );
+    if (!row) return response(404, { ok: false, error: 'BROWSER_RUN_SESSION_NOT_FOUND' });
+
+    if (path === '/v1/browser/ui/refresh') {
+      if (typeof this.env.BROWSER.getSession === 'function') {
+        const active = await this.env.BROWSER.getSession(sessionId).catch(() => null);
+        if (!active) {
+          this.exec('UPDATE browser_run_ui_sessions SET closed_at_ms=? WHERE session_id=? AND closed_at_ms IS NULL',
+            Date.now(), sessionId);
+          return response(410, { ok: false, error: 'BROWSER_RUN_SESSION_EXPIRED' });
+        }
+      }
+      try {
+        const view = await createBrowserRunLiveView(this.env.BROWSER, sessionId, row.target_id, 'tab');
+        return response(200, {
+          ok: true, session_id: sessionId, live_view_url: view.live_view_url,
+          live_view_expires_in_ms: 300000,
+        });
+      } catch {
+        return response(502, { ok: false, error: 'BROWSER_LIVE_VIEW_REFRESH_FAILED' });
+      }
+    }
+
+    if (path === '/v1/browser/ui/close') {
+      try {
+        const result = await closeBrowserRunSession(this.env.BROWSER, sessionId);
+        this.exec('UPDATE browser_run_ui_sessions SET closed_at_ms=? WHERE session_id=? AND closed_at_ms IS NULL',
+          Date.now(), sessionId);
+        return response(200, { ok: true, active: false, status: result.status });
+      } catch {
+        return response(502, { ok: false, error: 'BROWSER_RUN_CLOSE_FAILED' });
+      }
+    }
+    return response(404, { ok: false, error: 'NOT_FOUND' });
   }
   async fetch(req) {
     const path = new URL(req.url).pathname;
@@ -255,6 +415,7 @@ export class MidadContinuityLedger {
         owner_claim_matches: Boolean(node && node.owner_id === 'github:' + String(claims.repository_owner_id)),
       });
     }
+    if (path.startsWith('/v1/browser/ui/')) return this.browserUi(req, path, body);
     if (path.startsWith('/v1/vault/secrets/')) return handleVaultAdmin(this, path, req, body);
     if (['/v1/nodes/enroll', '/v1/nodes/revoke', '/v1/tasks/enqueue'].includes(path)) {
       if (!await this.adminAuth(req)) return response(401, { ok: false, error: 'ADMIN_AUTH_REQUIRED' });
@@ -650,6 +811,35 @@ export class MidadContinuityLedger {
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/v1/browser/ui/')) {
+      const origin = request.headers.get('origin') || '';
+      if (!BROWSER_UI_ALLOWED_ORIGINS.has(origin)) {
+        return response(403, { ok: false, error: 'BROWSER_UI_ORIGIN_NOT_ALLOWED' });
+      }
+      const headers = new Headers({
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'POST,OPTIONS',
+        'access-control-allow-headers': 'content-type',
+        'access-control-max-age': '600',
+        'cache-control': 'no-store',
+        'vary': 'Origin',
+      });
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+      if (request.method !== 'POST') return new Response(JSON.stringify({ ok: false, error: 'METHOD_NOT_ALLOWED' }), {
+        status: 405, headers: new Headers([...headers, ['content-type', 'application/json; charset=utf-8']]),
+      });
+      if (!env.CONTINUITY_LEDGER) return new Response(JSON.stringify({ ok: false, error: 'LEDGER_BINDING_MISSING' }), {
+        status: 503, headers: new Headers([...headers, ['content-type', 'application/json; charset=utf-8']]),
+      });
+      const id = env.CONTINUITY_LEDGER.idFromName('midad-global-continuity-ledger-v1');
+      const upstream = await env.CONTINUITY_LEDGER.get(id).fetch(request);
+      const responseHeaders = new Headers(upstream.headers);
+      for (const [key, value] of headers) responseHeaders.set(key, value);
+      return new Response(upstream.body, {
+        status: upstream.status, statusText: upstream.statusText, headers: responseHeaders,
+      });
+    }
     if (!env.CONTINUITY_LEDGER) return response(503, { ok: false, error: 'LEDGER_BINDING_MISSING' });
     const id = env.CONTINUITY_LEDGER.idFromName('midad-global-continuity-ledger-v1');
     return env.CONTINUITY_LEDGER.get(id).fetch(request);
