@@ -52,7 +52,7 @@ test("MNCF and network modules are explicitly pending until live health checks e
   assert.match(html, /data-runtime-state="pending"/);
   assert.match(html, /data-service-state="pending"/);
   assert.match(html, /لا يتطلب VPS/);
-  assert.match(html, /لا يوجد اتصال حي/);
+  assert.match(html, /فحص Cloudflare Health وHeartbeat وعمال CPU مستقل عن Browser Run/);
 });
 
 test("the Android APK workflow builds the manifest-selected Browser home and gates it through Agentation", () => {
