@@ -96,7 +96,9 @@ export function isFreshVerifiedTempoProof(input) {
   if (!Number.isFinite(amount) || amount <= 0) return false;
   const expectedAtomic = String(Math.round(amount * 1_000_000));
   if (String(proof.reward_atomic ?? "") !== expectedAtomic) return false;
-  if (Number(proof.confirmations) < 12 || Number(proof.required_confirmations) < 12) return false;
+  const confirmations = Number(proof.confirmations);
+  const requiredConfirmations = Number(proof.required_confirmations);
+  if (!Number.isFinite(confirmations) || confirmations < 12 || !Number.isFinite(requiredConfirmations) || requiredConfirmations < 12) return false;
   const fresh = (value) => Number.isFinite(value) && value <= now + 30_000 && value >= now - 7 * 24 * 60 * 60 * 1000;
   return fresh(checkedAt) && fresh(proofCheckedAt);
 }
