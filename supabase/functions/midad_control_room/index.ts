@@ -815,6 +815,16 @@ async function runKeysStatus(){
   return {ok:true,identities:j.identities||[],agents:j.agents||[],requests:j.requests||[]};
 }
 
+async function prepareOutreach(p:any){
+  const sk=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",ik=Deno.env.get("MIDAD_INGEST_KEY")||"";
+  if(!sk||!ik)return {ok:false,error:"outreach_gateway_not_configured",http_status:503};
+  const payload=p?.payload&&typeof p.payload==="object"?p.payload:p;
+  const url=Deno.env.get("SUPABASE_URL")!+"/functions/v1/midad_client_gateway";
+  const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+sk,"x-midad-ingest-key":ik},body:JSON.stringify({...payload,action:"outreach_prepare"})});
+  const text=await r.text();let j:any={};try{j=JSON.parse(text)}catch{j={raw:text}};
+  return {http_status:r.status,...j};
+}
+
 async function decideApproval(admin:any,p:any){
   const id=cleanText(p.approval_id,80), decision=cleanText(p.decision,20);
   if(!id||!["approved","rejected","cancelled"].includes(decision))return {ok:false,error:"approval_id_and_valid_decision_required"};
@@ -1581,6 +1591,7 @@ Deno.serve(async(req:Request)=>{
     else if(action==="noncopy_trade") result=await runNoncopyTrade(body);
     else if(action==="bot_fabric_status") result=await botFabricStatus();
     else if(action==="ugig") result=await runUgig(body);
+    else if(action==="outreach_prepare") result=await prepareOutreach(body);
     else if(action==="approval_decide") result=await decideApproval(admin,body);
     else if(action==="run_mining_monitor") result=await runMiningMonitor();
     else if(action==="stackfull_probe") result=await runStackfullProbe(admin,cleanText(body?.domain,240));
