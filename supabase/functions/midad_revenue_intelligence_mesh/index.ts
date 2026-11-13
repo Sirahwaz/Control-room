@@ -401,7 +401,7 @@ const feedRows=await d`SELECT slug,api_url AS url,metadata->>'revenue_intel_pars
    c.notes=[...(c.notes||[]),"Taskmarket Base escrow transaction did not satisfy every independent receipt check; the task remains blocked."];
   }
  }else if(isSupportedTempoOusdRail(rail)){
-  const prior=await d\`SELECT payout_proof_status,payment_tx_hash,payout_proof_checked_at,evidence FROM public.midad_revenue_intel_opportunities WHERE source_slug='taskmarket_api' AND external_id=\${c.externalId} LIMIT 1\`;
+  const prior=await d`SELECT payout_proof_status,payment_tx_hash,payout_proof_checked_at,evidence FROM public.midad_revenue_intel_opportunities WHERE source_slug='taskmarket_api' AND external_id=${c.externalId} LIMIT 1`;
   const row=prior[0]||{};
   const proof=row.evidence&&typeof row.evidence==="object"?row.evidence.independent_payout_check:null;
   const reusable=isFreshVerifiedTempoProof({
