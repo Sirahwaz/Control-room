@@ -178,7 +178,6 @@
   };
   const BROWSER_RUN_WORKER = "https://midad-continuity-ledger.midadbot.workers.dev";
   const BROWSER_RUN_CONTROL_API = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room";
-  const BROWSER_RUN_TELEGRAM_AUTH = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_telegram_auth";
 
   function browserRunFeedback(message, isError = false) {
     const node = $("#browserRunFeedback");
@@ -228,10 +227,10 @@
     const initData = telegram?.initData || "";
     let response;
     if (initData) {
-      response = await fetch(BROWSER_RUN_TELEGRAM_AUTH, {
+      response = await fetch(BROWSER_RUN_CONTROL_API, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ telegram_init_data: initData, client: "midad-browser-mesh" }),
+        body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
       });
     } else {
       let accessKey = $("#browserRunAccessKey").value.trim();
