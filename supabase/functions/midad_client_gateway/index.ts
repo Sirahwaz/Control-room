@@ -398,7 +398,7 @@ async function decideApproval(admin:any,userId:string,p:any){
     const {data:client}=await admin.from("midad_client_profiles").select("contact").eq("id",ev.client_id).eq("user_id",userId).maybeSingle();
     const inboxId=clip(convo.metadata?.inbox_id,240);
     const recipient=clip(client?.contact,320);
-    const subject=String(convo.topic||"").toLowerCase().startsWith("re:")?String(convo.topic):"Re: "+clip(convo.topic,450);
+    const subject=a.evidence?.outreach_key?clip(convo.topic,450):(String(convo.topic||"").toLowerCase().startsWith("re:")?String(convo.topic):"Re: "+clip(convo.topic,450));
     delivery=await sendAgentMail(inboxId,recipient,subject,draft,"midad-approval-"+approvalId);
   }
   await admin.from("midad_approvals").update({
