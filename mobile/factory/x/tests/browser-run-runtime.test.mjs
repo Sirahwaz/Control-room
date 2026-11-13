@@ -118,7 +118,7 @@ test('invalid session identifiers cannot trigger provider operations', async () 
 test('creates a fresh interactive tab Live View URL for an owned Browser Run session', async () => {
   const { binding, calls } = fakeBinding();
   const result = await createBrowserRunLiveView(binding, 'browser-session-1', 'target-1', 'tab');
-  assert.equal(result.live_view_url, 'https://live.browser.run/inspector?token=ephemeral');
+  assert.equal(result.live_view_url, 'https://live.browser.run/ui/view?mode=tab&wss=live.browser.run/api/fake?jwt=ephemeral');
   assert.deepEqual(calls, [['getLiveView', 'browser-session-1', { targetId: 'target-1', mode: 'tab' }]]);
 });
 
