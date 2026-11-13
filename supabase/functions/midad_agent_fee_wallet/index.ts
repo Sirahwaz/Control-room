@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Wallet, JsonRpcProvider, Interface, formatUnits, formatEther, parseUnits, getAddress, keccak256 } from "npm:ethers@6.15.0";
+import { initialFeeWalletSafetyMetadata } from "./fee-wallet-policy.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -119,8 +120,7 @@ async function provision() {
     max_per_transaction_usd:5,
     max_daily_total_usd:5,
     all_in_budget_includes_network_gas:true,
-    spending_enabled:false,
-    transaction_signing_enabled:false,
+    ...initialFeeWalletSafetyMetadata(),
     owner_approval_per_operation:true,
     transaction_signing_enabled:false,
     allowlisted_destinations_required:true,
