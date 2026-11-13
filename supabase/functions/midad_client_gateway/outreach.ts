@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
 
 export async function prepareOutreach(admin: any, userId: string, p: any, deps: {
