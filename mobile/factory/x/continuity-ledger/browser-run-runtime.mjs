@@ -110,8 +110,24 @@ function normalizeLiveView(value) {
   return url.toString();
 }
 
-export async function runBrowserRunSmoke({ browserBinding, targetUrl, allowedHosts = [] } = {}) {
+export async function runBrowserRunSmoke({
+  browserBinding,
+  targetUrl,
+  allowedHosts = [],
+  keepAliveMs = 60000,
+  liveViewUrlExpiresInMs = 60000,
+  liveViewMode = 'devtools',
+} = {}) {
   assertBinding(browserBinding);
+  if (!Number.isInteger(keepAliveMs) || keepAliveMs < 10000 || keepAliveMs > 1200000) {
+    throw new Error('BROWSER_KEEP_ALIVE_INVALID');
+  }
+  if (!Number.isInteger(liveViewUrlExpiresInMs) || liveViewUrlExpiresInMs < 60000 || liveViewUrlExpiresInMs > 3600000) {
+    throw new Error('BROWSER_LIVE_VIEW_TTL_INVALID');
+  }
+  if (!['tab', 'full', 'devtools'].includes(liveViewMode)) {
+    throw new Error('BROWSER_LIVE_VIEW_MODE_INVALID');
+  }
   const normalizedUrl = validateBrowserRunTarget(targetUrl, allowedHosts);
   const normalizedHosts = normalizeAllowedHosts(allowedHosts);
   let sessionId = null;
@@ -119,9 +135,9 @@ export async function runBrowserRunSmoke({ browserBinding, targetUrl, allowedHos
   let keepSession = false;
   try {
     const session = await browserBinding.acquire({
-      keepAlive: 60000,
+      keepAlive: keepAliveMs,
       targets: true,
-      liveViewUrlExpiresInMs: 60000,
+      liveViewUrlExpiresInMs,
       guardrails: { allowedDomains: normalizedHosts },
     });
     sessionId = session?.sessionId;
@@ -159,7 +175,7 @@ export async function runBrowserRunSmoke({ browserBinding, targetUrl, allowedHos
     }
     const liveView = await browserBinding.getLiveView(sessionId, {
       targetId: target.id,
-      mode: 'devtools',
+      mode: liveViewMode,
     });
     const liveViewUrl = normalizeLiveView(liveView);
     keepSession = true;
@@ -167,6 +183,7 @@ export async function runBrowserRunSmoke({ browserBinding, targetUrl, allowedHos
       status: 'PASS',
       runtime: 'cloudflare-browser-run',
       session_id: sessionId,
+      target_id: target.id,
       title: evidence.title,
       url: evidence.url,
       text_preview: evidence.text_preview,
@@ -193,4 +210,21 @@ export async function closeBrowserRunSession(browserBinding, sessionId) {
     status: state === 'closed' || state === 'CLOSED' ? 'CLOSED' : 'CLOSING',
     session_id: sessionId,
   };
+}
+
+export async function createBrowserRunLiveView(browserBinding, sessionId, targetId, mode = 'tab') {
+  if (!browserBinding || typeof browserBinding.getLiveView !== 'function') {
+    throw new Error('BROWSER_RUN_BINDING_MISSING');
+  }
+  if (typeof sessionId !== 'string' || !SESSION_ID_PATTERN.test(sessionId)) {
+    throw new Error('SESSION_ID_INVALID');
+  }
+  if (typeof targetId !== 'string' || !SESSION_ID_PATTERN.test(targetId)) {
+    throw new Error('TARGET_ID_INVALID');
+  }
+  if (!['tab', 'full', 'devtools'].includes(mode)) {
+    throw new Error('BROWSER_LIVE_VIEW_MODE_INVALID');
+  }
+  const liveView = await browserBinding.getLiveView(sessionId, { targetId, mode });
+  return { live_view_url: normalizeLiveView(liveView) };
 }
