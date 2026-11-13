@@ -52,7 +52,7 @@ test("MNCF and network modules are explicitly pending until live health checks e
   assert.match(html, /data-runtime-state="pending"/);
   assert.match(html, /data-service-state="pending"/);
   assert.match(html, /لا يتطلب VPS/);
-  assert.match(html, /لا يوجد اتصال حي/);
+  assert.match(html, /فحص Cloudflare Health وHeartbeat وعمال CPU مستقل عن Browser Run/);
 });
 
 test("the Android APK workflow builds the manifest-selected Browser home and gates it through Agentation", () => {
@@ -72,4 +72,36 @@ test("the native WebView serves the product's packaged homepage without network 
   assert.ok(smoke.includes("svc wifi disable"));
   assert.ok(smoke.includes("svc data disable"));
   assert.ok(smoke.includes("LOCAL_HOME_LOADED"));
+});
+
+
+test("Browser Mesh exposes authenticated interactive Browser Run and Live View controls", () => {
+  const html = read("mobile/web/midad-browser-mesh.html");
+  const js = read("mobile/web/midad-browser-mesh.js");
+  const worker = read("mobile/factory/x/continuity-ledger/worker.mjs");
+  for (const id of [
+    "browserRunPanel", "browserRunAccessKey", "browserRunConnect", "browserRunTarget",
+    "browserRunAllowedHosts", "browserRunStart", "browserRunRefresh", "browserRunClose",
+    "browserRunLiveViewFrame", "browserRunOpenLiveView", "browserRunStatus",
+  ]) assert.ok(html.includes('id="' + id + '"'), "Missing Browser Run control: " + id);
+  assert.ok(js.includes("https://midad-continuity-ledger.midadbot.workers.dev"));
+  assert.match(js, /\/v1\/browser\/ui\//);
+  assert.match(worker, /midad_browser_agent_gateway/);
+  assert.match(worker, /owner_scope_hash/);
+  assert.match(worker, /BROWSER_USER_GATEWAY_URL/);
+  for (const route of ["status", "start", "refresh", "close"]) {
+    assert.ok(worker.includes("/v1/browser/ui/" + route), "Missing Worker route: " + route);
+  }
+  assert.match(js, /live_view_url/);
+  assert.match(js, /noopener/);
+  assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^)]*(?:token|live.?view)/i);
+  assert.match(html, /id=\"browserRunRuntimeCard\" data-browser-run-state=\"idle\"/);
+});
+
+test("Browser Mesh never ships Cloudflare or Supabase admin credentials in its browser bundle", () => {
+  const js = read("mobile/web/midad-browser-mesh.js");
+  for (const secretName of [
+    "MIDAD_LEDGER_ADMIN_KEY", "CLOUDFLARE_API_TOKEN", "SUPABASE_SERVICE_ROLE_KEY",
+    "MIDAD_GITHUB_APP_PRIVATE_KEY", "MIDAD_WAKE_INTERNAL_KEY",
+  ]) assert.equal(js.includes(secretName), false, "Frontend must not contain " + secretName);
 });
