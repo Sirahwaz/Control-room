@@ -4,6 +4,7 @@ import {
   validateBrowserRunTarget,
   runBrowserRunSmoke,
   closeBrowserRunSession,
+  createBrowserRunLiveView,
 } from '../continuity-ledger/browser-run-runtime.mjs';
 
 class FakeSocket extends EventTarget {
@@ -74,11 +75,15 @@ test('creates a guarded Cloudflare browser session and returns verified page evi
     browserBinding: binding,
     targetUrl: 'https://example.com/',
     allowedHosts: ['example.com'],
+    keepAliveMs: 300000,
+    liveViewUrlExpiresInMs: 300000,
+    liveViewMode: 'tab',
   });
 
   assert.equal(result.status, 'PASS');
   assert.equal(result.runtime, 'cloudflare-browser-run');
   assert.equal(result.session_id, 'browser-session-1');
+  assert.equal(result.target_id, 'target-1');
   assert.equal(result.title, 'Example Domain');
   assert.match(result.text_preview, /documentation examples/);
   assert.equal(result.url, 'https://example.com/');
@@ -86,9 +91,9 @@ test('creates a guarded Cloudflare browser session and returns verified page evi
   assert.equal(socket.accepted, true);
   assert.equal(socket.closed, true);
   assert.deepEqual(calls[0], ['acquire', {
-    keepAlive: 60000,
+    keepAlive: 300000,
     targets: true,
-    liveViewUrlExpiresInMs: 60000,
+    liveViewUrlExpiresInMs: 300000,
     guardrails: { allowedDomains: ['example.com'] },
   }]);
   assert.equal(calls.some(([name]) => name === 'closeSession'), false,
@@ -105,5 +110,20 @@ test('closes a Browser Run session through the provider binding', async () => {
 test('invalid session identifiers cannot trigger provider operations', async () => {
   const { binding, calls } = fakeBinding();
   await assert.rejects(closeBrowserRunSession(binding, '../unexpected'), /SESSION_ID_INVALID/);
+  assert.equal(calls.length, 0);
+});
+
+
+test('creates a fresh interactive tab Live View URL for an owned Browser Run session', async () => {
+  const { binding, calls } = fakeBinding();
+  const result = await createBrowserRunLiveView(binding, 'browser-session-1', 'target-1', 'tab');
+  assert.equal(result.live_view_url, 'https://live.browser.run/inspector?token=ephemeral');
+  assert.deepEqual(calls, [['getLiveView', 'browser-session-1', { targetId: 'target-1', mode: 'tab' }]]);
+});
+
+test('rejects malformed session and target identifiers before minting a Live View URL', async () => {
+  const { binding, calls } = fakeBinding();
+  await assert.rejects(createBrowserRunLiveView(binding, '../bad', 'target-1', 'tab'), /SESSION_ID_INVALID/);
+  await assert.rejects(createBrowserRunLiveView(binding, 'browser-session-1', '../bad', 'tab'), /TARGET_ID_INVALID/);
   assert.equal(calls.length, 0);
 });
