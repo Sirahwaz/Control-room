@@ -93,11 +93,10 @@ function taskmarket(body:any,httpStatus:number){
   const amount=num(t.netReward,0)/1e6;
   const deadline=dt(t.expiryTime);
   const tx=String(t.escrowTxHash||"");
-  const noStake=t.stakeRequired===false||String(t.stakeRequired)==="false";
   const stakeRequired=t.stakeRequired===true||String(t.stakeRequired)==="true";
   const stakeBps=num(t.stakeBps,0);
   const claimBond=stakeRequired?(stakeBps>0?amount*stakeBps/10000:amount):0;
-  const open=String(t.status||"").toLowerCase()==="open"&&String(t.phase||"").toLowerCase()==="active"&&t.submissionWindowOpen!==false&&(!deadline||deadline.getTime()>Date.now());
+  const open=String(t.status||"").toLowerCase()==="open"&&String(t.phase||"").toLowerCase()==="active"&&t.submissionWindowOpen===true&&(!deadline||deadline.getTime()>Date.now());
   const tags=Array.isArray(t.tags)?t.tags.map(String):[];
   const test=/\b(?:do not claim|selfaudit|compatibility probe|test task)\b/i.test(String(t.title||"")+" "+String(t.description||""));
   return{
@@ -422,7 +421,7 @@ const feedRows=await d`SELECT slug,api_url AS url,metadata->>'revenue_intel_pars
    c.payoutConfidence=1;
    c.payoutProofUrl="https://explore.tempo.xyz/tx/"+c.tx;
    c.evidenceMeta={...(c.evidenceMeta||{}),onchain_verification:proof};
-   c.notes=[...(c.notes||[]),"Reused a fresh (under 30 minutes) Tempo-specific independent escrow proof only because the current task ID, OUSD/Tempo rail, escrow transaction, exact reward and 12+ confirmations still match. This is not worker-payment evidence."];
+   c.notes=[...(c.notes||[]),"Reused a fresh (under 7 days) Tempo-specific independent escrow proof only because the current task ID, OUSD/Tempo rail, escrow transaction, exact reward and 12+ confirmations still match. This is not worker-payment evidence."];
   }else{
    c.paymentProof=false;
    c.escrowFunded=null;
