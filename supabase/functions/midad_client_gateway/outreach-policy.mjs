@@ -2,6 +2,20 @@ const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 const LAWFUL_BASES = new Set(["consent", "existing_relationship", "legitimate_interest"]);
 const clean = (value, max) => String(value ?? "").trim().slice(0, max);
 
+export async function checkOutreachSuppression(admin, userId, recipientEmail) {
+  const email = clean(recipientEmail, 320).toLowerCase();
+  if (!EMAIL_RE.test(email)) return { ok: false, error: "outreach_recipient_invalid" };
+  try {
+    const { data, error } = await admin.from("midad_outreach_suppressions")
+      .select("id").eq("user_id", userId).eq("email", email).limit(1).maybeSingle();
+    if (error) return { ok: false, error: "outreach_suppression_unavailable" };
+    if (data) return { ok: false, error: "outreach_recipient_suppressed" };
+    return { ok: true, checked_email: email, checked_at: new Date().toISOString() };
+  } catch {
+    return { ok: false, error: "outreach_suppression_unavailable" };
+  }
+}
+
 export function normalizeOutreachRequest(input) {
   const p = input && typeof input === "object" && !Array.isArray(input) ? input : {};
   const channel = clean(p.channel, 24).toLowerCase();
@@ -35,10 +49,6 @@ export function normalizeOutreachRequest(input) {
   if (!LAWFUL_BASES.has(lawfulBasis) || basisEvidence.length < 20) {
     return { ok: false, error: "outreach_contact_basis_evidence_required" };
   }
-  if (p.suppression_checked !== true) {
-    return { ok: false, error: "outreach_suppression_check_required" };
-  }
-
   return {
     ok: true,
     value: {
@@ -51,7 +61,6 @@ export function normalizeOutreachRequest(input) {
       source_url: parsedUrl.toString(),
       lawful_basis: lawfulBasis,
       basis_evidence: basisEvidence,
-      suppression_checked: true,
       campaign_ref: clean(p.campaign_ref, 120) || null,
     },
   };
