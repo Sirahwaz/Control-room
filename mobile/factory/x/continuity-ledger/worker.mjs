@@ -220,7 +220,7 @@ export class MidadContinuityLedger {
       }
       return response(200, {
         ok: true, active: true, runtime: 'cloudflare-browser-run',
-        session_id: row.session_id, target_host: row.target_host,
+        session_id: row.session_id, target_id: row.target_id, target_host: row.target_host,
         title: row.page_title, created_at_ms: row.created_at_ms,
       });
     }
