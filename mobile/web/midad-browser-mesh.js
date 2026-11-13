@@ -169,6 +169,229 @@
     $("#internetStatus").className = online ? "value-ok" : "value-pending";
     $("#footerNetwork").textContent = "DEVICE NETWORK: " + (online ? "ONLINE" : "OFFLINE");
   }
+  const browserRunState = {
+    token: null,
+    sessionId: null,
+    targetId: null,
+    liveViewUrl: null,
+    busy: false,
+  };
+  const BROWSER_RUN_WORKER = "https://midad-continuity-ledger.midadbot.workers.dev";
+  const BROWSER_RUN_CONTROL_API = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room";
+  const BROWSER_RUN_TELEGRAM_AUTH = "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_telegram_auth";
+
+  function browserRunFeedback(message, isError = false) {
+    const node = $("#browserRunFeedback");
+    if (node) {
+      node.textContent = message;
+      node.classList.toggle("error", isError);
+    }
+  }
+  function browserRunButtons() {
+    const connected = Boolean(browserRunState.token);
+    const active = Boolean(browserRunState.sessionId);
+    $("#browserRunConnect").disabled = browserRunState.busy;
+    $("#browserRunAccessKey").disabled = browserRunState.busy || connected;
+    $("#browserRunDisconnect").hidden = !connected;
+    $("#browserRunStart").disabled = browserRunState.busy || !connected || active || !navigator.onLine;
+    $("#browserRunRefresh").disabled = browserRunState.busy || !connected || !active || !navigator.onLine;
+    $("#browserRunClose").disabled = browserRunState.busy || !connected || !active || !navigator.onLine;
+  }
+  function browserRunStateLabel(state, detail) {
+    const status = $("#browserRunStatus");
+    const card = $("#browserRunRuntimeCard");
+    const cardState = $("#browserRunCardState");
+    const cardFoot = $("#browserRunCardFoot");
+    status.textContent = state;
+    status.className = "state-label " + (state === "CONNECTED" || state === "RUNNING" ? "verified" : "pending");
+    card.dataset.browserRunState = state.toLowerCase();
+    cardState.textContent = state;
+    cardState.className = "state-label " + (state === "RUNNING" ? "verified" : "pending");
+    cardFoot.textContent = detail || state;
+    browserRunButtons();
+  }
+  function clearBrowserRunView() {
+    browserRunState.sessionId = null;
+    browserRunState.targetId = null;
+    browserRunState.liveViewUrl = null;
+    $("#browserRunSessionInfo").hidden = true;
+    $("#browserRunSessionInfo").textContent = "";
+    $("#browserRunLiveViewShell").hidden = true;
+    $("#browserRunLiveViewFrame").removeAttribute("src");
+    $("#browserRunOpenLiveView").hidden = true;
+    $("#browserRunOpenLiveView").removeAttribute("href");
+    browserRunStateLabel(browserRunState.token ? "CONNECTED" : "NOT CONNECTED", "IDLE · NO SESSION");
+  }
+  async function browserRunObtainSession(force = false) {
+    if (browserRunState.token && !force) return browserRunState.token;
+    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    const initData = telegram?.initData || "";
+    let response;
+    if (initData) {
+      response = await fetch(BROWSER_RUN_TELEGRAM_AUTH, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ telegram_init_data: initData, client: "midad-browser-mesh" }),
+      });
+    } else {
+      let accessKey = $("#browserRunAccessKey").value.trim();
+      if (!accessKey) {
+        try { accessKey = sessionStorage.getItem("midad_cockpit_key") || ""; } catch {}
+      }
+      if (!accessKey) throw new Error("أدخل Control Room Access Key للربط الأول.");
+      try {
+        response = await fetch(BROWSER_RUN_CONTROL_API, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ access_key: accessKey, client: "midad-browser-mesh", client_version: "0.2.1" }),
+        });
+      } finally {
+        $("#browserRunAccessKey").value = "";
+      }
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
+    browserRunState.token = data.token;
+    return browserRunState.token;
+  }
+  async function browserRunApi(path, fields = {}, retry = true) {
+    const token = await browserRunObtainSession();
+    const response = await fetch(BROWSER_RUN_WORKER + path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...fields, session_token: token }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401 && retry) {
+      browserRunState.token = null;
+      return browserRunApi(path, fields, false);
+    }
+    if (!response.ok || data.ok !== true) throw new Error(data.error || ("HTTP " + response.status));
+    return data;
+  }
+  function renderBrowserRunView(data, refreshOnly = false) {
+    if (data.session_id) browserRunState.sessionId = data.session_id;
+    if (data.target_id) browserRunState.targetId = data.target_id;
+    if (data.live_view_url) {
+      const liveUrl = new URL(data.live_view_url);
+      if (liveUrl.protocol !== "https:" || liveUrl.hostname !== "live.browser.run") {
+        throw new Error("LIVE_VIEW_URL_REJECTED");
+      }
+      browserRunState.liveViewUrl = liveUrl.toString();
+      const frame = $("#browserRunLiveViewFrame");
+      frame.src = browserRunState.liveViewUrl;
+      frame.referrerPolicy = "no-referrer";
+      const openLink = $("#browserRunOpenLiveView");
+      openLink.href = browserRunState.liveViewUrl;
+      openLink.rel = "noopener noreferrer";
+      openLink.target = "_blank";
+      openLink.hidden = false;
+      $("#browserRunLiveViewShell").hidden = false;
+    }
+    const sessionInfo = $("#browserRunSessionInfo");
+    const title = data.title || "Cloudflare Browser Run";
+    const host = data.target_host || (() => {
+      try { return new URL(data.url || $("#browserRunTarget").value).hostname; } catch { return "remote browser"; }
+    })();
+    sessionInfo.textContent = title + " · " + host + (data.session_id ? " · " + data.session_id : "");
+    sessionInfo.hidden = false;
+    browserRunStateLabel("RUNNING", host + " · LIVE");
+    browserRunFeedback(refreshOnly
+      ? "تم تجديد رابط Live View. الرابط مؤقت؛ استخدم التجديد عند انتهاء صلاحيته."
+      : "بدأت جلسة Browser Run التفاعلية. يمكنك التحكم بالصفحة من Live View.");
+  }
+  async function browserRunRefreshView() {
+    if (!browserRunState.sessionId) return;
+    browserRunState.busy = true; browserRunButtons();
+    try {
+      const data = await browserRunApi("/v1/browser/ui/refresh", { session_id: browserRunState.sessionId });
+      renderBrowserRunView(data, true);
+    } catch (error) {
+      browserRunFeedback(String(error.message || error), true);
+    } finally {
+      browserRunState.busy = false; browserRunButtons();
+    }
+  }
+  async function browserRunCheckStatus() {
+    const data = await browserRunApi("/v1/browser/ui/status");
+    if (!data.active) {
+      clearBrowserRunView();
+      if (data.expired) browserRunFeedback("انتهت الجلسة السابقة تلقائياً. يمكنك بدء جلسة جديدة.");
+      return;
+    }
+    browserRunState.sessionId = data.session_id;
+    browserRunState.targetId = data.target_id || null;
+    $("#browserRunTarget").value = $("#browserRunTarget").value || ("https://" + data.target_host + "/");
+    await browserRunRefreshView();
+  }
+  async function browserRunConnect() {
+    browserRunState.busy = true; browserRunButtons();
+    try {
+      await browserRunObtainSession();
+      browserRunStateLabel("CONNECTED", "OWNER SESSION VERIFIED");
+      browserRunFeedback("تم التحقق من جلسة Control Room؛ يتم فحص جلسات Browser Run الحالية.");
+      await browserRunCheckStatus();
+      browserRunFeedback(browserRunState.sessionId
+        ? "تمت استعادة جلسة Browser Run السابقة."
+        : "الاتصال آمن وجاهز. اضغط تشغيل جلسة تفاعلية لبدء Browser Run.");
+    } catch (error) {
+      browserRunState.token = null;
+      browserRunStateLabel("AUTH REQUIRED", "LOGIN REQUIRED");
+      browserRunFeedback(String(error.message || error), true);
+    } finally {
+      browserRunState.busy = false; browserRunButtons();
+    }
+  }
+  async function browserRunStart() {
+    browserRunState.busy = true; browserRunButtons();
+    try {
+      const target = $("#browserRunTarget").value.trim();
+      const allowedHosts = [...new Set($("#browserRunAllowedHosts").value.split(",").map(value => value.trim().toLowerCase()).filter(Boolean))];
+      const data = await browserRunApi("/v1/browser/ui/start", { target_url: target, allowed_hosts: allowedHosts });
+      renderBrowserRunView(data);
+    } catch (error) {
+      browserRunFeedback(String(error.message || error), true);
+    } finally {
+      browserRunState.busy = false; browserRunButtons();
+    }
+  }
+  async function browserRunClose() {
+    if (!browserRunState.sessionId) return;
+    browserRunState.busy = true; browserRunButtons();
+    try {
+      await browserRunApi("/v1/browser/ui/close", { session_id: browserRunState.sessionId });
+      clearBrowserRunView();
+      browserRunFeedback("أُغلقت جلسة Browser Run وتم تحرير المورد السحابي.");
+    } catch (error) {
+      browserRunFeedback(String(error.message || error), true);
+    } finally {
+      browserRunState.busy = false; browserRunButtons();
+    }
+  }
+  async function browserRunDisconnect() {
+    if (browserRunState.sessionId) {
+      const confirmed = window.confirm("توجد جلسة Browser Run مفتوحة. هل تريد إغلاقها قبل قطع الاتصال؟");
+      if (confirmed) await browserRunClose();
+    }
+    browserRunState.token = null;
+    clearBrowserRunView();
+    browserRunStateLabel("NOT CONNECTED", "OWNER SESSION DISCONNECTED");
+    browserRunFeedback("تم قطع جلسة الربط المحلية. أي جلسة سحابية لم تُغلق ستنتهي وفق مهلة Cloudflare.");
+  }
+  function initBrowserRun() {
+    $("#browserRunConnect").addEventListener("click", browserRunConnect);
+    $("#browserRunStart").addEventListener("click", browserRunStart);
+    $("#browserRunRefresh").addEventListener("click", browserRunRefreshView);
+    $("#browserRunClose").addEventListener("click", browserRunClose);
+    $("#browserRunDisconnect").addEventListener("click", browserRunDisconnect);
+    if ($("#browserRunAccessKey").value) $("#browserRunAccessKey").value = "";
+    browserRunButtons();
+    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    let sameOriginKey = "";
+    try { sameOriginKey = sessionStorage.getItem("midad_cockpit_key") || ""; } catch {}
+    if (telegram?.initData || sameOriginKey) browserRunConnect();
+  }
+
   function bindEvents() {
     document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => selectTab(button.dataset.tab)));
     $("#themeSelect").addEventListener("change", event => { settings.theme = event.target.value; applySettings(); });
@@ -189,6 +412,7 @@
       applySettings(); saveSettings();
     });
     window.addEventListener("online", updateInternetStatus);
+    window.addEventListener("offline", () => { updateInternetStatus(); browserRunButtons(); });
     window.addEventListener("offline", updateInternetStatus);
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
@@ -200,6 +424,7 @@
     settings = safeRead();
     applySettings();
     bindEvents();
+    initBrowserRun();
     updateInternetStatus();
     selectTab("mesh");
   }
