@@ -6,6 +6,7 @@ import {
   closeBrowserRunSession,
   createBrowserRunLiveView,
 } from '../continuity-ledger/browser-run-runtime.mjs';
+import browserRunWorker from '../continuity-ledger/worker.mjs';
 
 class FakeSocket extends EventTarget {
   accepted = false;
@@ -42,7 +43,7 @@ function fakeBinding() {
     },
     async getLiveView(sessionId, options) {
       calls.push(['getLiveView', sessionId, options]);
-      return { devtoolsFrontendUrl: 'https://live.browser.run/inspector?token=ephemeral' };
+      return { devtoolsFrontendUrl: 'https://live.browser.run/ui/view?mode=' + options.mode + '&wss=live.browser.run/api/fake?jwt=ephemeral' };
     },
     async closeSession(sessionId) {
       calls.push(['closeSession', sessionId]);
@@ -87,7 +88,7 @@ test('creates a guarded Cloudflare browser session and returns verified page evi
   assert.equal(result.title, 'Example Domain');
   assert.match(result.text_preview, /documentation examples/);
   assert.equal(result.url, 'https://example.com/');
-  assert.equal(result.live_view_url, 'https://live.browser.run/inspector?token=ephemeral');
+  assert.equal(result.live_view_url, 'https://live.browser.run/ui/view?mode=tab&wss=live.browser.run/api/fake?jwt=ephemeral');
   assert.equal(socket.accepted, true);
   assert.equal(socket.closed, true);
   assert.deepEqual(calls[0], ['acquire', {
@@ -126,4 +127,34 @@ test('rejects malformed session and target identifiers before minting a Live Vie
   await assert.rejects(createBrowserRunLiveView(binding, '../bad', 'target-1', 'tab'), /SESSION_ID_INVALID/);
   await assert.rejects(createBrowserRunLiveView(binding, 'browser-session-1', '../bad', 'tab'), /TARGET_ID_INVALID/);
   assert.equal(calls.length, 0);
+});
+
+test('Browser Mesh CORS preflight permits only the two packaged MIDAD origins', async () => {
+  const allowed = await browserRunWorker.fetch(new Request(
+    'https://midad-continuity-ledger.midadbot.workers.dev/v1/browser/ui/start',
+    { method: 'OPTIONS', headers: { origin: 'https://appassets.androidplatform.net' } },
+  ), {});
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://appassets.androidplatform.net');
+  assert.equal(allowed.headers.get('access-control-allow-methods'), 'POST,OPTIONS');
+
+  const blocked = await browserRunWorker.fetch(new Request(
+    'https://midad-continuity-ledger.midadbot.workers.dev/v1/browser/ui/start',
+    { method: 'OPTIONS', headers: { origin: 'https://untrusted.example' } },
+  ), {});
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.headers.get('access-control-allow-origin'), null);
+});
+
+test('Browser Mesh UI POST requests fail closed without a Durable Object binding', async () => {
+  const result = await browserRunWorker.fetch(new Request(
+    'https://midad-continuity-ledger.midadbot.workers.dev/v1/browser/ui/status',
+    {
+      method: 'POST',
+      headers: { origin: 'https://sirahwaz.github.io', 'content-type': 'application/json' },
+      body: JSON.stringify({ session_token: 'A'.repeat(48) }),
+    },
+  ), {});
+  assert.equal(result.status, 503);
+  assert.equal(result.headers.get('access-control-allow-origin'), 'https://sirahwaz.github.io');
 });
