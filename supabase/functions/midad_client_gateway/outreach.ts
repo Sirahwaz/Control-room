@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
+import { normalizeOutreachRequest, buildOutreachKey, checkOutreachSuppression } from "./outreach-policy.mjs";
 
 export async function prepareOutreach(admin: any, userId: string, p: any, deps: {
   getOrCreateClient: (admin: any, userId: string, payload: any) => Promise<any>;
@@ -9,6 +9,8 @@ export async function prepareOutreach(admin: any, userId: string, p: any, deps: 
   const validation = normalizeOutreachRequest(p);
   if (!validation.ok) return validation;
   const request: any = (validation as any).value;
+  const suppression = await checkOutreachSuppression(admin, userId, request.recipient_email);
+  if (!suppression.ok) return suppression;
   const outreachKey = await buildOutreachKey(userId, request.recipient_email, request.source_url, request.campaign_ref || "");
   const threadId = "midad-outreach:" + outreachKey;
 
@@ -36,6 +38,7 @@ export async function prepareOutreach(admin: any, userId: string, p: any, deps: 
     outreach_lawful_basis: request.lawful_basis,
     outreach_basis_evidence: request.basis_evidence,
     suppression_checked: true,
+    suppression_checked_at: suppression.checked_at,
   };
   const { error: conversationUpdateError } = await admin.from("midad_conversations")
     .update({ metadata, human_approval_required: true, risk_class: "medium" })
@@ -67,6 +70,7 @@ export async function prepareOutreach(admin: any, userId: string, p: any, deps: 
         agent: "midad_outreach_dispatcher_v1", outreach_key: outreachKey,
         source_url: request.source_url, lawful_basis: request.lawful_basis,
         basis_evidence: request.basis_evidence, suppression_checked: true,
+        suppression_checked_at: suppression.checked_at,
       },
     });
     if (messageError) throw new Error("outreach_draft_persist_failed");
@@ -78,6 +82,7 @@ export async function prepareOutreach(admin: any, userId: string, p: any, deps: 
     intent: "outreach", confidence: 1, outreach_key: outreachKey,
     source_url: request.source_url, lawful_basis: request.lawful_basis,
     basis_evidence: request.basis_evidence, suppression_checked: true,
+    suppression_checked_at: suppression.checked_at,
     recipient_email: request.recipient_email,
   };
   const { data: approval, error: approvalError } = await admin.from("midad_approvals").insert({
