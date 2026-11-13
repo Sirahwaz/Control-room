@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Wallet, JsonRpcProvider, Interface, formatUnits, formatEther, parseUnits, getAddress, keccak256 } from "npm:ethers@6.15.0";
-import { initialFeeWalletSafetyMetadata } from "./fee-wallet-policy.mjs";
+import { initialFeeWalletSafetyMetadata, isLiveOwnerApproval } from "./fee-wallet-policy.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -270,7 +270,7 @@ async function previewFeePayment(body:any){
   const w=await getExistingWallet();if(!w||w.status!=="ACTIVE"||w.metadata?.spending_enabled!==true||w.metadata?.transaction_signing_enabled!==true)return {ok:false,error:"fee_wallet_not_armed_owner_approval_only"};
   const pcy=await feePolicy();let to:string;try{to=getAddress(String(r.recipient))}catch{return {ok:false,error:"recipient_address_invalid"}}
   const {data:ap}=await db.from("midad_approvals").select("id,status,expires_at").eq("id",r.approval_id).maybeSingle();
-  if(!ap||ap.status!=="pending"||!ap.expires_at||new Date(ap.expires_at).getTime()<=Date.now())return {ok:false,error:"owner_approval_expired_or_not_pending"};
+  if(!isLiveOwnerApproval(ap))return {ok:false,error:"owner_approval_expired_or_not_pending"};
   const amountUnits=parseUnits(String(r.amount),6),b=await readBalance(w.address);
   if(Number(b.usdc)<Number(r.amount))return {ok:false,error:"insufficient_fee_wallet_usdc",balance_usdc:b.usdc,required_usdc:r.amount};
   const signer=await feeSignerMatches(w);if(!signer.ok)return {ok:false,error:"fee_wallet_signer_address_mismatch"};
