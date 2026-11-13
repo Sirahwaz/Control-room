@@ -257,7 +257,7 @@ export async function handleAgentMailRequest(req: Request) {
     if (!hasAdminAccess(req)) return json({ ok: false, error: "unauthorized" }, 401);
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     if (!supabaseUrl) return json({ ok: false, error: "supabase_url_missing" }, 503);
-    const webhookUrl = supabaseUrl.replace(/\/$/, "") + "/functions/v1/midad_agentmail_gateway/webhook";
+    const webhookUrl = supabaseUrl.replace(/\/$/, "") + "/functions/v1/midad_client_gateway/agentmail/webhook";
     try {
       const webhook = await agentMailRequest("/webhooks", "POST", {
         client_id: "midad-agentmail-us-webhook-v1",
