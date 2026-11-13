@@ -1,4 +1,4 @@
-import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
+import { normalizeOutreachRequest, buildOutreachKey, checkOutreachSuppression } from "./outreach-policy.mjs";
 
 Deno.test("accepts one evidence-backed AgentMail outreach draft", () => {
   const result = normalizeOutreachRequest({
@@ -47,16 +47,16 @@ Deno.test("requires an HTTPS source and evidence of the contact basis", () => {
   }
 });
 
-Deno.test("requires suppression screening before a draft is queued", () => {
+Deno.test("does not treat a caller-supplied suppression flag as screening evidence", () => {
   const result = normalizeOutreachRequest({
     channel: "agentmail", recipient_email: "buyer@example.com",
     inbox_id: "inbox", subject: "Hello", draft: "Hello",
     source_url: "https://example.com/request", lawful_basis: "legitimate_interest",
     basis_evidence: "Documented relevance and balancing assessment.",
-    suppression_checked: false,
+    suppression_checked: true,
   });
-  if (result.ok || result.error !== "outreach_suppression_check_required") {
-    throw new Error("unscreened contact must be blocked");
+  if (!result.ok || "suppression_checked" in result.value) {
+    throw new Error("request normalization must not trust caller-supplied screening flags");
   }
 });
 
