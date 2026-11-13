@@ -105,3 +105,11 @@ test("Browser Mesh never ships Cloudflare or Supabase admin credentials in its b
     "MIDAD_GITHUB_APP_PRIVATE_KEY", "MIDAD_WAKE_INTERNAL_KEY",
   ]) assert.equal(js.includes(secretName), false, "Frontend must not contain " + secretName);
 });
+
+
+test("Browser Mesh Telegram Mini App auth uses the existing Control Room session endpoint", () => {
+  const js = read("mobile/web/midad-browser-mesh.js");
+  assert.match(js, /BROWSER_RUN_CONTROL_API[\s\S]*midad_control_room/);
+  assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
+  assert.doesNotMatch(js, /midad_telegram_auth/);
+});
