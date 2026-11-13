@@ -115,7 +115,8 @@ test("Browser Mesh uses Telegram Mini App auth only and exposes no manual access
   const js = read("mobile/web/midad-browser-mesh.js");
   assert.match(js, /BROWSER_RUN_CONTROL_API[\s\S]*midad_control_room/);
   assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
-  assert.doesNotMatch(js, /midad_telegram_auth/);\n  assert.doesNotMatch(js, /access_key|midad_cockpit_key|browserRunAccessKey/);
+  assert.doesNotMatch(js, /midad_telegram_auth/);
+  assert.doesNotMatch(js, /access_key|midad_cockpit_key|browserRunAccessKey/);
 });
 
 
