@@ -78,6 +78,7 @@ test("the native WebView serves the product's packaged homepage without network 
 test("Browser Mesh exposes authenticated interactive Browser Run and Live View controls", () => {
   const html = read("mobile/web/midad-browser-mesh.html");
   const js = read("mobile/web/midad-browser-mesh.js");
+  const worker = read("mobile/factory/x/continuity-ledger/worker.mjs");
   for (const id of [
     "browserRunPanel", "browserRunAccessKey", "browserRunConnect", "browserRunTarget",
     "browserRunAllowedHosts", "browserRunStart", "browserRunRefresh", "browserRunClose",
@@ -85,11 +86,16 @@ test("Browser Mesh exposes authenticated interactive Browser Run and Live View c
   ]) assert.ok(html.includes('id="' + id + '"'), "Missing Browser Run control: " + id);
   assert.ok(js.includes("https://midad-continuity-ledger.midadbot.workers.dev"));
   assert.match(js, /\/v1\/browser\/ui\//);
-  assert.match(js, /midad_browser_agent_gateway/);
+  assert.match(worker, /midad_browser_agent_gateway/);
+  assert.match(worker, /owner_scope_hash/);
+  assert.match(worker, /BROWSER_USER_GATEWAY_URL/);
+  for (const route of ["status", "start", "refresh", "close"]) {
+    assert.ok(worker.includes("/v1/browser/ui/" + route), "Missing Worker route: " + route);
+  }
   assert.match(js, /live_view_url/);
   assert.match(js, /noopener/);
-  assert.doesNotMatch(js, /localStorage\\.(?:setItem|getItem)\\([^)]*(?:token|live.?view)/i);
-  assert.ok(!html.includes("data-runtime-state=\"pending\" data-browser-run"));
+  assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^)]*(?:token|live.?view)/i);
+  assert.match(html, /id=\"browserRunRuntimeCard\" data-browser-run-state=\"idle\"/);
 });
 
 test("Browser Mesh never ships Cloudflare or Supabase admin credentials in its browser bundle", () => {
