@@ -5,7 +5,6 @@ on:
     paths:
       - "supabase/functions/midad_client_gateway/agentmail*"
       - "supabase/functions/midad_client_gateway/outreach-policy*"
-      - "supabase/functions/midad_client_gateway/outreach-policy*"
       - "supabase/functions/midad_client_gateway/index.ts"
       - "supabase/functions/midad_client_gateway/deno.json"
       - ".github/workflows/agentmail-gateway.yml"
@@ -13,6 +12,9 @@ on:
     branches: [main, 'feat/**']
     paths:
       - "supabase/functions/midad_client_gateway/agentmail*"
+      - "supabase/functions/midad_client_gateway/outreach-policy*"
+      - "supabase/functions/midad_client_gateway/index.ts"
+      - "supabase/functions/midad_client_gateway/deno.json"
       - ".github/workflows/agentmail-gateway.yml"
 
 permissions:
@@ -27,8 +29,8 @@ jobs:
         with:
           deno-version: v2.x
       - name: Lint
-        run: deno lint --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts
+        run: deno lint --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/outreach-policy.mjs supabase/functions/midad_client_gateway/outreach-policy.test.mjs
       - name: Type check
-        run: deno check --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/agentmail_test.ts
+        run: deno check --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/agentmail_test.ts supabase/functions/midad_client_gateway/outreach-policy.mjs supabase/functions/midad_client_gateway/outreach-policy.test.mjs
       - name: Unit tests
-        run: deno test --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail_test.ts
+        run: deno test --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail_test.ts supabase/functions/midad_client_gateway/outreach-policy.test.mjs
