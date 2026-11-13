@@ -32,6 +32,11 @@ function authorized(req: Request) {
   );
 }
 
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 const clip = (value: unknown, max = 4000) =>
   String(value ?? "").trim().slice(0, max);
 
@@ -429,12 +434,14 @@ Deno.serve(async (req: Request) => {
           .eq("profile_ref", ownerUserId)
           .maybeSingle();
         if (error) return json({ ok: false, error: "worker_status_lookup_failed" }, 500);
+        const ownerScopeHash = await sha256("midad-browser-ui-owner-v1:" + ownerUserId);
         const heartbeatAt = typeof data?.metadata?.heartbeat_at === "string" ? data.metadata.heartbeat_at : "";
         const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : 0;
         const workerOnline = data?.status === "online" && Number.isFinite(heartbeatMs) &&
           Date.now() - heartbeatMs >= 0 && Date.now() - heartbeatMs <= 45_000;
         return json({
           ok: true, service: "midad_browser_agent_gateway", contract: "browser-user-v1",
+          owner_scope_hash: ownerScopeHash,
           worker_online: workerOnline, worker_last_seen: workerOnline ? heartbeatAt : null,
           browser_engine: "Playwright Chromium", session_storage: "memory_only",
           allowed_actions: ["start_session", "status", "inspect", "navigate", "wait_for_selector", "click", "fill", "submit_form", "stop_session"],
