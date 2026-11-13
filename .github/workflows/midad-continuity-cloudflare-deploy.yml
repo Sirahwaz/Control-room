@@ -10,6 +10,7 @@ on:
       - ".github/workflows/midad-mncf-ephemeral-runner.yml"
       - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
       - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
+      - "mobile/factory/x/tests/browser-run-runtime.test.mjs"
       - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
   pull_request:
     branches: [main]
