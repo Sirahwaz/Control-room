@@ -241,8 +241,8 @@ export class MidadContinuityLedger {
         return response(422, { ok: false, error: code });
       }
       const active = this.one(
-        'SELECT session_id FROM browser_run_ui_sessions WHERE owner_token_hash=? AND closed_at_ms IS NULL LIMIT 1',
-        auth.tokenHash,
+        'SELECT session_id FROM browser_run_ui_sessions WHERE owner_scope_hash=? AND closed_at_ms IS NULL LIMIT 1',
+        auth.ownerScopeHash,
       );
       if (active) return response(409, { ok: false, error: 'BROWSER_RUN_SESSION_ALREADY_ACTIVE' });
       try {
@@ -258,7 +258,7 @@ export class MidadContinuityLedger {
         try {
           this.exec(
             'INSERT INTO browser_run_ui_sessions(session_id,owner_scope_hash,target_id,target_host,page_title,created_at_ms,closed_at_ms) VALUES(?,?,?,?,?,?,NULL)',
-            result.session_id, auth.tokenHash, result.target_id,
+            result.session_id, auth.ownerScopeHash, result.target_id,
             new URL(result.url).hostname, String(result.title || '').slice(0, 200), now,
           );
         } catch {
@@ -282,8 +282,8 @@ export class MidadContinuityLedger {
     const sessionId = typeof body.session_id === 'string' ? body.session_id : '';
     if (!validId(sessionId)) return response(422, { ok: false, error: 'SESSION_ID_INVALID' });
     const row = this.one(
-      'SELECT session_id,target_id FROM browser_run_ui_sessions WHERE session_id=? AND owner_token_hash=? AND closed_at_ms IS NULL',
-      sessionId, auth.tokenHash,
+      'SELECT session_id,target_id FROM browser_run_ui_sessions WHERE session_id=? AND owner_scope_hash=? AND closed_at_ms IS NULL',
+      sessionId, auth.ownerScopeHash,
     );
     if (!row) return response(404, { ok: false, error: 'BROWSER_RUN_SESSION_NOT_FOUND' });
 
