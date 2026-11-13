@@ -118,7 +118,9 @@ test("Browser Mesh Telegram Mini App auth uses the existing Control Room session
 test("Browser Run Worker binds persisted sessions to the gateway-authenticated owner scope", () => {
   const worker = read("mobile/factory/x/continuity-ledger/worker.mjs");
   assert.match(worker, /owner_scope_hash/);
-  assert.match(worker, /result\.owner_scope_hash/);
-  assert.match(worker, /ownerScopeHash:\s*result\.owner_scope_hash/);
+  assert.match(worker, /typeof result\?\.owner_scope_hash === 'string'/);
+  assert.match(worker, /!\/^\[a-f0-9\]\{64\}\$\//);
+  assert.match(worker, /MIDAD_BROWSER_OWNER_SCOPE_MISSING/);
+  assert.match(worker, /return \{ ok: true, ownerScopeHash \}/);
   assert.doesNotMatch(worker, /sha256\(['"]midad-browser-single-owner-v1['"]\)/);
 });
