@@ -111,6 +111,8 @@ export class MidadContinuityLedger {
       );
       CREATE INDEX IF NOT EXISTS browser_run_ui_owner_idx
         ON browser_run_ui_sessions(owner_scope_hash,closed_at_ms,created_at_ms);
+      CREATE UNIQUE INDEX IF NOT EXISTS browser_run_ui_one_active_owner_idx
+        ON browser_run_ui_sessions(owner_scope_hash) WHERE closed_at_ms IS NULL;
       CREATE TABLE IF NOT EXISTS continuity_wake_outbox (
         event_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, owner_id TEXT NOT NULL,
         created_at_ms INTEGER NOT NULL, published_at_ms INTEGER
@@ -241,10 +243,20 @@ export class MidadContinuityLedger {
         return response(422, { ok: false, error: code });
       }
       const active = this.one(
-        'SELECT session_id FROM browser_run_ui_sessions WHERE owner_scope_hash=? AND closed_at_ms IS NULL LIMIT 1',
+        'SELECT session_id,created_at_ms FROM browser_run_ui_sessions WHERE owner_scope_hash=? AND closed_at_ms IS NULL LIMIT 1',
         auth.ownerScopeHash,
       );
-      if (active) return response(409, { ok: false, error: 'BROWSER_RUN_SESSION_ALREADY_ACTIVE' });
+      if (active) {
+        const liveSession = typeof this.env.BROWSER.getSession === 'function'
+          ? await this.env.BROWSER.getSession(active.session_id).catch(() => null)
+          : true;
+        if (!liveSession) {
+          this.exec('UPDATE browser_run_ui_sessions SET closed_at_ms=? WHERE session_id=? AND closed_at_ms IS NULL',
+            Date.now(), active.session_id);
+        } else {
+          return response(409, { ok: false, error: 'BROWSER_RUN_SESSION_ALREADY_ACTIVE' });
+        }
+      }
       try {
         const result = await runBrowserRunSmoke({
           browserBinding: this.env.BROWSER,
