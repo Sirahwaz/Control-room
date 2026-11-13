@@ -17,11 +17,11 @@
       androidDescription:"محرك WebView مدمج، صفحة رئيسية محفوظة داخل APK، وتصفح مباشر من شريط العنوان الأصلي.",
       cloudDescription:"Durable Objects + Queues لإدارة المهام والـ leases والـ checkpoints والإشارات.",
       githubDescription:"عمال Linux مؤقتون لمهام CPU_BATCH المحددة؛ لا تُشغّل جلسات المتصفح المستمرة هنا.",
-      browserRunDescription:"جلسات متصفح سحابية قصيرة العمر كمسار Browser-capable منفصل عن عمال CPU.",
+      browserRunDescription:"جلسات متصفح سحابية تفاعلية قصيرة العمر مع Live View مباشر، منفصلة عن عمال CPU.",
       topologyTitle:"تدفق العمل بين المنصات", topologyLocal:"تصفح بشري · Offline Home · واجهة التحكم",
       noVpsTitle:"لا يتطلب VPS دائم", noVpsDescription:"يمكن تشغيل المعمارية عبر Control Plane serverless وعمال مؤقتين وجهاز Android المحلي. يبقى VPS أو Linux node خياراً تخصصياً فقط، وليس شرطاً أساسياً.",
       deviceStateTitle:"حالة الجهاز", appBundle:"حزمة التطبيق المحلية", internetState:"اتصال الإنترنت", cloudHealth:"فحص Cloudflare Health", browserWorker:"Browser Worker Heartbeat",
-      honestyNote:"لا يوجد اتصال حي بخدمات MNCF بعد. هذه الواجهة تعرض الكود المتوفر وحالة التفعيل بصدق، ولا تنشئ حالة اتصال وهمية.",
+      honestyNote:"فحص Cloudflare Health وHeartbeat وعمال CPU مستقل عن Browser Run. تُعرض حالة Browser Run بعد مصادقة مالك MIDAD واتصال Worker مباشرة.",
       networkTitle:"التحكم بالاتصال وProxy", networkDescription:"سياسات واضحة لكل نطاق تشغيل، مع منع التحويل الصامت إلى Direct عند فشل المسار.",
       proxyStatus:"لا توجد مسارات Proxy فعّالة", proxyStatusDescription:"مصادر السياسة موجودة في المستودع؛ لم يتم ربط API حي أو تفعيل مزوّد.",
       proxyNoSecrets:"بيانات اعتماد Proxy لا تدخل APK ولا Local Storage. تُحلّ عبر Vault lease من جهة الخادم فقط.",
@@ -413,7 +413,6 @@
     });
     window.addEventListener("online", updateInternetStatus);
     window.addEventListener("offline", () => { updateInternetStatus(); browserRunButtons(); });
-    window.addEventListener("offline", updateInternetStatus);
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
         if (settings.theme === "system") applyTheme();
