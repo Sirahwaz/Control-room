@@ -114,6 +114,9 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Type-check isolated fee wallet function
+        run: deno check supabase/functions/midad_agent_fee_wallet/index.ts
       - name: Solana receipt readiness regression tests
         run: deno test supabase/functions/midad_wallet_receipt_monitor/route-policy.test.ts
       - name: Type-check deployed AI Room functions
