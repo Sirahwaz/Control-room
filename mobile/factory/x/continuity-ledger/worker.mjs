@@ -105,12 +105,12 @@ export class MidadContinuityLedger {
       );
       CREATE INDEX IF NOT EXISTS continuity_events_task_idx ON continuity_events(task_id,event_id);
       CREATE TABLE IF NOT EXISTS browser_run_ui_sessions (
-        session_id TEXT PRIMARY KEY, owner_token_hash TEXT NOT NULL,
+        session_id TEXT PRIMARY KEY, owner_scope_hash TEXT NOT NULL,
         target_id TEXT NOT NULL, target_host TEXT NOT NULL, page_title TEXT NOT NULL DEFAULT '',
         created_at_ms INTEGER NOT NULL, closed_at_ms INTEGER
       );
       CREATE INDEX IF NOT EXISTS browser_run_ui_owner_idx
-        ON browser_run_ui_sessions(owner_token_hash,closed_at_ms,created_at_ms);
+        ON browser_run_ui_sessions(owner_scope_hash,closed_at_ms,created_at_ms);
       CREATE TABLE IF NOT EXISTS continuity_wake_outbox (
         event_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, owner_id TEXT NOT NULL,
         created_at_ms INTEGER NOT NULL, published_at_ms INTEGER
@@ -194,7 +194,7 @@ export class MidadContinuityLedger {
         const status = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : 503;
         return { ok: false, status, error: status === 401 ? 'MIDAD_SESSION_EXPIRED' : 'MIDAD_BROWSER_AUTH_REJECTED' };
       }
-      return { ok: true, tokenHash: await sha256(sessionToken) };
+      return { ok: true, ownerScopeHash: await sha256('midad-browser-single-owner-v1') };
     } catch {
       return { ok: false, status: 503, error: 'MIDAD_BROWSER_AUTH_UNAVAILABLE' };
     }
@@ -206,8 +206,8 @@ export class MidadContinuityLedger {
 
     if (path === '/v1/browser/ui/status') {
       const row = this.one(
-        'SELECT session_id,target_id,target_host,page_title,created_at_ms FROM browser_run_ui_sessions WHERE owner_token_hash=? AND closed_at_ms IS NULL ORDER BY created_at_ms DESC LIMIT 1',
-        auth.tokenHash,
+        'SELECT session_id,target_id,target_host,page_title,created_at_ms FROM browser_run_ui_sessions WHERE owner_scope_hash=? AND closed_at_ms IS NULL ORDER BY created_at_ms DESC LIMIT 1',
+        auth.ownerScopeHash,
       );
       if (!row) return response(200, { ok: true, active: false, runtime: 'cloudflare-browser-run' });
       if (typeof this.env.BROWSER.getSession === 'function') {
@@ -257,7 +257,7 @@ export class MidadContinuityLedger {
         const now = Date.now();
         try {
           this.exec(
-            'INSERT INTO browser_run_ui_sessions(session_id,owner_token_hash,target_id,target_host,page_title,created_at_ms,closed_at_ms) VALUES(?,?,?,?,?,?,NULL)',
+            'INSERT INTO browser_run_ui_sessions(session_id,owner_scope_hash,target_id,target_host,page_title,created_at_ms,closed_at_ms) VALUES(?,?,?,?,?,?,NULL)',
             result.session_id, auth.tokenHash, result.target_id,
             new URL(result.url).hostname, String(result.title || '').slice(0, 200), now,
           );
