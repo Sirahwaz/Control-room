@@ -31,7 +31,7 @@ jobs:
         run: node tools/architecture-governance/cli.mjs --manifest architecture/governance/manifest.json
 
       - name: JavaScript syntax
-        run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
+        run: node -e "const fs=require('fs'); for(const f of ['midad-cockpit.js','midad-control-v2.js','iaitrader.js']) new Function(fs.readFileSync(f,'utf8')); console.log('JS_SYNTAX_OK');"
 
       - name: Storage Reservoir canary contract regression tests
         run: node --test tests/storage-reservoir-canary.test.mjs

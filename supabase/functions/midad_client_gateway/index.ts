@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { handleAgentMailRequest } from "./agentmail.ts";
+import { prepareOutreach } from "./outreach.ts";
 import { selectNegotiableCryptoRoutes, classifyPaymentIntent, classifyClientFallback, paymentIntentCreationDecision, buildPaymentIntentApprovalEvidence, paymentRouteReadinessDecision } from "./negotiation.js";
 
 const H={
@@ -202,10 +203,10 @@ async function handleClientMessage(admin:any,userId:string,p:any){
     .eq("user_id",userId).eq("profile_key","owner_default").eq("active",true).maybeSingle();
   const cryptoPaymentRoutes=await loadNegotiableCryptoRoutes(admin).catch(()=>[]);
   const businessProfile={
-    communication_auto:ps.find(x=>x.policy_key==="communication.low_risk_auto")||null,
-    negotiation_gate:ps.find(x=>x.policy_key==="communication.negotiation_gate")||null,
-    uncertainty_gate:ps.find(x=>x.policy_key==="ai.uncertainty")||null,
-    payment_gate:ps.find(x=>x.policy_key==="payment.verification_gate")||null,
+    communication_auto:ps.find((x:any)=>x.policy_key==="communication.low_risk_auto")||null,
+    negotiation_gate:ps.find((x:any)=>x.policy_key==="communication.negotiation_gate")||null,
+    uncertainty_gate:ps.find((x:any)=>x.policy_key==="ai.uncertainty")||null,
+    payment_gate:ps.find((x:any)=>x.policy_key==="payment.verification_gate")||null,
     crypto_payment_routes:cryptoPaymentRoutes,
     voice:voiceProfile||null
   };
@@ -294,7 +295,7 @@ async function handleClientMessage(admin:any,userId:string,p:any){
   const shouldSend=p.send!==false;
   if(shouldSend && String(p.channel).toLowerCase()==="telegram"){
     const token=await telegramToken(admin);
-    const sent=await sendTelegram(token,clip(p.external_customer_ref,"1000").replace(/^telegram:/,""),ai.draft_response);
+    const sent=await sendTelegram(token,clip(p.external_customer_ref,1000).replace(/^telegram:/,""),ai.draft_response);
     if(sent.ok)return {ok:true,mode:"auto_sent",conversation_id:convo.id,client_id:client.id,reply:ai.draft_response};
     return {ok:true,mode:"queued",conversation_id:convo.id,client_id:client.id,reply:ai.draft_response,delivery_error:sent.error||"telegram_send_failed"};
   }
@@ -358,6 +359,8 @@ async function decideApproval(admin:any,userId:string,p:any){
   const {data:a,error:ae}=await admin.from("midad_approvals").select("*").eq("id",approvalId).eq("user_id",userId).maybeSingle();
   if(ae||!a)return {ok:false,error:"approval_not_found"};
   if(a.status!=="pending")return {ok:false,error:"approval_not_pending"};
+  if(a.evidence?.outreach_key && (!a.expires_at || new Date(a.expires_at).getTime()<=Date.now()))return {ok:false,error:"outreach_approval_expired"};
+  if(a.evidence?.outreach_key && (a.evidence.suppression_checked!==true || !a.evidence.source_url || !a.evidence.lawful_basis || !a.evidence.basis_evidence))return {ok:false,error:"outreach_evidence_incomplete"};
   if(a.subject_type==="payment_intent_request" && a.action==="create_payment_intent"){
     if(decision!=="approved"){
       const {data:updated,error:updateError}=await admin.from("midad_approvals").update({
@@ -395,7 +398,7 @@ async function decideApproval(admin:any,userId:string,p:any){
     const {data:client}=await admin.from("midad_client_profiles").select("contact").eq("id",ev.client_id).eq("user_id",userId).maybeSingle();
     const inboxId=clip(convo.metadata?.inbox_id,240);
     const recipient=clip(client?.contact,320);
-    const subject=String(convo.topic||"").toLowerCase().startsWith("re:")?String(convo.topic):"Re: "+clip(convo.topic,450);
+    const subject=a.evidence?.outreach_key?clip(convo.topic,450):(String(convo.topic||"").toLowerCase().startsWith("re:")?String(convo.topic):"Re: "+clip(convo.topic,450));
     delivery=await sendAgentMail(inboxId,recipient,subject,draft,"midad-approval-"+approvalId);
   }
   await admin.from("midad_approvals").update({
@@ -425,6 +428,7 @@ async function main(req:Request){
   const body=await req.json().catch(()=>({}));
   const uid=await ownerId(admin); if(!uid)return json({error:"system_profile_missing"},503);
   try{
+    if(body.action==="outreach_prepare")return json(await prepareOutreach(admin,uid,body,{getOrCreateClient,getOrCreateConversation,audit}));
     if(body.action==="client_message")return json(await handleClientMessage(admin,uid,body));
     if(body.action==="payment_intent_request"){
       const result=await requestPaymentIntentApproval(admin,uid,body);
