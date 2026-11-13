@@ -14,6 +14,10 @@ on:
     paths:
       - "supabase/functions/midad_client_gateway/agentmail*"
       - "supabase/functions/midad_client_gateway/outreach-policy*"
+      - "supabase/functions/midad_client_gateway/outreach.ts"
+      - "supabase/functions/midad_client_gateway/index.ts"
+      - "supabase/functions/midad_client_gateway/deno.json"
+      - "supabase/functions/midad_client_gateway/outreach-policy*"
       - "supabase/functions/midad_client_gateway/index.ts"
       - "supabase/functions/midad_client_gateway/deno.json"
       - ".github/workflows/agentmail-gateway.yml"
