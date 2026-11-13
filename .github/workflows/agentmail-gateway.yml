@@ -36,6 +36,6 @@ jobs:
       - name: Lint
         run: deno lint --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/outreach-policy.mjs supabase/functions/midad_client_gateway/outreach-policy.test.mjs supabase/functions/midad_client_gateway/outreach.ts
       - name: Type check
-        run: deno check --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/agentmail_test.ts supabase/functions/midad_client_gateway/outreach-policy.mjs supabase/functions/midad_client_gateway/outreach-policy.test.mjs supabase/functions/midad_client_gateway/outreach.ts
+        run: deno check --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail.ts supabase/functions/midad_client_gateway/agentmail_test.ts supabase/functions/midad_client_gateway/outreach-policy.mjs supabase/functions/midad_client_gateway/outreach-policy.test.mjs supabase/functions/midad_client_gateway/outreach.ts supabase/functions/midad_client_gateway/index.ts
       - name: Unit tests
         run: deno test --config supabase/functions/midad_client_gateway/deno.json supabase/functions/midad_client_gateway/agentmail_test.ts supabase/functions/midad_client_gateway/outreach-policy.test.mjs
