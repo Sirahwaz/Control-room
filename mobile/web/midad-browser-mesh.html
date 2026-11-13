@@ -73,13 +73,56 @@
             <p data-i18n="githubDescription">عمال Linux مؤقتون لمهام CPU_BATCH المحددة؛ لا تُشغّل جلسات المتصفح المستمرة هنا.</p>
             <div class="card-foot"><span>CPU BATCH</span><b>NOT ENROLLED</b></div>
           </article>
-          <article class="runtime-card pending" data-runtime-state="pending">
-            <div class="card-top"><span class="runtime-icon browser">◎</span><span class="state-label pending">PENDING · QUOTA</span></div>
+          <article class="runtime-card pending" id="browserRunRuntimeCard" data-browser-run-state="idle">
+            <div class="card-top"><span class="runtime-icon browser">◎</span><span class="state-label pending" id="browserRunCardState">READY ON DEMAND</span></div>
             <h3>Cloudflare · Browser Run</h3>
-            <p data-i18n="browserRunDescription">جلسات متصفح سحابية قصيرة العمر كمسار Browser-capable منفصل عن عمال CPU.</p>
-            <div class="card-foot"><span>REMOTE BROWSER</span><b>NOT LIVE</b></div>
+            <p data-i18n="browserRunDescription">جلسات متصفح سحابية تفاعلية قصيرة العمر مع Live View مباشر، منفصلة عن عمال CPU.</p>
+            <div class="card-foot"><span>REMOTE BROWSER</span><b id="browserRunCardFoot">IDLE · NO SESSION</b></div>
           </article>
         </div>
+
+        <section class="panel browser-run-panel" id="browserRunPanel" aria-labelledby="browserRunHeading">
+          <div class="panel-heading">
+            <div><span class="section-kicker">INTERACTIVE CLOUD BROWSER · CLOUDFLARE</span><h3 id="browserRunHeading">Browser Run · Live View</h3></div>
+            <span class="state-label pending" id="browserRunStatus" role="status" aria-live="polite">NOT CONNECTED</span>
+          </div>
+          <div class="browser-run-auth" id="browserRunAuthPanel">
+            <div class="browser-run-copy">
+              <b>ربط جلسة MIDAD</b>
+              <p>استخدم جلسة Control Room الحالية أو Telegram Mini App. في نسخة APK المستقلة، أدخل Access Key الخاص بـ Control Room عند الحاجة. لن يُحفظ المفتاح أو رمز الجلسة داخل التطبيق.</p>
+            </div>
+            <label for="browserRunAccessKey">Control Room Access Key · مفتاح الوصول</label>
+            <div class="browser-run-auth-actions">
+              <input id="browserRunAccessKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="أدخل مفتاح الوصول عند طلبه">
+              <button class="primary-btn" id="browserRunConnect" type="button">ربط الجلسة</button>
+              <button class="secondary-btn" id="browserRunDisconnect" type="button" hidden>قطع الاتصال</button>
+            </div>
+          </div>
+          <div class="browser-run-config">
+            <div class="setting-group">
+              <label for="browserRunTarget">Target URL · عنوان الموقع (HTTPS فقط)</label>
+              <input id="browserRunTarget" type="url" inputmode="url" value="https://example.com/" placeholder="https://example.com/">
+            </div>
+            <div class="setting-group">
+              <label for="browserRunAllowedHosts">Allowed Hosts · النطاقات المسموحة (comma-separated)</label>
+              <input id="browserRunAllowedHosts" type="text" value="example.com" autocapitalize="off" spellcheck="false" placeholder="example.com, login.example.com">
+              <small>يُمنع أي تحويل إلى نطاق غير مدرج. أضف نطاقات التحويل اللازمة صراحةً.</small>
+            </div>
+          </div>
+          <div class="browser-run-actions">
+            <button class="primary-btn" id="browserRunStart" type="button" disabled>تشغيل جلسة تفاعلية</button>
+            <button class="secondary-btn" id="browserRunRefresh" type="button" disabled>تجديد Live View</button>
+            <button class="secondary-btn danger-btn" id="browserRunClose" type="button" disabled>إغلاق الجلسة</button>
+          </div>
+          <p class="browser-run-feedback" id="browserRunFeedback" role="status" aria-live="polite">سجّل الدخول أولاً ثم ابدأ الجلسة يدوياً. لا يبدأ Browser Run تلقائياً عند فتح الصفحة.</p>
+          <div class="browser-run-session" id="browserRunSessionInfo" hidden></div>
+          <div class="live-view-shell" id="browserRunLiveViewShell" hidden>
+            <div class="live-view-heading"><b>Live View · متصفح سحابي مباشر</b><span>INTERACTIVE TAB</span></div>
+            <iframe id="browserRunLiveViewFrame" title="MIDAD Cloudflare Browser Run Live View" referrerpolicy="no-referrer" allow="clipboard-read; clipboard-write; fullscreen" loading="lazy"></iframe>
+            <a id="browserRunOpenLiveView" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>فتح Live View في نافذة مستقلة</a>
+          </div>
+          <p class="browser-run-notice">ملاحظة استخدام: الجلسة السحابية تستهلك حصة Browser Run وقد تخضع لفوترة حسب خطة Cloudflare. أغلق الجلسة بعد الانتهاء؛ لا تستخدمها لإرسال مفاتيح خاصة أو عبارات استرداد أو تنفيذ تحويلات مالية.</p>
+        </section>
 
         <div class="mesh-layout">
           <article class="panel topology-panel">
