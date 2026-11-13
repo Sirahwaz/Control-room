@@ -196,7 +196,11 @@ export class MidadContinuityLedger {
         const status = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : 503;
         return { ok: false, status, error: status === 401 ? 'MIDAD_SESSION_EXPIRED' : 'MIDAD_BROWSER_AUTH_REJECTED' };
       }
-      return { ok: true, ownerScopeHash: await sha256('midad-browser-single-owner-v1') };
+      const ownerScopeHash = typeof result?.owner_scope_hash === 'string' ? result.owner_scope_hash : '';
+      if (!/^[a-f0-9]{64}$/.test(ownerScopeHash)) {
+        return { ok: false, status: 503, error: 'MIDAD_BROWSER_OWNER_SCOPE_MISSING' };
+      }
+      return { ok: true, ownerScopeHash };
     } catch {
       return { ok: false, status: 503, error: 'MIDAD_BROWSER_AUTH_UNAVAILABLE' };
     }
