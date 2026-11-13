@@ -203,10 +203,10 @@ async function handleClientMessage(admin:any,userId:string,p:any){
     .eq("user_id",userId).eq("profile_key","owner_default").eq("active",true).maybeSingle();
   const cryptoPaymentRoutes=await loadNegotiableCryptoRoutes(admin).catch(()=>[]);
   const businessProfile={
-    communication_auto:ps.find(x=>x.policy_key==="communication.low_risk_auto")||null,
-    negotiation_gate:ps.find(x=>x.policy_key==="communication.negotiation_gate")||null,
-    uncertainty_gate:ps.find(x=>x.policy_key==="ai.uncertainty")||null,
-    payment_gate:ps.find(x=>x.policy_key==="payment.verification_gate")||null,
+    communication_auto:ps.find((x:any)=>x.policy_key==="communication.low_risk_auto")||null,
+    negotiation_gate:ps.find((x:any)=>x.policy_key==="communication.negotiation_gate")||null,
+    uncertainty_gate:ps.find((x:any)=>x.policy_key==="ai.uncertainty")||null,
+    payment_gate:ps.find((x:any)=>x.policy_key==="payment.verification_gate")||null,
     crypto_payment_routes:cryptoPaymentRoutes,
     voice:voiceProfile||null
   };
@@ -295,7 +295,7 @@ async function handleClientMessage(admin:any,userId:string,p:any){
   const shouldSend=p.send!==false;
   if(shouldSend && String(p.channel).toLowerCase()==="telegram"){
     const token=await telegramToken(admin);
-    const sent=await sendTelegram(token,clip(p.external_customer_ref,"1000").replace(/^telegram:/,""),ai.draft_response);
+    const sent=await sendTelegram(token,clip(p.external_customer_ref,1000).replace(/^telegram:/,""),ai.draft_response);
     if(sent.ok)return {ok:true,mode:"auto_sent",conversation_id:convo.id,client_id:client.id,reply:ai.draft_response};
     return {ok:true,mode:"queued",conversation_id:convo.id,client_id:client.id,reply:ai.draft_response,delivery_error:sent.error||"telegram_send_failed"};
   }
