@@ -1,4 +1,4 @@
-import { normalizeOutreachRequest } from "./outreach-policy.mjs";
+import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
 
 Deno.test("accepts one evidence-backed AgentMail outreach draft", () => {
   const result = normalizeOutreachRequest({
@@ -69,5 +69,14 @@ Deno.test("blocks first-contact Telegram messages", () => {
   });
   if (result.ok || result.error !== "outreach_channel_not_supported") {
     throw new Error("Telegram first-contact must be blocked");
+  }
+});
+
+Deno.test("outreach idempotency key is stable and campaign-scoped", async () => {
+  const first = await buildOutreachKey("owner-1", "buyer@example.com", "https://example.com/request", "campaign-a");
+  const repeat = await buildOutreachKey("owner-1", "buyer@example.com", "https://example.com/request", "campaign-a");
+  const otherCampaign = await buildOutreachKey("owner-1", "buyer@example.com", "https://example.com/request", "campaign-b");
+  if (first !== repeat || first === otherCampaign || first.length !== 64) {
+    throw new Error("outreach idempotency key is not stable and scoped");
   }
 });
