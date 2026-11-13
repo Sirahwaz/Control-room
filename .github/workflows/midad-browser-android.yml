@@ -208,3 +208,4 @@ jobs:
             dist/${{ steps.product.outputs.artifact_name }}-release.apk
             dist/${{ steps.product.outputs.artifact_name }}-release.apk.sha256
             dist/product-manifest.json
+# Trigger note: run the existing MIDAD Browser release + emulator acceptance lane.
