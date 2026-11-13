@@ -12,6 +12,7 @@ import {
   superteamFixture,
   taskmarketFixture,
 } from "./provider_adapter_fixtures.ts";
+import { normalizeTaskmarketRail, isSupportedBaseUsdcRail, isSupportedTempoOusdRail, isSupportedTaskmarketCryptoAsset, isFreshVerifiedTempoProof } from "../_shared/taskmarket-rail.mjs";
 
 Deno.test("Taskmarket public task submissionCount is not the worker's free-submission count", () => {
   assertEquals(taskmarketOfficialFeeEvidence(taskmarketFixture), {});
@@ -27,6 +28,47 @@ Deno.test("Taskmarket fixture: sixth and later bounty/benchmark submissions incu
 Deno.test("Taskmarket pitch and auction actions carry the documented 0.001 USDC action fee", () => {
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "pitch" }).submissionFee, 0.001);
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "auction" }).submissionFee, 0.001);
+});
+
+
+Deno.test("Taskmarket chainId maps to the exact Base/USDC and Tempo/OUSD rails", () => {
+  const base = normalizeTaskmarketRail({ chainId: 8453 });
+  assertEquals(base, { chainId: 8453, asset: "USDC", network: "Base", supportedForBaseVerifier: true });
+  const tempo = normalizeTaskmarketRail({ chainId: 4217 });
+  assertEquals(tempo, { chainId: 4217, asset: "OUSD", network: "Tempo", supportedForBaseVerifier: false });
+  assertEquals(isSupportedBaseUsdcRail(base), true);
+  assertEquals(isSupportedTempoOusdRail(tempo), true);
+  assertEquals(isSupportedTaskmarketCryptoAsset("OUSD"), true);
+});
+
+Deno.test("unknown Taskmarket chain IDs remain unsupported and never default to Base", () => {
+  const rail = normalizeTaskmarketRail({ chainId: 421614 });
+  assertEquals(rail, { chainId: 421614, asset: null, network: "421614", supportedForBaseVerifier: false });
+  assertEquals(isSupportedBaseUsdcRail(rail), false);
+  assertEquals(isSupportedTempoOusdRail(rail), false);
+  assertEquals(isSupportedTaskmarketCryptoAsset("NOT_A_TOKEN"), false);
+});
+
+Deno.test("Tempo proof reuse requires exact fresh task, transaction, OUSD amount and 12 confirmations", () => {
+  const taskId = "0x" + "a".repeat(64);
+  const txHash = "0x" + "b".repeat(64);
+  const now = Date.parse("2026-11-13T08:30:00.000Z");
+  const checkedAt = new Date(now - 60_000).toISOString();
+  const proof = {
+    verified: true, chain_id: 4217, network: "Tempo", asset: "OUSD",
+    task_id: taskId, tx_hash: txHash, reward_atomic: "220000",
+    confirmations: 12, required_confirmations: 12, checked_at: checkedAt,
+  };
+  const input = {
+    status: "verified_task_escrow", paymentTxHash: txHash, checkedAt,
+    proof, taskId, txHash, amount: 0.22, now,
+  };
+  assertEquals(isFreshVerifiedTempoProof(input), true);
+  assertEquals(isFreshVerifiedTempoProof({ ...input, proof: { ...proof, confirmations: 11 } }), false);
+  assertEquals(isFreshVerifiedTempoProof({ ...input, txHash: "0x" + "c".repeat(64) }), false);
+  assertEquals(isFreshVerifiedTempoProof({ ...input, amount: 0.23 }), false);
+  const stale = new Date(now - 31 * 60 * 1000).toISOString();
+  assertEquals(isFreshVerifiedTempoProof({ ...input, checkedAt: stale, proof: { ...proof, checked_at: stale } }), false);
 });
 
 Deno.test("BasedAgents task fixture does not infer the user's region, KYC or identity from a listing", () => {
