@@ -89,7 +89,7 @@ Deno.test("blocks outreach when suppression storage is unavailable", async () =>
         select() { return this; },
         eq() { return this; },
         limit() { return this; },
-        maybeSingle: async () => ({ data: null, error: { code: "42P01" } }),
+        maybeSingle: () => ({ data: null, error: { code: "42P01" } }),
       };
       return query;
     },
@@ -107,7 +107,7 @@ Deno.test("blocks an address present in the suppression list", async () => {
         select() { return this; },
         eq() { return this; },
         limit() { return this; },
-        maybeSingle: async () => ({ data: { id: "suppression-1" }, error: null }),
+        maybeSingle: () => ({ data: { id: "suppression-1" }, error: null }),
       };
       return query;
     },
@@ -125,7 +125,7 @@ Deno.test("allows outreach only after a successful empty suppression lookup", as
         select() { return this; },
         eq() { return this; },
         limit() { return this; },
-        maybeSingle: async () => ({ data: null, error: null }),
+        maybeSingle: () => ({ data: null, error: null }),
       };
       return query;
     },
