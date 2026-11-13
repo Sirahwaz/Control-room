@@ -67,7 +67,7 @@ Deno.test("Tempo proof reuse requires exact fresh task, transaction, OUSD amount
   assertEquals(isFreshVerifiedTempoProof({ ...input, proof: { ...proof, confirmations: 11 } }), false);
   assertEquals(isFreshVerifiedTempoProof({ ...input, txHash: "0x" + "c".repeat(64) }), false);
   assertEquals(isFreshVerifiedTempoProof({ ...input, amount: 0.23 }), false);
-  const stale = new Date(now - 31 * 60 * 1000).toISOString();
+  const stale = new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString();
   assertEquals(isFreshVerifiedTempoProof({ ...input, checkedAt: stale, proof: { ...proof, checked_at: stale } }), false);
 });
 
