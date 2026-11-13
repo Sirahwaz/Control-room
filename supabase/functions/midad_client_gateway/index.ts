@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { handleAgentMailRequest } from "./agentmail.ts";
 import { prepareOutreach } from "./outreach.ts";
+import { checkOutreachSuppression } from "./outreach-policy.mjs";
 import { selectNegotiableCryptoRoutes, classifyPaymentIntent, classifyClientFallback, paymentIntentCreationDecision, buildPaymentIntentApprovalEvidence, paymentRouteReadinessDecision } from "./negotiation.js";
 
 const H={
@@ -360,7 +361,11 @@ async function decideApproval(admin:any,userId:string,p:any){
   if(ae||!a)return {ok:false,error:"approval_not_found"};
   if(a.status!=="pending")return {ok:false,error:"approval_not_pending"};
   if(a.evidence?.outreach_key && (!a.expires_at || new Date(a.expires_at).getTime()<=Date.now()))return {ok:false,error:"outreach_approval_expired"};
-  if(a.evidence?.outreach_key && (a.evidence.suppression_checked!==true || !a.evidence.source_url || !a.evidence.lawful_basis || !a.evidence.basis_evidence))return {ok:false,error:"outreach_evidence_incomplete"};
+  if(a.evidence?.outreach_key){
+    if(a.evidence.suppression_checked!==true || !a.evidence.source_url || !a.evidence.lawful_basis || !a.evidence.basis_evidence || !a.evidence.recipient_email)return {ok:false,error:"outreach_evidence_incomplete"};
+    const suppression=await checkOutreachSuppression(admin,userId,a.evidence.recipient_email);
+    if(!suppression.ok)return suppression;
+  }
   if(a.subject_type==="payment_intent_request" && a.action==="create_payment_intent"){
     if(decision!=="approved"){
       const {data:updated,error:updateError}=await admin.from("midad_approvals").update({

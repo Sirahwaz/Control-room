@@ -1,4 +1,4 @@
-import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
+import { normalizeOutreachRequest, buildOutreachKey, checkOutreachSuppression } from "./outreach-policy.mjs";
 
 Deno.test("accepts one evidence-backed AgentMail outreach draft", () => {
   const result = normalizeOutreachRequest({
@@ -47,16 +47,16 @@ Deno.test("requires an HTTPS source and evidence of the contact basis", () => {
   }
 });
 
-Deno.test("requires suppression screening before a draft is queued", () => {
+Deno.test("does not treat a caller-supplied suppression flag as screening evidence", () => {
   const result = normalizeOutreachRequest({
     channel: "agentmail", recipient_email: "buyer@example.com",
     inbox_id: "inbox", subject: "Hello", draft: "Hello",
     source_url: "https://example.com/request", lawful_basis: "legitimate_interest",
     basis_evidence: "Documented relevance and balancing assessment.",
-    suppression_checked: false,
+    suppression_checked: true,
   });
-  if (result.ok || result.error !== "outreach_suppression_check_required") {
-    throw new Error("unscreened contact must be blocked");
+  if (!result.ok || "suppression_checked" in result.value) {
+    throw new Error("request normalization must not trust caller-supplied screening flags");
   }
 });
 
@@ -78,5 +78,60 @@ Deno.test("outreach idempotency key is stable and campaign-scoped", async () => 
   const otherCampaign = await buildOutreachKey("owner-1", "buyer@example.com", "https://example.com/request", "campaign-b");
   if (first !== repeat || first === otherCampaign || first.length !== 64) {
     throw new Error("outreach idempotency key is not stable and scoped");
+  }
+});
+
+
+Deno.test("blocks outreach when suppression storage is unavailable", async () => {
+  const admin = {
+    from() {
+      const query = {
+        select() { return this; },
+        eq() { return this; },
+        limit() { return this; },
+        maybeSingle: () => ({ data: null, error: { code: "42P01" } }),
+      };
+      return query;
+    },
+  };
+  const result = await checkOutreachSuppression(admin, "owner-1", "buyer@example.com");
+  if (result.ok || result.error !== "outreach_suppression_unavailable") {
+    throw new Error("missing suppression storage must fail closed");
+  }
+});
+
+Deno.test("blocks an address present in the suppression list", async () => {
+  const admin = {
+    from() {
+      const query = {
+        select() { return this; },
+        eq() { return this; },
+        limit() { return this; },
+        maybeSingle: () => ({ data: { id: "suppression-1" }, error: null }),
+      };
+      return query;
+    },
+  };
+  const result = await checkOutreachSuppression(admin, "owner-1", "buyer@example.com");
+  if (result.ok || result.error !== "outreach_recipient_suppressed") {
+    throw new Error("suppressed recipient must be blocked");
+  }
+});
+
+Deno.test("allows outreach only after a successful empty suppression lookup", async () => {
+  const admin = {
+    from() {
+      const query = {
+        select() { return this; },
+        eq() { return this; },
+        limit() { return this; },
+        maybeSingle: () => ({ data: null, error: null }),
+      };
+      return query;
+    },
+  };
+  const result = await checkOutreachSuppression(admin, "owner-1", "BUYER@example.com");
+  if (!result.ok || result.checked_email !== "buyer@example.com") {
+    throw new Error("a successful empty lookup should pass with normalized address");
   }
 });
