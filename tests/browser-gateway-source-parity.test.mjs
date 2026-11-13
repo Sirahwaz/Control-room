@@ -55,3 +55,12 @@ test("gateway source has no high-confidence embedded credential literals", () =>
   ];
   for (const pattern of patterns) assert.doesNotMatch(source, pattern);
 });
+
+
+test("Browser Gateway returns an opaque stable owner scope hash for Browser Run tenant isolation", () => {
+  const source = fs.readFileSync(indexPath, "utf8");
+  const capabilities = source.slice(source.indexOf('if (subaction === "capabilities")'));
+  assert.match(capabilities, /owner_scope_hash/);
+  assert.match(capabilities, /sha256\([^)]*ownerUserId/);
+  assert.match(capabilities, /owner_scope_hash:\s*ownerScopeHash/);
+});
