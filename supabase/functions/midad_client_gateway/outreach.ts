@@ -1,7 +1,5 @@
 import { normalizeOutreachRequest, buildOutreachKey } from "./outreach-policy.mjs";
 
-const clip = (value: unknown, max = 4000) => String(value ?? "").trim().slice(0, max);
-
 export async function prepareOutreach(admin: any, userId: string, p: any, deps: {
   getOrCreateClient: (admin: any, userId: string, payload: any) => Promise<any>;
   getOrCreateConversation: (admin: any, userId: string, clientId: string, payload: any) => Promise<any>;
@@ -9,7 +7,7 @@ export async function prepareOutreach(admin: any, userId: string, p: any, deps: 
 }) {
   const validation = normalizeOutreachRequest(p);
   if (!validation.ok) return validation;
-  const request = validation.value;
+  const request: any = (validation as any).value;
   const outreachKey = await buildOutreachKey(userId, request.recipient_email, request.source_url, request.campaign_ref || "");
   const threadId = "midad-outreach:" + outreachKey;
 
