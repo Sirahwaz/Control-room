@@ -35,3 +35,4 @@ jobs:
       - name: Run Chromium smoke and adversarial browser fixtures
         working-directory: tools/midad-browser-runtime
         run: python live_browser_smoke.py
+# Trigger note: run the existing real Chromium smoke and adversarial navigation checks.
