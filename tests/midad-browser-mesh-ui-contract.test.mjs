@@ -87,7 +87,7 @@ test("Browser Mesh exposes authenticated interactive Browser Run and Live View c
   assert.ok(js.includes("https://midad-continuity-ledger.midadbot.workers.dev"));
   assert.equal(html.includes('id="browserRunAccessKey"'), false);
   assert.doesNotMatch(js, /browserRunAccessKey|midad_cockpit_key|access_key:/);
-  assert.match(js, /telegram_init_data:[\\s\\S]*client:\\s*["']midad-control-room["']/);
+  assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
   assert.match(js, /OPEN TELEGRAM MINI APP/);
   assert.match(js, /\/v1\/browser\/ui\//);
   assert.match(worker, /midad_browser_agent_gateway/);
