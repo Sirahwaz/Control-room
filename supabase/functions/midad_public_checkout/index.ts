@@ -392,7 +392,7 @@ async function main(req:Request){
       wallet_address:target.wallet.address,
       expires_at:new Date(Date.now()+expires*60000).toISOString(),
       status:"quoted",
-      confirmations_required:requiredConfirmations(checkoutNetwork),
+      confirmations_required:requiredConfirmations(String(target.route.network || "").toLowerCase()),
       reconciliation_status:"pending",
       metadata
     };
