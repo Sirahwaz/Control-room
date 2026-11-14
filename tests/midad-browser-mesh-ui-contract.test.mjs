@@ -80,11 +80,15 @@ test("Browser Mesh exposes authenticated interactive Browser Run and Live View c
   const js = read("mobile/web/midad-browser-mesh.js");
   const worker = read("mobile/factory/x/continuity-ledger/worker.mjs");
   for (const id of [
-    "browserRunPanel", "browserRunAccessKey", "browserRunConnect", "browserRunTarget",
+    "browserRunPanel", "browserRunConnect", "browserRunTarget",
     "browserRunAllowedHosts", "browserRunStart", "browserRunRefresh", "browserRunClose",
     "browserRunLiveViewFrame", "browserRunOpenLiveView", "browserRunStatus",
   ]) assert.ok(html.includes('id="' + id + '"'), "Missing Browser Run control: " + id);
   assert.ok(js.includes("https://midad-continuity-ledger.midadbot.workers.dev"));
+  assert.equal(html.includes('id="browserRunAccessKey"'), false);
+  assert.doesNotMatch(js, /browserRunAccessKey|midad_cockpit_key|access_key:/);
+  assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
+  assert.match(js, /OPEN TELEGRAM MINI APP/);
   assert.match(js, /\/v1\/browser\/ui\//);
   assert.match(worker, /midad_browser_agent_gateway/);
   assert.match(worker, /owner_scope_hash/);
@@ -107,11 +111,12 @@ test("Browser Mesh never ships Cloudflare or Supabase admin credentials in its b
 });
 
 
-test("Browser Mesh Telegram Mini App auth uses the existing Control Room session endpoint", () => {
+test("Browser Mesh uses Telegram Mini App auth only and exposes no manual access-key path", () => {
   const js = read("mobile/web/midad-browser-mesh.js");
   assert.match(js, /BROWSER_RUN_CONTROL_API[\s\S]*midad_control_room/);
   assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
   assert.doesNotMatch(js, /midad_telegram_auth/);
+  assert.doesNotMatch(js, /access_key|midad_cockpit_key|browserRunAccessKey/);
 });
 
 

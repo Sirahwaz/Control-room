@@ -89,11 +89,9 @@
           <div class="browser-run-auth" id="browserRunAuthPanel">
             <div class="browser-run-copy">
               <b>ربط جلسة MIDAD</b>
-              <p>استخدم جلسة Control Room الحالية أو Telegram Mini App. في نسخة APK المستقلة، أدخل Access Key الخاص بـ Control Room عند الحاجة. لن يُحفظ المفتاح أو رمز الجلسة داخل التطبيق.</p>
+              <p>يتم الربط تلقائياً عبر جلسة Telegram Mini App الموثقة. افتح Browser Mesh من داخل Telegram للوصول الآمن؛ لا توجد مفاتيح وصول يدوية.</p>
             </div>
-            <label for="browserRunAccessKey">Control Room Access Key · مفتاح الوصول</label>
             <div class="browser-run-auth-actions">
-              <input id="browserRunAccessKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="أدخل مفتاح الوصول عند طلبه">
               <button class="primary-btn" id="browserRunConnect" type="button">ربط الجلسة</button>
               <button class="secondary-btn" id="browserRunDisconnect" type="button" hidden>قطع الاتصال</button>
             </div>
@@ -114,7 +112,7 @@
             <button class="secondary-btn" id="browserRunRefresh" type="button" disabled>تجديد Live View</button>
             <button class="secondary-btn danger-btn" id="browserRunClose" type="button" disabled>إغلاق الجلسة</button>
           </div>
-          <p class="browser-run-feedback" id="browserRunFeedback" role="status" aria-live="polite">سجّل الدخول أولاً ثم ابدأ الجلسة يدوياً. لا يبدأ Browser Run تلقائياً عند فتح الصفحة.</p>
+          <p class="browser-run-feedback" id="browserRunFeedback" role="status" aria-live="polite">تتم المصادقة تلقائياً من Telegram Mini App؛ بعد الاتصال يمكنك بدء جلسة Browser Run عند الحاجة.</p>
           <div class="browser-run-session" id="browserRunSessionInfo" hidden></div>
           <div class="live-view-shell" id="browserRunLiveViewShell" hidden>
             <div class="live-view-heading"><b>Live View · متصفح سحابي مباشر</b><span>INTERACTIVE TAB</span></div>
