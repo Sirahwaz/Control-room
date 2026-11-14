@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isAutoRouteEligible } from "./route-policy.ts";
+import { AUTO_ROUTE_SELECT, isAutoRouteEligible } from "./route-policy.ts";
 
 Deno.test(
   "allows only active receive routes explicitly approved for automatic routing",
@@ -76,4 +76,11 @@ Deno.test("rejects inactive, manual-only, or non-receive routes", () => {
     }),
     false,
   );
+});
+
+Deno.test("checkout route projection includes every field required by route policy", () => {
+  const projectedFields = AUTO_ROUTE_SELECT.split(",").map((field) =>
+    field.trim()
+  );
+  assertEquals(projectedFields.includes("route_kind"), true);
 });

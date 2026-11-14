@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { isAutoRouteEligible } from "./route-policy.ts";
+import { AUTO_ROUTE_SELECT, isAutoRouteEligible } from "./route-policy.ts";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
@@ -120,7 +120,7 @@ async function chooseWallet(settlementAsset:string,requestedNetwork:string){
   if(!allowedNetworks.length)return null;
   if(requestedNetwork&&!allowedNetworks.includes(requestedNetwork))return null;
   const {data:routes,error}=await db.from("midad_revenue_routes")
-    .select("id,asset,network,wallet_id,address_ref,active,auto_route,requires_approval,metadata")
+    .select(AUTO_ROUTE_SELECT)
     .eq("active",true).eq("auto_route",true).eq("requires_approval",false).eq("route_kind","receive")
     .eq("asset",settlementAsset).in("network",requestedNetwork?[requestedNetwork]:allowedNetworks)
     .order("updated_at",{ascending:false});
