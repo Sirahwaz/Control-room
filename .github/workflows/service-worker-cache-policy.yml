@@ -1,0 +1,35 @@
+name: Service Worker Cache Policy
+on:
+  pull_request:
+    paths:
+      - "service-worker.js"
+      - "tests/service-worker-cache-policy.test.cjs"
+      - "tests/service-worker-cache-runtime.test.cjs"
+      - ".github/workflows/service-worker-cache-policy.yml"
+  push:
+    branches: [main]
+    paths:
+      - "service-worker.js"
+      - "tests/service-worker-cache-policy.test.cjs"
+      - "tests/service-worker-cache-runtime.test.cjs"
+      - ".github/workflows/service-worker-cache-policy.yml"
+permissions:
+  contents: read
+jobs:
+  service-worker-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run static policy regression tests
+        run: node --test tests/service-worker-cache-policy.test.cjs
+      - name: Install isolated Playwright runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/midad-playwright" --no-save playwright@1.56.1
+          "$RUNNER_TEMP/midad-playwright/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Run Chromium Service Worker integration test
+        env:
+          NODE_PATH: ${{ runner.temp }}/midad-playwright/node_modules
+        run: node --test tests/service-worker-cache-runtime.test.cjs
