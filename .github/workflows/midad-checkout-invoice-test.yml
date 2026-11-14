@@ -1,5 +1,5 @@
 name: MIDAD one-shot checkout invoice test
-# Retry after verified route-projection fix in Supabase Edge Function v32
+# Retry after route projection and Base confirmation fixes in Supabase Edge Function v33
 
 on:
   push:
