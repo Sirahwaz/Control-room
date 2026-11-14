@@ -69,7 +69,16 @@ test("real Chromium Service Worker runtime enforces static-only caching and offl
     if (!response.ok) throw new Error(`Unexpected status: ${response.status}`);
   }, unapprovedUrl);
 
-  await page.waitForFunction(async url => {\n    const names = await caches.keys();\n    for (const name of names) {\n      const cache = await caches.open(name);\n      if (await cache.match(url)) return true;\n    }\n    return false;\n  }, approved, { timeout: 5000 });\n\n  const cacheState = await page.evaluate(async () => {
+  await page.waitForFunction(async url => {
+    const names = await caches.keys();
+    for (const name of names) {
+      const cache = await caches.open(name);
+      if (await cache.match(url)) return true;
+    }
+    return false;
+  }, approved, { timeout: 5000 });
+
+  const cacheState = await page.evaluate(async () => {
     const names = await caches.keys();
     const cache = await caches.open(names.find(name => name.startsWith("midad-control-v")) || names[0]);
     const requests = (await cache.keys()).map(request => request.url);
