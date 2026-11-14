@@ -113,7 +113,11 @@ def evaluate_cases(
         })
 
     total = len(evaluated)
-    correct = sum(1 for item in evaluated if item["passed"])
+    decision_correct = sum(
+        1 for item in evaluated
+        if item["actual_decision"] == item["expected_decision"]
+    )
+    fully_passed = sum(1 for item in evaluated if item["passed"])
     return {
         "schema_version": 1,
         "mode": "offline_read_only_evaluation",
@@ -121,16 +125,18 @@ def evaluate_cases(
         "dataset_version": str(dataset_version),
         "reference_time": reference_time.isoformat().replace("+00:00", "Z"),
         "engine": "revenue_radar.qualify_candidate",
-        "gate_status": "PASS" if correct == total and safety_violations == 0 else "REVIEW",
+        "gate_status": "PASS" if fully_passed == total and safety_violations == 0 else "REVIEW",
         "paid_provider_used": False,
         "browser_jobs_created": 0,
         "external_actions_performed": 0,
         "action_authorized": False,
         "metrics": {
             "total": total,
-            "correct": correct,
-            "incorrect": total - correct,
-            "accuracy": _ratio(correct, total),
+            "correct": decision_correct,
+            "incorrect": total - decision_correct,
+            "accuracy": _ratio(decision_correct, total),
+            "fully_passed": fully_passed,
+            "case_failures": total - fully_passed,
             "true_ready": true_ready,
             "false_ready": false_ready,
             "false_blocked": false_blocked,
