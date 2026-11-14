@@ -14,7 +14,7 @@
 .live-panel{border-color:rgba(55,214,161,.22)}.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.live-grid>div{min-height:150px;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.02)}
 .bottom-nav{display:flex;overflow-x:auto;gap:2px;scrollbar-width:none}.bottom-nav::-webkit-scrollbar{display:none}.bottom-nav button{flex:0 0 62px}
 @media(max-width:680px){.comm-grid,.live-grid{grid-template-columns:1fr}.comm-text{font-size:12px}}
-.android-lab-grid{display:grid;grid-template-columns:1fr;gap:12px}.android-lab-evidence{white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;text-align:left;font:12px/1.7 monospace;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}.android-lab-status{padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}.android-lab-status[data-state=success]{color:#8df0c9}.android-lab-status[data-state=error]{color:#ff9d9d}.android-lab-status[data-state=busy]{color:#f1d37e}
+.android-lab-grid{display:grid;grid-template-columns:1fr;gap:12px}.android-lab-evidence{white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;text-align:left;font:12px/1.7 monospace;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}.android-lab-status{padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}.android-lab-status[data-state=success]{color:#8df0c9}.android-lab-status[data-state=error]{color:#ff9d9d}.android-lab-status[data-state=busy]{color:#f1d37e}.android-lab-report-list{display:grid;gap:8px}.android-lab-report-list input{max-width:100%}
 </style>
 </head>
 <body>
@@ -237,9 +237,9 @@
       <h3>قدرات المختبر</h3>
       <div class="safety ok">✅ APK intake + SHA-256 محلي</div>
       <div class="safety ok">✅ التحليل الثابت عبر MIDAD RE Lab موجود في مستودع الأدوات</div>
-      <div class="safety warn">⏳ ربط نتائج المختبر ببوابة Gateway — قيد التنفيذ</div>
+      <div class="safety ok">✅ استيراد تقارير Static / DEX / Web مع مطابقة SHA-256 محلياً</div>
       <div class="safety warn">⏳ Dynamic instrumentation — يتطلب جهاز/تطبيق اختبار مصرحاً به</div>
-      <div class="notice">لا يتم تشغيل APK مجهول على الهاتف أو خادم MIDAD. نتائج هذه المرحلة هي إثبات استلام وبصمة فقط، وليست تقرير تحليل أمني.</div>
+      <div class="notice">لا يتم تشغيل APK مجهول على الهاتف أو خادم MIDAD. استيراد التقارير محلي فقط؛ لا رفع ولا مزامنة مع Gateway. مؤشرات التحليل ليست إثباتاً منفرداً على وجود ثغرة.</div>
     </div>
   </section>
 
