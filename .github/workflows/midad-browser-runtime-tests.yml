@@ -29,3 +29,14 @@ jobs:
       - name: Run isolated policy and lifecycle tests (no network or browser)
         working-directory: tools/midad-browser-runtime
         run: python -m unittest -v
+      - name: Run deterministic offline Revenue Radar evaluation
+        working-directory: tools/midad-browser-runtime
+        run: python revenue_radar_eval.py --fail-on-review --output "$RUNNER_TEMP/midad-revenue-radar-evaluation.json"
+      - name: Upload Revenue Radar evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-revenue-radar-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/midad-revenue-radar-evaluation.json
+          if-no-files-found: warn
+          retention-days: 14
