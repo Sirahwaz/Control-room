@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectApkFile, MAX_APK_BYTES } from "../web/android-lab.mjs";
+import { inspectApkFile, inspectAnalysisReports, MAX_APK_BYTES } from "../web/android-lab.mjs";
 
 function fileFixture(name, bytes) {
   return {
