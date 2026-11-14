@@ -1,0 +1,66 @@
+name: MIDAD one-shot checkout invoice test
+
+on:
+  push:
+    branches:
+      - midad-checkout-invoice-20261114
+    paths:
+      - .github/workflows/midad-checkout-invoice-test.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-checkout-invoice-20261114
+  cancel-in-progress: false
+
+jobs:
+  create-invoice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Create one idempotent $5 USDC Base test invoice
+        shell: bash
+        run: |
+          set -euo pipefail
+          http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 60 \
+            -X POST "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout" \
+            -H "content-type: application/json" \
+            --data '{"product_id":"payment-path-mini-v1","settlement_asset":"USDC","network":"base","expires_in_minutes":15,"order_key":"store-6f1d8c2a-4b7e-4d31-9a62-202611140001"}' \
+            -o /tmp/midad-checkout-response.json -w "%{http_code}")"
+          python - "$http_code" <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+          code = int(sys.argv[1])
+          with open("/tmp/midad-checkout-response.json", encoding="utf-8") as f:
+              result = json.load(f)
+          if code < 200 or code >= 300 or result.get("ok") is not True:
+              print(json.dumps({"http_status": code, "ok": result.get("ok"), "error": result.get("error"), "detail": result.get("detail"), "reason": result.get("reason")}, separators=(",", ":")))
+              raise SystemExit(1)
+          payment = result.get("payment") or result.get("payment_intent") or {}
+          receiving = result.get("receiving") or {}
+          checks = {
+              "payment_intent_id_present": bool(payment.get("id")),
+              "amount_is_5_usd": float(payment.get("amount_fiat", 0)) == 5.0 and payment.get("fiat_currency") == "USD",
+              "settlement_is_usdc": str(payment.get("settlement_asset", "")).upper() == "USDC",
+              "network_is_base": str(payment.get("network", "")).lower() == "base",
+              "receiving_address_present": bool(payment.get("wallet_address") or receiving.get("wallet_address")),
+              "expiry_present": bool(payment.get("expires_at")),
+              "order_is_awaiting_payment": (result.get("order") or {}).get("status") == "AWAITING_PAYMENT",
+          }
+          print(json.dumps({
+              "http_status": code,
+              "ok": True,
+              "payment_intent_id": payment.get("id"),
+              "payment_status": payment.get("status"),
+              "amount_fiat": payment.get("amount_fiat"),
+              "fiat_currency": payment.get("fiat_currency"),
+              "settlement_asset": payment.get("settlement_asset"),
+              "network": payment.get("network"),
+              "expires_at": payment.get("expires_at"),
+              "order_status": (result.get("order") or {}).get("status"),
+              "checks": checks
+          }, separators=(",", ":")))
+          if not all(checks.values()):
+              raise SystemExit("invoice response did not satisfy all expected fields")
+          PY
