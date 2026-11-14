@@ -124,3 +124,131 @@ if (typeof document !== "undefined") {
     mountAndroidLab();
   }
 }
+
+
+const ANALYSIS_REPORT_SCHEMAS = Object.freeze({
+  "midad-android-static-v1": "android-static",
+  "midad-dex-intelligence-v1": "dex-intelligence",
+  "midad-web-bundle-intelligence-v1": "web-intelligence"
+});
+
+export async function inspectAnalysisReports(files, expectedSha256 = null) {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw failure("ANALYSIS_REPORT_REQUIRED", "اختر تقرير تحليل JSON واحداً على الأقل.");
+  }
+  if (expectedSha256 !== null && !/^[a-f0-9]{64}$/i.test(expectedSha256)) {
+    throw failure("ANALYSIS_EXPECTED_SHA_INVALID", "بصمة APK المرجعية غير صالحة.");
+  }
+
+  const reports = {};
+  let apkSha256 = null;
+  let packageName = null;
+  const fileNames = [];
+
+  for (const file of files) {
+    if (!file || typeof file.name !== "string" || !file.name.toLowerCase().endsWith(".json") || typeof file.text !== "function") {
+      throw failure("ANALYSIS_FILE_INVALID", "كل ملف تحليل يجب أن يكون ملف JSON قابلاً للقراءة.");
+    }
+    let report;
+    try {
+      report = JSON.parse(await file.text());
+    } catch {
+      throw failure("ANALYSIS_JSON_INVALID", `تعذرت قراءة JSON: ${file.name}`);
+    }
+
+    const reportType = ANALYSIS_REPORT_SCHEMAS[report?.schema];
+    if (!reportType) {
+      throw failure("ANALYSIS_SCHEMA_UNSUPPORTED", `مخطط تقرير غير مدعوم: ${file.name}`);
+    }
+    if (reports[reportType]) {
+      throw failure("ANALYSIS_REPORT_DUPLICATE", `تم اختيار تقرير مكرر: ${file.name}`);
+    }
+
+    const reportSha = reportType === "android-static" ? report.input?.sha256 : report.apk_sha256;
+    const reportPackage = reportType === "android-static" ? report.manifest?.package : report.package_name;
+    if (typeof reportSha !== "string" || !/^[a-f0-9]{64}$/i.test(reportSha) || typeof reportPackage !== "string" || !reportPackage.trim()) {
+      throw failure("ANALYSIS_REPORT_INCOMPLETE", `بيانات الهوية أو SHA-256 مفقودة في: ${file.name}`);
+    }
+    if (apkSha256 && apkSha256.toLowerCase() !== reportSha.toLowerCase()) {
+      throw failure("ANALYSIS_APK_MISMATCH", "التقارير المختارة لا تخص بصمة APK واحدة.");
+    }
+    if (packageName && packageName !== reportPackage) {
+      throw failure("ANALYSIS_PACKAGE_MISMATCH", "التقارير المختارة تشير إلى حزم تطبيقات مختلفة.");
+    }
+    if (expectedSha256 && expectedSha256.toLowerCase() !== reportSha.toLowerCase()) {
+      throw failure("ANALYSIS_APK_MISMATCH", "بصمة التقرير لا تطابق APK الذي تم استلامه محلياً.");
+    }
+
+    apkSha256 = reportSha;
+    packageName = reportPackage;
+    reports[reportType] = report;
+    fileNames.push(file.name);
+  }
+
+  const android = reports["android-static"];
+  const dex = reports["dex-intelligence"];
+  const web = reports["web-intelligence"];
+  const isComplete = Boolean(android && dex && web && android.analysis?.status === "completed");
+  return Object.freeze({
+    schema: "midad.android-analysis-evidence/v1",
+    status: isComplete ? "VERIFIED" : "PARTIAL",
+    packageName,
+    apkSha256: apkSha256.toLowerCase(),
+    reportTypes: ["android-static", "dex-intelligence", "web-intelligence"].filter(type => reports[type]),
+    fileNames: Object.freeze(fileNames),
+    manifest: android?.manifest || null,
+    analysis: android?.analysis || null,
+    dex: dex ? {
+      status: dex.status,
+      dexFileCount: dex.dex_file_count,
+      parsedDexCount: dex.parsed_dex_count,
+      classCount: dex.class_count,
+      methodCount: dex.method_count,
+      appOwnedClassCount: dex.app_owned_class_count,
+      appOwnedMethodCount: dex.app_owned_method_count,
+      errors: Array.isArray(dex.errors) ? dex.errors.length : null
+    } : null,
+    web: web ? {
+      status: web.status,
+      indicators: web.indicators || {},
+      externalEndpoints: Array.isArray(web.external_endpoints) ? web.external_endpoints : [],
+      missingFiles: web.missing_files || [],
+      missingLocalReferences: web.missing_local_references || [],
+      errors: Array.isArray(web.errors) ? web.errors : []
+    } : null,
+    observedAt: new Date().toISOString()
+  });
+}
+
+export function formatAnalysisEvidence(evidence) {
+  const lines = [
+    "MIDAD Android Analysis Evidence",
+    `Status: ${evidence.status}`,
+    `Package: ${evidence.packageName}`,
+    `APK SHA-256: ${evidence.apkSha256}`,
+    `Reports: ${evidence.reportTypes.join(", ")}`,
+    `Files: ${evidence.fileNames.join(", ")}`
+  ];
+  if (evidence.manifest) {
+    lines.push(`Min SDK: ${evidence.manifest.min_sdk ?? "not reported"}`);
+    lines.push(`Permissions: ${evidence.manifest.permissions?.length ?? "not reported"}`);
+    lines.push(`Manifest components: ${evidence.manifest.components?.length ?? "not reported"}`);
+  }
+  if (evidence.analysis) {
+    lines.push(`JADX: ${evidence.analysis.jadx ?? "not reported"}`);
+    lines.push(`Apktool: ${evidence.analysis.apktool ?? "not reported"}`);
+  }
+  if (evidence.dex) {
+    lines.push(`DEX: ${evidence.dex.parsedDexCount ?? "?"}/${evidence.dex.dexFileCount ?? "?"} parsed`);
+    lines.push(`Classes / methods: ${evidence.dex.classCount ?? "?"} / ${evidence.dex.methodCount ?? "?"}`);
+    lines.push(`DEX errors: ${evidence.dex.errors ?? "not reported"}`);
+  }
+  if (evidence.web) {
+    const i = evidence.web.indicators;
+    lines.push(`Web indicators: network=${i.network_calls ?? "?"}, storage=${i.storage_apis ?? "?"}, dynamic-execution=${i.dynamic_execution ?? "?"}, DOM-sinks=${i.dom_injection_sinks ?? "?"}, secret-like=${i.secret_like_patterns ?? "?"}`);
+    lines.push(`External endpoints: ${evidence.web.externalEndpoints.length}`);
+    lines.push(`Missing files / references: ${evidence.web.missingFiles.length} / ${evidence.web.missingLocalReferences.length}`);
+  }
+  lines.push("Mode: local report intake only · no upload · no APK execution");
+  return lines.join("\\n");
+}
