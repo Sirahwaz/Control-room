@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { AUTO_ROUTE_SELECT, isAutoRouteEligible } from "./route-policy.ts";
+import { AUTO_ROUTE_SELECT, isAutoRouteEligible, requiredConfirmations } from "./route-policy.ts";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
@@ -388,7 +388,7 @@ async function main(req:Request){
       wallet_address:target.wallet.address,
       expires_at:new Date(Date.now()+expires*60000).toISOString(),
       status:"quoted",
-      confirmations_required:1,
+      confirmations_required:requiredConfirmations(checkoutNetwork),
       reconciliation_status:"pending",
       metadata
     };
