@@ -64,3 +64,24 @@ Input may be a JSON array or `{"candidates":[...]}`. The CLI reports `paid_provi
 ## Persistent assistant operator sessions
 
 The private queue-backed operator mode supports a platform hint, an in-memory authenticated Playwright session, and subsequent typed commands. Read [README-OPERATOR-MODE.md](README-OPERATOR-MODE.md) for private profile setup, command syntax, action/network safeguards, and deployment requirements. The worker and gateway changes are in PR #128; they are not live until the trusted worker, private environment configuration, and gateway version are deployed.
+
+
+## Stanford CS329Z — deterministic Revenue Radar evaluation
+
+The existing qualification engine is evaluated without changing its thresholds or production behavior. The versioned fixture set contains synthetic cases only and is read-only.
+
+Run the evaluator from this directory:
+
+```sh
+python revenue_radar_eval.py --fail-on-review
+```
+
+Write a machine-readable report:
+
+```sh
+python revenue_radar_eval.py --fail-on-review --output /tmp/midad-revenue-radar-evaluation.json
+```
+
+The report includes accuracy, ready/blocked confusion counts, false-ready rate, expected-blocker assertions, and action-safety checks. A non-PASS gate returns exit code 2 when `--fail-on-review` is set. No network, paid model, browser job, external submission, database write, or financial action is performed. CI runs this evaluation after the existing unit tests and retains the JSON report as a short-lived artifact.
+
+Update the fixture version only with reviewed expected outcomes and keep reference times deterministic. Synthetic outcomes are regression evidence; they do not prove a live listing is funded or payable.
