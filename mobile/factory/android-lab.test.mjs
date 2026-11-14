@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectApkFile, inspectAnalysisReports, MAX_APK_BYTES } from "../web/android-lab.mjs";
+import { inspectApkFile, inspectAnalysisReports, formatAnalysisEvidence, MAX_APK_BYTES } from "../web/android-lab.mjs";
 
 function fileFixture(name, bytes) {
   return {
@@ -125,4 +125,27 @@ test("rejects analysis report sets that mix package identities", async () => {
   await assert.rejects(() => inspectAnalysisReports(files), {
     code: "ANALYSIS_PACKAGE_MISMATCH"
   });
+});
+
+
+test("formats imported analysis evidence as readable separate lines", () => {
+  const output = formatAnalysisEvidence({
+    status: "PARTIAL",
+    packageName: "ai.midad.omni.agent",
+    apkSha256: "d".repeat(64),
+    reportTypes: ["dex-intelligence"],
+    fileNames: ["dex-intelligence-report.json"],
+    manifest: null,
+    analysis: null,
+    dex: {
+      dexFileCount: 3,
+      parsedDexCount: 3,
+      classCount: 8595,
+      methodCount: 64233,
+      errors: 0
+    },
+    web: null
+  });
+  assert.match(output, /Status: PARTIAL\nPackage: ai\.midad\.omni\.agent/);
+  assert.match(output, /Classes \/ methods: 8595 \/ 64233/);
 });
