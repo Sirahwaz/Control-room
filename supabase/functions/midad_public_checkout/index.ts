@@ -1,6 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { AUTO_ROUTE_SELECT, isAutoRouteEligible, requiredConfirmations } from "./route-policy.ts";
+import {
+  AUTO_ROUTE_SELECT,
+  isAutoRouteEligible,
+  requiredConfirmations,
+} from "./route-policy.ts";
 
 const URL=Deno.env.get("SUPABASE_URL")||"";
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
