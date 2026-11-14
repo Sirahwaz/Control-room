@@ -64,6 +64,15 @@ test("caches successful allowlisted static assets", async () => {
   assert.equal(harness.stored.size, 1);
 });
 
+test("caches the exact approved versioned JavaScript asset URL", async () => {
+  const harness = createHarness(async () => new Response("js", { status: 200 }));
+  const url = "https://midad.example/midad-control-v2.js?v=20261113-outreach-v1";
+  const response = await harness.dispatch(request(url));
+  assert.equal(await response.text(), "js");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(harness.stored.has(url), true);
+});
+
 test("does not cache same-origin API or other dynamic GET responses", async () => {
   const harness = createHarness(async () => new Response("private-data", { status: 200 }));
   await harness.dispatch(request("https://midad.example/api/account"));
