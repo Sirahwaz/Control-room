@@ -14,6 +14,7 @@
 .live-panel{border-color:rgba(55,214,161,.22)}.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.live-grid>div{min-height:150px;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.02)}
 .bottom-nav{display:flex;overflow-x:auto;gap:2px;scrollbar-width:none}.bottom-nav::-webkit-scrollbar{display:none}.bottom-nav button{flex:0 0 62px}
 @media(max-width:680px){.comm-grid,.live-grid{grid-template-columns:1fr}.comm-text{font-size:12px}}
+.android-lab-grid{display:grid;grid-template-columns:1fr;gap:12px}.android-lab-evidence{white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;text-align:left;font:12px/1.7 monospace;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}.android-lab-status{padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}.android-lab-status[data-state=success]{color:#8df0c9}.android-lab-status[data-state=error]{color:#ff9d9d}.android-lab-status[data-state=busy]{color:#f1d37e}.android-lab-report-list{display:grid;gap:8px}.android-lab-report-list input{max-width:100%}
 </style>
 </head>
 <body>
@@ -219,6 +220,40 @@
     <div class="panel"><h3>Provider Router</h3><div class="provider active"><b>MIDAD Native</b><span>Primary · Local/Native capable</span></div><div class="provider"><b>Gemini</b><span>Reasoning / multimodal / image</span></div><div class="provider"><b>Gemini Notebook</b><span>Knowledge / source-grounded research</span></div><div class="provider"><b>TinyFish</b><span>Fallback only · managed browser</span></div></div>
   </section>
 
+  <section id="android-lab" class="view">
+    <div class="section-title"><div><div class="eyebrow">ANDROID REVERSE ENGINEERING</div><h2>مختبر تحليل Android</h2></div><span class="pill ok">Local · Read-only</span></div>
+    <div class="panel">
+      <h3>APK Intake & Evidence</h3>
+      <p class="muted">اختر APK من الهاتف. سيجري فحص امتداد الملف وتوقيع الحاوية وحساب SHA-256 محلياً. لا يتم رفع الملف أو تثبيته أو تشغيله.</p>
+      <div class="row">
+        <button id="android-lab-choose" class="primary">اختيار ملف APK</button>
+        <button id="android-lab-clear" class="secondary">مسح الاختيار</button>
+        <input id="android-lab-file" type="file" accept=".apk,application/vnd.android.package-archive" hidden>
+      </div>
+      <div id="android-lab-status" class="android-lab-status" data-state="info" role="status" aria-live="polite">جاهز لاستقبال ملف APK.</div>
+      <pre id="android-lab-evidence" class="android-lab-evidence">لم يتم إنشاء سجل بعد.</pre>
+    </div>
+    <div class="panel">
+      <h3>استيراد تقارير التحليل · Analysis Evidence</h3>
+      <p class="muted">نزّل حزمة التقرير من GitHub Actions، فك ضغط ZIP على الهاتف، ثم اختر ملفات JSON الثلاثة. يتحقق المختبر من تطابق SHA-256 وPackage قبل إنشاء سجل محلي.</p>
+      <div class="row">
+        <button id="android-lab-report-choose" class="primary">اختيار تقارير JSON</button>
+        <button id="android-lab-report-clear" class="secondary">مسح التقرير</button>
+        <input id="android-lab-report-files" type="file" accept=".json,application/json" multiple hidden>
+      </div>
+      <div id="android-lab-report-status" class="android-lab-status" data-state="info" role="status" aria-live="polite">لم يتم استيراد تقرير بعد.</div>
+      <pre id="android-lab-report-evidence" class="android-lab-evidence">لا توجد نتائج تحليل مستوردة.</pre>
+    </div>
+    <div class="panel">
+      <h3>قدرات المختبر</h3>
+      <div class="safety ok">✅ APK intake + SHA-256 محلي</div>
+      <div class="safety ok">✅ التحليل الثابت عبر MIDAD RE Lab موجود في مستودع الأدوات</div>
+      <div class="safety ok">✅ استيراد تقارير Static / DEX / Web مع مطابقة SHA-256 محلياً</div>
+      <div class="safety warn">⏳ Dynamic instrumentation — يتطلب جهاز/تطبيق اختبار مصرحاً به</div>
+      <div class="notice">لا يتم تشغيل APK مجهول على الهاتف أو خادم MIDAD. استيراد التقارير محلي فقط؛ لا رفع ولا مزامنة مع Gateway. مؤشرات التحليل ليست إثباتاً منفرداً على وجود ثغرة.</div>
+    </div>
+  </section>
+
   <section id="settings" class="view">
     <div class="section-title"><div><div class="eyebrow">CONTROL PLANE</div><h2>الإعدادات والحدود</h2></div></div>
     <div class="panel">
@@ -239,8 +274,9 @@
   <button data-view="automation">⚙️<span>Automation</span></button>
   <button data-view="media">🎨<span>Media</span></button>
   <button data-view="knowledge">📓<span>Knowledge</span></button>
-  <button data-view="connect">🔗<span>Connect</span></button><button data-view="profiles">👤<span>Profile</span></button>
+  <button data-view="connect">🔗<span>Connect</span></button><button data-view="android-lab">🧪<span>Android Lab</span></button><button data-view="profiles">👤<span>Profile</span></button>
 </nav>
 <script src="omni-agent.js"></script>
+<script type="module" src="android-lab.mjs"></script>
 </body>
 </html>
