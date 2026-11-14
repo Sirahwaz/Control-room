@@ -99,4 +99,52 @@ test("real Chromium Service Worker runtime enforces static-only caching and offl
   assert.match(offline.body, /isolated static fixture/);
   await context.setOffline(false);
   await context.close();
+
+  // Exercise the same policy under an Android-sized, touch-enabled Chromium context.
+  // This is mobile emulation, not a substitute for a physical Android/WebView smoke test.
+  const mobileContext = await browser.newContext({
+    viewport: { width: 393, height: 852 },
+    screen: { width: 393, height: 852 },
+    deviceScaleFactor: 2.75,
+    isMobile: true,
+    hasTouch: true,
+    userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+    serviceWorkers: "allow"
+  });
+  const mobilePage = await mobileContext.newPage();
+  await mobilePage.goto(origin);
+  await mobilePage.evaluate(async () => {
+    await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+  });
+  await mobilePage.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 15000 });
+  const mobileState = await mobilePage.evaluate(async url => {
+    const response = await fetch(url);
+    const body = await response.text();
+    const names = await caches.keys();
+    const cached = await Promise.all(names.map(async name => {
+      const cache = await caches.open(name);
+      return Boolean(await cache.match(url));
+    }));
+    return {
+      isMobile: matchMedia("(max-width: 600px)").matches,
+      hasTouch: navigator.maxTouchPoints > 0,
+      status: response.status,
+      body,
+      controller: Boolean(navigator.serviceWorker.controller),
+      cached: cached.some(Boolean)
+    };
+  }, approved);
+  assert.equal(mobileState.isMobile, true, "mobile viewport media query should match");
+  assert.equal(mobileState.hasTouch, true, "touch input should be enabled");
+  assert.equal(mobileState.controller, true, "service worker should control the mobile page");
+  assert.equal(mobileState.status, 200);
+  assert.equal(mobileState.cached, true, "approved asset should be cached in mobile context");
+  await mobileContext.setOffline(true);
+  const mobileOffline = await mobilePage.evaluate(async url => {
+    const response = await fetch(url);
+    return { status: response.status, body: await response.text() };
+  }, approved);
+  assert.equal(mobileOffline.status, 200, "mobile-emulated static asset should load offline");
+  assert.match(mobileOffline.body, /isolated static fixture/);
+  await mobileContext.close();
 });
