@@ -83,3 +83,10 @@ test("does not intercept cross-origin or non-GET requests", async () => {
   assert.equal(await harness.dispatch(request("https://midad.example/checkout", "POST")), undefined);
   assert.equal(harness.stored.size, 0);
 });
+
+test("does not intercept allowlisted asset paths with unapproved query strings", async () => {
+  const harness = createHarness(async () => new Response("unexpected-variant", { status: 200 }));
+  const response = await harness.dispatch(request("https://midad.example/midad-control-v2.js?v=unapproved"));
+  assert.equal(response, undefined);
+  assert.equal(harness.stored.size, 0);
+});
