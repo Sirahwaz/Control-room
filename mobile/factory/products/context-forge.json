@@ -1,0 +1,85 @@
+{
+  "$schema": "../product.schema.json",
+  "schema_version": 1,
+  "product_key": "context-forge",
+  "display_name": "Context Forge",
+  "version": "0.1.0",
+  "app_id": "ai.midad.contextforge",
+  "artifact_name": "Context-Forge-v0.1.0",
+  "web_entry": "mobile/web/context-forge.html",
+  "product_mode": "local-context-workbench",
+  "release_channel": "internal",
+  "features": {
+    "rtl_first": true,
+    "local_first": true,
+    "native_haptics": false,
+    "native_back_navigation": true,
+    "in_app_browser": false,
+    "server_side_secrets_only": true,
+    "live_financial_execution": false,
+    "mission_capsules": true,
+    "hybrid_neural_planner": false,
+    "offline_operator": true,
+    "trust_boundary_ui": true,
+    "evidence_capture": true
+  },
+  "surfaces": [
+    "context-compiler",
+    "conflict-review",
+    "local-history",
+    "draft-plan"
+  ],
+  "target_markets": [
+    "global_remote",
+    "europe_uk",
+    "arab_gcc"
+  ],
+  "monetization_models": [
+    "internal",
+    "subscription",
+    "b2b_license"
+  ],
+  "revenue_mode": "productized",
+  "factory": {
+    "profile": "offline-context-workbench",
+    "request_driven_ui": true,
+    "dynamic_content": true,
+    "localization": {
+      "default_language": "ar",
+      "supported_seed": ["ar", "en", "fa"],
+      "expand_on_demand": true
+    },
+    "learning": {
+      "enabled": true,
+      "scope": ["product"],
+      "decision_policy": "local_heuristic_only",
+      "feedback_required": false
+    },
+    "quality": {
+      "minimum_confidence": 0.9,
+      "max_repair_attempts_per_incident": 3,
+      "fail_closed_on_security_gate": true
+    },
+    "data": {
+      "backend": "device-local",
+      "offline_first": true,
+      "sync_strategy": "manual_export_only"
+    },
+    "delivery": {
+      "outputs": [
+        "apk",
+        "sha256",
+        "manifest",
+        "build_report",
+        "test_report",
+        "runtime_smoke_report",
+        "learning_report"
+      ]
+    }
+  },
+  "web_assets": [
+    "mobile/web/context-forge.css",
+    "mobile/web/context-forge.js",
+    "products/context-forge/context-engine.mjs"
+  ]
+}

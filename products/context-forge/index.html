@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101520">
+  <meta name="description" content="Context Forge — provenance-first Context Engineering for developers and bounded AI agent systems.">
+  <title>Context Forge | Context Engineering Workbench</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Context Forge home">
+      <span class="brand-mark">CF</span>
+      <span><strong>Context Forge</strong><small>Context Engineering Workbench</small></span>
+    </a>
+    <div class="top-actions">
+      <span class="local-badge"><i></i> تحليل محلي</span>
+      <a class="repo-link" href="https://github.com/Sirahwaz/Control-room/tree/context-forge-mvp/products/context-forge" target="_blank" rel="noreferrer">Source ↗</a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">DEVELOPER PREVIEW · v0.1</div>
+      <h1>لا تعطِ الوكيل سياقًا أكبر.<br><span>أعطه سياقًا يمكن الوثوق به.</span></h1>
+      <p>حوّل الملاحظات والقرارات والقيود إلى حزمة سياق قابلة للتتبع والاختبار وإعادة الاستخدام. كل عنصر يبقى مرتبطًا بمصدره، وما لم يُتحقق منه يبقى غير مؤكد.</p>
+      <div class="hero-pills"><span>Provenance-first</span><span>Model-agnostic</span><span>Local analysis</span><span>Human-controlled</span></div>
+    </section>
+
+    <section class="grid-layout">
+      <article class="panel input-panel">
+        <div class="panel-heading">
+          <div><span class="step">01</span><h2>مصدر السياق</h2></div>
+          <label class="file-button" for="file-input">استيراد ملف</label>
+          <input id="file-input" type="file" accept=".txt,.md,.json,.context" hidden>
+        </div>
+        <p class="muted">الصق ملاحظات المهمة أو قرارات المشروع. لا يُرسل النص إلى أي خادم في هذه النسخة.</p>
+        <textarea id="source-text" spellcheck="false" aria-label="Context source text" placeholder="Goal: ...&#10;Constraint: ...&#10;Decision: ...&#10;Open question: ..."></textarea>
+        <div class="editor-footer"><span id="char-count">0 حرف</span><span>لا تضع أسرارًا أو مفاتيح API في السياق.</span></div>
+        <div class="button-row">
+          <button id="compile-button" class="button primary">بناء حزمة السياق <span aria-hidden="true">→</span></button>
+          <button id="sample-button" class="button secondary">تحميل مثال</button>
+          <button id="clear-button" class="button ghost">مسح</button>
+        </div>
+      </article>
+
+      <article class="panel result-panel">
+        <div class="panel-heading">
+          <div><span class="step">02</span><h2>حزمة السياق</h2></div>
+          <span id="result-status" class="status-chip">بانتظار التحليل</span>
+        </div>
+        <div id="empty-state" class="empty-state">
+          <div class="empty-icon">⌘</div>
+          <strong>لم تُبنَ حزمة بعد</strong>
+          <p>أدخل سياقًا ثم اضغط «بناء حزمة السياق» لبدء التحليل المحلي.</p>
+        </div>
+        <div id="result-content" hidden>
+          <div class="metrics">
+            <div class="metric"><strong id="metric-claims">0</strong><span>وحدات سياق</span></div>
+            <div class="metric"><strong id="metric-decisions">0</strong><span>قرارات</span></div>
+            <div class="metric"><strong id="metric-constraints">0</strong><span>قيود</span></div>
+            <div class="metric warn"><strong id="metric-conflicts">0</strong><span>تعارضات محتملة</span></div>
+          </div>
+          <div id="warnings" class="warnings" hidden></div>
+          <div class="section-title"><h3>الهدف المستخرج</h3><span class="mini-tag">UNVERIFIED</span></div>
+          <div id="objective-box" class="objective-box">—</div>
+          <div class="section-title"><h3>الوحدات والمصدر</h3><span class="muted small">النتيجة مستخرجة من نصك فقط</span></div>
+          <div id="claims-list" class="claims-list"></div>
+          <div class="section-title"><h3>تعارضات تحتاج مراجعة</h3></div>
+          <div id="conflicts-list" class="conflicts-list"></div>
+          <details class="json-details">
+            <summary>عرض JSON الكامل</summary>
+            <pre id="json-output" dir="ltr"></pre>
+          </details>
+          <div class="button-row export-row">
+            <button id="download-button" class="button primary">تصدير JSON</button>
+            <button id="copy-button" class="button secondary">نسخ JSON</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel runtime-panel">
+      <div class="panel-heading">
+        <div><span class="step">03</span><h2>النواة المعرفية والوكيل</h2></div>
+        <span id="runtime-status-chip" class="status-chip pending">فحص الاتصال...</span>
+      </div>
+      <p class="muted">واجهة اختيارية للنواة المحلية. مفتاح مزوّد النموذج يبقى في بيئة الخادم، بينما رمز الوصول المحلي يُستخدم في هذه التبويبة فقط ولا يُحفظ في التخزين الدائم.</p>
+      <div class="runtime-steps">
+        <div class="runtime-step active"><span>1</span><strong>Context</strong><small>منفذ محليًا</small></div>
+        <div class="runtime-connector"></div>
+        <div class="runtime-step"><span>2</span><strong>Plan</strong><small>Dry-run عند إعداد النموذج</small></div>
+        <div class="runtime-connector"></div>
+        <div class="runtime-step"><span>3</span><strong>Act via tools</strong><small>موقوفة في هذه النسخة</small></div>
+        <div class="runtime-connector"></div>
+        <div class="runtime-step"><span>4</span><strong>Observe & evaluate</strong><small>يتطلب verifier فعليًا</small></div>
+      </div>
+      <div class="runtime-note"><span aria-hidden="true">ⓘ</span><div><strong>ما المقصود بـ AGI واقعي هنا؟</strong><p>نبني تدريجيًا قدرات التخطيط، واستدعاء الأدوات، والذاكرة ذات المنشأ، والتقييم الذاتي، والتعافي المحدود من الأخطاء. هذه هندسة لوكيل أكثر عمومية وقابل للتحقق، وليست إثباتًا لتحقيق ذكاء عام بمستوى الإنسان.</p></div></div>
+      <div class="runtime-console">
+        <div class="section-title"><h3>تشغيل مخطّط محلي (Dry-run)</h3><span class="mini-tag">لا ينفّذ أدوات خارجية</span></div>
+        <label class="runtime-label" for="runtime-token">رمز الوصول المحلي <span>لا تضع هنا مفتاح النموذج</span></label>
+        <input id="runtime-token" class="runtime-input" type="password" autocomplete="off" spellcheck="false" placeholder="ألصق CONTEXT_FORGE_RUNTIME_TOKEN لهذه الجلسة فقط">
+        <label class="runtime-label" for="agent-goal">هدف الوكيل</label>
+        <textarea id="agent-goal" class="goal-editor" spellcheck="false" placeholder="مثال: حلّل السياق، حدّد المعلومات الناقصة، وأنشئ خطة تحقق."></textarea>
+        <div class="button-row">
+          <button id="runtime-check-button" class="button secondary">فحص النواة</button>
+          <button id="model-probe-button" class="button secondary">اختبار اتصال النموذج</button>
+          <button id="agent-plan-button" class="button primary">شغّل دورة Context → Plan → Verify → Memory → Learn</button>
+        </div>
+        <div id="runtime-api-status" class="runtime-api-status" role="status">لم يتم الاتصال بعد.</div>
+        <div class="memory-console">
+          <div class="section-title"><h3>الذاكرة والتعلّم</h3><span class="mini-tag">مصدر + حالة + دليل</span></div>
+          <div class="button-row">
+            <button id="memory-save-button" class="button secondary">حفظ السياق كملاحظة</button>
+            <button id="learn-report-button" class="button secondary">تقرير التعلّم</button>
+          </div>
+          <label class="runtime-label" for="memory-query">البحث في الذاكرة</label>
+          <div class="memory-search-row">
+            <input id="memory-query" class="runtime-input" type="text" autocomplete="off" placeholder="ابحث عن قرار أو ملاحظة سابقة">
+            <button id="memory-search-button" class="button secondary">بحث</button>
+          </div>
+          <div id="memory-api-status" class="runtime-api-status" role="status">لا تحفظ الملاحظات إلا عند الضغط صراحةً على زر الحفظ.</div>
+          <div id="memory-results" hidden>
+            <pre id="memory-output" dir="ltr"></pre>
+          </div>
+        </div>
+        <div id="agent-plan-result" class="agent-plan-result" hidden>
+          <div class="section-title"><h3>خطة مقترحة</h3><span id="agent-plan-badge" class="mini-tag">DRY_RUN</span></div>
+          <pre id="agent-plan-output" dir="ltr"></pre>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Context Forge · Independent product path</span>
+      <span>v0.1 · Optional local model adapter · Dry-run planning only · No external actions</span>
+    </footer>
+  </main>
+</body>
+</html>
