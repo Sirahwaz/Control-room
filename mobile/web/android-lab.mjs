@@ -75,7 +75,13 @@ function mountAndroidLab() {
   const clear = document.querySelector("#android-lab-clear");
   const status = document.querySelector("#android-lab-status");
   const output = document.querySelector("#android-lab-evidence");
+  const reportInput = document.querySelector("#android-lab-report-files");
+  const reportChoose = document.querySelector("#android-lab-report-choose");
+  const reportClear = document.querySelector("#android-lab-report-clear");
+  const reportStatus = document.querySelector("#android-lab-report-status");
+  const reportOutput = document.querySelector("#android-lab-report-evidence");
   if (!input || !choose || !clear || !status || !output) return;
+  let currentApkSha256 = null;
 
   const showStatus = (message, kind = "info") => {
     status.textContent = message;
@@ -86,6 +92,7 @@ function mountAndroidLab() {
   clear.addEventListener("click", () => {
     input.value = "";
     output.textContent = "لم يتم إنشاء سجل بعد.";
+    currentApkSha256 = null;
     showStatus("جاهز لاستقبال ملف APK.", "info");
   });
 
@@ -99,6 +106,7 @@ function mountAndroidLab() {
     showStatus("جارٍ التحقق من الملف وحساب SHA-256 محلياً…", "busy");
     try {
       const evidence = await inspectApkFile(file);
+      currentApkSha256 = evidence.sha256;
       output.textContent = [
         `Evidence ID: ${evidence.evidenceId}`,
         `File: ${evidence.fileName}`,
@@ -115,6 +123,35 @@ function mountAndroidLab() {
       output.textContent = `BLOCKED: ${error?.code || "UNKNOWN_ERROR"}`;
     }
   });
+
+  if (reportInput && reportChoose && reportClear && reportStatus && reportOutput) {
+    const showReportStatus = (message, kind = "info") => {
+      reportStatus.textContent = message;
+      reportStatus.dataset.state = kind;
+    };
+    reportChoose.addEventListener("click", () => reportInput.click());
+    reportClear.addEventListener("click", () => {
+      reportInput.value = "";
+      reportOutput.textContent = "لا توجد نتائج تحليل مستوردة.";
+      showReportStatus("تم مسح سجل التقرير المحلي.", "info");
+    });
+    reportInput.addEventListener("change", async () => {
+      const files = Array.from(reportInput.files || []);
+      if (!files.length) {
+        showReportStatus("لم يتم اختيار تقارير.", "info");
+        return;
+      }
+      showReportStatus("جارٍ التحقق من مخطط التقارير وتطابق SHA-256…", "busy");
+      try {
+        const evidence = await inspectAnalysisReports(files, currentApkSha256);
+        reportOutput.textContent = formatAnalysisEvidence(evidence);
+        showReportStatus(evidence.status === "VERIFIED" ? "تم التحقق من التقارير الثلاثة وربطها ببصمة APK واحدة." : "تم استيراد تقارير جزئية. أضف الملفات الناقصة لاكتمال سجل الأدلة.", evidence.status === "VERIFIED" ? "success" : "busy");
+      } catch (error) {
+        showReportStatus(error?.message || "تعذر استيراد تقارير التحليل.", "error");
+        reportOutput.textContent = "BLOCKED: " + (error?.code || "UNKNOWN_ERROR");
+      }
+    });
+  }
 }
 
 if (typeof document !== "undefined") {
