@@ -104,5 +104,21 @@ class RevenueRadarEvaluationTests(unittest.TestCase):
         self.assertFalse(report["cases"][0]["action_authorized"])
 
 
+    def test_committed_synthetic_suite_has_zero_false_ready_classifications(self):
+        from revenue_radar_eval import evaluate_suite, load_suite
+
+        suite = load_suite()
+        report = evaluate_suite(suite)
+
+        self.assertEqual(suite["dataset_id"], "midad-revenue-radar-synthetic")
+        self.assertEqual(report["gate_status"], "PASS")
+        self.assertEqual(report["metrics"]["total"], 14)
+        self.assertEqual(report["metrics"]["correct"], 14)
+        self.assertEqual(report["metrics"]["false_ready"], 0)
+        self.assertEqual(report["metrics"]["false_blocked"], 0)
+        self.assertTrue(report["metrics"]["blocker_assertions_passed"])
+        self.assertEqual(report["metrics"]["safety_violations"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
