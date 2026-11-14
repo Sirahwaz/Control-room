@@ -120,5 +120,19 @@ class RevenueRadarEvaluationTests(unittest.TestCase):
         self.assertEqual(report["metrics"]["safety_violations"], 0)
 
 
+
+    def test_blocker_assertion_failure_does_not_corrupt_decision_accuracy(self):
+        report = evaluate_cases([{
+            "id": "classification-correct-but-reason-wrong",
+            "candidate": candidate(funded=False),
+            "expected_decision": "BLOCKED",
+            "expected_blockers": ["source_not_registered"],
+        }], now=FIXED_NOW)
+
+        self.assertEqual(report["metrics"]["accuracy"], 1.0)
+        self.assertEqual(report["metrics"]["correct"], 1)
+        self.assertEqual(report["metrics"]["fully_passed"], 0)
+        self.assertEqual(report["gate_status"], "REVIEW")
+
 if __name__ == "__main__":
     unittest.main()
