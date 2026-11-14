@@ -7,7 +7,7 @@ function fileFixture(name, bytes) {
     name,
     size: bytes.byteLength,
     async arrayBuffer() { return bytes.slice().buffer; },
-    async slice(start, end) {
+    slice(start, end) {
       return { async arrayBuffer() { return bytes.slice(start, end).buffer; } };
     }
   };
