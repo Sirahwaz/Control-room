@@ -108,7 +108,7 @@ function mountAndroidLab() {
         "Mode: Static intake only",
         "Upload: No",
         "Target execution: No"
-      ].join("\\n");
+      ].join("\n");
       showStatus("تم التحقق من الحاوية وإنشاء بصمة الملف. لم يُرفع الملف ولم يُشغّل.", "success");
     } catch (error) {
       showStatus(error?.message || "تعذر فحص الملف.", "error");
