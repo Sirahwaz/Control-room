@@ -5,11 +5,13 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 from dex_intelligence import analyze_apk_dex, summarize_smali_tree
 from web_bundle_intelligence import analyze_apk_web_bundle
 
 MAX_APK_BYTES = 200 * 1024 * 1024
+MAX_ANDROID_MANIFEST_BYTES = 2 * 1024 * 1024
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
 
 def validate_public_url(raw: str, expected_host: str | None = None):
@@ -59,6 +61,28 @@ def download_apk(url: str, destination: Path):
         if total < 4 or destination.read_bytes()[:2] != b"PK": raise ValueError("INPUT_NOT_VALID_APK_ZIP")
         return total, digest.hexdigest(), current
     raise ValueError("REDIRECT_LIMIT_EXCEEDED")
+
+def parse_android_manifest(manifest_path: Path):
+    """Parse an APK-derived Android manifest with bounded, DTD-free XML handling."""
+    manifest_path = Path(manifest_path)
+    try:
+        manifest_size = manifest_path.stat().st_size
+    except OSError:
+        raise ValueError("ANDROID_MANIFEST_UNAVAILABLE") from None
+    if manifest_size > MAX_ANDROID_MANIFEST_BYTES:
+        raise ValueError("ANDROID_MANIFEST_TOO_LARGE")
+
+    try:
+        document = ET.parse(
+            manifest_path,
+            forbid_dtd=True,
+            forbid_entities=True,
+            forbid_external=True,
+        )
+    except (ET.ParseError, DefusedXmlException):
+        raise ValueError("ANDROID_MANIFEST_XML_REJECTED") from None
+    return document.getroot()
+
 
 def file_digest(path: Path):
     if not path.is_file() or path.stat().st_size > MAX_APK_BYTES or not zipfile.is_zipfile(path):
@@ -160,7 +184,7 @@ def main():
     # JADX is best-effort: APKtool can still provide a useful manifest/archive report.
     jadx_result = run_jadx(args.jadx, str(apk), str(decompiled))
     decompiled = Path(jadx_result["output_dir"])
-    manifest=ET.parse(decoded/"AndroidManifest.xml").getroot()
+    manifest=parse_android_manifest(decoded/"AndroidManifest.xml")
     package_name=manifest.attrib.get("package")
     product_manifest = None
     if args.product_key:

@@ -1,0 +1,213 @@
+name: MIDAD Security Assessment — MSAV-1
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msav1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-security:
+    name: Repository supply-chain and static security baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python for Semgrep
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: false
+
+      - name: Install pinned Semgrep Community Edition
+        id: install-semgrep
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check --no-compile "semgrep==1.184.0"
+
+      - name: Prepare private runner-local report directories
+        shell: bash
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-public" "$RUNNER_TEMP/msav-trivy-cache"
+          chmod 700 "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-public" "$RUNNER_TEMP/msav-trivy-cache"
+
+      - name: Run non-blocking repository scanners
+        id: scanners
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          RAW="$RUNNER_TEMP/msav-raw"
+
+          run_scanner() {
+            local name="$1"
+            local executable="$2"
+            shift 2
+
+            if ! command -v "$executable" >/dev/null 2>&1; then
+              printf '127\n' > "$RAW/$name.exit"
+              return 0
+            fi
+
+            "$@" > "$RAW/$name.stdout" 2> "$RAW/$name.stderr"
+            local status=$?
+            printf '%s\n' "$status" > "$RAW/$name.exit"
+            return 0
+          }
+
+          run_scanner semgrep semgrep semgrep scan \
+            --config p/security-audit \
+            --metrics off \
+            --timeout 120 \
+            --json \
+            --output "$RAW/semgrep.json" \
+            .
+
+          run_scanner gitleaks docker docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
+            --mount "type=bind,src=$RAW,dst=/out" \
+            --workdir /repo \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb \
+            git \
+            --log-opts=--all \
+            --no-banner \
+            --report-format json \
+            --report-path /out/gitleaks.json \
+            --exit-code 0
+
+          run_scanner osv-scanner docker docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
+            --mount "type=bind,src=$RAW,dst=/out" \
+            ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 \
+            scan source \
+            --recursive /src \
+            --format json \
+            --output-file /out/osv.json
+
+          run_scanner trivy docker docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/work,readonly" \
+            --mount "type=bind,src=$RAW,dst=/out" \
+            --mount "type=bind,src=$RUNNER_TEMP/msav-trivy-cache,dst=/cache" \
+            aquasec/trivy:0.76.2 fs \
+            --cache-dir /cache \
+            --scanners vuln,misconfig \
+            --format json \
+            --output /out/trivy.json \
+            --exit-code 0 \
+            --skip-dirs /work/.git \
+            --skip-dirs /work/node_modules \
+            /work
+
+          echo "Scanner commands finished. Non-zero and missing-report states are retained for review; findings do not fail this job."
+
+      - name: Run MSAV sanitizer contract tests
+        id: sanitizer-tests
+        run: |
+          node --test tests/msav-security-scanning.test.mjs tests/msav-security-workflow.test.mjs
+
+      - name: Run miner restart approval contract tests
+        id: miner-approval-tests
+        run: |
+          python -m unittest discover -s tools/midad-miner-sensor -p 'test_*.py' -v
+
+      - name: Run DEV.to publisher endpoint security tests
+        id: publisher-security-tests
+        run: |
+          python -m unittest discover -s research -p 'test_publish_knots_security.py' -v
+
+      - name: Build sanitized security report
+        id: sanitize
+        if: always()
+        continue-on-error: true
+        env:
+          MSAV_RAW_DIR: ${{ runner.temp }}/msav-raw
+          MSAV_OUTPUT_FILE: ${{ runner.temp }}/msav-public/security-report.json
+        run: |
+          node tools/security/msav-sanitize.mjs \
+            --input "$MSAV_RAW_DIR" \
+            --output "$MSAV_OUTPUT_FILE" \
+            --workspace "$GITHUB_WORKSPACE"
+
+      - name: Add sanitized summary to the workflow run
+        if: always()
+        shell: bash
+        run: |
+          REPORT="$RUNNER_TEMP/msav-public/security-report.json"
+          if [[ -f "$REPORT" ]]; then
+            node --input-type=module - "$REPORT" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          console.log('## MIDAD Security Assessment — MSAV-1');
+          console.log('');
+          console.log(`Commit: \`${report.commitSha || 'unknown'}\``);
+          console.log('');
+          console.log(`Overall coverage: **${report.coverageState || 'UNKNOWN'}**`);
+          console.log('');
+          console.log(`Normalized findings: **${report.findingCount}**`);
+          console.log('');
+          if (report.coverageState !== 'COMPLETE') {
+            console.log('Coverage is partial. Review scanner states and error counts before treating this run as a complete assessment.');
+            console.log('');
+          }
+          console.log('| Scanner | Version | Report state | Findings | Internal errors |');
+          console.log('|---|---:|---|---:|---:|');
+          for (const scanner of report.scanners) {
+            console.log(`| ${scanner.name} | ${scanner.version} | ${scanner.status} | ${scanner.findings} | ${scanner.reportedErrorCount || 0} |`);
+          }
+          console.log('');
+          const semgrep = report.scanners.find(scanner => scanner.name === 'semgrep');
+          if (semgrep?.reportedErrors?.length) {
+            console.log('### Sanitized Semgrep diagnostics');
+            console.log('');
+            for (const error of semgrep.reportedErrors) {
+              console.log(`- ${error.errorType} ${error.code ?? ''} ${error.path || '<unknown path>'}${error.line ? ':' + error.line : ''}`);
+            }
+            console.log('');
+          }
+          const gitleaks = report.findings.filter(item => item.scanner === 'gitleaks');
+          const presentInHead = gitleaks.filter(item => item.presentInHead === true).length;
+          const absentFromHeadPath = gitleaks.filter(item => item.presentInHead === false).length;
+          const headUnknown = gitleaks.length - presentInHead - absentFromHeadPath;
+          console.log('### Gitleaks triage');
+          console.log('');
+          console.log(`- Present in current HEAD at reported path: **${presentInHead}**`);
+          console.log(`- Not present in current HEAD at reported path: **${absentFromHeadPath}**`);
+          console.log(`- Current presence not comparable: **${headUnknown}**`);
+          console.log('');
+          console.log('Presence is a triage signal, not proof of a live credential. Historical findings still require exposure review. Raw reports, source snippets and secret values are not uploaded.');
+          NODE
+          else
+            echo "## MIDAD Security Assessment — MSAV-1" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Sanitized report was not produced. Do not interpret missing scanner output as a clean result." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload sanitized report only
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-msav1-sanitized-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/msav-public/security-report.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Remove runner-local raw scan data
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/msav-raw" "$RUNNER_TEMP/msav-trivy-cache"

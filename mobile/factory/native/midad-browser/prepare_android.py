@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import re
 import shutil
-import xml.etree.ElementTree as ET
+# This helper only parses the repository's checked-in AndroidManifest.xml; no APK or external XML is accepted.
+import xml.etree.ElementTree as ET  # nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
