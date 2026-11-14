@@ -4,6 +4,7 @@
  */
 export const taskmarketFixture = {
   id: "task-fixture-01",
+  chainId: 8453,
   title: "Fixture task",
   description: "Contract-shaped public listing fixture",
   reward: "10000000",
@@ -18,6 +19,25 @@ export const taskmarketFixture = {
   submissionCount: 2,
   awardCount: 0,
   tags: ["typescript"],
+};
+
+export const taskmarketTempoFixture = {
+  id: "task-tempo-fixture-01",
+  chainId: 4217,
+  title: "Tempo OUSD fixture task",
+  description: "A Taskmarket Tempo task paid in OUSD.",
+  reward: "100000000",
+  netReward: "100000000",
+  mode: "bounty",
+  status: "open",
+  phase: "active",
+  expiryTime: "2030-01-01T00:00:00.000Z",
+  escrowTxHash: null,
+  stakeRequired: false,
+  stakeBps: 0,
+  submissionCount: 2,
+  awardCount: 0,
+  tags: ["tempo", "ousd"],
 };
 
 export const basedAgentsFixture = {

@@ -173,7 +173,7 @@ Deno.test("Taskmarket explicit worker submit action with requiresPayment=false p
   });
   assertEquals(evidence.submissionFee, 0);
   assertEquals(evidence.feeScheduleVerified, true);
-  assertEquals(evidence.feeScheduleEvidenceUrl, "https://docs.taskmarket.dev/concepts/fees-payments");
+  assertEquals(evidence.feeScheduleEvidenceUrl, "https://docs.taskmarket.dev/networks/fees");
 });
 
 Deno.test("Taskmarket submit action that requires payment is not incorrectly treated as free", () => {
