@@ -14,3 +14,7 @@ export function isAutoRouteEligible(route: AutoRouteCandidate): boolean {
     route.requires_approval === false &&
     route.route_kind === "receive";
 }
+
+export function requiredConfirmations(network: string): number {
+  return network.toLowerCase() === "base" ? 3 : 1;
+}
