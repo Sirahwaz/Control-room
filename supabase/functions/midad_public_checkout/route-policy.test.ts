@@ -1,5 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { AUTO_ROUTE_SELECT, isAutoRouteEligible, requiredConfirmations } from "./route-policy.ts";
+import {
+  AUTO_ROUTE_SELECT,
+  isAutoRouteEligible,
+  requiredConfirmations,
+} from "./route-policy.ts";
 
 Deno.test(
   "allows only active receive routes explicitly approved for automatic routing",
