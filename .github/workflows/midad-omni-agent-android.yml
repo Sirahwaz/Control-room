@@ -14,6 +14,8 @@ on:
     branches: ["main"]
     paths:
       - "mobile/web/omni-agent.*"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - "mobile/web/human-bridge.js"
       - "mobile/factory/**"
       - "mobile/package.json"
@@ -108,7 +110,11 @@ jobs:
 
       - name: Static JS syntax audit
         working-directory: mobile
-        run: node --check web/omni-agent.js
+        run: |
+          node --check web/omni-agent.js
+          node --check web/android-lab.mjs
+      - name: Android Lab contract tests
+        run: node --test mobile/factory/android-lab.test.mjs
       - name: Factory contract audit
         run: |
           set -euo pipefail
