@@ -52,6 +52,9 @@ jobs:
             ramdisk=prebuilt/userland/hello \
             --cmdline "$ARGS"
 
+      - name: Verify fixed payload memory contract
+        run: node --test compute/mncf/tests/hakios-uefi-payload-memory.test.mjs
+
       - name: Boot HakiOS open kernel under QEMU (bounded smoke)
         working-directory: hakios
         shell: bash
@@ -74,10 +77,12 @@ jobs:
           set +e
           if [ "${{ matrix.boot_path }}" = "uefi-esp" ]; then
             # Differential path: UEFI loads the payload from the ESP file; no QEMU loader device.
-            QEMU_ESP=1 QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+            # XNULOADER probes the fixed 0xF0000000 payload window before its banner; 6G keeps the 64 MiB window in guest RAM.
+            QEMU_ESP=1 QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=6G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
           else
             # Baseline path: QEMU's loader device places the payload at 0xF0000000.
-            QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=2G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
+            # Match the 6G U-Boot baseline; XNULOADER probes this fixed address before its banner.
+            QEMU_EFI="$EFI" QEMU_VARS="$VARS" QEMU_MEM=6G bash qemu/run.sh 120 -d guest_errors,cpu_reset -D qemu-debug.log > qemu-open.log 2>&1
           fi
           status=$?
           set -e
