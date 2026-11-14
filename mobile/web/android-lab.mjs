@@ -287,5 +287,5 @@ export function formatAnalysisEvidence(evidence) {
     lines.push(`Missing files / references: ${evidence.web.missingFiles.length} / ${evidence.web.missingLocalReferences.length}`);
   }
   lines.push("Mode: local report intake only · no upload · no APK execution");
-  return lines.join("\\n");
+  return lines.join("\n");
 }
