@@ -227,7 +227,10 @@ jobs:
           APK_FILE: ${{ steps.apk.outputs.path }}
         run: |
           set -euo pipefail
-          sha256sum --check "$APK_FILE.sha256"
+          EXPECTED_SHA="$(awk '{print $1}' "$APK_FILE.sha256")"
+          ACTUAL_SHA="$(sha256sum "$APK_FILE" | awk '{print $1}')"
+          test -n "$EXPECTED_SHA"
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
       - name: Static APK analysis
         env:
           APK_FILE: ${{ steps.apk.outputs.path }}
