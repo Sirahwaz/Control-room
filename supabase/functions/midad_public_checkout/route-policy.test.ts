@@ -79,6 +79,8 @@ Deno.test("rejects inactive, manual-only, or non-receive routes", () => {
 });
 
 Deno.test("checkout route projection includes every field required by route policy", () => {
-  const projectedFields = AUTO_ROUTE_SELECT.split(",").map((field) => field.trim());
+  const projectedFields = AUTO_ROUTE_SELECT.split(",").map((field) =>
+    field.trim()
+  );
   assertEquals(projectedFields.includes("route_kind"), true);
 });
