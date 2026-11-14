@@ -50,3 +50,79 @@ test("does not accept missing or malformed file objects", async () => {
   await assert.rejects(() => inspectApkFile(null), { code: "APK_FILE_REQUIRED" });
   await assert.rejects(() => inspectApkFile({ name: "x.apk", size: 1 }), { code: "APK_FILE_UNREADABLE" });
 });
+
+
+test("accepts a matching static, DEX, and web analysis report set as one evidence record", async () => {
+  const sha = "a".repeat(64);
+  const reports = [
+    {
+      schema: "midad-android-static-v1",
+      input: { sha256: sha },
+      manifest: { package: "ai.midad.omni.agent", min_sdk: "24", permissions: [], components: [] },
+      analysis: { status: "partial", jadx: "failed", apktool: "completed" }
+    },
+    {
+      schema: "midad-dex-intelligence-v1",
+      apk_sha256: sha,
+      package_name: "ai.midad.omni.agent",
+      status: "completed",
+      dex_file_count: 3,
+      class_count: 8595,
+      method_count: 64233,
+      app_owned_class_count: 9,
+      app_owned_method_count: 9,
+      errors: []
+    },
+    {
+      schema: "midad-web-bundle-intelligence-v1",
+      apk_sha256: sha,
+      package_name: "ai.midad.omni.agent",
+      status: "completed",
+      indicators: { network_calls: 37, storage_apis: 16, dynamic_execution: 0, dom_injection_sinks: 12, secret_like_patterns: 0 },
+      external_endpoints: []
+    }
+  ];
+  const files = reports.map((report, index) => ({
+    name: ["android-static-report.json", "dex-intelligence-report.json", "web-intelligence-report.json"][index],
+    async text() { return JSON.stringify(report); }
+  }));
+  const result = await inspectAnalysisReports(files, sha);
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.packageName, "ai.midad.omni.agent");
+  assert.equal(result.apkSha256, sha);
+  assert.equal(result.dex.classCount, 8595);
+  assert.equal(result.web.indicators.dom_injection_sinks, 12);
+  assert.deepEqual(result.reportTypes, ["android-static", "dex-intelligence", "web-intelligence"]);
+});
+
+test("rejects analysis reports whose APK fingerprints do not match", async () => {
+  const report = {
+    schema: "midad-dex-intelligence-v1",
+    apk_sha256: "b".repeat(64),
+    package_name: "ai.midad.omni.agent",
+    status: "completed"
+  };
+  const file = { name: "dex-intelligence-report.json", async text() { return JSON.stringify(report); } };
+  await assert.rejects(() => inspectAnalysisReports([file], "a".repeat(64)), {
+    code: "ANALYSIS_APK_MISMATCH"
+  });
+});
+
+test("rejects unsupported or malformed analysis report schemas", async () => {
+  const file = { name: "report.json", async text() { return JSON.stringify({ schema: "unknown/v9" }); } };
+  await assert.rejects(() => inspectAnalysisReports([file]), {
+    code: "ANALYSIS_SCHEMA_UNSUPPORTED"
+  });
+});
+
+test("rejects analysis report sets that mix package identities", async () => {
+  const sha = "c".repeat(64);
+  const reports = [
+    { schema: "midad-dex-intelligence-v1", apk_sha256: sha, package_name: "ai.midad.omni.agent", status: "completed" },
+    { schema: "midad-web-bundle-intelligence-v1", apk_sha256: sha, package_name: "ai.other.app", status: "completed" }
+  ];
+  const files = reports.map((report, i) => ({ name: i + ".json", async text() { return JSON.stringify(report); } }));
+  await assert.rejects(() => inspectAnalysisReports(files), {
+    code: "ANALYSIS_PACKAGE_MISMATCH"
+  });
+});
