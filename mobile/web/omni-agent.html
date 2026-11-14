@@ -234,6 +234,17 @@
       <pre id="android-lab-evidence" class="android-lab-evidence">لم يتم إنشاء سجل بعد.</pre>
     </div>
     <div class="panel">
+      <h3>استيراد تقارير التحليل · Analysis Evidence</h3>
+      <p class="muted">نزّل حزمة التقرير من GitHub Actions، فك ضغط ZIP على الهاتف، ثم اختر ملفات JSON الثلاثة. يتحقق المختبر من تطابق SHA-256 وPackage قبل إنشاء سجل محلي.</p>
+      <div class="row">
+        <button id="android-lab-report-choose" class="primary">اختيار تقارير JSON</button>
+        <button id="android-lab-report-clear" class="secondary">مسح التقرير</button>
+        <input id="android-lab-report-files" type="file" accept=".json,application/json" multiple hidden>
+      </div>
+      <div id="android-lab-report-status" class="android-lab-status" data-state="info" role="status" aria-live="polite">لم يتم استيراد تقرير بعد.</div>
+      <pre id="android-lab-report-evidence" class="android-lab-evidence">لا توجد نتائج تحليل مستوردة.</pre>
+    </div>
+    <div class="panel">
       <h3>قدرات المختبر</h3>
       <div class="safety ok">✅ APK intake + SHA-256 محلي</div>
       <div class="safety ok">✅ التحليل الثابت عبر MIDAD RE Lab موجود في مستودع الأدوات</div>
