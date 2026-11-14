@@ -20,7 +20,7 @@ test("real Chromium Service Worker runtime enforces static-only caching and offl
     }
     if (pathname === "/" || pathname === "/index.html") {
       res.writeHead(200, { "content-type": "text/html" });
-      res.end("<!doctype html><title>MIDAD SW runtime test</title><main>runtime fixture</main>");
+      res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>MIDAD SW runtime test</title></head><body><main>runtime fixture</main></body></html>');
       return;
     }
     if (pathname.startsWith("/api/") || pathname.startsWith("/functions/")) {
