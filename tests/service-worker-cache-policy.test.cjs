@@ -60,6 +60,7 @@ test("caches successful allowlisted static assets", async () => {
   const harness = createHarness(async () => new Response("css", { status: 200 }));
   const response = await harness.dispatch(request("https://midad.example/midad-control-v2.css"));
   assert.equal(await response.text(), "css");
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(harness.stored.size, 1);
 });
 
