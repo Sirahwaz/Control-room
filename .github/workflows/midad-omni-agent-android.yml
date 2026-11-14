@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: ["main"]
     paths:
-      - "mobile/web/omni-agent.*"\n      - "mobile/web/android-lab.mjs"\n      - "mobile/factory/android-lab.test.mjs"
+      - "mobile/web/omni-agent.*"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - "mobile/web/human-bridge.js"
       - "mobile/factory/**"
       - "mobile/package.json"
@@ -82,7 +84,8 @@ jobs:
           mkdir -p mobile/www/site
           cp mobile/web/omni-agent.html mobile/www/index.html
           cp mobile/web/omni-agent.css mobile/www/omni-agent.css
-          cp mobile/web/omni-agent.js mobile/www/omni-agent.js\n          cp mobile/web/android-lab.mjs mobile/www/android-lab.mjs
+          cp mobile/web/omni-agent.js mobile/www/omni-agent.js
+          cp mobile/web/android-lab.mjs mobile/www/android-lab.mjs
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
