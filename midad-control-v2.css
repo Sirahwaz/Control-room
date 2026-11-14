@@ -21,3 +21,17 @@ button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity
 @media(max-width:900px){.topbar{grid-template-columns:auto minmax(0,1fr) auto}.brand-copy{display:none}.hero{grid-template-columns:1fr}.core-orbit{display:none}.state-ribbon,.ai-layout,.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(3,1fr)}.grid3,.station-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.topbar{height:62px;padding:7px 9px}.command input{font-size:11px}.command .btn{display:none}.status{padding:7px}.status span{display:none}.content{padding:0 9px 88px}.hero{padding:18px 15px}.hero h1{font-size:37px}.hero p{font-size:12px}.section{padding:13px}.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:20px}.grid3,.station-grid,.offer-grid{grid-template-columns:1fr}.evidence-grid{grid-template-columns:repeat(2,1fr)}.ai-compose{position:sticky;bottom:0;background:#080e14}.modal{padding:3vh 8px}}
 @media(min-width:701px){.bottom-nav{left:12px;transform:none;width:330px}}
+
+
+.storage-governor{border:1px solid rgba(64,151,189,.25);background:linear-gradient(135deg,rgba(17,38,51,.96),rgba(9,18,27,.96));}
+.storage-governor-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+.storage-metric{min-width:0;padding:12px;border:1px solid rgba(125,168,192,.14);border-radius:13px;background:rgba(255,255,255,.025);display:grid;gap:6px}
+.storage-metric span{color:var(--muted);font-size:10px}
+.storage-metric b{font-size:clamp(13px,2.4vw,18px);overflow-wrap:anywhere;color:var(--text)}
+.storage-governor-meta{display:flex;flex-wrap:wrap;gap:8px 15px;margin-top:12px;color:var(--muted);font-size:10px}
+.storage-governor-meta b{color:var(--text);font-weight:650}
+.storage-governor-tables{display:grid;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+.storage-governor-table-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 9px;border:1px solid rgba(125,168,192,.11);border-radius:9px;background:rgba(255,255,255,.018)}
+.storage-governor-table-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.storage-governor-table-row strong{white-space:nowrap;color:var(--text)}
+@media(max-width:700px){.storage-governor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.storage-governor-meta{display:grid;gap:6px}}
