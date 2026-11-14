@@ -27,6 +27,7 @@ Use these states in every implementation note and Control Room report:
 |---|---|
 | `SOURCE_PRESENT` | Relevant code or documentation exists in a repository; runtime is not implied. |
 | `TESTED_LOCAL` | A named local test or validation command passed against a recorded revision. |
+| `TESTED_CI` | Named CI checks and tests passed against an exact commit; this proves CI behavior, not live service readiness. |
 | `RUNTIME_VERIFIED` | A live, authenticated operation passed and its timestamp, environment and evidence are recorded. |
 | `PENDING` | A capability or integration is designed or partially implemented but lacks its acceptance evidence. |
 | `BLOCKED` | A specific dependency, authorization, infrastructure or safety constraint prevents the next step. |
@@ -162,7 +163,8 @@ When MIDAD work resumes in any conversation, load this decision and continue fro
 - **Canonical application repository:** `Sirahwaz/Control-room`.
 - **Intelligence repository:** `Sirahwaz/midad-intelligence` (read-only discovery/qualification scope).
 - **Preservation rule:** extend existing components; do not rebuild by default.
-- **Immediate highest-value engineering action:** implement the P0 revenue-agent evaluation harness against existing qualification code and synthetic fixtures, then run it.
+- **P0 revenue-agent evaluation:** implemented in `tools/midad-browser-runtime/revenue_radar_eval.py` with a versioned 14-case synthetic dataset; CI verification is recorded in the implementation ledger below. The existing qualification engine and its thresholds were not changed.
+- **Immediate highest-value engineering action:** add and run a synthetic restart/idempotency acceptance test over existing mission/ledger contracts without requiring Supabase DDL or production writes.
 - **Open proof gaps:** live Browser worker/queue integration, full durable execution and restart recovery, production RAG quality, cross-agent benchmark and live deployment status must be tested separately.
 - **Source review baseline:** Control-room main commit `33e09c3faba103505fe298ffcf1a0fc76c94482f` (2026-11-14). This baseline identifies reviewed source; it is not a deployment claim.
 
@@ -177,3 +179,21 @@ When MIDAD work resumes in any conversation, load this decision and continue fro
 - Browser execution architecture: `docs/architecture/MIDAD_BROWSER_EXECUTION_FABRIC.md`
 - Revenue runtime boundaries: `docs/architecture/REVENUE_RUNTIME_COMPONENTS.md`
 - Read-only intelligence workspace: `Sirahwaz/midad-intelligence/README.md`
+
+
+## 9. Implementation ledger — 2026-11-14
+
+### P0: Revenue Radar evaluation harness
+
+- **State:** `TESTED_CI` on the dedicated implementation PR; not a production deployment.
+- **Existing engine preserved:** `revenue_radar.py` qualification logic and thresholds were not modified.
+- **Added:** `revenue_radar_eval.py`, `revenue_radar_eval_fixtures.json` (14 synthetic cases), and `test_revenue_radar_eval.py`.
+- **Evaluation dimensions:** ready/blocked confusion counts, decision accuracy, false-ready rate, blocker-reason assertions, and action-safety invariants.
+- **Observed test evidence:** 206 Browser Runtime tests passed; 9 encrypted-session store tests passed; the deterministic evaluator command passed with `--fail-on-review`; Control Room Verify, Architecture Governance, FIX Contract and Chromium smoke checks passed.
+- **Evaluation result contract:** 14/14 synthetic labels and required blocker assertions matched, zero false-ready classifications, zero safety violations, and no browser jobs or external actions.
+- **Artifact:** GitHub Actions run `43596525037` uploaded `midad-revenue-radar-evaluation-43596525037-1`.
+- **Interpretation:** This validates regression behavior against synthetic fixtures only. It does not prove any current opportunity is funded, payable, eligible, or ready for external submission.
+
+### Next implementation
+
+Add a deterministic synthetic recovery test around the current mission/continuity contracts: duplicate claim prevention, checkpoint persistence, cancellation, retry ceiling, and restart without repeating side effects. Keep database writes and live worker activation out of scope until a verified storage/runtime path is available.
