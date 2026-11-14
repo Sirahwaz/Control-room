@@ -64,3 +64,32 @@ jobs:
           if not all(checks.values()):
               raise SystemExit("invoice response did not satisfy all expected fields")
           PY
+
+      - name: Verify persisted order and linked payment intent
+        shell: bash
+        run: |
+          set -euo pipefail
+          http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 45 \
+            -X POST "https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_public_checkout" \
+            -H "content-type: application/json" \
+            --data '{"action":"order_status","order_key":"store-6f1d8c2a-4b7e-4d31-9a62-202611140001"}' \
+            -o /tmp/midad-order-status.json -w "%{http_code}")"
+          python - "$http_code" <<'PY'
+          import json, sys
+          code = int(sys.argv[1])
+          with open("/tmp/midad-order-status.json", encoding="utf-8") as f:
+              result = json.load(f)
+          order = result.get("order") or {}
+          checks = {
+              "http_success": 200 <= code < 300,
+              "order_found": result.get("ok") is True,
+              "awaiting_payment": order.get("status") == "AWAITING_PAYMENT",
+              "linked_payment_quoted": order.get("payment_status") == "quoted",
+              "asset_usdc": order.get("payment_asset") == "USDC",
+              "network_base": str(order.get("payment_network", "")).lower() == "base",
+              "not_paid": not order.get("paid_at"),
+          }
+          print(json.dumps({"http_status": code, "order": order, "checks": checks}, separators=(",", ":")))
+          if not all(checks.values()):
+              raise SystemExit("persisted order/payment verification failed")
+          PY
