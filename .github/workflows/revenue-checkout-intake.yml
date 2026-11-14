@@ -1,0 +1,30 @@
+name: Revenue Checkout Intake Contract
+
+on:
+  pull_request:
+    paths:
+      - "revenue/index.html"
+      - "supabase/functions/midad_public_checkout/index.ts"
+      - "tests/revenue-checkout-intake.test.cjs"
+      - ".github/workflows/revenue-checkout-intake.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "revenue/index.html"
+      - "supabase/functions/midad_public_checkout/index.ts"
+      - "tests/revenue-checkout-intake.test.cjs"
+      - ".github/workflows/revenue-checkout-intake.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  checkout-intake-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run focused checkout intake contract tests
+        run: node --test tests/revenue-checkout-intake.test.cjs
