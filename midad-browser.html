@@ -26,6 +26,20 @@
       </div>
     </section>
 
+    <section class="panel" id="cloudflareBrowserRun" style="margin:14px 0">
+      <div class="panel-heading"><div><span class="eyebrow">CLOUDFLARE BROWSER RUN</span><h2>جلسة متصفح سحابية تفاعلية</h2></div><span class="pill pending" id="cfBrowserState">NOT STARTED</span></div>
+      <form id="cfBrowserForm" class="address-row">
+        <input id="cfBrowserUrl" type="url" value="https://example.com" placeholder="https://example.com" aria-label="رابط HTTPS" required>
+        <button class="go-button" type="submit" id="cfBrowserStart">Start Browser Session</button>
+      </form>
+      <div class="command-actions" style="margin-top:10px">
+        <small id="cfBrowserDetail">جلسة معزولة عبر Cloudflare Browser Run؛ النطاق المسموح يقتصر على مضيف الرابط المدخل.</small>
+        <button class="text-button" type="button" id="cfBrowserClose" disabled>Close Session</button>
+      </div>
+      <div id="cfBrowserResult" class="activity-empty" style="margin-top:10px">لم يتم تشغيل جلسة Cloudflare بعد.</div>
+      <a id="cfBrowserLiveView" href="#" target="_blank" rel="noopener noreferrer" hidden style="display:inline-block;margin-top:10px;color:var(--cyan)">فتح Live View ↗</a>
+    </section>
+
     <section class="browser-panel panel">
       <div class="panel-heading"><div><span class="eyebrow">WORKSPACE</span><h2>مساحة التصفح</h2></div><span class="pill neutral">READ-ONLY DEFAULT</span></div>
       <form id="navigateForm" class="address-row">
