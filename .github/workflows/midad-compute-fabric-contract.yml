@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/midad-compute-fabric-zero-budget
+      - feat/midad-distributed-runtime-fabric-p1
     paths:
       - 'compute/mncf/**'
       - 'tests/midad-compute-fabric-contract.test.mjs'
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
       - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/runtime-fabric/**'
       - 'mobile/factory/x/tests/continuity-vault.test.mjs'
       - '.github/workflows/midad-mncf-ephemeral-runner.yml'
       - 'mobile/factory/x/ephemeral-runner.mjs'
@@ -70,5 +72,9 @@ jobs:
           node --check mobile/factory/x/security-text-scan.mjs
       - name: Continuity Ledger syntax
         run: node --check mobile/factory/x/continuity-ledger/worker.mjs
+      - name: Distributed Runtime Fabric task envelope tests
+        run: node --test mobile/factory/x/runtime-fabric/task-envelope.test.mjs
+      - name: Distributed Runtime Fabric syntax
+        run: node --check mobile/factory/x/runtime-fabric/task-envelope.mjs
       - name: Diff whitespace validation
         run: git diff --check
