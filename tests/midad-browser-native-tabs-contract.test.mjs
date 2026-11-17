@@ -47,3 +47,17 @@ test("launch without a VIEW intent preserves restored tabs", () => {
   assert.match(handler, /if \(webView == null\) createTab\(MIDAD_HOME\)/);
   assert.doesNotMatch(handler, /webView\.loadUrl\(MIDAD_HOME\)/);
 });
+
+test("WebView cookies are flushed when the browser pauses and before WebViews are destroyed", () => {
+  assert.match(source, /private void flushCookies\\(\\)\\s*\\{\\s*CookieManager\\.getInstance\\(\\)\\.flush\\(\\);\\s*\\}/);
+  const pauseStart = source.indexOf("protected void onPause()");
+  const pauseEnd = source.indexOf("protected void onDestroy()", pauseStart);
+  const pause = source.slice(pauseStart, pauseEnd);
+  assert.match(pause, /flushCookies\\(\\)/);
+  assert.ok(pause.indexOf("flushCookies()") < pause.indexOf("super.onPause()"));
+  const destroyStart = source.indexOf("protected void onDestroy()");
+  const destroyEnd = source.indexOf("private void requestDefaultBrowserRole()", destroyStart);
+  const destroy = source.slice(destroyStart, destroyEnd);
+  assert.match(destroy, /flushCookies\\(\\)/);
+  assert.ok(destroy.indexOf("flushCookies()") < destroy.indexOf("tab.destroy()"));
+});
