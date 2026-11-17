@@ -1,9 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  validateOwnerSessionBinding,
-  validatePairingIntent,
-} from "./pairing-contract.mjs";
+import { validatePairingIntent } from "./pairing-contract.mjs";
+import { validateOwnerSessionBinding } from "../../../../supabase/functions/midad_browser_agent_gateway/auth.mjs";
 
 const NOW = Date.parse("2026-11-17T10:00:00.000Z");
 const OWNER = "5c0a8f3e-4e2a-4a65-a6d0-1a4b2b6f1234";
