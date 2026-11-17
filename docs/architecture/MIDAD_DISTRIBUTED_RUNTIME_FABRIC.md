@@ -57,6 +57,26 @@ This is a mandatory boundary:
 - Non-Forge sources may dispatch through an adapter only after their source-of-truth and reconciliation contract is documented.
 - Existing `midad_orchestrator` model calls remain the Intelligence plane. A model response is not a completed execution task and must not be represented as one without a separately authorized runtime action and evidence.
 
+## 3.1 Existing live domain queues — read-only inventory (2026-11-17)
+
+The live Supabase project was inspected through read-only function and schema reads. The following domain records already exist and must be treated as source-owned state, not copied into a new universal queue.
+
+| Existing source | Live table / state owner | Snapshot rows | Fabric integration rule |
+|---|---|---:|---|
+| Forge | `midad_forge_runs` / `midad_forge_events` | 1 run, status `BUILT` | Keep Forge as mission owner; Fabric lease is an execution attempt only |
+| Browser | `midad_browser_jobs` / `midad_browser_evidence_ledger` | 0 browser jobs | Browser Gateway remains browser mission/evidence owner |
+| Human checkpoints | `midad_human_tasks` | 76 total: 5 OPEN, 2 ACKNOWLEDGED, 20 COMPLETED, 39 EXPIRED, 10 CANCELLED | Human task router remains approval/checkpoint owner |
+| Bot delivery | `midad_bot_outbox` | 2,798 total: 2,745 sent, 53 failed | Outbox remains notification delivery state; do not schedule it as generic agent work |
+| Revenue intelligence | `midad_revenue_intel_work_queue` | 494 total: 366 BLOCKED, 76 COMPLETED, 52 FAILED | Revenue worker/source owns task qualification and payout gates; adapter must preserve no-spend and no-external-action rules |
+| Autonomy cycles | `midad_autonomy_runs` | 4,504 total: 2,207 completed, 2,034 partial, 263 error | Autonomy loop owns cycle state; Fabric may schedule bounded child work only through a source reference |
+| Model / engine runs | `engine_runs` | 19,130 total: 18,786 completed, 337 blocked, 7 running | Model inference/run tracking is not a generic external-action queue |
+
+The project reported `ACTIVE_HEALTHY` during this read-only inspection. Counts above are a point-in-time snapshot, not a diagnosis of why records are blocked, failed, partial or expired. No write, migration, deployment, queue mutation or secret operation was performed.
+
+Additional active Edge Function services observed include `midad_forge`, `midad_forge_coordinator`, `midad_orchestrator`, `midad_omni_agent_gateway`, `midad_autonomy_loop`, `midad_bot_fabric`, `midad_human_task_router`, `midad_revenue_intelligence_mesh`, `midad_revenue_intel_work_queue_worker`, and `midad_browser_agent_gateway`. Their existence and ACTIVE status do not prove that they are connected to the Continuity Ledger.
+
+**Integration consequence:** the Fabric must expose source-specific adapters and a common execution contract, not absorb or replace all domain queues. Initial integration should be read-only/dispatch-only with source reconciliation, then expand only after an end-to-end harmless task passes.
+
 ## 4. Unified task envelope — target v1
 
 The envelope is a versioned, typed contract. It is not an unrestricted shell command or arbitrary agent prompt.
