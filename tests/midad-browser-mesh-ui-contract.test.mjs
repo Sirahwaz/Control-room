@@ -146,6 +146,5 @@ test("Browser Mesh exposes the Chrome, Edge and Firefox extraction and plugin ga
   }
   assert.ok(workflow.includes("extensions/package.test.mjs"));
   assert.ok(workflow.includes("extensions/build.mjs"));
-  assert.ok(workflow.includes("midad-browser-chrome.zip"));
-  assert.ok(workflow.includes("midad-browser-firefox.zip"));
+  assert.ok(workflow.includes("midad-browser-$target.zip"));
 });
