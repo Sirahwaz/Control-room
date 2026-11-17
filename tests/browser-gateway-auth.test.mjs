@@ -24,6 +24,6 @@ test("preserves a raw session token and rejects empty or non-string input", () =
 
 test("MCP and User Bridge both use the shared Bearer parser", () => {
   const source = fs.readFileSync(gatewayPath, "utf8");
-  assert.match(source, /import\s*\{\s*stripBearerPrefix\s*\}\s*from\s*["']\.\/auth\.mjs["']/);
+  assert.match(source, /import\s*\{[^}]*stripBearerPrefix[^}]*\}\s*from\s*["']\.\/auth\.mjs["']/);
   assert.equal((source.match(/stripBearerPrefix\(req\.headers\.get\(["']authorization["']\)\)/g) || []).length, 2);
 });
