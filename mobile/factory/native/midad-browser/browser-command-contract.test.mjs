@@ -55,17 +55,33 @@ test("classifies mutating interactions as approval-gated", () => {
   assert.equal(validateBrowserCommand({
     id: "cmd-00000009", type: "click", tabId: 0, origin: "https://github.com", selector: "button",
   }, context).error, "human_approval_required");
-  assert.equal(validateBrowserCommand({
+  const approvedClick = {
     id: "cmd-00000010", type: "click", tabId: 0, origin: "https://github.com",
     selector: "button", approvalId: "approval-0000001",
-  }, { ...context, approvedActionIds: ["approval-0000001"] }).ok, true);
+  };
+  assert.equal(validateBrowserCommand(approvedClick, {
+    ...context, nowMs: 1000,
+    approvedActions: [{
+      approvalId: "approval-0000001",
+      binding: createBrowserActionBinding(approvedClick),
+      expiresAt: 5000,
+    }],
+  }).ok, true);
 });
 
 test("bounds selectors, text input, wait duration, and DOM snapshot output", () => {
-  assert.equal(validateBrowserCommand({
+  const oversizedType = {
     id: "cmd-00000001", type: "type", tabId: 0, origin: "https://github.com",
     selector: "input[name=q]", text: "x".repeat(10001), approvalId: "approval-0000001",
-  }, { ...context, approvedActionIds: ["approval-0000001"] }).ok, false);
+  };
+  assert.equal(validateBrowserCommand(oversizedType, {
+    ...context,
+    approvedActions: [{
+      approvalId: "approval-0000001",
+      binding: createBrowserActionBinding(oversizedType),
+      expiresAt: Date.now() + 5000,
+    }],
+  }).ok, false);
   assert.equal(validateBrowserCommand({
     id: "cmd-00000002", type: "waitFor", tabId: 0, origin: "https://github.com",
     selector: "main", timeoutMs: 120000,
