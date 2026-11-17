@@ -6,6 +6,8 @@ on:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "tests/browser-gateway-source-parity.test.mjs"
       - "tests/browser-gateway-auth.test.mjs"
+      - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
+      - "supabase/tests/fixtures/midad_browser_gateway_base_schema.sql"
       - ".github/workflows/midad-browser-gateway-contract.yml"
   push:
     branches: [main]
@@ -62,6 +64,35 @@ jobs:
         run: |
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql
+      - name: Verify owner-bound session migration and preserve legacy sessions
+        run: |
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $check$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='control_room_sessions'
+                AND column_name='owner_user_id' AND data_type='uuid'
+            ) THEN
+              RAISE EXCEPTION 'owner_user_id_column_missing';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_indexes
+              WHERE schemaname='public' AND tablename='control_room_sessions'
+                AND indexname='control_room_sessions_owner_active_idx'
+            ) THEN
+              RAISE EXCEPTION 'owner_session_index_missing';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM public.control_room_sessions
+              WHERE telegram_user_id='telegram-fixture-legacy' AND owner_user_id IS NULL AND active=true
+            ) THEN
+              RAISE EXCEPTION 'legacy_session_must_remain_unbound_and_unmodified';
+            END IF;
+          END;
+          $check$;
+          SQL
       - name: Run SQL ledger, idempotency, PAID-guard and cleanup contract tests
         run: psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_evidence_ledger_v1.sql
       - name: Verify disposable database returned to baseline
