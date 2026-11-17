@@ -21,7 +21,8 @@ function validOrigin(value) {
   try {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password &&
-      url.origin === value && url.pathname === "/" && !url.search && !url.hash;
+      !url.hostname.includes("*") && url.origin === value &&
+      url.pathname === "/" && !url.search && !url.hash;
   } catch { return false; }
 }
 
@@ -119,9 +120,9 @@ export function createBrowserPluginGrant({
 }
 
 export function transitionBrowserPlugin(state, action) {
+  if (state === "absent" && action === "install") return { ok: true, state: "installed" };
   if (!STATES.has(state)) return fail("plugin_state_invalid");
   const transitions = {
-    install: { absent: "installed" },
     enable: { installed: "enabled", disabled: "enabled" },
     disable: { enabled: "disabled", installed: "disabled" },
     revoke: { installed: "revoked", enabled: "revoked", disabled: "revoked" },
