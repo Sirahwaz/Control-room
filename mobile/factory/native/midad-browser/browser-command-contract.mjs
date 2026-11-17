@@ -49,6 +49,28 @@ function validSelector(value) {
     value.length <= 512 && !/[\u0000-\u001f]/.test(value);
 }
 
+/**
+ * Stable, exact binding for one approved action. The approval ID is excluded so
+ * the same binding can be computed before and after the approval is attached.
+ */
+export function createBrowserActionBinding(command) {
+  if (!command || typeof command !== "object" || Array.isArray(command)) return null;
+  const entries = Object.keys(command)
+    .filter((key) => key !== "approvalId")
+    .sort()
+    .map((key) => [key, command[key]]);
+  return JSON.stringify(Object.fromEntries(entries));
+}
+
+/** Return a new context with the one-time approval removed. */
+export function consumeBrowserApproval(context, approvalId) {
+  const approvedActions = Array.isArray(context?.approvedActions) ? context.approvedActions : [];
+  return {
+    ...context,
+    approvedActions: approvedActions.filter((item) => item?.approvalId !== approvalId),
+  };
+}
+
 export function classifyBrowserCommand(type) {
   if (!Object.hasOwn(COMMAND_CAPABILITY, type)) {
     return { capability: null, requiresApproval: false };
@@ -126,9 +148,20 @@ export function validateBrowserCommand(command, context) {
   }
 
   if (MUTATING_COMMANDS.has(command.type)) {
-    const approvals = Array.isArray(context.approvedActionIds) ? context.approvedActionIds : [];
-    if (typeof command.approvalId !== "string" || !approvals.includes(command.approvalId)) {
-      return fail("human_approval_required");
+    if (typeof command.approvalId !== "string") return fail("human_approval_required");
+    const approvals = Array.isArray(context.approvedActions) ? context.approvedActions : [];
+    const approval = approvals.find((item) => item?.approvalId === command.approvalId);
+    if (!approval) return fail("human_approval_required");
+    if (approval.consumedAt !== undefined && approval.consumedAt !== null) {
+      return fail("approval_replayed");
+    }
+    const nowMs = Number.isFinite(context.nowMs) ? context.nowMs : Date.now();
+    if (!Number.isFinite(approval.expiresAt) || approval.expiresAt <= nowMs) {
+      return fail("approval_expired");
+    }
+    if (typeof approval.binding !== "string" ||
+        approval.binding !== createBrowserActionBinding(command)) {
+      return fail("approval_binding_mismatch");
     }
   } else if (command.approvalId !== undefined) {
     return fail("unexpected_approval_id");
