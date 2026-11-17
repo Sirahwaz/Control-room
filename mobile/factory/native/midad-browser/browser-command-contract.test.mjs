@@ -4,13 +4,15 @@ import {
   validateBrowserCommand,
   sanitizeDomSnapshot,
   classifyBrowserCommand,
+  createBrowserActionBinding,
+  consumeBrowserApproval,
+  validateAndConsumeBrowserCommand,
 } from "./browser-command-contract.mjs";
 
 const context = {
   currentOrigin: "https://github.com",
   allowedOrigins: ["https://github.com", "https://chatgpt.com"],
   capabilities: ["browser.inspect", "browser.navigate", "browser.click", "browser.fill", "browser.wait"],
-  approvedActionIds: [],
 };
 
 test("accepts typed inspection and navigation commands within the current origin scope", () => {
@@ -53,17 +55,33 @@ test("classifies mutating interactions as approval-gated", () => {
   assert.equal(validateBrowserCommand({
     id: "cmd-00000009", type: "click", tabId: 0, origin: "https://github.com", selector: "button",
   }, context).error, "human_approval_required");
-  assert.equal(validateBrowserCommand({
+  const approvedClick = {
     id: "cmd-00000010", type: "click", tabId: 0, origin: "https://github.com",
     selector: "button", approvalId: "approval-0000001",
-  }, { ...context, approvedActionIds: ["approval-0000001"] }).ok, true);
+  };
+  assert.equal(validateBrowserCommand(approvedClick, {
+    ...context, nowMs: 1000,
+    approvedActions: [{
+      approvalId: "approval-0000001",
+      binding: createBrowserActionBinding(approvedClick),
+      expiresAt: 5000,
+    }],
+  }).ok, true);
 });
 
 test("bounds selectors, text input, wait duration, and DOM snapshot output", () => {
-  assert.equal(validateBrowserCommand({
+  const oversizedType = {
     id: "cmd-00000001", type: "type", tabId: 0, origin: "https://github.com",
     selector: "input[name=q]", text: "x".repeat(10001), approvalId: "approval-0000001",
-  }, { ...context, approvedActionIds: ["approval-0000001"] }).ok, false);
+  };
+  assert.equal(validateBrowserCommand(oversizedType, {
+    ...context,
+    approvedActions: [{
+      approvalId: "approval-0000001",
+      binding: createBrowserActionBinding(oversizedType),
+      expiresAt: Date.now() + 5000,
+    }],
+  }).ok, false);
   assert.equal(validateBrowserCommand({
     id: "cmd-00000002", type: "waitFor", tabId: 0, origin: "https://github.com",
     selector: "main", timeoutMs: 120000,
@@ -80,4 +98,84 @@ test("bounds selectors, text input, wait duration, and DOM snapshot output", () 
   assert.doesNotMatch(snapshot.text, /document.cookie|do-not-leak|person@example.com|private notes/);
   assert.ok(snapshot.text.length <= 80);
   assert.equal(snapshot.truncated, true);
+});
+
+
+test("requires approval bound to the exact command, tab, origin, and expiry", () => {
+  const command = {
+    id: "cmd-approval-0001", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000001",
+  };
+  const approved = {
+    approvalId: command.approvalId,
+    binding: createBrowserActionBinding(command),
+    expiresAt: 5000,
+  };
+  const approvedContext = {
+    ...context, nowMs: 1000, approvedActions: [approved],
+  };
+  assert.equal(validateBrowserCommand(command, approvedContext).ok, true);
+
+  assert.equal(validateBrowserCommand({
+    ...command, selector: "button#delete",
+  }, approvedContext).error, "approval_binding_mismatch");
+  assert.equal(validateBrowserCommand({
+    ...command, tabId: 1,
+  }, approvedContext).error, "approval_binding_mismatch");
+  assert.equal(validateBrowserCommand({
+    ...command, origin: "https://chatgpt.com",
+  }, approvedContext).error, "origin_scope_mismatch");
+  assert.equal(validateBrowserCommand(command, {
+    ...approvedContext, nowMs: 5000,
+  }).error, "approval_expired");
+});
+
+test("consumes an approval record so it cannot authorize a replay", () => {
+  const command = {
+    id: "cmd-approval-0002", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000002",
+  };
+  const record = {
+    approvalId: command.approvalId,
+    binding: createBrowserActionBinding(command),
+    expiresAt: 5000,
+  };
+  const once = consumeBrowserApproval({ ...context, approvedActions: [record] }, command.approvalId);
+  assert.equal(once.approvedActions.length, 0);
+  assert.equal(validateBrowserCommand(command, { ...once, nowMs: 1000 }).error, "human_approval_required");
+});
+
+test("atomically consumes a valid approval and rejects a second use", () => {
+  const command = {
+    id: "cmd-approval-0003", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000003",
+  };
+  const contextWithApproval = {
+    ...context,
+    nowMs: 1000,
+    approvedActions: [{
+      approvalId: command.approvalId,
+      binding: createBrowserActionBinding(command),
+      expiresAt: 5000,
+    }],
+  };
+  assert.equal(validateAndConsumeBrowserCommand(command, contextWithApproval).ok, true);
+  assert.equal(contextWithApproval.approvedActions.length, 0);
+  assert.equal(validateAndConsumeBrowserCommand(command, contextWithApproval).error, "human_approval_required");
+});
+
+test("rejects approvals with an excessive lifetime", () => {
+  const command = {
+    id: "cmd-approval-0004", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000004",
+  };
+  assert.equal(validateBrowserCommand(command, {
+    ...context,
+    nowMs: 1000,
+    approvedActions: [{
+      approvalId: command.approvalId,
+      binding: createBrowserActionBinding(command),
+      expiresAt: 121001,
+    }],
+  }).error, "approval_ttl_invalid");
 });
