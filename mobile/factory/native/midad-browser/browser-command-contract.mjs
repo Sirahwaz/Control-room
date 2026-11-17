@@ -153,7 +153,7 @@ export function sanitizeDomSnapshot(html, options = {}) {
   const safeMarkup = source
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
-    .replace(/<(input|textarea|select|option)\b[^>]*>[\s\S]*?<\/\2\s*>/gi, " ")
+    .replace(/<(textarea|select|option)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<(input|meta|link|base)\b[^>]*\/?>/gi, " ")
     .replace(/<([a-z][\w:-]*)\b[^>]*\bcontenteditable(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<[^>]*>/g, " ")
