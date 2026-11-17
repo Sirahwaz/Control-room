@@ -28,7 +28,6 @@ import android.webkit.WebStorage;
 import android.webkit.CookieManager;
 import android.net.http.SslError;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -430,7 +429,7 @@ public final class BrowserActivity extends Activity {
                 uri.getHost() == null || uri.getUserInfo() != null) {
                 return MIDAD_HOME;
             }
-            return uri.buildUpon().clearQuery().fragment(null).build().toString();
+            return uri.buildUpon().path("/").clearQuery().fragment(null).build().toString();
         } catch (Exception ignored) {
             return MIDAD_HOME;
         }
