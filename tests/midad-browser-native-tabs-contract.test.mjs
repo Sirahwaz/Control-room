@@ -39,3 +39,11 @@ test("native browser keeps WebView local asset routing on every tab", () => {
   assert.match(source, /assetLoader\.shouldInterceptRequest/);
   assert.match(source, /tabsContainer/);
 });
+
+test("launch without a VIEW intent preserves restored tabs", () => {
+  const start = source.indexOf("private void handleIncomingIntent(Intent intent)");
+  const end = source.indexOf("private void createTab(", start);
+  const handler = source.slice(start, end);
+  assert.match(handler, /if \(webView == null\) createTab\(MIDAD_HOME\)/);
+  assert.doesNotMatch(handler, /webView\.loadUrl\(MIDAD_HOME\)/);
+});
