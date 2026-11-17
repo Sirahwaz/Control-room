@@ -19,6 +19,7 @@ test("native browser owns a bounded multi-tab WebView workspace", () => {
 test("native tab restore stores only sanitized navigation locations", () => {
   assert.match(source, /SharedPreferences/);
   assert.match(source, /sanitizeRestorableUrl\(/);
+  assert.match(source, /\\.path\\(\"\\/\"\\)/);
   assert.match(source, /clearQuery\(\)/);
   assert.match(source, /fragment\(null\)/);
   assert.match(source, /restoreTabs\(/);
