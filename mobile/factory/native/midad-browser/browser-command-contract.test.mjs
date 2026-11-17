@@ -4,6 +4,8 @@ import {
   validateBrowserCommand,
   sanitizeDomSnapshot,
   classifyBrowserCommand,
+  createBrowserActionBinding,
+  consumeBrowserApproval,
 } from "./browser-command-contract.mjs";
 
 const context = {
@@ -80,4 +82,49 @@ test("bounds selectors, text input, wait duration, and DOM snapshot output", () 
   assert.doesNotMatch(snapshot.text, /document.cookie|do-not-leak|person@example.com|private notes/);
   assert.ok(snapshot.text.length <= 80);
   assert.equal(snapshot.truncated, true);
+});
+
+
+test("requires approval bound to the exact command, tab, origin, and expiry", () => {
+  const command = {
+    id: "cmd-approval-0001", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000001",
+  };
+  const approved = {
+    approvalId: command.approvalId,
+    binding: createBrowserActionBinding(command),
+    expiresAt: 5000,
+  };
+  const approvedContext = {
+    ...context, nowMs: 1000, approvedActions: [approved],
+  };
+  assert.equal(validateBrowserCommand(command, approvedContext).ok, true);
+
+  assert.equal(validateBrowserCommand({
+    ...command, selector: "button#delete",
+  }, approvedContext).error, "approval_binding_mismatch");
+  assert.equal(validateBrowserCommand({
+    ...command, tabId: 1,
+  }, approvedContext).error, "approval_binding_mismatch");
+  assert.equal(validateBrowserCommand({
+    ...command, origin: "https://chatgpt.com",
+  }, approvedContext).error, "origin_scope_mismatch");
+  assert.equal(validateBrowserCommand(command, {
+    ...approvedContext, nowMs: 5000,
+  }).error, "approval_expired");
+});
+
+test("consumes an approval record so it cannot authorize a replay", () => {
+  const command = {
+    id: "cmd-approval-0002", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000002",
+  };
+  const record = {
+    approvalId: command.approvalId,
+    binding: createBrowserActionBinding(command),
+    expiresAt: 5000,
+  };
+  const once = consumeBrowserApproval({ ...context, approvedActions: [record] }, command.approvalId);
+  assert.equal(once.approvedActions.length, 0);
+  assert.equal(validateBrowserCommand(command, { ...once, nowMs: 1000 }).error, "human_approval_required");
 });
