@@ -9,6 +9,11 @@ on:
       - "tools/midad-browser-runtime/check_ai_room_script.py"
       - "mobile/factory/native/midad-browser/pairing-contract.mjs"
       - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
+      - "supabase/functions/_shared/midad-owner-session.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/auth.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/index.ts"
+      - "supabase/functions/midad_control_room/index.ts"
+      - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
       - ".github/workflows/midad-browser-bridge-ci.yml"
   pull_request:
     paths:
@@ -36,6 +41,8 @@ jobs:
         run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
       - name: Test Android owner-pairing contract
         run: node --test mobile/factory/native/midad-browser/pairing-contract.test.mjs
+      - name: Check owner-session modules syntax
+        run: node --check supabase/functions/_shared/midad-owner-session.mjs && node --check supabase/functions/midad_browser_agent_gateway/auth.mjs
       - name: Check bridge module syntax
         run: node --check midad-browser-bridge.js
       - name: Check AI Room module syntax
