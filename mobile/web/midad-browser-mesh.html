@@ -46,6 +46,7 @@
         <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="mesh"><span>⌘</span><b data-i18n="navMesh">الشبكة والتشغيل</b></button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-tab="network"><span>⇄</span><b data-i18n="navNetwork">Proxy & Network</b></button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-tab="vault"><span>◇</span><b data-i18n="navVault">الخزنة الآمنة</b></button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="extensions"><span>⇱</span><b data-i18n="navExtensions">متصفحات وإضافات</b></button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-tab="appearance"><span>◐</span><b data-i18n="navAppearance">المظهر والتخصيص</b></button>
       </nav>
 
@@ -183,6 +184,42 @@
         </article>
       </section>
 
+      <section class="tab-panel" id="panel-extensions" role="tabpanel" data-panel="extensions" hidden>
+        <div class="section-heading">
+          <div><span class="section-kicker">MULTI-BROWSER EXTRACTION & PLUGIN FABRIC</span><h2 data-i18n="extensionsTitle">المتصفحات والإضافات</h2><p data-i18n="extensionsDescription">ربط Chrome وEdge وFirefox عبر Companion Extensions مع محرك صلاحيات موحد.</p></div>
+          <span class="section-stamp">CONNECTOR SOURCES READY</span>
+        </div>
+        <div class="runtime-grid">
+          <article class="runtime-card pending">
+            <div class="card-top"><span class="runtime-icon browser">C</span><span class="state-label pending">SOURCE READY · NOT CONNECTED</span></div>
+            <h3>Google Chrome</h3>
+            <p data-i18n="chromeExtensionDescription">Chromium Manifest V3 companion package.</p>
+            <div class="card-foot"><span>CHROMIUM ADAPTER</span><b>LOCAL EXTRACTION</b></div>
+          </article>
+          <article class="runtime-card pending">
+            <div class="card-top"><span class="runtime-icon browser">E</span><span class="state-label pending">SOURCE READY · NOT CONNECTED</span></div>
+            <h3>Microsoft Edge</h3>
+            <p data-i18n="edgeExtensionDescription">Chromium-compatible companion package with Edge validation.</p>
+            <div class="card-foot"><span>CHROMIUM ADAPTER</span><b>LOCAL EXTRACTION</b></div>
+          </article>
+          <article class="runtime-card pending">
+            <div class="card-top"><span class="runtime-icon browser">F</span><span class="state-label pending">SOURCE READY · NOT CONNECTED</span></div>
+            <h3>Mozilla Firefox</h3>
+            <p data-i18n="firefoxExtensionDescription">Gecko WebExtensions package with Firefox background compatibility.</p>
+            <div class="card-foot"><span>GECKO ADAPTER</span><b>LOCAL EXTRACTION</b></div>
+          </article>
+        </div>
+        <section class="panel">
+          <div class="panel-heading"><div><span class="section-kicker">EXTRACTION SOURCES</span><h3 data-i18n="extractionSourcesTitle">مصادر الاستخراج</h3></div><span class="edit-mark">5</span></div>
+          <p data-i18n="extractionSourcesDescription">Active Tab · Tabs · Bookmarks · History · Downloads. تُحفظ النتائج محلياً وتُصدّر عند طلب المستخدم.</p>
+        </section>
+        <section class="panel">
+          <div class="panel-heading"><div><span class="section-kicker">CAPABILITY & PERMISSION BROKER</span><h3 data-i18n="permissionBoundaryTitle">صلاحيات الوصول</h3></div><span class="edit-mark">OPT-IN</span></div>
+          <p data-i18n="permissionBoundaryDescription">صلاحيات tabs/history/bookmarks/downloads والوصول للمواقع تُطلب اختيارياً عند الحاجة. لا استخراج لكلمات المرور أو Cookies أو رموز الجلسات.</p>
+          <p data-i18n="extensionAndroidNote">إضافات سطح المكتب منفصلة عن Android WebView؛ يستخدم Android طبقة Plugin Fabric أصلية واستيراداً آمناً.</p>
+        </section>
+      </section>
+
       <section class="tab-panel" id="panel-appearance" role="tabpanel" data-panel="appearance" hidden>
         <div class="section-heading">
           <div><span class="section-kicker">PERSONAL WORKSPACE</span><h2 data-i18n="appearanceTitle">المظهر وتخصيص الواجهة</h2><p data-i18n="appearanceDescription">عدّل الإضاءة والألوان وحجم الخط واللغة والنصوص؛ تُحفظ التفضيلات على الجهاز دون حساب سحابي.</p></div>
@@ -213,7 +250,7 @@
       </section>
 
       <footer class="footer">
-        <span>MIDAD AI · BROWSER MESH · 0.2.0</span>
+        <span>MIDAD AI · BROWSER MESH · 0.2.3</span>
         <span data-i18n="footerTrust">واجهة Offline-first · لا أسرار داخل التطبيق · لا ادعاء تشغيل حي</span>
         <span id="footerNetwork">DEVICE NETWORK: CHECKING</span>
       </footer>

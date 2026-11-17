@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MIDAD Browser Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header><strong>MIDAD</strong><span>Browser Companion</span></header>
+    <label for="source">Extraction source</label>
+    <select id="source">
+      <option value="active_tab">Active page · text / links / headings</option>
+      <option value="tabs">Open tabs</option>
+      <option value="bookmarks">Bookmarks</option>
+      <option value="history">Browsing history (latest 200)</option>
+      <option value="downloads">Download metadata (latest 100)</option>
+    </select>
+    <button id="extract" type="button">Extract locally</button>
+    <button id="grantSites" class="secondary" type="button">Enable all HTTPS sites for future workflows</button>
+    <p id="status" role="status">Data stays in this browser until you export it.</p>
+    <pre id="preview">No extraction yet.</pre>
+    <button id="export" class="secondary" type="button" disabled>Export JSON</button>
+    <footer>Local-first · No cookies · No passwords · No cloud upload</footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
