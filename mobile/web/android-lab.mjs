@@ -230,7 +230,7 @@ export async function inspectAnalysisReports(files, expectedSha256 = null) {
   const android = reports["android-static"];
   const dex = reports["dex-intelligence"];
   const web = reports["web-intelligence"];
-  const isComplete = Boolean(android && dex && web && android.analysis?.status === "completed");
+  const isComplete = Boolean(android && dex && web && android.analysis?.status === "completed" && dex.status === "completed" && web.status === "completed");
   return Object.freeze({
     schema: "midad.android-analysis-evidence/v1",
     status: isComplete ? "VERIFIED" : "PARTIAL",
