@@ -26,3 +26,12 @@ export function validateOwnerSessionBinding(session, nowMs = Date.now()) {
   }
   return { ok: true, ownerUserId: session.owner_user_id };
 }
+
+/** Bind a new Control Room session only when the owner profile is unambiguous. */
+export function resolveUniqueOwnerProfile(profiles) {
+  if (!Array.isArray(profiles) || profiles.length !== 1 ||
+      typeof profiles[0]?.id !== "string" || !OWNER_UUID.test(profiles[0].id)) {
+    return { ok: false, error: "owner_profile_not_unambiguous" };
+  }
+  return { ok: true, ownerUserId: profiles[0].id };
+}
