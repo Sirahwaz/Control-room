@@ -9,4 +9,4 @@ export function stripBearerPrefix(value) {
   return match ? match[1].trim() : header;
 }
 
-export { validateOwnerSessionBinding, resolveUniqueOwnerProfile } from "../_shared/midad-owner-session.mjs";
+// Keep owner identity validation shared with Control Room session issuance.\nexport { validateOwnerSessionBinding, resolveUniqueOwnerProfile } from "../_shared/midad-owner-session.mjs";
