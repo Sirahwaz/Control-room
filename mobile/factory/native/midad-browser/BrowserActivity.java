@@ -473,6 +473,16 @@ public final class BrowserActivity extends Activity {
         super.onPause();
     }
 
+    @Override
+    protected void onDestroy() {
+        for (WebView tab : tabs) {
+            tab.stopLoading();
+            tab.destroy();
+        }
+        tabs.clear();
+        super.onDestroy();
+    }
+
     private void requestDefaultBrowserRole() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
