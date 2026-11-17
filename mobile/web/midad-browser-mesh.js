@@ -190,7 +190,6 @@
     const connected = Boolean(browserRunState.token);
     const active = Boolean(browserRunState.sessionId);
     $("#browserRunConnect").disabled = browserRunState.busy;
-    $("#browserRunAccessKey").disabled = browserRunState.busy || connected;
     $("#browserRunDisconnect").hidden = !connected;
     $("#browserRunStart").disabled = browserRunState.busy || !connected || active || !navigator.onLine;
     $("#browserRunRefresh").disabled = browserRunState.busy || !connected || !active || !navigator.onLine;
@@ -225,29 +224,12 @@
     if (browserRunState.token && !force) return browserRunState.token;
     const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
     const initData = telegram?.initData || "";
-    let response;
-    if (initData) {
-      response = await fetch(BROWSER_RUN_CONTROL_API, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
-      });
-    } else {
-      let accessKey = $("#browserRunAccessKey").value.trim();
-      if (!accessKey) {
-        try { accessKey = sessionStorage.getItem("midad_cockpit_key") || ""; } catch {}
-      }
-      if (!accessKey) throw new Error("أدخل Control Room Access Key للربط الأول.");
-      try {
-        response = await fetch(BROWSER_RUN_CONTROL_API, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ access_key: accessKey, client: "midad-browser-mesh", client_version: "0.2.1" }),
-        });
-      } finally {
-        $("#browserRunAccessKey").value = "";
-      }
-    }
+    if (!initData) throw new Error("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية.");
+    const response = await fetch(BROWSER_RUN_CONTROL_API, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
     browserRunState.token = data.token;
@@ -383,12 +365,13 @@
     $("#browserRunRefresh").addEventListener("click", browserRunRefreshView);
     $("#browserRunClose").addEventListener("click", browserRunClose);
     $("#browserRunDisconnect").addEventListener("click", browserRunDisconnect);
-    if ($("#browserRunAccessKey").value) $("#browserRunAccessKey").value = "";
     browserRunButtons();
     const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    let sameOriginKey = "";
-    try { sameOriginKey = sessionStorage.getItem("midad_cockpit_key") || ""; } catch {}
-    if (telegram?.initData || sameOriginKey) browserRunConnect();
+    if (telegram?.initData) browserRunConnect();
+    else {
+      browserRunStateLabel("AUTH REQUIRED", "OPEN TELEGRAM MINI APP");
+      browserRunFeedback("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية دون مفتاح يدوي.", true);
+    }
   }
 
   function bindEvents() {
