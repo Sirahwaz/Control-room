@@ -1,0 +1,25 @@
+name: MIDAD Browser Gateway Auth Tests
+on:
+  push:
+    branches: [main, "test/midad-browser-gateway-auth-*"]
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - ".github/workflows/midad-browser-gateway-auth.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/midad_browser_agent_gateway/**"
+      - ".github/workflows/midad-browser-gateway-auth.yml"
+permissions:
+  contents: read
+jobs:
+  auth-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run gateway authentication and origin-policy regression tests
+        run: deno test --no-check supabase/functions/midad_browser_agent_gateway/auth.test.ts
+      - name: Type-check gateway entrypoint and local modules
+        run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
