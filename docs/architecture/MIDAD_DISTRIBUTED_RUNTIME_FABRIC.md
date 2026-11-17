@@ -77,6 +77,30 @@ Additional active Edge Function services observed include `midad_forge`, `midad_
 
 **Integration consequence:** the Fabric must expose source-specific adapters and a common execution contract, not absorb or replace all domain queues. Initial integration should be read-only/dispatch-only with source reconciliation, then expand only after an end-to-end harmless task passes.
 
+## 3.2 P1 contract gaps found in the live source audit
+
+The following are concrete integration blockers or boundaries, not assumptions about the future Fabric:
+
+| Source | Existing dedupe / claim behavior | Gap or required adapter behavior |
+|---|---|---|
+| Forge runs | `midad_forge` inserts a queued run; claim conditionally changes `QUEUED → CLAIMED` after selecting a row | Live `midad_forge_runs` schema has no idempotency key, lease owner/token/expiry or fencing fields. Add a source-safe dedupe and stale-claim reconciliation contract before moving Forge execution behind Fabric |
+| Browser jobs | Browser Gateway owns user-scoped job state and evidence; provider heartbeat is tracked separately | `midad_browser_jobs` has owner, state, session reference and attempt count, but no Fabric lease/idempotency fields. Keep Gateway as the browser mission authority; pair only through an authenticated adapter |
+| Human tasks | `midad_human_task_router` requires `idempotency_key` and returns an existing task for duplicate keys | Preserve this as the authoritative human approval/checkpoint source; Fabric may wait on a checkpoint but must not synthesize approval |
+| Revenue intelligence | Queue has `dedupe_key`; worker claims rows transactionally with `FOR UPDATE` and handles stale RUNNING rows | Preserve the worker's payout, no-spend, and no-external-action gates; do not create a parallel copy of this queue |
+| Bot delivery | `midad_bot_fabric` supports `dedupe_key` on outbox creation | Keep as notification delivery state, not general-purpose execution work |
+| Model runs | `engine_runs` tracks model invocation and result status | Treat as inference telemetry/run history, not as a queue of external actions |
+| Autonomy cycles | `midad_autonomy_runs` records cycle status and result | Keep cycle-level ownership in the autonomy loop; dispatch child work only with a stable source reference |
+
+### P1 blockers before a live Fabric adapter
+
+1. **Forge idempotency and lease recovery:** current schema and endpoint do not expose enough information to safely recover a claimed run after worker loss. Do not route Forge through Fabric until a tested source-level recovery contract exists.
+2. **Browser lease bridge:** do not let a Fabric node write browser mission state directly. It must execute through the existing owner-bound Browser Gateway and preserve its evidence and human-gate policy.
+3. **Revenue source adapter:** retain the existing transactional queue claim and strict financial eligibility checks. Any Fabric integration must be a provider/worker adapter, not a second claim path.
+4. **Owner identity mapping:** the Continuity Ledger's `owner_id` must map to a trusted MIDAD identity reference. Never map from arbitrary `requested_by`, task text, Telegram handle or browser content.
+5. **Deployment boundary:** the live Supabase project is separate from the source-only Continuity Ledger. No deployment or connection exists until Cloudflare Durable Object, Queues, secrets, node enrollment and health verification are completed under explicit deployment approval.
+
+These findings make the first implementation step a **contract-only adapter layer and tests**, not a production queue migration or a broad dispatch cutover.
+
 ## 4. Unified task envelope — target v1
 
 The envelope is a versioned, typed contract. It is not an unrestricted shell command or arbitrary agent prompt.
