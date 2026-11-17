@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { resolveUniqueOwnerProfile } from "../_shared/midad-owner-session.mjs";
 
 const CORS_HEADERS={
   "access-control-allow-origin":"*",
@@ -950,11 +951,19 @@ async function miningStatus(admin:any){
   const {data}=await admin.from("midad_mining_accounts").select("id,provider,coin,label,mode,status,read_only,last_hashrate_ths,last_worker_count,last_snapshot_at,metadata").order("updated_at",{ascending:false}).limit(10);
   return {accounts:data??[]};
 }
+async function resolveControlRoomOwnerId(admin:any){
+  const {data,error}=await admin.from("profiles").select("id").limit(2);
+  if(error) return {ok:false,error:"owner_profile_lookup_failed"};
+  return resolveUniqueOwnerProfile(data);
+}
+
 async function createControlSession(admin:any, telegramUserId:string|null=null, authSource:string="web_key"){
+  const owner=await resolveControlRoomOwnerId(admin);
+  if(!owner.ok) return {ok:false,error:owner.error};
   const token=crypto.randomUUID()+"-"+crypto.randomUUID();
   const th=await sha256(token);
   const {error}=await admin.from("control_room_sessions").insert({
-    token_hash:th,active:true,
+    token_hash:th,active:true,owner_user_id:owner.ownerUserId,
     telegram_user_id:telegramUserId
   });
   if(error) return {ok:false,error:"session_error"};
@@ -1538,9 +1547,12 @@ Deno.serve(async(req:Request)=>{
         .limit(1)
         .maybeSingle();
       if(!telegramAccess)return new Response(JSON.stringify({error:"telegram_user_not_authorized"}),{status:403,headers:JSON_HEADERS});
+      const owner=await resolveControlRoomOwnerId(admin);
+      if(!owner.ok)return new Response(JSON.stringify({error:owner.error}),{status:503,headers:JSON_HEADERS});
       const token=crypto.randomUUID()+"-"+crypto.randomUUID(), th=await sha256(token);
       const {error}=await admin.from("control_room_sessions").insert({
-        token_hash:th,active:true,telegram_user_id:telegramUserId,telegram_chat_id:telegramUserId,last_used_at:new Date().toISOString()
+        token_hash:th,active:true,owner_user_id:owner.ownerUserId,
+        telegram_user_id:telegramUserId,telegram_chat_id:telegramUserId,last_used_at:new Date().toISOString()
       });
       if(error)return new Response(JSON.stringify({error:"session_error"}),{status:500,headers:JSON_HEADERS});
       return new Response(JSON.stringify({
