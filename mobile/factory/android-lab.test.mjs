@@ -15,10 +15,13 @@ function fileFixture(name, bytes) {
 
 const zipHeader = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
 
-test("accepts a bounded APK and returns a SHA-256 evidence record", async () => {
+test("reports ZIP container and SHA-256 only; it never claims APK signature verification", async () => {
   const file = fileFixture("sample.apk", zipHeader);
   const result = await inspectApkFile(file);
-  assert.equal(result.status, "VERIFIED");
+  assert.equal(result.status, "CONTAINER_VERIFIED");
+  assert.equal(result.containerFormat, "ZIP");
+  assert.equal(result.apkSignatureVerified, false);
+  assert.equal(result.integrityHashVerified, true);
   assert.equal(result.fileName, "sample.apk");
   assert.equal(result.sizeBytes, zipHeader.byteLength);
   assert.match(result.sha256, /^[a-f0-9]{64}$/);
