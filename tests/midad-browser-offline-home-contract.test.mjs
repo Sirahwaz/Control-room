@@ -35,6 +35,7 @@ test("Android runtime smoke proves the packaged home loads with Wi-Fi and mobile
   assert.match(smoke, /svc wifi disable/);
   assert.match(smoke, /svc data disable/);
   assert.match(smoke, /LOCAL_HOME_LOADED/);
+  assert.match(smoke, /offline-home.*diagnostic|diagnostic.*offline-home/i);
   assert.match(smoke, /svc wifi enable/);
   assert.match(smoke, /svc data enable/);
   assert.ok(activity.includes("ONLINE_PAGE_LOADED:"));
