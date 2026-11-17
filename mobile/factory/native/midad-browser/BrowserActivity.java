@@ -354,7 +354,7 @@ public final class BrowserActivity extends Activity {
                 return;
             }
         }
-        webView.loadUrl(MIDAD_HOME);
+        if (webView == null) createTab(MIDAD_HOME);
     }
 
     private void createTab(String initialUrl) {
