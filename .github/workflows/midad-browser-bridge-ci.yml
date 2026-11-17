@@ -1,7 +1,7 @@
 name: MIDAD Browser Bridge CI
 on:
   push:
-    branches: [main, "feat/midad-browser-operator-bridge-*"]
+    branches: [main, "feat/midad-browser-operator-bridge-*", "feat/midad-browser-owner-pairing-contract"]
     paths:
       - "ai-room.html"
       - "midad-browser-bridge.js"
