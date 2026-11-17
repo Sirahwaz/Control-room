@@ -6,13 +6,13 @@ import {
   classifyBrowserCommand,
   createBrowserActionBinding,
   consumeBrowserApproval,
+  validateAndConsumeBrowserCommand,
 } from "./browser-command-contract.mjs";
 
 const context = {
   currentOrigin: "https://github.com",
   allowedOrigins: ["https://github.com", "https://chatgpt.com"],
   capabilities: ["browser.inspect", "browser.navigate", "browser.click", "browser.fill", "browser.wait"],
-  approvedActionIds: [],
 };
 
 test("accepts typed inspection and navigation commands within the current origin scope", () => {
@@ -143,4 +143,39 @@ test("consumes an approval record so it cannot authorize a replay", () => {
   const once = consumeBrowserApproval({ ...context, approvedActions: [record] }, command.approvalId);
   assert.equal(once.approvedActions.length, 0);
   assert.equal(validateBrowserCommand(command, { ...once, nowMs: 1000 }).error, "human_approval_required");
+});
+
+test("atomically consumes a valid approval and rejects a second use", () => {
+  const command = {
+    id: "cmd-approval-0003", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000003",
+  };
+  const contextWithApproval = {
+    ...context,
+    nowMs: 1000,
+    approvedActions: [{
+      approvalId: command.approvalId,
+      binding: createBrowserActionBinding(command),
+      expiresAt: 5000,
+    }],
+  };
+  assert.equal(validateAndConsumeBrowserCommand(command, contextWithApproval).ok, true);
+  assert.equal(contextWithApproval.approvedActions.length, 0);
+  assert.equal(validateAndConsumeBrowserCommand(command, contextWithApproval).error, "human_approval_required");
+});
+
+test("rejects approvals with an excessive lifetime", () => {
+  const command = {
+    id: "cmd-approval-0004", type: "click", tabId: 0, origin: "https://github.com",
+    selector: "button#continue", approvalId: "approval-0000004",
+  };
+  assert.equal(validateBrowserCommand(command, {
+    ...context,
+    nowMs: 1000,
+    approvedActions: [{
+      approvalId: command.approvalId,
+      binding: createBrowserActionBinding(command),
+      expiresAt: 121001,
+    }],
+  }).error, "approval_ttl_invalid");
 });
