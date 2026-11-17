@@ -4,6 +4,8 @@ on:
     branches: [main, "feat/midad-browser-operator-bridge-*"]
     paths:
       - "tools/midad-re-lab/**"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - ".github/workflows/midad-re-lab-ci.yml"
   pull_request:
     paths:
@@ -26,3 +28,9 @@ jobs:
       - name: Verify public-target policy
         working-directory: tools/midad-re-lab
         run: python -m unittest -v test_web_policy.py test_apk_resilience.py test_dex_intelligence.py test_web_bundle_intelligence.py
+      - name: Test Android Lab intake contract
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Android Lab contract tests
+        run: node --test mobile/factory/android-lab.test.mjs
