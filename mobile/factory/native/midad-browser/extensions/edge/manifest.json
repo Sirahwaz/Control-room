@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "MIDAD Browser Companion",
+  "version": "0.1.0",
+  "description": "User-triggered local browser extraction for MIDAD Browser Mesh.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_permissions": ["tabs", "bookmarks", "history", "downloads"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "MIDAD Browser Companion" }
+}
