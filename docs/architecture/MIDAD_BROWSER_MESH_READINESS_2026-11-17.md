@@ -27,7 +27,7 @@
 | Human verification gate | Gateway routes HUMAN_GATE and human-task router | Implemented at gateway boundary |
 
 ## Runtime blockers — not complete
-1. No live Playwright worker heartbeat. midad_browser_providers reports midad_playwright_worker as online, but heartbeat_at is 2026-11-05T14:00:04.064Z. Gateway requires a heartbeat no older than 45 seconds; worker is effectively OFFLINE.
+1. No live Playwright worker heartbeat. midad_browser_providers reports midad_playwright_worker as online, but heartbeat_at is 2026-11-05T14:00:04.064Z. Gateway requires a heartbeat no older than 45 seconds; worker is effectively OFFLINE. The repository's README-CLOUDFLARE-WORKER-V2.md also says the Cloudflare Worker/Queues were not deployed and the Linux participant had not been enrolled/started. The worker source exists; a live deployment does not have proof.
 2. No browser jobs exist in midad_browser_jobs (read-only grouped count returned zero rows).
 3. Android is not paired to Gateway/Worker. No Native Android participant bridge or proven Android-to-worker relay was found in BrowserActivity.java.
 4. No native command executor in WebView. BrowserActivity.java has no JavaScriptInterface, addJavascriptInterface, evaluateJavascript, WebSocket, executeCommand, DOM snapshot, or screenshot executor. Typed commands are currently a validated contract, not executable Android WebView actions.
