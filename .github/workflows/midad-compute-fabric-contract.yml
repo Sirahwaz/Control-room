@@ -31,6 +31,7 @@ on:
       - '.github/workflows/midad-compute-fabric-contract.yml'
       - '.github/workflows/midad-continuity-github-ephemeral-node.yml'
       - 'mobile/factory/x/continuity-ledger/**'
+      - 'mobile/factory/x/runtime-fabric/**'
       - 'mobile/factory/x/tests/continuity-vault.test.mjs'
 
 permissions:
