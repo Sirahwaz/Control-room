@@ -129,3 +129,23 @@ test("Browser Run Worker binds persisted sessions to the gateway-authenticated o
   assert.match(worker, /return \{ ok: true, ownerScopeHash \}/);
   assert.doesNotMatch(worker, /sha256\(['"]midad-browser-single-owner-v1['"]\)/);
 });
+
+test("Browser Mesh exposes the Chrome, Edge and Firefox extraction and plugin gateway without claiming live connections", () => {
+  const manifest = JSON.parse(read("mobile/factory/products/midad-browser.json"));
+  const html = read("mobile/web/midad-browser-mesh.html");
+  const js = read("mobile/web/midad-browser-mesh.js");
+  const workflow = read(".github/workflows/midad-browser-android.yml");
+  assert.equal(manifest.features.extension_fabric, true);
+  assert.ok(manifest.surfaces.includes("multi-browser-extraction-gateway"));
+  assert.match(html, /data-tab="extensions"/);
+  assert.match(html, /id="panel-extensions"/);
+  for (const browser of ["Google Chrome", "Microsoft Edge", "Mozilla Firefox"]) assert.ok(html.includes(browser));
+  assert.match(html, /SOURCE READY · NOT CONNECTED/);
+  for (const key of ["navExtensions", "extensionsTitle", "extractionSourcesTitle", "permissionBoundaryTitle"]) {
+    assert.ok(js.includes(key), "Missing translation: " + key);
+  }
+  assert.ok(workflow.includes("extensions/package.test.mjs"));
+  assert.ok(workflow.includes("extensions/build.mjs"));
+  assert.ok(workflow.includes("midad-browser-chrome.zip"));
+  assert.ok(workflow.includes("midad-browser-firefox.zip"));
+});
