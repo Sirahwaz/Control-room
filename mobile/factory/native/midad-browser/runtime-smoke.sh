@@ -8,6 +8,12 @@ restore_network() {
   adb shell svc wifi enable >/dev/null 2>&1 || true
   adb shell svc data enable >/dev/null 2>&1 || true
 }
+offline_home_diagnostic() {
+  echo "::group::offline-home diagnostic"
+  adb shell dumpsys activity activities 2>&1 | tail -n 80 || true
+  adb logcat -d -v time 2>&1 | grep -E "MIDAD_BROWSER|chromium|WebView|Capacitor" | tail -n 160 || true
+  echo "::endgroup::"
+}
 trap restore_network EXIT
 test -f "$APK_PATH" || fail "apk" "Browser APK missing"
 adb get-state >/dev/null 2>&1 || fail "emulator" "Android emulator unavailable"
@@ -24,6 +30,7 @@ for attempt in $(seq 1 20); do
   sleep 1
 done
 if ! adb logcat -d -s MIDAD_BROWSER:I | grep -Fq "LOCAL_HOME_LOADED"; then
+  offline_home_diagnostic
   fail "offline-home" "Packaged MIDAD home did not load while network was disabled"
 fi
 restore_network
