@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - "tools/midad-re-lab/**"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - ".github/workflows/midad-re-lab-ci.yml"
 permissions:
   contents: read
