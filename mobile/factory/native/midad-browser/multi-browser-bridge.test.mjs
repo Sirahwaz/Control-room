@@ -66,9 +66,15 @@ test("rejects extraction from a different tab or ungranted origin", () => {
 });
 
 test("requires explicit optional grants for history, bookmarks and downloads", () => {
-  for (const source of ["history", "bookmarks", "downloads", "tabs"]) {
+  const sourceFields = {
+    history: ["title", "url"],
+    bookmarks: ["title", "url"],
+    downloads: ["filename", "url"],
+    tabs: ["id", "title", "url"],
+  };
+  for (const [source, fields] of Object.entries(sourceFields)) {
     const result = validateExtractionRequest({
-      source, fields: ["title", "url"], destination: "local",
+      source, fields, destination: "local",
     }, { grantedPermissions: ["activeTab"] });
     assert.equal(result.error, "permission_not_granted");
   }
