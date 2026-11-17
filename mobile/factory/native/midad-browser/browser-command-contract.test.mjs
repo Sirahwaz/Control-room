@@ -18,7 +18,7 @@ test("accepts typed inspection and navigation commands within the current origin
     id: "cmd-00000001", type: "getDomSnapshot", tabId: 0, origin: "https://github.com",
   }, context).ok, true);
   assert.equal(validateBrowserCommand({
-    id: "cmd-00000002", type: "navigate", tabId: 0, origin: "https://chatgpt.com",
+    id: "cmd-00000002", type: "navigate", tabId: 0, origin: "https://github.com",
     url: "https://chatgpt.com/codex",
   }, context).ok, true);
 });
