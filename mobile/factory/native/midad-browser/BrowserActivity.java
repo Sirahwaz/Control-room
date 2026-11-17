@@ -468,14 +468,20 @@ public final class BrowserActivity extends Activity {
         }
     }
 
+    private void flushCookies() {
+        CookieManager.getInstance().flush();
+    }
+
     @Override
     protected void onPause() {
         saveTabs();
+        flushCookies();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        flushCookies();
         for (WebView tab : tabs) {
             tab.stopLoading();
             tab.destroy();
