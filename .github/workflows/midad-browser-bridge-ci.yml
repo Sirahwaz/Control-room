@@ -6,7 +6,9 @@ on:
       - "ai-room.html"
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
-      - "tools/midad-browser-runtime/check_ai_room_script.py"\n      - "mobile/factory/native/midad-browser/pairing-contract.mjs"\n      - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
+      - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "mobile/factory/native/midad-browser/pairing-contract.mjs"
+      - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
       - ".github/workflows/midad-browser-bridge-ci.yml"
   pull_request:
     paths:
@@ -14,6 +16,8 @@ on:
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "mobile/factory/native/midad-browser/pairing-contract.mjs"
+      - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
       - ".github/workflows/midad-browser-bridge-ci.yml"
 permissions:
   contents: read
@@ -30,7 +34,9 @@ jobs:
           python-version: "3.11"
       - name: Validate bridge contract
         run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
-      - name: Test Android owner-pairing contract (RED until implementation)\n        run: node --test mobile/factory/native/midad-browser/pairing-contract.test.mjs\n      - name: Check bridge module syntax
+      - name: Test Android owner-pairing contract
+        run: node --test mobile/factory/native/midad-browser/pairing-contract.test.mjs
+      - name: Check bridge module syntax
         run: node --check midad-browser-bridge.js
       - name: Check AI Room module syntax
         run: python tools/midad-browser-runtime/check_ai_room_script.py
