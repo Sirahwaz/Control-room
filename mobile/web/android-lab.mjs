@@ -50,8 +50,11 @@ export async function inspectApkFile(file, cryptoApi = globalThis.crypto) {
   return Object.freeze({
     schema: "midad.android-evidence/v1",
     evidenceId,
-    status: "VERIFIED",
+    status: "CONTAINER_VERIFIED",
     sourceKind: "APK",
+    containerFormat: "ZIP",
+    apkSignatureVerified: false,
+    integrityHashVerified: true,
     fileName: file.name,
     sizeBytes: file.size,
     sha256,
@@ -113,11 +116,13 @@ function mountAndroidLab() {
         `Size: ${formatBytes(evidence.sizeBytes)}`,
         `SHA-256: ${evidence.sha256}`,
         `Status: ${evidence.status}`,
+        `Container: ${evidence.containerFormat}`,
+        `APK signature: ${evidence.apkSignatureVerified ? "VERIFIED" : "NOT VERIFIED"}`,
         "Mode: Static intake only",
         "Upload: No",
         "Target execution: No"
       ].join("\n");
-      showStatus("تم التحقق من الحاوية وإنشاء بصمة الملف. لم يُرفع الملف ولم يُشغّل.", "success");
+      showStatus("تم التحقق من ترويسة ZIP وحساب SHA-256 فقط؛ لم يتم التحقق من توقيع APK. لم يُرفع الملف ولم يُشغّل.", "success");
     } catch (error) {
       showStatus(error?.message || "تعذر فحص الملف.", "error");
       output.textContent = `BLOCKED: ${error?.code || "UNKNOWN_ERROR"}`;
