@@ -19,6 +19,21 @@ CREATE TABLE auth.users (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+
+-- Legacy Control Room session table before owner-binding migration.
+CREATE TABLE public.control_room_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  token_hash text NOT NULL UNIQUE,
+  telegram_chat_id text,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  telegram_user_id text
+);
+
+INSERT INTO public.control_room_sessions (token_hash, active, telegram_user_id)
+VALUES (repeat('a', 64), true, 'telegram-fixture-legacy');
+
 CREATE TABLE public.profiles (
   id uuid PRIMARY KEY,
   created_at timestamptz NOT NULL DEFAULT now()
