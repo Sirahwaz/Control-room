@@ -5,7 +5,7 @@
 export function stripBearerPrefix(value) {
   if (typeof value !== "string") return "";
   const header = value.trim();
-  const match = /^Bearer[ \\t]+(.+)$/i.exec(header);
+  const match = /^Bearer[ \t]+(.+)$/i.exec(header);
   return match ? match[1].trim() : header;
 }
 
