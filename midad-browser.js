@@ -3,6 +3,7 @@ const SUPABASE_URL="https://froegigfmpmvtecztfbf.supabase.co";
 const USER_API=SUPABASE_URL+"/functions/v1/midad_browser_agent_gateway";
 const TELEGRAM_AUTH=SUPABASE_URL+"/functions/v1/midad_telegram_auth";
 const CONTROL_API=SUPABASE_URL+"/functions/v1/midad_control_room";
+const BROWSER_RUN_API="https://midad-continuity-ledger.midadbot.workers.dev/v1/browser/ui/";
 const $=s=>document.querySelector(s);
 const state={token:null,worker:false,ownerReady:false};
 function setStatus(ready,title,detail,pill){$("#bridgeTitle").textContent=title;$("#bridgeDetail").textContent=detail;$("#bridgePill").textContent=pill;$("#bridgePill").className="pill pending";$("#statusDot").style.background=ready?"var(--green)":"var(--amber)";$("#connectionLabel").textContent=ready?"متصل":"بانتظار الربط";}
@@ -99,5 +100,61 @@ $("#copyChatGPTToken").addEventListener("click",async()=>{
  }catch(e){addActivity("تعذر إنشاء رمز الربط",String(e.message||e));}
 });
 document.querySelectorAll("[data-local-action]").forEach(b=>b.addEventListener("click",()=>addActivity("الإجراء غير متاح حالياً","التنقل والتحكم يتمان عبر أوامر المنصة المعتمدة حتى نضيف بثّاً مباشراً للجلسة.")));
+
+async function cloudflareBrowserRequest(action,payload={}){
+ const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
+ const response=await fetch(BROWSER_RUN_API+action,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,session_token:token})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
+ return data;
+}
+function renderCloudflareBrowser(data){
+ const stateLabel=$("#cfBrowserState"),detail=$("#cfBrowserDetail"),result=$("#cfBrowserResult"),close=$("#cfBrowserClose"),live=$("#cfBrowserLiveView");
+ if(data.active){
+  stateLabel.textContent="SESSION ACTIVE";stateLabel.className="pill neutral";
+  detail.textContent="Cloudflare Browser Run متصل · "+(data.target_host||"");
+  result.textContent="الجلسة: "+data.session_id+" · العنوان: "+(data.page_title||data.target_host||"");
+  close.disabled=false;
+  if(data.live_view_url){live.href=data.live_view_url;live.hidden=false;}
+ }else{
+  stateLabel.textContent=data.expired?"SESSION EXPIRED":"READY";
+  stateLabel.className="pill pending";detail.textContent=data.runtime==="cloudflare-browser-run"?"Cloudflare Browser Run جاهز؛ لا توجد جلسة نشطة.":"بانتظار التحقق من الخدمة.";
+  result.textContent=data.expired?"انتهت الجلسة السابقة.":"لا توجد جلسة Cloudflare نشطة.";
+  close.disabled=true;live.hidden=true;live.removeAttribute("href");
+ }
+}
+async function refreshCloudflareBrowser(){
+ try{renderCloudflareBrowser(await cloudflareBrowserRequest("status"));}
+ catch(e){$("#cfBrowserState").textContent="BLOCKED";$("#cfBrowserDetail").textContent=String(e.message||e);$("#cfBrowserResult").textContent="تعذر التحقق من Cloudflare Browser Run.";}
+}
+$("#cfBrowserForm").addEventListener("submit",async e=>{
+ e.preventDefault();const raw=$("#cfBrowserUrl").value.trim();let url;
+ try{url=new URL(raw);if(url.protocol!=="https:"||url.username||url.password||url.port&&url.port!=="443")throw new Error("استخدم رابط HTTPS عام بدون بيانات اعتماد أو منفذ مخصص.");}
+ catch(err){$("#cfBrowserResult").textContent=String(err.message||"رابط غير صالح");return;}
+ const start=$("#cfBrowserStart");start.disabled=true;start.textContent="Starting…";
+ try{
+  const data=await cloudflareBrowserRequest("start",{target_url:url.href,allowed_hosts:[url.hostname]});
+  renderCloudflareBrowser(data);
+  $("#cfBrowserResult").textContent="تم إنشاء الجلسة · "+data.title+" · "+data.url+" · "+(data.text_preview||"").slice(0,700);
+  addActivity("Cloudflare Browser Run: SESSION ACTIVE",data.target_host+" · "+data.session_id);
+ }catch(err){
+  $("#cfBrowserState").textContent="START FAILED";$("#cfBrowserState").className="pill pending";
+  $("#cfBrowserDetail").textContent=String(err.message||err);$("#cfBrowserResult").textContent="فشل بدء الجلسة؛ راجع سبب الخطأ أعلاه.";
+  addActivity("Cloudflare Browser Run failed",String(err.message||err));
+ }finally{start.disabled=false;start.textContent="Start Browser Session";}
+});
+$("#cfBrowserClose").addEventListener("click",async()=>{
+ const live=$("#cfBrowserLiveView");const match=live.href;
+ try{
+  const status=await cloudflareBrowserRequest("status");
+  if(!status.active)throw new Error("BROWSER_RUN_SESSION_NOT_FOUND");
+  const data=await cloudflareBrowserRequest("close",{session_id:status.session_id});
+  renderCloudflareBrowser({active:false,runtime:"cloudflare-browser-run"});
+  $("#cfBrowserResult").textContent="تم إغلاق جلسة Cloudflare.";
+  addActivity("Cloudflare Browser Run closed",data.session_id||status.session_id);
+ }catch(err){$("#cfBrowserDetail").textContent=String(err.message||err);}
+});
+
+refreshCloudflareBrowser();
 lockControls(false);checkBridge();
 })();
