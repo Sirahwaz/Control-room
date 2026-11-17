@@ -1,4 +1,3 @@
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEVICE_ID = /^android-[a-z0-9-]{6,64}$/;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{16,100}$/;
 const BASE64URL_COORDINATE = /^[A-Za-z0-9_-]{43}$/;
@@ -10,36 +9,7 @@ const ALLOWED_CAPABILITIES = new Set([
   "browser.fill",
   "browser.wait",
 ]);
-const MAX_SESSION_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
-function failure(error) {
-  return { ok: false, error };
-}
-
-/**
- * Resolve an owner only from an explicit owner binding on the authenticated
- * session row. Never infer ownership from a global profiles query.
- */
-export function validateOwnerSessionBinding(session, nowMs = Date.now()) {
-  if (!session || typeof session !== "object" || session.active !== true) {
-    return failure("owner_session_inactive");
-  }
-  if (typeof session.owner_user_id !== "string" || !UUID.test(session.owner_user_id)) {
-    return failure("owner_session_not_bound");
-  }
-  const createdAt = Date.parse(session.created_at);
-  if (!Number.isFinite(createdAt) || createdAt > nowMs ||
-      nowMs - createdAt > MAX_SESSION_AGE_MS) {
-    return failure("owner_session_expired");
-  }
-  return { ok: true, ownerUserId: session.owner_user_id };
-}
-
-/**
- * Validate an untrusted Android pairing intent. Owner identity and challenge
- * values are server-derived and therefore must never be accepted from caller.
- */
-export function validatePairingIntent(input) {
+function failure(error) {\n  return { ok: false, error };\n}\n\n/**\n * Validate an untrusted Android pairing intent. Owner identity and challenge\n * values are server-derived and therefore must never be accepted from caller.\n */\nexport function validatePairingIntent(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return failure("pairing_intent_invalid");
   }
