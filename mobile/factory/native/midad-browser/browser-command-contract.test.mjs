@@ -73,7 +73,7 @@ test("bounds selectors, text input, wait duration, and DOM snapshot output", () 
     <main><h1>Welcome</h1><script>document.cookie</script>
     <input type="password" value="do-not-leak">
     <input name="email" value="person@example.com">
-    <textarea>private notes</textarea><p>Safe content</p></main>
+    <textarea>private notes</textarea><p>Safe content</p><p>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p></main>
   `, { maxChars: 80 });
   assert.match(snapshot.text, /Welcome/);
   assert.match(snapshot.text, /Safe content/);
