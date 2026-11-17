@@ -7,6 +7,10 @@ on:
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "supabase/functions/midad_account_factory/index.ts"
+      - "supabase/functions/midad_human_bridge/index.ts"
+      - "tools/midad-browser-runtime/test_account_factory_contract.py"
+      - "tools/midad-browser-runtime/test_human_bridge_contract.py"
       - ".github/workflows/midad-browser-bridge-ci.yml"
   pull_request:
     paths:
@@ -14,6 +18,10 @@ on:
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "supabase/functions/midad_account_factory/index.ts"
+      - "supabase/functions/midad_human_bridge/index.ts"
+      - "tools/midad-browser-runtime/test_account_factory_contract.py"
+      - "tools/midad-browser-runtime/test_human_bridge_contract.py"
       - ".github/workflows/midad-browser-bridge-ci.yml"
 permissions:
   contents: read
@@ -34,3 +42,7 @@ jobs:
         run: node --check midad-browser-bridge.js
       - name: Check AI Room module syntax
         run: python tools/midad-browser-runtime/check_ai_room_script.py
+      - name: Verify Account Factory and Human Bridge contracts
+        run: |
+          python tools/midad-browser-runtime/test_account_factory_contract.py -v
+          python tools/midad-browser-runtime/test_human_bridge_contract.py -v
