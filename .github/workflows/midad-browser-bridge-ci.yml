@@ -1,12 +1,20 @@
 name: MIDAD Browser Bridge CI
 on:
   push:
-    branches: [main, "feat/midad-browser-operator-bridge-*"]
+    branches: [main, "feat/midad-browser-operator-bridge-*", "feat/midad-browser-owner-pairing-contract"]
     paths:
       - "ai-room.html"
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "mobile/factory/native/midad-browser/pairing-contract.mjs"
+      - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
+      - "supabase/functions/_shared/midad-owner-session.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/auth.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/index.ts"
+      - "tests/browser-gateway-auth.test.mjs"
+      - "supabase/functions/midad_control_room/index.ts"
+      - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
       - ".github/workflows/midad-browser-bridge-ci.yml"
   pull_request:
     paths:
@@ -14,6 +22,13 @@ on:
       - "midad-browser-bridge.js"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
+      - "mobile/factory/native/midad-browser/pairing-contract.mjs"
+      - "mobile/factory/native/midad-browser/pairing-contract.test.mjs"
+      - "supabase/functions/_shared/midad-owner-session.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/auth.mjs"
+      - "supabase/functions/midad_browser_agent_gateway/index.ts"
+      - "supabase/functions/midad_control_room/index.ts"
+      - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
       - ".github/workflows/midad-browser-bridge-ci.yml"
 permissions:
   contents: read
@@ -30,6 +45,10 @@ jobs:
           python-version: "3.11"
       - name: Validate bridge contract
         run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
+      - name: Test Android owner-pairing contract
+        run: node --test mobile/factory/native/midad-browser/pairing-contract.test.mjs
+      - name: Check owner-session modules syntax
+        run: node --check supabase/functions/_shared/midad-owner-session.mjs && node --check supabase/functions/midad_browser_agent_gateway/auth.mjs
       - name: Check bridge module syntax
         run: node --check midad-browser-bridge.js
       - name: Check AI Room module syntax

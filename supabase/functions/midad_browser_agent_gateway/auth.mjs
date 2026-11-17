@@ -8,3 +8,6 @@ export function stripBearerPrefix(value) {
   const match = /^Bearer[ \t]+(.+)$/i.exec(header);
   return match ? match[1].trim() : header;
 }
+
+// Keep owner identity validation shared with Control Room session issuance.
+export { validateOwnerSessionBinding, resolveUniqueOwnerProfile } from "../_shared/midad-owner-session.mjs";
