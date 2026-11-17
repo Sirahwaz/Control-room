@@ -228,12 +228,14 @@ public final class BrowserActivity extends Activity {
 
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                if (view == webView) address.setText(url);
-                securityState.setText(url.startsWith(MIDAD_HOME)
-                    ? "MIDAD LOCAL · الصفحة الرئيسية متاحة دون اتصال"
-                    : (url.startsWith("https://")
-                        ? "HTTPS · اتصال مشفّر"
-                        : "HTTP · اتصال غير مشفّر"));
+                if (view == webView) {
+                    address.setText(url);
+                    securityState.setText(url.startsWith(MIDAD_HOME)
+                        ? "MIDAD LOCAL · الصفحة الرئيسية متاحة دون اتصال"
+                        : (url.startsWith("https://")
+                            ? "HTTPS · اتصال مشفّر"
+                            : "HTTP · اتصال غير مشفّر"));
+                }
             }
 
             @Override
@@ -273,7 +275,7 @@ public final class BrowserActivity extends Activity {
                                 ":" + error.getErrorCode()
                         );
                     }
-                    securityState.setText("تعذر تحميل الصفحة");
+                    if (view == webView) securityState.setText("تعذر تحميل الصفحة");
                 }
             }
 
@@ -424,8 +426,8 @@ public final class BrowserActivity extends Activity {
         try {
             Uri uri = Uri.parse(rawUrl);
             String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
-            if (!("https".equals(scheme) || "http".equals(scheme) ||
-                "https".equals(scheme) && "appassets.androidplatform.net".equals(uri.getHost()))) {
+            if (!("https".equals(scheme) || "http".equals(scheme)) ||
+                uri.getHost() == null || uri.getUserInfo() != null) {
                 return MIDAD_HOME;
             }
             return uri.buildUpon().clearQuery().fragment(null).build().toString();
