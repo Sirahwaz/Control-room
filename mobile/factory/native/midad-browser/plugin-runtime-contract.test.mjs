@@ -84,3 +84,11 @@ test("plugin lifecycle blocks invalid transitions and supports revoke", () => {
   assert.equal(transitionBrowserPlugin("revoked", "enable").error, "plugin_transition_invalid");
   assert.equal(transitionBrowserPlugin("installed", "execute").error, "plugin_transition_invalid");
 });
+
+
+test("installs a plugin from the absent state", () => {
+  assert.deepEqual(transitionBrowserPlugin("absent", "install"), {
+    ok: true,
+    state: "installed",
+  });
+});
