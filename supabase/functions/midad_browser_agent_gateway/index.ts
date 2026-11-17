@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { isAllowedBrowserUserOrigin } from "./origin-policy.ts";
-import { stripBearerPrefix } from "./auth.mjs";
+import { stripBearerPrefix, validateOwnerSessionBinding } from "./auth.mjs";
 import {
   makeLedgerEventKey,
   normalizeActorKey,
@@ -292,22 +292,28 @@ async function resolveBrowserUserOwner(sb: any, token: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const tokenHash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
   const { data: session, error } = await sb.from("control_room_sessions")
-    .select("id,active,created_at")
+    .select("id,active,created_at,owner_user_id")
     .eq("token_hash", tokenHash)
     .eq("active", true)
     .maybeSingle();
   if (error || !session) return { ok: false as const, status: 401, error: "session_expired" };
-  const ageMs = Date.now() - new Date(session.created_at).getTime();
-  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 30 * 24 * 60 * 60 * 1000) {
+
+  const ownerBinding = validateOwnerSessionBinding(session);
+  if (!ownerBinding.ok) {
+    // Legacy sessions have no trustworthy owner binding. Re-authentication
+    // creates a fresh owner-bound session; never infer ownership globally.
     await sb.from("control_room_sessions").update({ active: false }).eq("id", session.id);
-    return { ok: false as const, status: 401, error: "session_expired" };
+    return {
+      ok: false as const,
+      status: 401,
+      error: ownerBinding.error === "owner_session_not_bound"
+        ? "session_owner_binding_required"
+        : "session_expired",
+    };
   }
-  const profiles = await sb.from("profiles").select("id").limit(2);
-  if (profiles.error || !Array.isArray(profiles.data) || profiles.data.length !== 1) {
-    return { ok: false as const, status: 503, error: "browser_owner_profile_not_unambiguous" };
-  }
+
   await sb.from("control_room_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", session.id);
-  return { ok: true as const, ownerUserId: String(profiles.data[0].id) };
+  return { ok: true as const, ownerUserId: ownerBinding.ownerUserId };
 }
 
 Deno.serve(async (req: Request) => {
