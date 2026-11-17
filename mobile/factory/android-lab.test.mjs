@@ -98,6 +98,39 @@ test("accepts a matching static, DEX, and web analysis report set as one evidenc
   assert.deepEqual(result.reportTypes, ["android-static", "dex-intelligence", "web-intelligence"]);
 });
 
+
+test("does not mark an evidence set VERIFIED when any analyzer reports failure", async () => {
+  const sha = "e".repeat(64);
+  const reports = [
+    {
+      schema: "midad-android-static-v1",
+      input: { sha256: sha },
+      manifest: { package: "ai.midad.omni.agent", min_sdk: "24", permissions: [], components: [] },
+      analysis: { status: "completed", jadx: "completed", apktool: "completed" }
+    },
+    {
+      schema: "midad-dex-intelligence-v1",
+      apk_sha256: sha,
+      package_name: "ai.midad.omni.agent",
+      status: "failed",
+      dex_file_count: 3,
+      parsed_dex_count: 0
+    },
+    {
+      schema: "midad-web-bundle-intelligence-v1",
+      apk_sha256: sha,
+      package_name: "ai.midad.omni.agent",
+      status: "completed"
+    }
+  ];
+  const files = reports.map((report, index) => ({
+    name: ["android-static-report.json", "dex-intelligence-report.json", "web-intelligence-report.json"][index],
+    async text() { return JSON.stringify(report); }
+  }));
+  const result = await inspectAnalysisReports(files, sha);
+  assert.equal(result.status, "PARTIAL");
+});
+
 test("rejects analysis reports whose APK fingerprints do not match", async () => {
   const report = {
     schema: "midad-dex-intelligence-v1",
