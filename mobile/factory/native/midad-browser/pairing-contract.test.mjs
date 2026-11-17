@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validatePairingIntent } from "./pairing-contract.mjs";
-import { validateOwnerSessionBinding } from "../../../../supabase/functions/midad_browser_agent_gateway/auth.mjs";
+import { validateOwnerSessionBinding, resolveUniqueOwnerProfile } from "../../../../supabase/functions/midad_browser_agent_gateway/auth.mjs";
 
 const NOW = Date.parse("2026-11-17T10:00:00.000Z");
 const OWNER = "5c0a8f3e-4e2a-4a65-a6d0-1a4b2b6f1234";
@@ -84,4 +84,11 @@ test("pairing intent rejects wildcard hosts and elevated capabilities", () => {
   };
   assert.equal(validatePairingIntent({ ...base, allowed_hosts: ["*.github.com"] }).ok, false);
   assert.equal(validatePairingIntent({ ...base, capabilities: ["wallet.sign"] }).ok, false);
+});
+
+test("owner profile resolution succeeds only for one valid profile", () => {
+  assert.deepEqual(resolveUniqueOwnerProfile([{ id: OWNER }]), { ok: true, ownerUserId: OWNER });
+  assert.equal(resolveUniqueOwnerProfile([]).ok, false);
+  assert.equal(resolveUniqueOwnerProfile([{ id: OWNER }, { id: OWNER }]).ok, false);
+  assert.equal(resolveUniqueOwnerProfile([{ id: "not-a-uuid" }]).ok, false);
 });
