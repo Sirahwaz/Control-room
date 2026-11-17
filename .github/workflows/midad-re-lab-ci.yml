@@ -1,7 +1,7 @@
 name: MIDAD Reverse Engineering Lab CI
 on:
   push:
-    branches: [main, "feat/midad-browser-operator-bridge-*"]
+    branches: [main, "feat/midad-browser-operator-bridge-*", "feat/midad-unified-android-*"]
     paths:
       - "tools/midad-re-lab/**"
       - "mobile/web/android-lab.mjs"
