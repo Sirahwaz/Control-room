@@ -22,7 +22,7 @@ on:
       - ".github/workflows/midad-human-bridge-android.yml"
       - ".github/workflows/signalscan-ai-android.yml"
   push:
-    branches: [main]
+    branches: [main, "feat/midad-unified-android-*"]
     paths:
       - ".codex/**"
       - "tools/agentation/**"
