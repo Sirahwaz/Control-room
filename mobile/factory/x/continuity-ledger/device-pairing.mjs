@@ -8,6 +8,10 @@ export function validateAndroidPairStart(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ok: false, error: "PAIR_REQUEST_INVALID" };
   }
+  const allowedKeys = new Set(["node_id", "token_hash", "device_label"]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    return { ok: false, error: "PAIR_REQUEST_UNKNOWN_FIELD" };
+  }
   const nodeId = typeof value.node_id === "string" ? value.node_id.trim() : "";
   const tokenHash = typeof value.token_hash === "string" ? value.token_hash.toLowerCase() : "";
   const label = typeof value.device_label === "string"
@@ -29,6 +33,10 @@ export function validateAndroidPairId(value) {
 export function validateBrowserDeviceCommand(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ok: false, error: "BROWSER_DEVICE_COMMAND_INVALID" };
+  }
+  const allowedKeys = new Set(["node_id", "request_id", "action", "url"]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    return { ok: false, error: "BROWSER_DEVICE_COMMAND_UNKNOWN_FIELD" };
   }
   const nodeId = typeof value.node_id === "string" ? value.node_id.trim() : "";
   const requestId = typeof value.request_id === "string" ? value.request_id.trim() : "";
