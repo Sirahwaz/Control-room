@@ -29,8 +29,9 @@ test("Android pairing rejects invalid node identifiers, hashes and empty labels"
   assert.equal(validateAndroidPairStart({ ...BASE, node_id: "android-admin" }).ok, false);
   assert.equal(validateAndroidPairStart({ ...BASE, token_hash: "plaintext-token" }).ok, false);
   assert.equal(validateAndroidPairStart({ ...BASE, device_label: "   " }).ok, false);
-  assert.equal(validateAndroidPairStart({ ...BASE, owner_id: "attacker" }).ok, true);
-  assert.equal(Object.hasOwn(validateAndroidPairStart({ ...BASE, owner_id: "attacker" }).value, "owner_id"), false);
+  assert.deepEqual(validateAndroidPairStart({ ...BASE, owner_id: "attacker" }), {
+    ok: false, error: "PAIR_REQUEST_UNKNOWN_FIELD",
+  });
 });
 
 test("pair identifiers are random 192-bit hex strings", () => {
@@ -81,10 +82,10 @@ test("browser device navigation rejects insecure, credentialed and non-standard 
 });
 
 test("browser commands reject caller-supplied credentials and overlong payload fields", () => {
-  assert.equal(validateBrowserDeviceCommand({
+  assert.deepEqual(validateBrowserDeviceCommand({
     node_id: BASE.node_id, request_id: "request-0005", action: "navigate",
     url: "https://example.com/", password: "do-not-accept",
-  }).ok, true);
+  }), { ok: false, error: "BROWSER_DEVICE_COMMAND_UNKNOWN_FIELD" });
   assert.equal(validateBrowserDeviceCommand({
     node_id: BASE.node_id, request_id: "request-0006", action: "navigate",
     url: "https://example.com/" + "x".repeat(2050),
