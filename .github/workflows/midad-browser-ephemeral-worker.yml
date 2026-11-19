@@ -1,0 +1,55 @@
+name: MIDAD Browser — Zero-Static-Secret Ephemeral Worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: midad-browser-ephemeral-readonly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  public-readonly-worker:
+    if: github.ref == 'refs/heads/main' && vars.MIDAD_BROWSER_EPHEMERAL_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://froegigfmpmvtecztfbf.supabase.co
+      MIDAD_BROWSER_GATEWAY_AUTH_MODE: github_oidc
+      MIDAD_BROWSER_ALLOWED_HOSTS: github.com,docs.github.com,supabase.com,www.supabase.com,developer.mozilla.org,arxiv.org,stackoverflow.com,reddit.com,www.reddit.com,wikipedia.org,www.wikipedia.org,coingecko.com,www.coingecko.com,coinmarketcap.com,www.coinmarketcap.com,etherscan.io,www.etherscan.io,defillama.com,www.defillama.com,openai.com,www.openai.com,cloudflare.com,www.cloudflare.com,n8n.io,www.n8n.io
+      MIDAD_BROWSER_NAV_TIMEOUT_MS: "15000"
+      MIDAD_BROWSER_JOB_TIMEOUT_SECONDS: "45"
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/midad-browser-runtime/requirements.txt
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: midad-playwright-${{ runner.os }}-${{ hashFiles('tools/midad-browser-runtime/requirements.txt') }}
+
+      - name: Install pinned browser runtime
+        working-directory: tools/midad-browser-runtime
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Install Chromium
+        run: python -m playwright install chromium --with-deps
+
+      - name: Process one public read-only browser job
+        working-directory: tools/midad-browser-runtime
+        run: python ephemeral_readonly_worker.py --max-seconds 240 --idle-timeout-seconds 20 --max-jobs 1

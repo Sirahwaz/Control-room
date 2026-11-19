@@ -29,6 +29,7 @@ class OperatorWorker:
         self.registry = registry
         self.gateway = gateway or GatewayClient(config)
         self.session_pool = session_pool or PersistentSessionPool(set(config.allowed_hosts))
+        self.session_storage_mode = "encrypted_at_rest" if getattr(self.session_pool, "session_store", None) else "memory_only"
         self.poll_interval = max(1.0, min(float(poll_interval), 30.0))
         self.worker_id = str(
             worker_id or os.environ.get("MIDAD_OPERATOR_WORKER_ID")
@@ -310,6 +311,7 @@ class OperatorWorker:
             await self.gateway.call(
                 "worker_heartbeat", owner_user_id=self.owner_user_id,
                 worker_id=self.worker_id, worker_version="operator_worker_v2",
+                session_storage_mode=self.session_storage_mode,
             )
             self._last_heartbeat = now
         response = await self.gateway.call(

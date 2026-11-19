@@ -13,6 +13,8 @@ DECLARE
   v_count integer;
   v_source_url text;
   v_artifact_url text;
+  v_page_title text;
+  v_page_excerpt text;
   v_rejected boolean;
 BEGIN
   SELECT p.id INTO v_owner
@@ -47,6 +49,8 @@ BEGIN
     repeat('a', 64),
     jsonb_build_object(
       'source_kind', 'integration_test',
+      'title', 'Public page title',
+      'text_excerpt', repeat('public evidence ', 120),
       'http_status', 200,
       'artifact_url', 'https://example.com/report.json?signature=must-not-persist',
       'artifact_sha256', repeat('b', 64)
@@ -70,6 +74,18 @@ BEGIN
   END IF;
   IF v_artifact_url <> 'https://example.com/report.json' THEN
     RAISE EXCEPTION 'artifact_url_was_not_sanitized: %', v_artifact_url;
+  END IF;
+
+  SELECT l.evidence ->> 'title', l.evidence ->> 'text_excerpt'
+  INTO v_page_title, v_page_excerpt
+  FROM public.midad_browser_evidence_ledger AS l
+  WHERE l.id = v_evidence_id;
+
+  IF v_page_title <> 'Public page title' THEN
+    RAISE EXCEPTION 'public_page_title_was_not_persisted';
+  END IF;
+  IF length(v_page_excerpt) <> length(repeat('public evidence ', 120)) THEN
+    RAISE EXCEPTION 'public_page_excerpt_was_not_persisted_or_was_truncated';
   END IF;
 
   -- Replaying the same event key must be idempotent and must not change state.

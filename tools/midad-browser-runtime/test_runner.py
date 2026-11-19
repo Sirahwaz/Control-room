@@ -1,6 +1,7 @@
 """Contract tests for the isolated Playwright worker; no network or browser needed."""
 
 import asyncio
+import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -10,6 +11,27 @@ from runner import (
     BrowserPolicyError,
     validate_navigation_url,
 )
+
+
+class BrowserConfigAuthModeTests(unittest.TestCase):
+    def test_github_oidc_mode_does_not_require_static_ingest_secret(self):
+        with patch.dict(os.environ, {
+            "SUPABASE_URL": "https://project.supabase.co",
+            "MIDAD_BROWSER_ALLOWED_HOSTS": "example.com,docs.example.com",
+            "MIDAD_BROWSER_GATEWAY_AUTH_MODE": "github_oidc",
+        }, clear=True):
+            config = BrowserConfig.from_env()
+        self.assertEqual(config.ingest_key, "")
+        self.assertEqual(config.allowed_hosts, frozenset({"example.com", "docs.example.com"}))
+
+    def test_ingest_key_mode_still_requires_private_key(self):
+        with patch.dict(os.environ, {
+            "SUPABASE_URL": "https://project.supabase.co",
+            "MIDAD_BROWSER_ALLOWED_HOSTS": "example.com",
+            "MIDAD_BROWSER_GATEWAY_AUTH_MODE": "ingest_key",
+        }, clear=True):
+            with self.assertRaises(ValueError):
+                BrowserConfig.from_env()
 
 
 class URLPolicyTests(unittest.TestCase):
@@ -123,16 +145,23 @@ class RuntimeLifecycleTests(unittest.IsolatedAsyncioTestCase):
         runner._navigate_and_capture = AsyncMock(return_value={
             "url": "https://example.com/", "title": "Example", "text": "public evidence", "http_status": 200,
         })
-        result = await runner.run({"id": "job-3", "current_url": "https://example.com/"}, asyncio.Event())
+        lease = {"lease_token": "a" * 64}
+        result = await runner.run({"id": "job-3", "current_url": "https://example.com/"}, asyncio.Event(), lease=lease)
         self.assertEqual(result["status"], "CAPTURED")
         self.assertRegex(result["content_sha256"], r"^[a-f0-9]{64}$")
         self.assertNotIn("public evidence", str(result))
         runner.gateway.record_event.assert_awaited()
-        event_payload = runner.gateway.record_event.await_args.kwargs
+        payloads = [call.kwargs for call in runner.gateway.record_event.await_args_list]
+        self.assertGreaterEqual(len(payloads), 3)
+        self.assertTrue(all(payload.get("lease_token") == lease["lease_token"] for payload in payloads))
+        event_payload = payloads[-1]
+        self.assertEqual(event_payload["event_type"], "evidence_captured")
+        self.assertEqual(event_payload["state"], "COMPLETED")
         self.assertEqual(event_payload["content_sha256"], result["content_sha256"])
         self.assertIn("duration_ms", event_payload["evidence"])
         self.assertIn("bytes_read", event_payload["evidence"])
-        self.assertNotIn("title", event_payload["evidence"])
+        self.assertEqual(event_payload["evidence"]["title"], "Example")
+        self.assertEqual(event_payload["evidence"]["text_excerpt"], "public evidence")
         fake_context.close.assert_awaited()
         fake_browser.close.assert_awaited()
 

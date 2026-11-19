@@ -67,7 +67,8 @@ Deno.test("sanitizeLedgerEvidence allowlists fields and strips sensitive or unre
     retryable: false,
     artifact_sha256: digest,
     artifact_url: "https://EXAMPLE.com/report?token=private#fragment",
-    title: "private page title",
+    title: "Public report title",
+    text_excerpt: "Public excerpt from the page.",
     page_text: "private page body",
     cookies: "session=private",
     storage_state: { token: "private" },
@@ -85,9 +86,11 @@ Deno.test("sanitizeLedgerEvidence allowlists fields and strips sensitive or unre
     policy_code: "REDIRECT_BLOCKED",
     retryable: false,
     source_kind: "browser smoke",
+    text_excerpt: "Public excerpt from the page.",
+    title: "Public report title",
   }, "sanitizer should retain only valid contract fields");
   const serialized = JSON.stringify(result);
-  for (const secret of ["private page title", "private page body", "session=private", "storage_state"]) {
+  for (const secret of ["private page body", "session=private", "storage_state"]) {
     assert(!serialized.includes(secret), "sanitized evidence must not contain " + secret);
   }
 });

@@ -49,6 +49,21 @@ async function sha256(value: string): Promise<string> {
 const clip = (value: unknown, max = 4000) =>
   String(value ?? "").trim().slice(0, max);
 
+const PUBLIC_READONLY_ALLOWED_HOSTS = new Set([
+  "github.com", "docs.github.com",
+  "supabase.com", "www.supabase.com",
+  "developer.mozilla.org", "arxiv.org",
+  "stackoverflow.com", "reddit.com", "www.reddit.com",
+  "wikipedia.org", "www.wikipedia.org",
+  "coingecko.com", "www.coingecko.com",
+  "coinmarketcap.com", "www.coinmarketcap.com",
+  "etherscan.io", "www.etherscan.io",
+  "defillama.com", "www.defillama.com",
+  "openai.com", "www.openai.com",
+  "cloudflare.com", "www.cloudflare.com",
+  "n8n.io", "www.n8n.io",
+]);
+
 function safeOperatorPreview(value: unknown, max = 1400) {
   return clip(value, max)
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]{12,}/gi, "[REDACTED]")
@@ -302,7 +317,8 @@ async function validateOperatorLease(sb: any, job: any, body: Record<string, any
     (inputData.operator_command && typeof inputData.operator_command === "object" && !Array.isArray(inputData.operator_command)) ||
     (typeof inputData.operator_hint === "string" && inputData.operator_hint.trim())
   );
-  if (!isOperatorJob) return { ok: true as const };
+  const hasWorkerLease = body.worker_id !== undefined || body.lease_token !== undefined;
+  if (!isOperatorJob && !hasWorkerLease) return { ok: true as const };
 
   const jobId = normalizeLeaseJobId(job?.id);
   const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
@@ -462,7 +478,7 @@ Deno.serve(async (req: Request) => {
 
     if (userBridge) {
       const subaction = clip(body.subaction, 40).toLowerCase();
-      if (!["capabilities", "list_sessions", "command", "get_result"].includes(subaction)) {
+      if (!["capabilities", "list_sessions", "create_readonly_job", "command", "get_result"].includes(subaction)) {
         return json({ ok: false, error: "user_bridge_action_not_allowed" }, 403);
       }
       const browserApiKey = req.headers.get("x-midad-browser-key") || "";
@@ -474,22 +490,40 @@ Deno.serve(async (req: Request) => {
 
       if (subaction === "capabilities") {
         const { data, error } = await sb.from("midad_browser_providers")
-          .select("status,profile_ref,metadata,updated_at")
-          .eq("provider_key", "midad_playwright_worker")
-          .eq("profile_ref", ownerUserId)
-          .maybeSingle();
+          .select("provider_key,status,profile_ref,capabilities,metadata,updated_at")
+          .in("provider_key", ["midad_playwright_worker", "midad_github_ephemeral_worker"])
+          .eq("profile_ref", ownerUserId);
         if (error) return json({ ok: false, error: "worker_status_lookup_failed" }, 500);
+        const now = Date.now();
+        const providers = Array.isArray(data) ? data : [];
+        const modes = providers.map((provider: any) => {
+          const heartbeatAt = typeof provider?.metadata?.heartbeat_at === "string" ? provider.metadata.heartbeat_at : "";
+          const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : 0;
+          const ephemeral = provider.provider_key === "midad_github_ephemeral_worker";
+          const maxAge = ephemeral ? 7 * 60_000 : 45_000;
+          const online = provider.status === "online" && Number.isFinite(heartbeatMs) &&
+            now - heartbeatMs >= 0 && now - heartbeatMs <= maxAge;
+          return {
+            mode: ephemeral ? "github_ephemeral_readonly" : "self_hosted_operator",
+            online,
+            last_seen: online ? heartbeatAt : null,
+            session_storage: safeCode(provider?.metadata?.session_storage_mode, "memory_only"),
+            capabilities: provider?.capabilities || {},
+          };
+        });
+        const workerOnline = modes.some((mode: any) => mode.online);
+        const latest = modes.filter((mode: any) => mode.online)
+          .sort((a: any, b: any) => Date.parse(b.last_seen) - Date.parse(a.last_seen))[0];
         const ownerScopeHash = await sha256("midad-browser-ui-owner-v1:" + ownerUserId);
-        const heartbeatAt = typeof data?.metadata?.heartbeat_at === "string" ? data.metadata.heartbeat_at : "";
-        const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : 0;
-        const workerOnline = data?.status === "online" && Number.isFinite(heartbeatMs) &&
-          Date.now() - heartbeatMs >= 0 && Date.now() - heartbeatMs <= 45_000;
         return json({
           ok: true, service: "midad_browser_agent_gateway", contract: "browser-user-v1",
           owner_scope_hash: ownerScopeHash,
-          worker_online: workerOnline, worker_last_seen: workerOnline ? heartbeatAt : null,
-          browser_engine: "Playwright Chromium", session_storage: "memory_only",
+          worker_online: workerOnline, worker_last_seen: latest?.last_seen || null,
+          worker_modes: modes,
+          browser_engine: "Playwright Chromium",
+          session_storage: modes.find((mode: any) => mode.mode === "self_hosted_operator")?.session_storage || "ephemeral_memory_only",
           allowed_actions: ["start_session", "status", "inspect", "navigate", "wait_for_selector", "click", "fill", "submit_form", "stop_session"],
+          job_actions: ["create_readonly_job", "list_sessions", "command", "get_result"],
           hard_blocks: ["password_input", "secret_input", "captcha_bypass", "mfa_bypass", "financial_actions", "destructive_actions"],
         });
       }
@@ -501,15 +535,129 @@ Deno.serve(async (req: Request) => {
           .order("updated_at", { ascending: false })
           .limit(20);
         if (error) return json({ ok: false, error: "browser_sessions_lookup_failed" }, 500);
-        const sessions = (data || []).map((job: any) => ({
+        const jobs = Array.isArray(data) ? data : [];
+        const jobIds = jobs.map((job: any) => job.id).filter(Boolean);
+        const evidenceByJob = new Map<string, Record<string, string | number | boolean>>();
+        if (jobIds.length) {
+          const ledgerRows = await sb.from("midad_browser_evidence_ledger")
+            .select("job_id,event_type,evidence,content_sha256,created_at")
+            .in("job_id", jobIds)
+            .order("created_at", { ascending: false })
+            .limit(100);
+          if (ledgerRows.error) return json({ ok: false, error: "browser_evidence_lookup_failed" }, 500);
+          for (const row of ledgerRows.data || []) {
+            const safeEvidence = sanitizeLedgerEvidence(row.evidence);
+            if (typeof row.content_sha256 === "string" && /^[a-f0-9]{64}$/i.test(row.content_sha256)) {
+              safeEvidence.content_sha256 = row.content_sha256.toLowerCase();
+            }
+            const newest = evidenceByJob.get(row.job_id) || {};
+            const merged = { ...safeEvidence, ...newest };
+            if (Object.keys(merged).length) evidenceByJob.set(row.job_id, merged);
+          }
+        }
+        const sessions = jobs.map((job: any) => ({
           job_id: job.id, state: safeCode(job.state, "UNKNOWN"),
           platform_key: clip(job.platform_key, 100),
           current_url: safeSourceUrl(job.current_url),
           created_at: job.created_at, updated_at: job.updated_at,
           next_action: safeCode(job.next_action, "UNKNOWN"),
+          evidence: evidenceByJob.get(job.id) || sanitizeLedgerEvidence(job?.evidence),
           result: sanitizeOperatorResult(job?.evidence?.operator_result),
         }));
         return json({ ok: true, sessions });
+      }
+
+      if (subaction === "create_readonly_job") {
+        const targetUrl = safeSourceUrl(body.target_url);
+        const objective = clip(body.objective, 500) || "Capture public read-only evidence from the requested page.";
+        const requestId = clip(body.request_id, 100);
+        if (!targetUrl) return json({ ok: false, error: "valid_public_https_target_required" }, 400);
+        const targetHost = new URL(targetUrl).hostname.toLowerCase();
+        if (!PUBLIC_READONLY_ALLOWED_HOSTS.has(targetHost)) {
+          return json({ ok: false, error: "public_readonly_host_not_allowlisted", allowed_hosts: [...PUBLIC_READONLY_ALLOWED_HOSTS] }, 403);
+        }
+        if (!requestId || !/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) {
+          return json({ ok: false, error: "valid_request_id_required" }, 400);
+        }
+        const idempotencyKey = "browser-readonly:" + ownerUserId + ":" + requestId;
+        const existing = await sb.from("midad_browser_jobs")
+          .select("id,state,current_url,created_at")
+          .eq("owner_user_id", ownerUserId)
+          .eq("agent_key", "midad_public_research")
+          .eq("platform_key", "public_read_only")
+          .eq("session_ref", idempotencyKey)
+          .maybeSingle();
+        if (existing.error) return json({ ok: false, error: "readonly_job_lookup_failed" }, 500);
+        if (existing.data) {
+          return json({
+            ok: true, idempotent: true, job_id: existing.data.id,
+            state: existing.data.state, current_url: safeSourceUrl(existing.data.current_url),
+            created_at: existing.data.created_at,
+          }, 200);
+        }
+        const inserted = await sb.from("midad_browser_jobs").insert({
+          owner_user_id: ownerUserId,
+          agent_key: "midad_public_research",
+          platform_key: "public_read_only",
+          objective,
+          state: "PREPARING",
+          session_ref: idempotencyKey,
+          current_url: targetUrl,
+          input_data: { mode: "public_read_only", requested_by: "browser_user_bridge" },
+          profile_snapshot: {},
+          human_gate: { required: false, status: "none" },
+          blocker: {},
+          evidence: {},
+          next_action: "capture_public_evidence",
+          attempt_count: 0,
+        }).select("id,state,current_url,created_at").single();
+        if (inserted.error) {
+          if (inserted.error.code === "23505") {
+            const duplicate = await sb.from("midad_browser_jobs")
+              .select("id,state,current_url,created_at")
+              .eq("owner_user_id", ownerUserId)
+              .eq("agent_key", "midad_public_research")
+              .eq("platform_key", "public_read_only")
+              .eq("session_ref", idempotencyKey)
+              .maybeSingle();
+            if (duplicate.data) {
+              return json({
+                ok: true, idempotent: true, job_id: duplicate.data.id,
+                state: duplicate.data.state, current_url: safeSourceUrl(duplicate.data.current_url),
+                created_at: duplicate.data.created_at,
+              }, 200);
+            }
+          }
+          return json({ ok: false, error: "readonly_job_create_failed" }, 500);
+        }
+        const ledger = await recordLedger(sb, {
+          jobId: inserted.data.id,
+          eventKey: "job-created:" + inserted.data.id,
+          eventType: "job_created",
+          actorKey: "midad_public_research",
+          targetState: "PREPARING",
+          sourceUrl: targetUrl,
+          evidence: { source_kind: "public_readonly_job_request" },
+          nextAction: "capture_public_evidence",
+          attemptCount: 0,
+        });
+        if (!ledger.ok) {
+          return json({
+            ok: false, error: "readonly_job_created_but_evidence_recording_failed",
+            job_id: inserted.data.id,
+          }, 500);
+        }
+        await sb.from("midad_agent_events").insert({
+          job_id: inserted.data.id,
+          agent_key: "midad_public_research",
+          event_type: "public_readonly_job_queued",
+          state: "PREPARING",
+          payload: { target_host: new URL(targetUrl).hostname, objective },
+        });
+        return json({
+          ok: true, job_id: inserted.data.id, state: "PREPARING",
+          current_url: targetUrl, created_at: inserted.data.created_at,
+        }, 202);
       }
 
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -581,18 +729,26 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "valid_owner_and_worker_id_required" }, 400);
       }
       const heartbeatAt = new Date().toISOString();
+      const workerVersion = safeCode(body.worker_version, "operator_worker_v2");
+      const ephemeralReadOnly = workerVersion.startsWith("github_ephemeral_readonly");
+      const sessionStorageMode = ephemeralReadOnly ? "ephemeral_memory_only" : safeCode(body.session_storage_mode, "memory_only");
+      const persistentSessions = !ephemeralReadOnly && sessionStorageMode === "encrypted_at_rest";
       const { error } = await sb.from("midad_browser_providers").upsert({
-        provider_key: "midad_playwright_worker",
-        provider_name: "MIDAD Playwright Operator Worker",
-        provider_type: "self_hosted_playwright",
+        provider_key: ephemeralReadOnly ? "midad_github_ephemeral_worker" : "midad_playwright_worker",
+        provider_name: ephemeralReadOnly ? "MIDAD GitHub Ephemeral Read-only Worker" : "MIDAD Playwright Operator Worker",
+        provider_type: ephemeralReadOnly ? "github_actions_ephemeral_playwright" : "self_hosted_playwright",
         status: "online",
-        capabilities: { persistent_sessions: true, operator_commands: true },
+        capabilities: ephemeralReadOnly
+          ? { public_read_only: true, persistent_sessions: false, operator_commands: false, session_storage: sessionStorageMode }
+          : { public_read_only: true, persistent_sessions: persistentSessions, operator_commands: true, session_storage: sessionStorageMode },
         profile_ref: ownerUserId,
         metadata: {
           owner_user_id: ownerUserId,
           heartbeat_at: heartbeatAt,
-          worker_version: safeCode(body.worker_version, "operator_worker_v2"),
+          worker_version: workerVersion,
           worker_id: workerId,
+          execution_mode: ephemeralReadOnly ? "github_actions_ephemeral" : "self_hosted_persistent",
+          session_storage_mode: sessionStorageMode,
         },
       }, { onConflict: "provider_key" });
       if (error) return json({ ok: false, error: "worker_heartbeat_write_failed" }, 500);
@@ -624,6 +780,36 @@ Deno.serve(async (req: Request) => {
         const { lease_token_sha256: _digest, ...safeJob } = job;
         return { ...safeJob, worker_id: workerId, lease_token: leaseToken };
       });
+      return json({ ok: true, worker_id: workerId, lease_seconds: leaseSeconds, jobs });
+    }
+
+    if (action === "claim_readonly_jobs") {
+      const ownerUserId = normalizeLeaseOwnerId(body.owner_user_id);
+      const workerId = normalizeLeaseWorkerId(body.worker_id);
+      const leaseSeconds = normalizeLeaseSeconds(body.lease_seconds, 300);
+      const limit = normalizeLeaseLimit(body.limit, 1);
+      if (!ownerUserId || !workerId || leaseSeconds === null || limit === null) {
+        return json({ ok: false, error: "invalid_readonly_claim_request" }, 400);
+      }
+
+      const leaseToken = crypto.randomUUID() + crypto.randomUUID();
+      const tokenHash = await hashLeaseToken(leaseToken);
+      const { data, error } = await sb.rpc("midad_browser_claim_readonly_jobs_v1", {
+        p_owner_user_id: ownerUserId,
+        p_worker_id: workerId,
+        p_lease_token_sha256: tokenHash,
+        p_lease_seconds: leaseSeconds,
+        p_limit: limit,
+      });
+      if (error) return json({ ok: false, error: "readonly_job_claim_failed" }, 503);
+      const jobs = (Array.isArray(data) ? data : []).map((job: Record<string, any>) => ({
+        id: job.id,
+        state: job.state,
+        current_url: job.current_url,
+        attempt_count: job.attempt_count,
+        worker_id: workerId,
+        lease_token: leaseToken,
+      }));
       return json({ ok: true, worker_id: workerId, lease_seconds: leaseSeconds, jobs });
     }
 
@@ -669,6 +855,7 @@ Deno.serve(async (req: Request) => {
           "create_browser_job",
           "queue_operator_hint",
           "claim_operator_jobs",
+          "claim_readonly_jobs",
           "renew_operator_lease",
           "release_operator_lease",
           "record_command_result",

@@ -11,13 +11,13 @@ const snapshotPath = path.join(root, "supabase/functions/midad_browser_agent_gat
 
 test("Browser Gateway source snapshot identifies the reconciled deployed version", () => {
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
-  assert.match(snapshot, /Last reconciled:\*\*? 2026-11-09/);
-  assert.ok(snapshot.includes("Observed deployment:** ACTIVE, version **16**"));
-  assert.doesNotMatch(snapshot, /Deployed version observed: \*\*3\*\*/);
-  assert.match(snapshot, /source reconciliation only/i);
+  assert.match(snapshot, /Last reconciled:\*\*? 2026-11-19/);
+  assert.ok(snapshot.includes("Observed deployment:** ACTIVE, version **21**"));
+  assert.match(snapshot, /Migration `20261119205535_midad_browser_worker_leases_v1` is applied/);
+  assert.match(snapshot, /NOT YET DEPLOYED/);
 });
 
-test("repository source contains the deployed v16 bounded bridge surfaces", () => {
+test("repository source contains the deployed v21 owner-bound and lease surfaces", () => {
   const source = fs.readFileSync(indexPath, "utf8");
   const ledger = fs.readFileSync(ledgerPath, "utf8");
   for (const marker of [
@@ -29,16 +29,22 @@ test("repository source contains the deployed v16 bounded bridge surfaces", () =
     "midad_browser_command",
     "midad_browser_get_result",
     "worker_heartbeat",
+    "claim_operator_jobs",
+    "renew_operator_lease",
+    "release_operator_lease",
+    "validateOperatorLease",
     "user_bridge",
     "get_operator_result",
   ]) {
-    assert.ok(source.includes(marker), `gateway source missing v16 marker: ${marker}`);
+    assert.ok(source.includes(marker), `gateway source missing expected marker: ${marker}`);
   }
   for (const marker of [
     "makeLedgerEventKey",
     "sanitizeLedgerEvidence",
     "normalizeTargetState",
     "safeSourceUrl",
+    "text_excerpt",
+    "title",
   ]) {
     assert.ok(ledger.includes(marker), `ledger helper missing marker: ${marker}`);
   }
