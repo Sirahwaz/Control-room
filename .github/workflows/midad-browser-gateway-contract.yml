@@ -6,6 +6,9 @@ on:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "tests/browser-gateway-source-parity.test.mjs"
       - "tests/browser-gateway-auth.test.mjs"
+      - "supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql"
+      - "supabase/tests/midad_browser_worker_leases_v1.sql"
+      - "tests/browser-gateway-lease-contract.test.mjs"
       - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
       - "supabase/tests/fixtures/midad_browser_gateway_base_schema.sql"
       - ".github/workflows/midad-browser-gateway-contract.yml"
@@ -16,6 +19,9 @@ on:
       - "tests/browser-gateway-source-parity.test.mjs"
       - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
       - "supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql"
+      - "supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql"
+      - "supabase/tests/midad_browser_worker_leases_v1.sql"
+      - "tests/browser-gateway-lease-contract.test.mjs"
       - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
       - "supabase/tests/fixtures/**"
       - ".github/workflows/midad-browser-gateway-contract.yml"
@@ -50,6 +56,10 @@ jobs:
         run: deno check supabase/functions/midad_browser_agent_gateway/index.ts
       - name: Run offline ledger helper tests
         run: deno test supabase/functions/midad_browser_agent_gateway/ledger.test.ts
+      - name: Run offline worker lease helper tests
+        run: deno test supabase/functions/midad_browser_agent_gateway/lease.test.ts
+      - name: Run gateway atomic lease source contract
+        run: node --test tests/browser-gateway-lease-contract.test.mjs
       - name: Run gateway source parity snapshot contract
         run: node --test tests/browser-gateway-source-parity.test.mjs
       - name: Run gateway authorization parsing regression tests
@@ -64,6 +74,7 @@ jobs:
         run: |
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql
       - name: Verify owner-bound session migration and preserve legacy sessions
         run: |
@@ -93,6 +104,8 @@ jobs:
           END;
           $check$;
           SQL
+      - name: Run SQL atomic worker lease lifecycle and privilege tests
+        run: psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_worker_leases_v1.sql
       - name: Run SQL ledger, idempotency, PAID-guard and cleanup contract tests
         run: psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/midad_browser_evidence_ledger_v1.sql
       - name: Verify disposable database returned to baseline
