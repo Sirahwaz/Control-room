@@ -48,7 +48,7 @@ test("existing gateway hosts the OIDC proxy and binds it to the exact main-branc
   assert.match(gateway, /midad-browser-ephemeral-worker\.yml@refs\/heads\/main/);
   assert.match(gateway, /github_ephemeral_readonly_v1/);
   assert.match(gateway, /github_worker_action_forbidden/);
-  assert.match(gateway, /ALLOWED_READONLY_HOSTS/);
+  assert.match(gateway, /PUBLIC_READONLY_ALLOWED_HOSTS/);
   assert.match(gateway, /host_not_allowlisted/);
   assert.match(gateway, /release_operator_lease/);
   assert.match(oidc, /RSASSA-PKCS1-v1_5/);
