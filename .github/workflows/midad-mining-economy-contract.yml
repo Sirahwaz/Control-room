@@ -1,0 +1,42 @@
+name: MIDAD Mining Economy Contract
+
+on:
+  push:
+    branches:
+      - feat/midad-mining-compute-economy-20261120
+    paths:
+      - 'compute/mmce/**'
+      - 'tests/midad-mining-economy.test.mjs'
+      - 'docs/architecture/MIDAD_MINING_COMPUTE_ECONOMY.md'
+      - '.github/workflows/midad-mining-economy-contract.yml'
+  pull_request:
+    paths:
+      - 'compute/mmce/**'
+      - 'tests/midad-mining-economy.test.mjs'
+      - 'docs/architecture/MIDAD_MINING_COMPUTE_ECONOMY.md'
+      - '.github/workflows/midad-mining-economy-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  economics-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run MMCE contract tests
+        run: node --test tests/midad-mining-economy.test.mjs
+      - name: Validate module syntax
+        run: node --check compute/mmce/economics.mjs
+      - name: Validate test syntax
+        run: node --check tests/midad-mining-economy.test.mjs
+      - name: Check diff whitespace
+        run: git diff --check
