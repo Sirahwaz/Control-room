@@ -119,3 +119,5 @@ The repository also includes a separate scheduled worker for public research tas
 - Stored evidence is bounded to a page title, a maximum 2,500-character public text excerpt, HTTP status, byte count, duration, attempt and SHA-256 digest. Full page bodies, cookies and storage state are not stored by this worker.
 
 This is a low-cost replacement path for public read-only browsing and evidence collection. It does **not** replace persistent authenticated sessions or the private operator worker. Those remain a separate deployment path requiring a persistent host, an account registry and an encrypted session key.
+
+- Supabase function configuration: `supabase/config.toml` sets `verify_jwt = false` **only** for `midad_browser_github_worker`. This is required because the Supabase gateway must pass the GitHub OIDC bearer token to the handler; the handler performs signature/JWKS and claim validation itself. Do not disable JWT verification for the general browser gateway or any other function.
