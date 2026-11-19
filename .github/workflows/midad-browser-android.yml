@@ -30,6 +30,7 @@ on:
       - "mobile/factory/native/midad-browser/**"
       - "tests/midad-browser-offline-home-contract.test.mjs"
       - "tests/midad-browser-native-tabs-contract.test.mjs"
+      - "tests/midad-browser-library-contract.test.mjs"
       - "mobile/web/midad-browser-mesh.html"
       - "mobile/web/midad-browser-mesh.css"
       - "mobile/web/midad-browser-mesh.js"
