@@ -42,7 +42,7 @@ class BrowserUserApiContractTests(unittest.TestCase):
         self.assertNotIn("body.owner_user_id", resolver)
 
     def test_only_safe_subactions_are_exposed(self):
-        self.assertIn('["capabilities", "list_sessions", "command", "get_result"]', self.source)
+        self.assertIn('["capabilities", "list_sessions", "create_readonly_job", "command", "get_result"]', self.source)
         self.assertIn('user_bridge_action_not_allowed', self.source)
 
     def test_worker_liveness_requires_fresh_heartbeat_for_same_owner(self):
