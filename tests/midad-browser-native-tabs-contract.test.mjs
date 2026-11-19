@@ -7,6 +7,14 @@ const source = await readFile(
   "utf8"
 );
 
+test("native browser toolbar uses the MIDAD dark premium surface and accent treatment", () => {
+  assert.match(source, /Color\.rgb\(5, 13, 22\)/);
+  assert.match(source, /brand\.setTextColor\(Color\.rgb\(115, 229, 251\)\)/);
+  assert.match(source, /Color\.rgb\(10, 25, 37\)/);
+  assert.match(source, /setElevation\(dp\(primary \? 3 : 1\)\)/);
+  assert.match(source, /setLetterSpacing\(0\.08f\)/);
+});
+
 test("native browser owns a bounded multi-tab WebView workspace", () => {
   assert.match(source, /MAX_TABS\s*=\s*8/);
   assert.match(source, /List<WebView>\s+tabs/);
