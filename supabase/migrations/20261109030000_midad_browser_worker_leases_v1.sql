@@ -54,7 +54,7 @@ $lease_constraints$;
 
 CREATE INDEX IF NOT EXISTS midad_browser_jobs_operator_lease_claim_idx
   ON public.midad_browser_jobs (owner_user_id, lease_expires_at, created_at, id)
-  WHERE state = 'PREPARING'
+  WHERE state IN ('PREPARING', 'RUNNING')
     AND (input_data ? 'operator_command' OR input_data ? 'operator_hint');
 
 COMMENT ON COLUMN public.midad_browser_jobs.lease_owner IS
@@ -101,7 +101,7 @@ BEGIN
     SELECT j.id
     FROM public.midad_browser_jobs AS j
     WHERE j.owner_user_id = p_owner_user_id
-      AND j.state = 'PREPARING'
+      AND j.state IN ('PREPARING', 'RUNNING')
       AND (
         (j.input_data ? 'operator_command'
           AND jsonb_typeof(j.input_data -> 'operator_command') = 'object')
