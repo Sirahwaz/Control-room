@@ -4,17 +4,16 @@
 CREATE UNIQUE INDEX IF NOT EXISTS midad_browser_jobs_public_readonly_idempotency_idx
   ON public.midad_browser_jobs (owner_user_id, session_ref)
   WHERE agent_key = 'midad_public_research'
-    AND platform_key = 'public_read_only'
+    AND platform_key IS NULL
     AND session_ref LIKE 'browser-readonly:%';
 
 CREATE INDEX IF NOT EXISTS midad_browser_jobs_readonly_lease_claim_idx
   ON public.midad_browser_jobs (owner_user_id, lease_expires_at, updated_at, id)
-  WHERE agent_key = 'midad_public_research'
-    AND platform_key = 'public_read_only'
-    AND COALESCE(input_data, '{}'::jsonb) ->> 'mode' = 'public_read_only'
-    AND state IN ('PREPARING', 'RUNNING')
+  WHERE state IN ('PREPARING', 'RUNNING')
     AND current_url IS NOT NULL
-    AND btrim(current_url) <> '';
+    AND btrim(current_url) <> ''
+    AND NOT (COALESCE(input_data, '{}'::jsonb) ? 'operator_command')
+    AND NOT (COALESCE(input_data, '{}'::jsonb) ? 'operator_hint');
 
 CREATE OR REPLACE FUNCTION public.midad_browser_claim_readonly_jobs_v1(
   p_owner_user_id uuid,
@@ -49,12 +48,11 @@ BEGIN
     SELECT j.id
     FROM public.midad_browser_jobs AS j
     WHERE j.owner_user_id = p_owner_user_id
-      AND j.agent_key = 'midad_public_research'
-      AND j.platform_key = 'public_read_only'
-      AND COALESCE(j.input_data, '{}'::jsonb) ->> 'mode' = 'public_read_only'
       AND j.state IN ('PREPARING', 'RUNNING')
       AND j.current_url IS NOT NULL
       AND btrim(j.current_url) <> ''
+      AND NOT (COALESCE(j.input_data, '{}'::jsonb) ? 'operator_command')
+      AND NOT (COALESCE(j.input_data, '{}'::jsonb) ? 'operator_hint')
       AND (j.lease_expires_at IS NULL OR j.lease_expires_at <= clock_timestamp())
     ORDER BY j.updated_at, j.id
     FOR UPDATE SKIP LOCKED
