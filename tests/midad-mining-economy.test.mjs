@@ -88,3 +88,12 @@ test("blocks resource allocation when mining economics are not verified", () => 
   assert.equal(decision.recommendedUse, "NO_AUTOMATIC_ALLOCATION");
   assert.equal(decision.status, "BLOCKED_UNVERIFIED_INPUT");
 });
+
+test("allows negative net value candidates and prefers a non-negative alternative", () => {
+  const decision = rankResourceUse({
+    miningNetPerDayUsd: -4,
+    computeTaskNetPerDayUsd: -1,
+    virtualPcUtilityPerDayUsd: 0
+  });
+  assert.equal(decision.recommendedUse, "VIRTUAL_PC");
+});
