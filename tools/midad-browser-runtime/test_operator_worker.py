@@ -39,6 +39,7 @@ class FakeGateway:
         self.jobs = jobs or []
         self.calls = []
         self.events = []
+        self.renewed = True
     async def call(self, action, **payload):
         self.calls.append((action, payload))
         if action == "worker_identity":
@@ -59,7 +60,7 @@ class FakeGateway:
             ]
             return {"ok": True, "jobs": claimed}
         if action == "renew_operator_lease":
-            return {"ok": True, "renewed": True}
+            return {"ok": True, "renewed": self.renewed}
         if action == "release_operator_lease":
             return {"ok": True, "released": True}
         if action == "record_command_result":
@@ -235,6 +236,21 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertFalse(self.pool.sessions)
         self.assertTrue(any(event["state"] == "BLOCKED" for event in self.gateway.events))
+
+    async def test_lost_lease_stops_before_browser_execution_or_result_write(self):
+        self.gateway.renewed = False
+        job = self.claimed({
+            "id": "job-lost-lease", "state": "PREPARING",
+            "input_data": {"operator_command": {
+                "version": 1, "action": "inspect", "platform_key": "example",
+                "account_id": "example-account", "action_approved": False
+            }},
+        })
+        result = await self.worker.process_job(job)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["code"], "OPERATOR_LEASE_LOST")
+        self.assertFalse(self.pool.sessions)
+        self.assertFalse(any(action == "record_command_result" for action, _ in self.gateway.calls))
 
     async def test_process_job_requires_a_server_claimed_lease(self):
         job = {
