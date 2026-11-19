@@ -30,6 +30,8 @@ const BROWSER_STATES = new Set([
 
 const EVIDENCE_LIMITS: Record<string, { kind: "string"; max: number } | { kind: "number"; min: number; max: number } | { kind: "boolean" } | { kind: "sha256" } | { kind: "url" }> = {
   source_kind: { kind: "string", max: 100 },
+  title: { kind: "string", max: 500 },
+  text_excerpt: { kind: "string", max: 2500 },
   http_status: { kind: "number", min: 100, max: 599 },
   content_type: { kind: "string", max: 150 },
   bytes_read: { kind: "number", min: 0, max: 2_000_000 },
