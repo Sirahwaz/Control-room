@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/midad-browser-ephemeral-worker.yml"
+  workflow_run:
+    workflows: ["MIDAD Browser Gateway — Contract Suite"]
+    types: [completed]
+    branches: [main]
 
 concurrency:
   group: midad-browser-ephemeral-readonly
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   public-readonly-worker:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
