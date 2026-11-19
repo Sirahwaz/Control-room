@@ -74,10 +74,10 @@ class GithubOidcGatewayClient:
         return token
 
     def _post_sync(self, token: str, action: str, payload: dict):
-        url = self.config.supabase_url.rstrip("/") + "/functions/v1/midad_browser_github_worker"
+        url = self.config.supabase_url.rstrip("/") + "/functions/v1/midad_browser_agent_gateway"
         request = Request(
             url,
-            data=json.dumps({"action": action, "payload": payload}).encode("utf-8"),
+            data=json.dumps({"action": "github_oidc_proxy", "payload": {"action": action, **payload}}).encode("utf-8"),
             method="POST",
             headers={
                 "content-type": "application/json",
