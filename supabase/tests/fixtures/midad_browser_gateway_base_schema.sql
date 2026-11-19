@@ -39,11 +39,28 @@ CREATE TABLE public.profiles (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE public.midad_platform_registry (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  platform_key text NOT NULL UNIQUE,
+  name text NOT NULL,
+  base_url text,
+  category text NOT NULL DEFAULT 'browser_runtime',
+  supported_actions text[] NOT NULL DEFAULT '{}'::text[],
+  registration_level text NOT NULL DEFAULT 'standard',
+  verification_requirements jsonb NOT NULL DEFAULT '{}'::jsonb,
+  allowed_automation jsonb NOT NULL DEFAULT '{}'::jsonb,
+  forbidden_automation jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'candidate',
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE public.midad_browser_jobs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   agent_key text NOT NULL,
-  platform_key text,
+  platform_key text REFERENCES public.midad_platform_registry(platform_key),
   objective text NOT NULL,
   state text NOT NULL CHECK (state IN (
     'QUEUED', 'RESEARCHING', 'PREPARING', 'RUNNING', 'HUMAN_GATE', 'BLOCKED',
