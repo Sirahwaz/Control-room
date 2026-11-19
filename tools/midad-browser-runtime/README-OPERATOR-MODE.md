@@ -28,7 +28,7 @@ The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or serv
    - exact `login_post_paths` used by that platform's supported login flow;
    - the secret alias, for example `MIDAD_TASKMARKET_PASSWORD`, never the actual password.
 
-3. Put the actual password in the host's secret store or protected environment; do not put it in the profile, command hint or queue payload. The current `EnvironmentSecretProvider` reads an injected environment secret; it is a provider adapter, not a remote vault.
+3. Put the actual password in the host's secret store or protected environment; do not put it in the profile, command hint or queue payload. The current `EnvironmentSecretProvider` reads an injected environment secret; it is a provider adapter, not a remote vault. The operator worker uses memory-only sessions when `MIDAD_SESSION_ENCRYPTION_KEY` is absent. When configured, it persists only AES-256-GCM-encrypted Playwright storage state, bound to owner ID, account ID and host; the key and plaintext cookies are never written to disk. The session directory is created with mode `0700` and state files with mode `0600`.
 
 4. Set these environment values in the host's secret/configuration panel:
    - `SUPABASE_URL`
@@ -37,6 +37,10 @@ The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or serv
    - `MIDAD_OPERATOR_OWNER_USER_ID`
    - `MIDAD_BROWSER_ACCOUNT_REGISTRY=/var/lib/midad-browser/accounts.json`
    - platform password aliases, such as `MIDAD_TASKMARKET_PASSWORD`
+
+   - `MIDAD_SESSION_ENCRYPTION_KEY` — base64-encoded 32-byte AES-256-GCM key, injected only through the host secret manager.
+   - `MIDAD_SESSION_STORE_ROOT=/var/lib/midad-browser/sessions` — persistent host volume for encrypted storage-state envelopes.
+   - `MIDAD_SESSION_KEY_ID=v1` — non-secret key version label; retain the matching key to restore existing sessions.
 
 5. Run **one worker instance initially**:
 
