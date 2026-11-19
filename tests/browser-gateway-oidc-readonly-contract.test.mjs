@@ -60,13 +60,12 @@ test("existing gateway hosts the OIDC proxy and binds it to the exact main-branc
 test("Control Room, OIDC proxy and worker share the same explicit public host policy", () => {
   for (const host of ["github.com", "docs.github.com", "supabase.com", "www.supabase.com", "developer.mozilla.org", "arxiv.org", "coingecko.com", "www.coingecko.com"]) {
     assert.ok(gateway.includes('"'+host+'"'), "gateway host allowlist missing " + host);
-    assert.ok(gateway.includes('"'+host+'"'), "gateway host allowlist missing " + host);
     assert.ok(workflow.includes(host), "worker runtime host allowlist missing " + host);
   }
 });
 
 test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
-  assert.match(supabaseConfig, /\[functions\.midad_browser_github_worker\][\s\S]*?verify_jwt\s*=\s*false/);
+  assert.match(supabaseConfig, /\[functions\.midad_browser_agent_gateway\][\s\S]*?verify_jwt\s*=\s*false/);
   assert.match(workflow, /vars\.MIDAD_BROWSER_EPHEMERAL_ENABLED == 'true'/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
