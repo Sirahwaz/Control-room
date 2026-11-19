@@ -4,8 +4,8 @@ import fs from "node:fs";
 
 const read = (path) => fs.readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const gateway = read("supabase/functions/midad_browser_agent_gateway/index.ts");
-const proxy = read("supabase/functions/midad_browser_github_worker/index.ts");
-const oidc = read("supabase/functions/midad_browser_github_worker/oidc.ts");
+
+const oidc = read("supabase/functions/_shared/github-actions-oidc.ts");
 const runner = read("tools/midad-browser-runtime/runner.py");
 const worker = read("tools/midad-browser-runtime/ephemeral_readonly_worker.py");
 const workflow = read(".github/workflows/midad-browser-ephemeral-worker.yml");
@@ -42,14 +42,15 @@ test("read-only claims return only minimal job fields and never profile snapshot
   assert.doesNotMatch(responseShape, /input_data|profile_snapshot|lease_token_sha256/);
 });
 
-test("OIDC proxy binds requests to the exact main-branch GitHub workflow", () => {
-  assert.match(proxy, /verifyGithubActionsOidc\(token, EXPECTED\)/);
-  assert.match(proxy, /midad-browser-ephemeral-worker\.yml@refs\/heads\/main/);
-  assert.match(proxy, /github_ephemeral_readonly_v1/);
-  assert.match(proxy, /github_worker_action_forbidden/);
-  assert.match(proxy, /ALLOWED_READONLY_HOSTS/);
-  assert.match(proxy, /host_not_allowlisted/);
-  assert.match(proxy, /release_operator_lease/);
+test("existing gateway hosts the OIDC proxy and binds it to the exact main-branch workflow", () => {
+  assert.match(gateway, /action === "github_oidc_proxy"/);
+  assert.match(gateway, /verifyGithubActionsOidc\(token, GITHUB_OIDC_EXPECTED\)/);
+  assert.match(gateway, /midad-browser-ephemeral-worker\.yml@refs\/heads\/main/);
+  assert.match(gateway, /github_ephemeral_readonly_v1/);
+  assert.match(gateway, /github_worker_action_forbidden/);
+  assert.match(gateway, /ALLOWED_READONLY_HOSTS/);
+  assert.match(gateway, /host_not_allowlisted/);
+  assert.match(gateway, /release_operator_lease/);
   assert.match(oidc, /RSASSA-PKCS1-v1_5/);
   assert.match(oidc, /jwt_signature_invalid/);
   assert.match(oidc, /jwt_audience_invalid/);
@@ -59,7 +60,7 @@ test("OIDC proxy binds requests to the exact main-branch GitHub workflow", () =>
 test("Control Room, OIDC proxy and worker share the same explicit public host policy", () => {
   for (const host of ["github.com", "docs.github.com", "supabase.com", "www.supabase.com", "developer.mozilla.org", "arxiv.org", "coingecko.com", "www.coingecko.com"]) {
     assert.ok(gateway.includes('"'+host+'"'), "gateway host allowlist missing " + host);
-    assert.ok(proxy.includes('"'+host+'"'), "OIDC proxy host allowlist missing " + host);
+    assert.ok(gateway.includes('"'+host+'"'), "gateway host allowlist missing " + host);
     assert.ok(workflow.includes(host), "worker runtime host allowlist missing " + host);
   }
 });
@@ -88,5 +89,7 @@ test("read-only runner records final completion with leased evidence", () => {
   assert.match(worker, /"claim_readonly_jobs"/);
   assert.match(worker, /"release_operator_lease"/);
   assert.match(worker, /ACTIONS_ID_TOKEN_REQUEST_URL/);
+  assert.match(worker, /midad_browser_agent_gateway/);
+  assert.match(worker, /github_oidc_proxy/);
   assert.doesNotMatch(worker, /MIDAD_INGEST_KEY/);
 });
