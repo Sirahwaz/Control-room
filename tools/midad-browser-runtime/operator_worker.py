@@ -182,11 +182,11 @@ class OperatorWorker:
             except Exception:
                 pass
             return {"job_id": job_id, "status": "DUPLICATE_SKIPPED"}
-        self._processed_ids.add(job_id)
         try:
             self._lease_payload(job)
         except CommandRoutingError as exc:
             return {"job_id": job_id, "status": "BLOCKED", "code": str(exc)}
+        self._processed_ids.add(job_id)
         current_url = job.get("current_url")
         command = command if isinstance(command, dict) else {}
         try:
