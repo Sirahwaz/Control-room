@@ -108,7 +108,7 @@ Offline unit tests validate command parsing, host scoping, one-shot POST windows
 The repository also includes a separate scheduled worker for public research tasks. It is intentionally not an operator worker. Its schedule is not production-ready until the read-only claim migration and the OIDC route in the existing midad_browser_agent_gateway are deployed; the proxy fails closed if its backend is unavailable.
 
 - Workflow: `.github/workflows/midad-browser-ephemeral-worker.yml`
-- Schedule: every five minutes, with `workflow_dispatch` available.
+- Schedule: every five minutes, with `workflow_dispatch` available; it also runs once after a successful `MIDAD Browser Gateway — Contract Suite` completion on `main`.
 - Activation: the workflow runs only from `main`. It was enabled after the gateway v23 deployment and byte-for-byte source verification; no repository secret or activation variable is required.
 - Authentication: GitHub Actions OIDC token with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
 - The existing gateway's OIDC proxy route accepts only the exact `Sirahwaz/Control-room` main-branch workflow and the `schedule` / `workflow_dispatch` events.
