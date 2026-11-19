@@ -4,6 +4,8 @@ import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from gradle_repo_mirror import MIRROR_URL, inject_maven_central_mirror
+
 ROOT = Path(__file__).resolve().parents[4]
 ANDROID = ROOT / "mobile/android"
 JAVA_SRC = Path(__file__).with_name("BrowserActivity.java")
@@ -32,6 +34,29 @@ if not re.search(r"androidx\.webkit:webkit:", gradle_text):
     APP_GRADLE.write_text(gradle_text, encoding="utf-8")
 if not re.search(r"androidx\.webkit:webkit:", gradle_text):
     raise SystemExit("androidx_webkit_dependency_not_configured")
+
+# GitHub-hosted runners can receive transient Maven Central 403/429 responses
+# that Gradle reports as missing artifacts. Keep google() and plugin portal
+# intact, but place the Google-hosted Central mirror before mavenCentral().
+mirror_files = 0
+mirror_repositories = 0
+for gradle_file in sorted(ANDROID.rglob("*")):
+    if not gradle_file.is_file() or gradle_file.suffix not in {".gradle", ".kts"}:
+        continue
+    source = gradle_file.read_text(encoding="utf-8")
+    updated, inserted = inject_maven_central_mirror(
+        source,
+        kotlin_dsl=gradle_file.name.endswith(".gradle.kts"),
+    )
+    if updated != source:
+        gradle_file.write_text(updated, encoding="utf-8")
+        mirror_files += 1
+    if MIRROR_URL in updated:
+        mirror_repositories += updated.count(MIRROR_URL)
+
+if mirror_repositories < 1:
+    raise SystemExit("maven_central_mirror_not_configured")
+print(f"MIDAD_GRADLE_CENTRAL_MIRROR_READY files={mirror_files} entries={mirror_repositories}")
 
 JAVA_DST.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(JAVA_SRC, JAVA_DST)
