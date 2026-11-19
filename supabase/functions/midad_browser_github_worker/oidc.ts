@@ -162,7 +162,7 @@ export async function verifyGithubActionsOidc(
   if (claims.sub !== `repo:${expected.repository}:ref:${expected.ref}`) {
     throw new OidcVerificationError("jwt_subject_invalid");
   }
-  if (claims.runner_environment && claims.runner_environment !== "github-hosted") {
+  if (claims.runner_environment !== "github-hosted") {
     throw new OidcVerificationError("jwt_runner_environment_invalid");
   }
   if (!Number.isFinite(claims.exp) || claims.exp <= now) throw new OidcVerificationError("jwt_expired");
