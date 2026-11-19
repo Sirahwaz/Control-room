@@ -13,7 +13,8 @@ test("Browser Gateway source snapshot identifies the reconciled deployed version
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
   assert.match(snapshot, /Last reconciled:\*\*? 2026-11-20/);
   assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **22**"));
-  assert.match(snapshot, /Migration `20261119205535_midad_browser_worker_leases_v1` is applied/);
+  assert.match(snapshot, /three browser worker migrations were applied/i);
+  assert.match(snapshot, /20261119214545/);
   assert.match(snapshot, /NOT YET DEPLOYED/);
 });
 
