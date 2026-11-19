@@ -11,6 +11,7 @@ function lockControls(ready){["#platformInput","#addressInput","#navigateButton"
 function addActivity(title,detail){const box=$("#activityList");$("#activityEmpty").hidden=true;const item=document.createElement("div");item.className="activity-item";const b=document.createElement("b");b.textContent=title;const small=document.createElement("small");small.textContent=detail;item.append(b,small);box.prepend(item);}
 async function obtainSession(force=false){
  if(state.token&&!force)return state.token;
+ if(!force){let cached="";try{cached=sessionStorage.getItem("midad_browser_session_token")||""}catch{}if(cached){state.token=cached;return cached}}
  const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
  const initData=tg?.initData||"";
  let response;
@@ -23,13 +24,14 @@ async function obtainSession(force=false){
  }
  const data=await response.json().catch(()=>({}));
  if(!response.ok||!data.token)throw new Error(data.error||"MIDAD_LOGIN_REQUIRED");
- state.token=data.token;return state.token;
+ state.token=data.token;try{sessionStorage.setItem("midad_browser_session_token",data.token)}catch{}return state.token;
 }
+function clearSessionToken(){state.token=null;try{sessionStorage.removeItem("midad_browser_session_token")}catch{}}
 async function api(payload,retry=true){
  const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
  const response=await fetch(USER_API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,action:"user_bridge",subaction:payload.action,token})});
  const data=await response.json().catch(()=>({}));
- if(response.status===401&&retry){state.token=null;return api(payload,false)}
+ if(response.status===401&&retry){clearSessionToken();return api(payload,false)}
  if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
  return data;
 }
@@ -101,10 +103,11 @@ $("#copyChatGPTToken").addEventListener("click",async()=>{
 });
 document.querySelectorAll("[data-local-action]").forEach(b=>b.addEventListener("click",()=>addActivity("الإجراء غير متاح حالياً","التنقل والتحكم يتمان عبر أوامر المنصة المعتمدة حتى نضيف بثّاً مباشراً للجلسة.")));
 
-async function cloudflareBrowserRequest(action,payload={}){
+async function cloudflareBrowserRequest(action,payload={},retry=true){
  const token=await obtainSession();if(!token)throw new Error("افتح Control Room وسجّل الدخول أولاً");
  const response=await fetch(BROWSER_RUN_API+action,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...payload,session_token:token})});
  const data=await response.json().catch(()=>({}));
+ if(response.status===401&&retry){clearSessionToken();return cloudflareBrowserRequest(action,payload,false)}
  if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
  return data;
 }

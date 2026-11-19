@@ -1,10 +1,12 @@
 name: MIDAD Browser Bridge CI
 on:
   push:
-    branches: [main, "feat/midad-browser-operator-bridge-*", "feat/midad-browser-owner-pairing-contract", "fix/restore-human-bridge-source-20261119"]
+    branches: [main, "feat/midad-browser-operator-bridge-*", "feat/midad-browser-owner-pairing-contract", "fix/restore-human-bridge-source-20261119", "fix/browser-session-reuse-20261119"]
     paths:
       - "ai-room.html"
       - "midad-browser-bridge.js"
+      - "midad-browser.js"
+      - "tests/midad-browser-session-cache-contract.test.mjs"
       - "tools/midad-browser-runtime/test_web_bridge.mjs"
       - "tools/midad-browser-runtime/check_ai_room_script.py"
       - "mobile/factory/native/midad-browser/pairing-contract.mjs"
@@ -50,6 +52,8 @@ jobs:
           python-version: "3.11"
       - name: Validate bridge contract
         run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
+      - name: Test Browser Mesh session reuse and 401 recovery
+        run: node --test tests/midad-browser-session-cache-contract.test.mjs
       - name: Test deployed Human Bridge source contract
         run: python -m unittest tools.midad-browser-runtime.test_human_bridge_contract -v
       - name: Test Android owner-pairing contract
