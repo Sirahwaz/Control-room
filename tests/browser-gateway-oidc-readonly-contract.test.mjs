@@ -9,6 +9,7 @@ const oidc = read("supabase/functions/midad_browser_github_worker/oidc.ts");
 const runner = read("tools/midad-browser-runtime/runner.py");
 const worker = read("tools/midad-browser-runtime/ephemeral_readonly_worker.py");
 const workflow = read(".github/workflows/midad-browser-ephemeral-worker.yml");
+const supabaseConfig = read("supabase/config.toml");
 const ledger = read("supabase/functions/midad_browser_agent_gateway/ledger.ts");
 const controlRoom = read("ai-room.html");
 const readonlyMigration = read("supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql");
@@ -64,6 +65,7 @@ test("Control Room, OIDC proxy and worker share the same explicit public host po
 });
 
 test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
+  assert.match(supabaseConfig, /\[functions\.midad_browser_github_worker\][\s\S]*?verify_jwt\s*=\s*false/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /workflow_dispatch:/);
