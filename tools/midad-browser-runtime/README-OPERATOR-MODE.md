@@ -48,7 +48,7 @@ The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or serv
    python tools/midad-browser-runtime/operator_worker.py
    ```
 
-   It must remain alive for the session to remain alive. The browser context is in RAM; restarting or stopping the process ends all sessions. The gateway now supports atomic `FOR UPDATE SKIP LOCKED` claims with a 300-second lease, owner/worker binding, SHA-256 token storage, renewal and release. The worker claims one job at a time and fails closed if renewal is rejected. Keep one replica until the live worker is verified; the lease protocol prevents duplicate job claims when controlled multi-worker operation is later enabled.
+   It must remain alive while a live tab or in-flight task is active. The live browser context is in RAM; restarting closes tabs and in-flight tasks. When the encrypted session store is configured, authenticated storage state can be restored into a new context after restart; without the key, sessions are memory-only. The gateway now supports atomic `FOR UPDATE SKIP LOCKED` claims with a 300-second lease, owner/worker binding, SHA-256 token storage, renewal and release. The worker claims one job at a time and fails closed if renewal is rejected. Keep one replica until the live worker is verified; the lease protocol prevents duplicate job claims when controlled multi-worker operation is later enabled.
 
    **Deployment gate:** this source change is not active in production until migration `20261109030000_midad_browser_worker_leases_v1.sql` is applied and the Browser Gateway is redeployed. Verify the migration and deployed Gateway version before starting a worker.
 
