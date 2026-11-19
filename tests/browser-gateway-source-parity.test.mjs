@@ -12,13 +12,13 @@ const snapshotPath = path.join(root, "supabase/functions/midad_browser_agent_gat
 test("Browser Gateway source snapshot identifies the reconciled deployed version", () => {
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
   assert.match(snapshot, /Last reconciled:\*\*? 2026-11-20/);
-  assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **22**"));
-  assert.match(snapshot, /three browser worker migrations were applied/i);
-  assert.match(snapshot, /20261119214545/);
-  assert.match(snapshot, /NOT YET DEPLOYED/);
+  assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **23**"));
+  assert.match(snapshot, /four browser worker migrations were applied/i);
+  assert.match(snapshot, /20261119215821/);
+  assert.match(snapshot, /GitHub Actions public read-only worker — ENABLED/);
 });
 
-test("repository source contains the deployed v22 owner-bound and lease surfaces", () => {
+test("repository source contains the deployed v23 owner-bound, lease and OIDC surfaces", () => {
   const source = fs.readFileSync(indexPath, "utf8");
   const ledger = fs.readFileSync(ledgerPath, "utf8");
   for (const marker of [

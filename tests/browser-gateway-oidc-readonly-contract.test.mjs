@@ -13,6 +13,7 @@ const supabaseConfig = read("supabase/config.toml");
 const ledger = read("supabase/functions/midad_browser_agent_gateway/ledger.ts");
 const controlRoom = read("ai-room.html");
 const readonlyMigration = read("supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql");
+const platformRegistryMigration = read("supabase/migrations/20261119215000_midad_public_readonly_platform_registry_v1.sql");
 
 test("gateway exposes a separate read-only claim path and validates its lease on writes", () => {
   assert.match(gateway, /subaction === "create_readonly_job"/);
@@ -26,6 +27,16 @@ test("gateway exposes a separate read-only claim path and validates its lease on
   assert.match(gateway, /midad_browser_claim_readonly_jobs_v1/);
   assert.match(gateway, /const hasWorkerLease = body\.worker_id !== undefined \|\| body\.lease_token !== undefined/);
   assert.match(gateway, /validateOperatorLease\(sb, job, body\)/);
+});
+
+test("public read-only worker has an explicit non-income platform registry entry", () => {
+  assert.match(platformRegistryMigration, /INSERT INTO public\.midad_platform_registry/);
+  assert.match(platformRegistryMigration, /'public_read_only'/);
+  assert.match(platformRegistryMigration, /'browser_runtime'/);
+  assert.match(platformRegistryMigration, /'active'/);
+  assert.match(platformRegistryMigration, /credential_entry/);
+  assert.match(platformRegistryMigration, /ON CONFLICT \(platform_key\) DO NOTHING/);
+  assert.match(platformRegistryMigration, /not an external income platform or payout destination/i);
 });
 
 test("read-only claims return only minimal job fields and never profile snapshots or input data", () => {
