@@ -96,3 +96,28 @@ test("read-only runner records final completion with leased evidence", () => {
   assert.match(worker, /github_oidc_proxy/);
   assert.doesNotMatch(worker, /MIDAD_INGEST_KEY/);
 });
+
+test("OIDC proxy validates the token before resolving owner or forwarding worker actions", () => {
+  const handlerStart = gateway.indexOf("async function handleGithubOidcProxy");
+  const handlerEnd = gateway.indexOf("Deno.serve(async", handlerStart);
+  const handler = gateway.slice(handlerStart, handlerEnd);
+  assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
+  assert.ok(handler.indexOf("verifyGithubActionsOidc(token, GITHUB_OIDC_EXPECTED)") < handler.indexOf("GITHUB_WORKER_ACTIONS.has(workerAction)"));
+  assert.ok(handler.indexOf("verifyGithubActionsOidc(token, GITHUB_OIDC_EXPECTED)") < handler.indexOf('githubGatewayInternalRequest("worker_identity"'));
+  assert.match(handler, /githubWorkerIdFromClaims\(claims\)/);
+  assert.match(handler, /owner_user_id: ownerUserId/);
+  assert.match(handler, /worker_id: workerId/);
+  assert.match(handler, /lease_token: leaseToken/);
+});
+
+test("OIDC proxy keeps service credentials server-side and the Python worker sends only the GitHub token", () => {
+  const internalStart = gateway.indexOf("async function githubGatewayInternalRequest");
+  const internalEnd = gateway.indexOf("function safeGithubWorkerEvent", internalStart);
+  const internal = gateway.slice(internalStart, internalEnd);
+  assert.match(internal, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(internal, /MIDAD_INGEST_KEY/);
+  assert.match(worker, /authorization.*Bearer.*token/);
+  assert.doesNotMatch(worker, /MIDAD_INGEST_KEY|SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(worker, /json\.dumps\(\{"action": "github_oidc_proxy"/);
+  assert.match(gateway, /GITHUB_WORKER_ACTIONS = new Set/);
+});
