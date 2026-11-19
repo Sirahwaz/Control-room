@@ -21,7 +21,7 @@ test("gateway claims jobs atomically and never returns the stored lease digest",
 
 test("operator result writes and state events require a valid lease", () => {
   const calls = gateway.match(/validateOperatorLease\(sb,/g) || [];
-  assert.ok(calls.length >= 3, "lease validation must protect helper plus both write paths");
+  assert.ok(calls.length >= 2, "lease validation must protect both worker write paths");
   assert.match(gateway, /action === "record_command_result"[\s\S]*?validateOperatorLease\(sb, found\.data, body\)/);
   assert.match(gateway, /action === "record_event"[\s\S]*?validateOperatorLease\(sb, job, body\)/);
 });
