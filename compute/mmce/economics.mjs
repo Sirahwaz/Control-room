@@ -139,7 +139,8 @@ export function rankResourceUse({
 
   return {
     schemaVersion: "midad.mmce.allocation.v1",
-    status: "VERIFIED_COMPARISON",
+    status: "CALCULATED_COMPARISON",
+    evidenceStatus: "CALLER_SUPPLIED_NOT_VERIFIED",
     recommendedUse,
     missingInputs: [],
     candidates
