@@ -151,7 +151,7 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
         renewal = [payload for action, payload in self.gateway.calls if action == "renew_operator_lease"]
         self.assertEqual(len(renewal), 1)
-        self.assertEqual(renewal[0]["lease_seconds"], 180)
+        self.assertEqual(renewal[0]["lease_seconds"], 300)
         running = [event for event in self.gateway.events if event["state"] == "RUNNING"]
         self.assertEqual(len(running), 1)
         self.assertEqual(running[0]["evidence"]["policy_risk"], "low")
@@ -274,6 +274,8 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(heartbeat_calls[0][1]["worker_id"], "test-worker-001")
         claim_calls = [call for call in self.gateway.calls if call[0] == "claim_operator_jobs"]
         self.assertEqual(len(claim_calls), 2)
+        self.assertEqual(claim_calls[0][1]["lease_seconds"], 300)
+        self.assertEqual(claim_calls[0][1]["limit"], 1)
 
     async def test_poll_once_ignores_non_operator_jobs(self):
         self.gateway.jobs = [
