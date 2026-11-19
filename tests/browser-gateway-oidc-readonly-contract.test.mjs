@@ -44,6 +44,10 @@ test("read-only claims return only minimal job fields and never profile snapshot
 
 test("existing gateway hosts the OIDC proxy and binds it to the exact main-branch workflow", () => {
   assert.match(gateway, /action === "github_oidc_proxy"/);
+  assert.match(gateway, /const githubOidcProxy = action === "github_oidc_proxy"/);
+  assert.match(gateway, /!authorized\(req\) && !userBridge && !mcpBridge && !githubOidcProxy/);
+  assert.match(gateway, /if \(githubOidcProxy\) return await handleGithubOidcProxy\(req, body\)/);
+  assert.match(gateway, /githubGatewayInternalRequest\("worker_identity"/);
   assert.match(gateway, /verifyGithubActionsOidc\(token, GITHUB_OIDC_EXPECTED\)/);
   assert.match(gateway, /midad-browser-ephemeral-worker\.yml@refs\/heads\/main/);
   assert.match(gateway, /github_ephemeral_readonly_v1/);
