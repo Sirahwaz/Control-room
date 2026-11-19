@@ -621,6 +621,17 @@
       ],
       "status": "active",
       "description": "Supabase project-level CLI configuration and function-specific gateway JWT boundary declarations; contains no service credentials."
+    },
+    {
+      "id": "desktop-session-contract",
+      "repository": "control-room",
+      "domain": "desktop-runtime",
+      "kind": "session-lifecycle-contract",
+      "paths": [
+        "compute/desktop-session/"
+      ],
+      "status": "experimental",
+      "description": "Offline desktop session state machine and fail-closed admission gates; no VM provisioning or host execution."
     }
   ],
   "dependencies": [
