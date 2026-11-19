@@ -37,12 +37,13 @@ test("Omni direct Gemini routes receive the verified continuity system instructi
 
 
 test("orchestrator tries the verified universal model gateway before BluesMinds for generic roles", () => {
-  assert.match(orchestrator, /GATEWAY_ELIGIBLE_ROLES\\s*=\\s*new Set\\(\\[["']economy["'],["']general["'],["']reasoning["']\\]\\)/);
-  const gatewayDispatch = orchestrator.indexOf("callModelGateway(");
-  const bluesMindsFallback = orchestrator.indexOf("for(const model of routes)");
+  assert.ok(orchestrator.includes('const GATEWAY_ELIGIBLE_ROLES = new Set(["economy", "general", "reasoning"])'));
+  const gatewayDispatch = orchestrator.indexOf("await callModelGateway(");
+  const bluesMindsFallback = orchestrator.indexOf("if(!final){for(const model of routes)");
   assert.ok(gatewayDispatch >= 0, "expected a universal model gateway dispatch path");
   assert.ok(bluesMindsFallback > gatewayDispatch, "BluesMinds must remain after the gateway as fallback");
-  assert.match(orchestrator, /task_class:\\s*["']generic["']/);
-  assert.match(orchestrator, /data_class:\\s*["']sensitive["']/);
-  assert.match(orchestrator, /model_gateway_fallback/);
+  assert.ok(orchestrator.includes('task_class:"generic"'));
+  assert.ok(orchestrator.includes('data_class:"sensitive"'));
+  assert.ok(orchestrator.includes('fallback:"bluesminds"'));
+  assert.ok(orchestrator.includes('router:final?.router||"bluesminds_midad_router_v1"'));
 });
