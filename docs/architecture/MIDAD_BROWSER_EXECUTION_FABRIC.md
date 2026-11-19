@@ -1,6 +1,6 @@
 # MIDAD Browser Execution Fabric
 
-Status: **architecture accepted for implementation; worker integration and live deployment are pending**.
+Status: **public read-only worker implemented in this branch; migration, OIDC proxy and live activation are pending. Persistent authenticated operator worker still requires a verified host and encrypted session configuration.**
 
 This document defines MIDAD Browser as a first-class, agent-callable execution service, not merely an Android WebView or a read-only research screen.
 
@@ -53,8 +53,9 @@ Connector Router                 Browser Provider Router
 
 1. Use a first-party connector or official API when it provides the requested operation and reliable evidence.
 2. Use the MIDAD Android WebView for local browsing and human-interactive checkpoints.
-3. Use the self-hosted Playwright Chromium worker for server-side browser automation.
-4. Keep external browser vendors as optional adapters only. TinyFish is not the core and must not be used as the default paid execution dependency.
+3. Use the GitHub Actions ephemeral Playwright worker for allowlisted public read-only browsing and evidence capture.
+4. Use the persistent self-hosted Playwright Chromium operator worker for authenticated, human-gated workflows only after its host and encrypted session store are verified.
+5. Keep external browser vendors as optional adapters only. TinyFish is not the core and must not be used as the default paid execution dependency.
 
 Every provider implements the same task/session/evidence contract. A provider outage must not erase the mission or force the user to repeat its intent.
 
@@ -108,7 +109,7 @@ Supabase Vault already exists in the MIDAD project. The target design is:
 
 ### Persistent sessions
 
-The current Playwright operator context is RAM-only. The target is an encrypted persistent storage-state provider:
+The operator worker now supports optional AES-256-GCM encrypted storage-state persistence. No persistent operator host is currently running; without a host-provided encryption key and persistent storage root, its context remains memory-only. The target is an encrypted persistent storage-state provider:
 - encrypt per owner/account/profile using an authenticated cipher;
 - keep the encryption key outside PostgreSQL and source control, using a host secret or managed key provider;
 - bind each stored state to exact host/profile/account and a key version;
@@ -205,10 +206,10 @@ The control plane is provider-neutral. A task may move between execution substra
 | Substrate | Primary role | Use it for | Do not use it for |
 | --- | --- | --- | --- |
 | Native connected APIs | Deterministic connector execution | GitHub, Supabase, Notion, Dropbox and other structured operations | UI-only behavior that has no supported API |
-| GitHub Actions | Ephemeral CI and build runners | Tests, APK/AAB builds, lint, static analysis, reproducible jobs and artifact creation | Interactive browsing or a persistent worker |
+| GitHub Actions | Ephemeral CI and public read-only browser runner | Tests, APK/AAB builds, lint, static analysis, allowlisted public Playwright navigation, bounded text evidence and scheduled queue consumption | Persistent tabs, authenticated account sessions, operator commands or long-running browser profiles |
 | GitHub Codespaces | Temporary interactive development workspace | Repository inspection, dependency experiments, isolated debugging, reproducing failures and short-lived tools | An always-on daemon, a production queue consumer, or a permanent browser profile |
 | MIDAD VPS control node | Persistent lightweight coordination | Worker supervision, health checks, secure outbound queue consumption, watchdogs and relay functions when resource checks pass | Chromium/large agent workloads on the currently known 512 MB instance |
-| Dedicated Playwright runner | Browser execution | Authorized site workflows, isolated browser contexts, screenshots and page evidence | General-purpose shell access or unbounded coding-agent execution |
+| Dedicated Playwright runner | Persistent browser execution | Authenticated site workflows, isolated browser contexts, encrypted storage-state restore, human-gated operator commands and page evidence | General-purpose shell access, unbounded coding-agent execution or unapproved high-impact actions |
 | Android MIDAD Browser | Local and human-interactive surface | Phone browsing, human verification checkpoints, approvals, offline shell and session handoff | A trusted server-side credential broker |
 | ACP/coding-agent sandbox | Isolated repository work | Bounded code analysis and edits in a disposable worktree/container after isolation and provider readiness are proven | An unisolated shell with inherited MIDAD credentials |
 
