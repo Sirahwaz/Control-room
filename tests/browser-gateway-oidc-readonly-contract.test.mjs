@@ -52,6 +52,7 @@ test("OIDC proxy binds requests to the exact main-branch GitHub workflow", () =>
   assert.match(oidc, /RSASSA-PKCS1-v1_5/);
   assert.match(oidc, /jwt_signature_invalid/);
   assert.match(oidc, /jwt_audience_invalid/);
+  assert.match(oidc, /claims\.runner_environment !== "github-hosted"/);
 });
 
 test("Control Room, OIDC proxy and worker share the same explicit public host policy", () => {
