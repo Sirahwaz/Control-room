@@ -133,7 +133,7 @@ BEGIN
       RAISE EXCEPTION 'evidence_metadata_values_must_be_scalar: %', v_key USING ERRCODE = '22023';
     END IF;
     IF jsonb_typeof(v_value) = 'string' AND length(v_value #>> '{}') >
-      CASE WHEN v_key = 'text_excerpt' THEN 2500 ELSE 500 END THEN
+      (CASE WHEN v_key = 'text_excerpt' THEN 2500 ELSE 500 END) THEN
       RAISE EXCEPTION 'evidence_metadata_value_too_long: %', v_key USING ERRCODE = '22023';
     END IF;
     IF v_key = 'artifact_sha256' AND jsonb_typeof(v_value) = 'string'
