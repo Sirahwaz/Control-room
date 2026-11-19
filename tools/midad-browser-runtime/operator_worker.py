@@ -173,6 +173,14 @@ class OperatorWorker:
         if not isinstance(command, dict) and not (isinstance(hint, str) and hint.strip()):
             return {"job_id": job_id, "status": "IGNORED", "reason": "NOT_AN_OPERATOR_COMMAND"}
         if job_id in self._processed_ids:
+            try:
+                await self.gateway.call(
+                    "release_operator_lease",
+                    job_id=job_id,
+                    **self._lease_payload(job),
+                )
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "DUPLICATE_SKIPPED"}
         self._processed_ids.add(job_id)
         try:
