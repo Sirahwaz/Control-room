@@ -53,7 +53,7 @@ END;
 $lease_constraints$;
 
 CREATE INDEX IF NOT EXISTS midad_browser_jobs_operator_lease_claim_idx
-  ON public.midad_browser_jobs (owner_user_id, lease_expires_at, created_at, id)
+  ON public.midad_browser_jobs (owner_user_id, lease_expires_at, updated_at, id)
   WHERE state IN ('PREPARING', 'RUNNING')
     AND (input_data ? 'operator_command' OR input_data ? 'operator_hint');
 
@@ -110,7 +110,7 @@ BEGIN
           AND length(btrim(j.input_data ->> 'operator_hint')) > 0)
       )
       AND (j.lease_expires_at IS NULL OR j.lease_expires_at <= clock_timestamp())
-    ORDER BY j.created_at, j.id
+    ORDER BY j.updated_at, j.id
     FOR UPDATE SKIP LOCKED
     LIMIT p_limit
   )
