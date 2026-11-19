@@ -102,3 +102,20 @@ A short platform name defaults to session startup. Unknown or ambiguous platform
 ## Verification limits
 
 Offline unit tests validate command parsing, host scoping, one-shot POST windows, secret-field protection and gateway contracts. They do not prove that a real platform's selectors are correct, that its login works, that a worker is running on a host, or that ChatGPT has been connected to that private bridge. A platform-specific profile must be configured and tested before using that account.
+
+## GitHub Actions ephemeral public read-only worker
+
+The repository also includes a separate scheduled worker for public research tasks. It is intentionally not an operator worker. Its schedule is not production-ready until the read-only claim migration and the OIDC Edge Function are deployed; the proxy fails closed if its backend is unavailable.
+
+- Workflow: `.github/workflows/midad-browser-ephemeral-worker.yml`
+- Schedule: every five minutes, with `workflow_dispatch` available.
+- Authentication: GitHub Actions OIDC token with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
+- The Supabase OIDC proxy accepts only the exact `Sirahwaz/Control-room` main-branch workflow and the `schedule` / `workflow_dispatch` events.
+- The proxy derives the owner and worker ID server-side. It exposes only heartbeat, read-only job claim, evidence event, lease renew and lease release actions.
+- The SQL claim RPC excludes operator jobs and jobs without a public HTTPS target. It uses the same atomic lease columns and service-role-only execution boundary. Public job submissions use an owner-scoped idempotency key and a partial unique index, so repeated taps return the existing job rather than creating duplicates.
+- Each run processes at most one job, has a four-minute runtime cap, and exits after twenty seconds without work.
+- The initial exact-host allowlist is in the workflow's `MIDAD_BROWSER_ALLOWED_HOSTS` variable. Add a hostname there only after reviewing the target.
+- The worker performs navigation and evidence capture only. It does not log in, submit forms, enter secrets, bypass CAPTCHA/KYC/2FA, or perform financial/destructive actions.
+- Stored evidence is bounded to a page title, a maximum 2,500-character public text excerpt, HTTP status, byte count, duration, attempt and SHA-256 digest. Full page bodies, cookies and storage state are not stored by this worker.
+
+This is a low-cost replacement path for public read-only browsing and evidence collection. It does **not** replace persistent authenticated sessions or the private operator worker. Those remain a separate deployment path requiring a persistent host, an account registry and an encrypted session key.
