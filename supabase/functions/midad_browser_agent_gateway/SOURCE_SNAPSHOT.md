@@ -11,11 +11,11 @@
 - The existing owner-bound browser session path remains in place.
 - The gateway's custom authentication remains server-side; no service-role or ingest secret is exposed to the browser.
 - Database transaction mode was observed as read-write and database size was approximately 1.35 GB during pre-deployment checks.
-- The three browser worker migrations were applied successfully. The migration runner recorded versions `20261119214545`, `20261119214551`, and `20261119214558`.
+- The four browser worker migrations were applied successfully. The migration runner recorded versions `20261119214545`, `20261119214551`, `20261119214558`, and `20261119215821`.
 - The read-only claim and idempotency indexes require the exact identity tuple: `agent_key=midad_public_research`, `platform_key=public_read_only`, and `input_data.mode=public_read_only`.
 - RPC grants were verified: `anon` and `authenticated` cannot claim; `service_role` can.
 - Evidence ledger accepts a sanitized title (maximum 500 characters) and public excerpt (maximum 2,500 characters), with the original state-transition and privilege rules preserved.
-- No production read-only job was created during migration verification.
+- A non-sensitive public-page smoke job was queued after deployment; its completion is being verified separately.
 
 ## Production gateway v23 capabilities
 
