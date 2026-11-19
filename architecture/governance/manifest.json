@@ -610,6 +610,17 @@
       ],
       "status": "experimental",
       "description": "Offline fail-closed economics and resource-use comparison for authorized mining, compute tasks and virtual-PC utility; no execution or wallet mutation."
+    },
+    {
+      "id": "supabase-project-config",
+      "repository": "control-room",
+      "domain": "data-platform",
+      "kind": "project-configuration",
+      "paths": [
+        "supabase/config.toml"
+      ],
+      "status": "active",
+      "description": "Supabase project-level CLI configuration and function-specific gateway JWT boundary declarations; contains no service credentials."
     }
   ],
   "dependencies": [
