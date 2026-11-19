@@ -24,6 +24,16 @@ BEGIN
   SELECT id INTO v_owner FROM public.profiles ORDER BY created_at LIMIT 1;
   IF v_owner IS NULL THEN RAISE EXCEPTION 'readonly_claim_test_requires_seed_profile'; END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM public.midad_platform_registry
+    WHERE platform_key = 'public_read_only'
+      AND status = 'active'
+      AND allowed_automation ->> 'public_research' = 'true'
+      AND forbidden_automation ->> 'credential_entry' = 'true'
+  ) THEN
+    RAISE EXCEPTION 'public_readonly_platform_registry_missing_or_unsafe';
+  END IF;
+
   INSERT INTO public.midad_browser_jobs (
     owner_user_id, agent_key, platform_key, objective, state, session_ref, current_url,
     input_data, profile_snapshot, human_gate, blocker, evidence, attempt_count
@@ -66,7 +76,7 @@ BEGIN
     owner_user_id, agent_key, platform_key, objective, state, session_ref, current_url,
     input_data, profile_snapshot, human_gate, blocker, evidence, attempt_count
   ) VALUES (
-    v_owner, 'midad_general_research', 'web_research', 'Ordinary browser job must not enter public worker',
+    v_owner, 'midad_general_research', NULL, 'Ordinary browser job must not enter public worker',
     'PREPARING', 'readonly-test-ordinary:' || gen_random_uuid()::text, 'https://example.com/',
     '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, 0
   ) RETURNING id INTO v_ordinary_job;
