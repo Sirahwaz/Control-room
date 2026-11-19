@@ -2,11 +2,11 @@
 
 **Last reconciled:** 2026-11-20  
 **Canonical production object:** Supabase Edge Function `midad_browser_agent_gateway`  
-**Observed production deployment:** ACTIVE, version **23**, `verify_jwt=false`
+**Observed production deployment:** ACTIVE, version **24**, `verify_jwt=false`
 
 ## Production verification — 2026-11-20
 
-- The Control Room gateway is active at version 23.
+- The Control Room gateway is active at version 24; all seven deployed source files were compared against GitHub main and matched byte-for-byte.
 - All seven deployed source files were compared with GitHub `main`; each file matched byte-for-byte.
 - The existing owner-bound browser session and Telegram-independent access-key recovery paths are preserved.
 - The gateway's custom authentication remains server-side; no service-role or ingest secret is exposed to the browser or GitHub Actions worker.
