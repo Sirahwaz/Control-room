@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from account_registry import AccountRegistry
+from encrypted_session_store import EncryptedSessionStore
 from automation_policy import evaluate_action
 from operator_command_router import CommandRoutingError, build_operator_request, validate_operator_command
 from persistent_session import BrowserSessionError, PersistentSessionPool
@@ -349,6 +350,22 @@ class OperatorWorker:
         finally:
             await self.session_pool.close_all()
 
+def build_session_pool(config, owner_user_id: str, environ=None):
+    """Create a memory-only or owner-bound encrypted session pool from host secrets."""
+    env = os.environ if environ is None else environ
+    key = str(env.get("MIDAD_SESSION_ENCRYPTION_KEY", "") or "").strip()
+    if not key:
+        return PersistentSessionPool(set(config.allowed_hosts))
+    root = env.get("MIDAD_SESSION_STORE_ROOT", "/var/lib/midad-browser/sessions")
+    key_id = env.get("MIDAD_SESSION_KEY_ID", "v1")
+    store = EncryptedSessionStore(root, key, key_id=key_id)
+    return PersistentSessionPool(
+        set(config.allowed_hosts),
+        session_store=store,
+        owner_id=owner_user_id,
+    )
+
+
 async def resolve_owner_user_id(gateway, configured_owner: str = "") -> str:
     owner = str(configured_owner or "").strip()
     if not owner:
@@ -371,7 +388,9 @@ def main() -> int:
         "/var/lib/midad-browser/accounts.json",
     )
     registry = AccountRegistry(registry_path, set(config.allowed_hosts))
+    session_pool = build_session_pool(config, owner)
     worker = OperatorWorker(config, owner, registry, gateway=gateway,
+                            session_pool=session_pool,
                             poll_interval=float(os.environ.get("MIDAD_OPERATOR_POLL_SECONDS", "3")))
     try:
         asyncio.run(worker.run_forever())
