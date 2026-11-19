@@ -20,7 +20,7 @@ from runner import BrowserConfig, GatewayClient
 
 class OperatorWorker:
     def __init__(self, config, owner_user_id: str, registry: AccountRegistry, gateway=None,
-                 session_pool=None, poll_interval: float = 3.0):
+                 session_pool=None, poll_interval: float = 3.0, worker_id: str | None = None):
         self.config = config
         self.owner_user_id = str(owner_user_id).strip()
         if not self.owner_user_id:
@@ -29,12 +29,34 @@ class OperatorWorker:
         self.gateway = gateway or GatewayClient(config)
         self.session_pool = session_pool or PersistentSessionPool(set(config.allowed_hosts))
         self.poll_interval = max(1.0, min(float(poll_interval), 30.0))
+        self.worker_id = str(
+            worker_id or os.environ.get("MIDAD_OPERATOR_WORKER_ID")
+            or ("operator-" + str(os.getpid()) + "-" + uuid.uuid4().hex[:16])
+        ).strip()
+        if not self.worker_id or len(self.worker_id) > 120 or not all(
+            char.isalnum() or char in "_.:-" for char in self.worker_id
+        ):
+            raise ValueError("MIDAD_OPERATOR_WORKER_ID_INVALID")
         self._processed_ids: set[str] = set()
         self._last_heartbeat: float | None = None
         self._stopping = asyncio.Event()
 
     def stop(self):
         self._stopping.set()
+
+    def _lease_payload(self, job: dict) -> dict:
+        worker_id = str(job.get("worker_id") or "")
+        lease_token = str(job.get("lease_token") or "")
+        owner_user_id = str(job.get("owner_user_id") or "")
+        if worker_id != self.worker_id or owner_user_id != self.owner_user_id:
+            raise CommandRoutingError("OPERATOR_LEASE_OWNER_MISMATCH")
+        if not (32 <= len(lease_token) <= 200):
+            raise CommandRoutingError("OPERATOR_LEASE_REQUIRED")
+        return {
+            "owner_user_id": self.owner_user_id,
+            "worker_id": self.worker_id,
+            "lease_token": lease_token,
+        }
 
     def _profiles(self):
         return self.registry.list_profiles()
@@ -120,11 +142,15 @@ class OperatorWorker:
         }
         if reason:
             payload["reason"] = reason
+        payload.update(self._lease_payload(job))
         return await self.gateway.record_event(**payload)
 
     async def _complete_result(self, job: dict, result: dict, state: str = "COMPLETED"):
         job_id = str(job.get("id") or job.get("job_id"))
-        await self.gateway.call("record_command_result", job_id=job_id, result=result)
+        await self.gateway.call(
+            "record_command_result", job_id=job_id, result=result,
+            **self._lease_payload(job),
+        )
         event_type = "error" if state == "FAILED" else ("policy_decision" if state == "BLOCKED" else "state_transition")
         await self._record(
             job, event_type, state, result.get("url") or job.get("current_url"),
@@ -149,9 +175,21 @@ class OperatorWorker:
         if job_id in self._processed_ids:
             return {"job_id": job_id, "status": "DUPLICATE_SKIPPED"}
         self._processed_ids.add(job_id)
+        try:
+            self._lease_payload(job)
+        except CommandRoutingError as exc:
+            return {"job_id": job_id, "status": "BLOCKED", "code": str(exc)}
         current_url = job.get("current_url")
         command = command if isinstance(command, dict) else {}
         try:
+            lease_renewal = await self.gateway.call(
+                "renew_operator_lease",
+                job_id=job_id,
+                lease_seconds=180,
+                **self._lease_payload(job),
+            )
+            if not isinstance(lease_renewal, dict) or lease_renewal.get("renewed") is not True:
+                raise CommandRoutingError("OPERATOR_LEASE_LOST")
             if not command and isinstance(hint, str):
                 command = build_operator_request(hint[:500], self._profiles())
             profile = self._profile_for(command)
@@ -247,18 +285,27 @@ class OperatorWorker:
             except Exception:
                 pass
             return {"job_id": job_id, **result}
+        finally:
+            try:
+                await self.gateway.call(
+                    "release_operator_lease",
+                    job_id=job_id,
+                    **self._lease_payload(job),
+                )
+            except Exception:
+                pass
 
     async def poll_once(self) -> list[dict]:
         now = asyncio.get_running_loop().time()
         if self._last_heartbeat is None or now - self._last_heartbeat >= 15.0:
             await self.gateway.call(
                 "worker_heartbeat", owner_user_id=self.owner_user_id,
-                worker_version="operator_worker_v1",
+                worker_id=self.worker_id, worker_version="operator_worker_v2",
             )
             self._last_heartbeat = now
         response = await self.gateway.call(
-            "list_jobs", owner_user_id=self.owner_user_id,
-            states=["QUEUED", "PREPARING"], limit=50,
+            "claim_operator_jobs", owner_user_id=self.owner_user_id,
+            worker_id=self.worker_id, lease_seconds=180, limit=5,
         )
         jobs = response.get("jobs", []) if isinstance(response, dict) else []
         results = []
