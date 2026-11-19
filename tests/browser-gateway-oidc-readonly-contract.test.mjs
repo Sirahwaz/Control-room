@@ -66,6 +66,7 @@ test("Control Room, OIDC proxy and worker share the same explicit public host po
 
 test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
   assert.match(supabaseConfig, /\[functions\.midad_browser_github_worker\][\s\S]*?verify_jwt\s*=\s*false/);
+  assert.match(workflow, /vars\.MIDAD_BROWSER_EPHEMERAL_ENABLED == 'true'/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /workflow_dispatch:/);
