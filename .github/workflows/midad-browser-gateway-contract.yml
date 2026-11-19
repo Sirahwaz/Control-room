@@ -12,6 +12,7 @@ on:
       - "tests/browser-gateway-auth.test.mjs"
       - "supabase/migrations/20261119205535_midad_browser_worker_leases_v1.sql"
       - "supabase/migrations/20261119210004_midad_browser_readonly_claims_v1.sql"
+      - "supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql"
       - "supabase/migrations/20261119213000_midad_browser_public_evidence_excerpt_v1.sql"
       - "supabase/tests/midad_browser_readonly_claims_v1.sql"
       - "supabase/tests/midad_browser_worker_leases_v1.sql"
@@ -98,6 +99,7 @@ jobs:
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261119205535_midad_browser_worker_leases_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261119210004_midad_browser_readonly_claims_v1.sql
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261119213000_midad_browser_public_evidence_excerpt_v1.sql
       - name: Verify owner-bound session migration and preserve legacy sessions
         run: |
