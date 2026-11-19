@@ -1,4 +1,4 @@
-"Read-only source contracts for the deployed MIDAD Human Bridge v12."""
+"""Read-only source contracts for the deployed MIDAD Human Bridge v12."""
 import unittest
 from pathlib import Path
 
