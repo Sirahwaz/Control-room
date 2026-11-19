@@ -60,6 +60,9 @@ BEGIN
     v_first_job, v_owner, v_worker_a, v_first_hash
   ) THEN RAISE EXCEPTION 'valid_lease_rejected'; END IF;
 
+  -- A running job remains protected while its lease is active.
+  UPDATE public.midad_browser_jobs SET state = 'RUNNING' WHERE id = v_first_job;
+
   SELECT count(*) INTO v_claim_count
   FROM public.midad_browser_claim_operator_jobs_v1(
     v_owner, v_worker_b, v_second_hash, 120, 5
