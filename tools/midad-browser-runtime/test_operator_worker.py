@@ -223,6 +223,10 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(action == "record_command_result" for action, _ in self.gateway.calls))
         again = await self.worker.process_job(self.claimed(job))
         self.assertEqual(again["status"], "DUPLICATE_SKIPPED")
+        release_calls = [call for call in self.gateway.calls if call[0] == "release_operator_lease"]
+        result_calls = [call for call in self.gateway.calls if call[0] == "record_command_result"]
+        self.assertEqual(len(release_calls), 2)
+        self.assertEqual(len(result_calls), 1)
 
     async def test_financial_command_is_blocked_and_not_executed(self):
         job = {
