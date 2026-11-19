@@ -189,7 +189,7 @@ class OperatorWorker:
                 **self._lease_payload(job),
             )
             if not isinstance(lease_renewal, dict) or lease_renewal.get("renewed") is not True:
-                raise CommandRoutingError("OPERATOR_LEASE_LOST")
+                return {"job_id": job_id, "status": "BLOCKED", "code": "OPERATOR_LEASE_LOST"}
             if not command and isinstance(hint, str):
                 command = build_operator_request(hint[:500], self._profiles())
             profile = self._profile_for(command)
