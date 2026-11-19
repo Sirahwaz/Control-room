@@ -13,6 +13,8 @@ on:
       - "supabase/functions/midad_browser_agent_gateway/auth.mjs"
       - "supabase/functions/midad_browser_agent_gateway/index.ts"
       - "tests/browser-gateway-auth.test.mjs"
+      - "supabase/functions/midad_human_bridge/index.ts"
+      - "tools/midad-browser-runtime/test_human_bridge_contract.py"
       - "supabase/functions/midad_control_room/index.ts"
       - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
       - ".github/workflows/midad-browser-bridge-ci.yml"
@@ -45,6 +47,8 @@ jobs:
           python-version: "3.11"
       - name: Validate bridge contract
         run: node --test tools/midad-browser-runtime/test_web_bridge.mjs
+      - name: Test deployed Human Bridge source contract
+        run: python -m unittest tools.midad-browser-runtime.test_human_bridge_contract -v
       - name: Test Android owner-pairing contract
         run: node --test mobile/factory/native/midad-browser/pairing-contract.test.mjs
       - name: Check owner-session modules syntax
