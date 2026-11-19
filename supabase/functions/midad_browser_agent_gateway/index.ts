@@ -381,7 +381,7 @@ const GITHUB_OIDC_EXPECTED = {
   repositoryOwner: "Sirahwaz",
   ref: "refs/heads/main",
   workflowRef: GITHUB_WORKFLOW_REF,
-  allowedEvents: ["schedule", "workflow_dispatch"],
+  allowedEvents: ["schedule", "workflow_dispatch", "workflow_run"],
 } as const;
 const GITHUB_WORKER_ACTIONS = new Set([
   "worker_heartbeat", "claim_readonly_jobs", "record_event",
