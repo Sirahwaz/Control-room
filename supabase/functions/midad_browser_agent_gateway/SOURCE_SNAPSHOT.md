@@ -29,9 +29,9 @@
 
 ## GitHub Actions public read-only worker — ENABLED
 
-The scheduled workflow `.github/workflows/midad-browser-ephemeral-worker.yml` runs from `main` every five minutes. It uses the GitHub OIDC token endpoint with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
+The scheduled workflow `.github/workflows/midad-browser-ephemeral-worker.yml` runs from `main` every five minutes and also runs once after a successful main-branch Browser Gateway Contract Suite. It uses the GitHub OIDC token endpoint with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
 
-The gateway verifies the RS256 signature against GitHub JWKS and requires the exact repository, owner, main ref, workflow path, allowed event, audience, subject and GitHub-hosted runner environment. It derives the worker ID and owner server-side and exposes only heartbeat, public read-only claim, evidence event, lease renewal and lease release.
+The gateway verifies the RS256 signature against GitHub JWKS and requires the exact repository, owner, main ref, workflow path, allowed event (`schedule`, `workflow_dispatch`, or successful main `workflow_run`), audience, subject and GitHub-hosted runner environment. It derives the worker ID and owner server-side and exposes only heartbeat, public read-only claim, evidence event, lease renewal and lease release.
 
 The worker is restricted to exact allowlisted public HTTPS hosts. It cannot claim operator jobs, log in, enter credentials, submit forms, bypass CAPTCHA/KYC/2FA, perform financial actions, sign wallets or execute destructive operations.
 
