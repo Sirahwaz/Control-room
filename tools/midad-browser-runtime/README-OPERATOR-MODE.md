@@ -109,6 +109,7 @@ The repository also includes a separate scheduled worker for public research tas
 
 - Workflow: `.github/workflows/midad-browser-ephemeral-worker.yml`
 - Schedule: every five minutes, with `workflow_dispatch` available.
+- Activation gate: both scheduled and manual runs remain disabled until the repository variable `MIDAD_BROWSER_EPHEMERAL_ENABLED=true` is explicitly set after the Supabase migrations and Edge Functions are deployed and verified. This prevents repeated failed runs or wasted runner minutes during the pending deployment window.
 - Authentication: GitHub Actions OIDC token with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
 - The Supabase OIDC proxy accepts only the exact `Sirahwaz/Control-room` main-branch workflow and the `schedule` / `workflow_dispatch` events.
 - The proxy derives the owner and worker ID server-side. It exposes only heartbeat, read-only job claim, evidence event, lease renew and lease release actions.
