@@ -25,18 +25,21 @@ class BrowserUserApiContractTests(unittest.TestCase):
         self.assertIn('unknown_browser_tool', self.source)
         self.assertIn('user_bridge_action_not_allowed', self.source)
 
-    def test_custom_session_is_hashed_and_age_checked(self):
+    def test_custom_session_is_hashed_and_requires_explicit_owner_binding(self):
         self.assertIn('control_room_sessions', self.source)
         self.assertIn('token_hash', self.source)
         self.assertIn('crypto.subtle.digest("SHA-256"', self.source)
-        self.assertIn('30 * 24 * 60 * 60 * 1000', self.source)
+        self.assertIn('validateOwnerSessionBinding(session)', self.source)
+        self.assertIn('session_owner_binding_required', self.source)
 
-    def test_owner_is_derived_from_one_server_side_profile(self):
-        self.assertIn('from("profiles").select("id").limit(2)', self.source)
-        self.assertIn('ownerUserId: String(profiles.data[0].id)', self.source)
+    def test_owner_is_derived_only_from_the_authenticated_session_row(self):
         start = self.source.index("async function resolveBrowserUserOwner")
         end = self.source.index("Deno.serve", start)
-        self.assertNotIn("body.owner_user_id", self.source[start:end])
+        resolver = self.source[start:end]
+        self.assertIn('select("id,active,created_at,owner_user_id")', resolver)
+        self.assertIn('ownerUserId: ownerBinding.ownerUserId', resolver)
+        self.assertNotIn('from("profiles")', resolver)
+        self.assertNotIn("body.owner_user_id", resolver)
 
     def test_only_safe_subactions_are_exposed(self):
         self.assertIn('["capabilities", "list_sessions", "command", "get_result"]', self.source)
