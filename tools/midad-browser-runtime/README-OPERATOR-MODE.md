@@ -8,7 +8,7 @@ It is a worker and gateway capability under PR #128. It is **not active on a ser
 
 1. A trusted server-side caller submits `action: "queue_operator_hint"` to `midad_browser_agent_gateway`, supplying the operator's `owner_user_id` and a bounded hint such as `Taskmarket`.
 2. The gateway creates a `PREPARING` row in `midad_browser_jobs` with `input_data.operator_hint`.
-3. The single persistent `operator_worker.py` process polls the gateway, resolves the hint to one private account profile, and starts or reuses its in-memory Playwright session.
+3. The single persistent `operator_worker.py` process atomically claims one job using a short-lived server lease, resolves the hint to one private account profile, and starts or reuses its in-memory Playwright session.
 4. The worker writes a bounded, redacted command result and a state/evidence event. New command hints target the same profile's session until it is stopped, the process exits, or the server restarts.
 
 The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or service-role authorization. **Never expose either credential in a browser, Telegram Mini App, GitHub Actions input, chat message or checked-in configuration.** A trusted assistant bridge can submit `queue_operator_hint`, then poll `get_operator_result` using the same owner ID and returned job ID; that result endpoint returns only the sanitized result and job state, not the raw queued hint. ChatGPT can submit commands directly only when that trusted server-side bridge is connected and has the correct owner identity and private gateway credential. This repository change alone does not install that bridge into the ChatGPT client.
@@ -38,13 +38,15 @@ The gateway's queue endpoint accepts only the private `MIDAD_INGEST_KEY` or serv
    - `MIDAD_BROWSER_ACCOUNT_REGISTRY=/var/lib/midad-browser/accounts.json`
    - platform password aliases, such as `MIDAD_TASKMARKET_PASSWORD`
 
-5. Run **one worker instance only**:
+5. Run **one worker instance initially**:
 
    ```sh
    python tools/midad-browser-runtime/operator_worker.py
    ```
 
-   It must remain alive for the session to remain alive. The browser context is in RAM; restarting or stopping the process ends all sessions. This first version does not have an atomic database claim, so do not run multiple worker replicas against the same owner queue.
+   It must remain alive for the session to remain alive. The browser context is in RAM; restarting or stopping the process ends all sessions. The gateway now supports atomic `FOR UPDATE SKIP LOCKED` claims with a 300-second lease, owner/worker binding, SHA-256 token storage, renewal and release. The worker claims one job at a time and fails closed if renewal is rejected. Keep one replica until the live worker is verified; the lease protocol prevents duplicate job claims when controlled multi-worker operation is later enabled.
+
+   **Deployment gate:** this source change is not active in production until migration `20261109030000_midad_browser_worker_leases_v1.sql` is applied and the Browser Gateway is redeployed. Verify the migration and deployed Gateway version before starting a worker.
 
 ## Queueing a hint
 
