@@ -121,4 +121,4 @@ The repository also includes a separate scheduled worker for public research tas
 
 This is a low-cost replacement path for public read-only browsing and evidence collection. It does **not** replace persistent authenticated sessions or the private operator worker. Those remain a separate deployment path requiring a persistent host, an account registry and an encrypted session key.
 
-- Supabase function configuration: `supabase/config.toml` sets `verify_jwt = false` **only** for `midad_browser_github_worker`. This is required because the Supabase gateway must pass the GitHub OIDC bearer token to the handler; the handler performs signature/JWKS and claim validation itself. Do not disable JWT verification for the general browser gateway or any other function.
+- Supabase function configuration: `supabase/config.toml` preserves `verify_jwt = false` for the existing `midad_browser_agent_gateway`. Its `github_oidc_proxy` route verifies the GitHub OIDC signature/JWKS and claims itself before forwarding a narrowly allowlisted worker action with server-side credentials. No additional Edge Function slot is required.
