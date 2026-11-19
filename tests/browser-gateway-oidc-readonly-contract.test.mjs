@@ -82,15 +82,21 @@ test("Control Room, OIDC proxy and worker share the same explicit public host po
 test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
   assert.match(supabaseConfig, /\[functions\.midad_browser_agent_gateway\][\s\S]*?verify_jwt\s*=\s*false/);
   assert.match(workflow, /if: github\.ref == 'refs\/heads\/main'/);
-  assert.doesNotMatch(workflow, /MIDAD_BROWSER_EPHEMERAL_ENABLED/);
+  assert.match(workflow, /vars\.MIDAD_BROWSER_EPHEMERAL_ENABLED\s*==\s*'true'/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /workflow_run:[\s\S]*?MIDAD Browser Gateway — Contract Suite/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /push:[\s\S]*?branches: \[main\]/);
+  assert.match(workflow, /github\.event_name == 'schedule'/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
+  assert.doesNotMatch(workflow, /workflow_run:|push:/);
   assert.match(workflow, /ephemeral_readonly_worker\.py/);
   assert.doesNotMatch(workflow, /MIDAD_INGEST_KEY|SUPABASE_SERVICE_ROLE_KEY/);
+});
+
+test("ephemeral public worker is disabled unless the repository opt-in variable is explicitly true", () => {
+  assert.match(workflow, /vars\.MIDAD_BROWSER_EPHEMERAL_ENABLED\s*==\s*'true'/);
+  assert.match(workflow, /github\.event_name == 'schedule'/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
 });
 
 test("read-only runner records final completion with leased evidence", () => {
