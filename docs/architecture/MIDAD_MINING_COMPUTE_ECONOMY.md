@@ -23,7 +23,7 @@ MMCE does not duplicate provider polling, miner health diagnosis, pool connectiv
 - `evaluateMiningEconomics(input)`: computes daily energy use, electricity cost, pool fee, hosting/other costs, net profit, break-even gross revenue and margin.
 - `rankResourceUse(input)`: compares mining, paid compute tasks, and virtual-PC utility using net daily values.
 
-All monetary values are USD/day. Inputs must be finite and evidence-backed. Missing required mining inputs return `BLOCKED_MISSING_INPUT`; missing allocation candidates return `BLOCKED_UNVERIFIED_INPUT`. Negative net values are valid and are compared as losses rather than rejected.
+All monetary values are USD/day. Inputs must be finite; their provenance is supplied by the caller and is not authenticated by this pure calculation module. Successful results are labeled `CALCULATED_ESTIMATE` or `CALCULATED_COMPARISON` with `evidenceStatus: CALLER_SUPPLIED_NOT_VERIFIED`; these labels must never be presented as provider-verified facts. Missing required mining inputs return `BLOCKED_MISSING_INPUT`; missing allocation candidates return `BLOCKED_UNVERIFIED_INPUT`. Negative net values are valid and are compared as losses rather than rejected.
 
 ## Evidence contract
 

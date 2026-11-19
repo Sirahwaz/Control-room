@@ -38,6 +38,7 @@ export function evaluateMiningEconomics(input = {}) {
     return {
       schemaVersion: "midad.mmce.economics.v1",
       status: "BLOCKED_MISSING_INPUT",
+      evidenceStatus: "INCOMPLETE",
       currency: "USD",
       period: "DAY",
       missingInputs,
@@ -72,7 +73,8 @@ export function evaluateMiningEconomics(input = {}) {
 
   return {
     schemaVersion: "midad.mmce.economics.v1",
-    status: "VERIFIED_ESTIMATE",
+    status: "CALCULATED_ESTIMATE",
+    evidenceStatus: "CALLER_SUPPLIED_NOT_VERIFIED",
     currency: "USD",
     period: "DAY",
     missingInputs: [],
@@ -119,6 +121,7 @@ export function rankResourceUse({
     return {
       schemaVersion: "midad.mmce.allocation.v1",
       status: "BLOCKED_UNVERIFIED_INPUT",
+      evidenceStatus: "INCOMPLETE",
       recommendedUse: "NO_AUTOMATIC_ALLOCATION",
       missingInputs,
       candidates
@@ -136,7 +139,8 @@ export function rankResourceUse({
 
   return {
     schemaVersion: "midad.mmce.allocation.v1",
-    status: "VERIFIED_COMPARISON",
+    status: "CALCULATED_COMPARISON",
+    evidenceStatus: "CALLER_SUPPLIED_NOT_VERIFIED",
     recommendedUse,
     missingInputs: [],
     candidates

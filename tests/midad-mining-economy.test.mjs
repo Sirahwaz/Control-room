@@ -15,7 +15,7 @@ test("calculates net mining value after electricity, pool, hosting and other cos
     otherCostPerDayUsd: 0.25
   });
 
-  assert.equal(result.status, "VERIFIED_ESTIMATE");
+  assert.equal(result.status, "CALCULATED_ESTIMATE");
   assert.equal(result.energyKwhPerDay, 24);
   assert.equal(result.electricityCostPerDayUsd, 2.4);
   assert.equal(result.poolFeePerDayUsd, 0.2);
@@ -75,7 +75,7 @@ test("does not recommend mining when another compute workload has higher net val
   });
 
   assert.equal(decision.recommendedUse, "COMPUTE_TASK");
-  assert.equal(decision.status, "VERIFIED_COMPARISON");
+  assert.equal(decision.status, "CALCULATED_COMPARISON");
 });
 
 test("blocks resource allocation when mining economics are not verified", () => {
@@ -96,4 +96,17 @@ test("allows negative net value candidates and prefers a non-negative alternativ
     virtualPcUtilityPerDayUsd: 0
   });
   assert.equal(decision.recommendedUse, "VIRTUAL_PC");
+});
+
+test("labels calculations as estimates rather than claiming source verification", () => {
+  const result = evaluateMiningEconomics({
+    grossRevenuePerDayUsd: 2,
+    powerWatts: 100,
+    electricityPricePerKwhUsd: 0.1,
+    poolFeePercent: 0,
+    hostingCostPerDayUsd: 0,
+    otherCostPerDayUsd: 0
+  });
+  assert.equal(result.status, "CALCULATED_ESTIMATE");
+  assert.equal(result.evidenceStatus, "CALLER_SUPPLIED_NOT_VERIFIED");
 });
