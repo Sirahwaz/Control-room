@@ -81,6 +81,8 @@ Deno.test("rejects wrong repository, ref, workflow, audience and event", async (
     { workflow_ref: "Sirahwaz/Control-room/.github/workflows/other.yml@refs/heads/main" },
     { aud: "another-audience" },
     { event_name: "pull_request" },
+    { runner_environment: undefined },
+    { runner_environment: "self-hosted" },
   ]) {
     resetGithubJwksCacheForTests();
     const f = await fixture(override);
