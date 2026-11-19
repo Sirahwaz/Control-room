@@ -11,7 +11,7 @@ const worker = read("tools/midad-browser-runtime/ephemeral_readonly_worker.py");
 const workflow = read(".github/workflows/midad-browser-ephemeral-worker.yml");
 const ledger = read("supabase/functions/midad_browser_agent_gateway/ledger.ts");
 const controlRoom = read("ai-room.html");
-const readonlyMigration = read("supabase/migrations/20261119210004_midad_browser_readonly_claims_v1.sql");
+const readonlyMigration = read("supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql");
 
 test("gateway exposes a separate read-only claim path and validates its lease on writes", () => {
   assert.match(gateway, /subaction === "create_readonly_job"/);
