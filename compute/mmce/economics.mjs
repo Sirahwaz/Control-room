@@ -126,7 +126,9 @@ export function rankResourceUse({
   }
 
   for (const [key, value] of Object.entries(candidates)) {
-    finiteNonNegative(value, `${key}NetPerDayUsd`);
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new TypeError(`${key}NetPerDayUsd must be a finite number`);
+    }
   }
 
   const [recommendedUse] = Object.entries(candidates)
