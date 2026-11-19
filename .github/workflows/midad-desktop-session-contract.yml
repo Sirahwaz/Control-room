@@ -1,0 +1,42 @@
+name: MIDAD Desktop Session Contract
+
+on:
+  push:
+    branches:
+      - feat/midad-desktop-session-contract-20261120
+    paths:
+      - 'compute/desktop-session/**'
+      - 'tests/desktop-session-lifecycle.test.mjs'
+      - 'docs/architecture/MIDAD_DESKTOP_SESSION_CONTRACT.md'
+      - '.github/workflows/midad-desktop-session-contract.yml'
+  pull_request:
+    paths:
+      - 'compute/desktop-session/**'
+      - 'tests/desktop-session-lifecycle.test.mjs'
+      - 'docs/architecture/MIDAD_DESKTOP_SESSION_CONTRACT.md'
+      - '.github/workflows/midad-desktop-session-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  desktop-session-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run desktop session lifecycle tests
+        run: node --test tests/desktop-session-lifecycle.test.mjs
+      - name: Validate module syntax
+        run: node --check compute/desktop-session/lifecycle.mjs
+      - name: Validate test syntax
+        run: node --check tests/desktop-session-lifecycle.test.mjs
+      - name: Check diff whitespace
+        run: git diff --check
