@@ -47,6 +47,17 @@ test("appearance preferences persist locally and never store provider credential
   assert.equal(js.includes("MIDAD_GITHUB_APP_PRIVATE_KEY"), false);
 });
 
+test("Browser Mesh uses a refined glass-surface visual system with accessible mobile navigation", () => {
+  const css = read("mobile/web/midad-browser-mesh.css");
+  assert.match(css, /--surface-glass/);
+  assert.match(css, /backdrop-filter:blur/);
+  assert.match(css, /\.tabs\{position:sticky/);
+  assert.match(css, /\.tab\.active\{background:linear-gradient/);
+  assert.match(css, /\.runtime-card:hover\{transform:translateY\(-3px\)/);
+  assert.match(css, /@media\(max-width:600px\)/);
+  assert.match(css, /prefers-reduced-motion/);
+});
+
 test("MNCF and network modules are explicitly pending until live health checks exist", () => {
   const html = read("mobile/web/midad-browser-mesh.html");
   assert.match(html, /data-runtime-state="pending"/);

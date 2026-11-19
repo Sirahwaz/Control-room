@@ -82,17 +82,20 @@ public final class BrowserActivity extends Activity {
     private void buildBrowserUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(7, 17, 26));
+        root.setBackgroundColor(Color.rgb(5, 13, 22));
+        root.setPadding(dp(8), dp(4), dp(8), dp(6));
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(8), dp(8), dp(8), dp(6));
+        header.setPadding(dp(6), dp(10), dp(6), dp(10));
 
         TextView brand = new TextView(this);
         brand.setText("MIDAD");
-        brand.setTextColor(Color.WHITE);
-        brand.setTextSize(17);
+        brand.setTextColor(Color.rgb(115, 229, 251));
+        brand.setTextSize(16);
+        brand.setLetterSpacing(0.08f);
+        brand.setGravity(Gravity.CENTER_VERTICAL);
         brand.setTypeface(null, android.graphics.Typeface.BOLD);
         header.addView(brand, new LinearLayout.LayoutParams(dp(70), dp(44)));
 
@@ -107,7 +110,8 @@ public final class BrowserActivity extends Activity {
         address.setImeOptions(EditorInfo.IME_ACTION_GO);
         address.setSelectAllOnFocus(true);
         address.setPadding(dp(12), 0, dp(12), 0);
-        address.setBackground(round(Color.rgb(22, 38, 51), dp(14)));
+        address.setBackground(round(Color.rgb(15, 32, 46), dp(16)));
+        address.setElevation(dp(2));
         LinearLayout.LayoutParams addressParams =
             new LinearLayout.LayoutParams(0, dp(44), 1f);
         addressParams.setMargins(0, 0, dp(8), 0);
@@ -129,19 +133,27 @@ public final class BrowserActivity extends Activity {
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.setGravity(Gravity.CENTER_VERTICAL);
-        controls.setPadding(dp(8), 0, dp(8), dp(6));
+        controls.setPadding(dp(5), dp(5), dp(5), dp(5));
+        controls.setBackground(round(Color.rgb(10, 25, 37), dp(16)));
+        LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        controlsParams.setMargins(dp(2), dp(2), dp(2), dp(7));
 
         addControl(controls, "رجوع", v -> { if (webView.canGoBack()) webView.goBack(); });
         addControl(controls, "تقدم", v -> { if (webView.canGoForward()) webView.goForward(); });
         addControl(controls, "تحديث", v -> webView.reload());
         addControl(controls, "MIDAD AI", v -> webView.loadUrl(MIDAD_HOME));
         addControl(controls, "افتراضي", v -> requestDefaultBrowserRole());
-        root.addView(controls);
+        root.addView(controls, controlsParams);
 
         tabsContainer = new LinearLayout(this);
         tabsContainer.setOrientation(LinearLayout.HORIZONTAL);
         tabsContainer.setGravity(Gravity.CENTER_VERTICAL);
-        tabsContainer.setPadding(dp(8), 0, dp(8), dp(6));
+        tabsContainer.setPadding(dp(7), dp(5), dp(7), dp(5));
+        tabsContainer.setBackground(round(Color.rgb(10, 25, 37), dp(16)));
+        LinearLayout.LayoutParams tabsParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tabsParams.setMargins(dp(2), 0, dp(2), dp(5));
         tabCount = new TextView(this);
         tabCount.setTextColor(Color.rgb(151, 210, 225));
         tabCount.setTextSize(11);
@@ -149,13 +161,13 @@ public final class BrowserActivity extends Activity {
         addControl(tabsContainer, "تبويب +", v -> createTab(null));
         addControl(tabsContainer, "التبويبات", v -> showTabPicker());
         addControl(tabsContainer, "إغلاق", v -> closeCurrentTab());
-        root.addView(tabsContainer);
+        root.addView(tabsContainer, tabsParams);
 
         securityState = new TextView(this);
         securityState.setText("جاهز · التصفح محمي");
-        securityState.setTextColor(Color.rgb(151, 177, 192));
+        securityState.setTextColor(Color.rgb(145, 170, 186));
         securityState.setTextSize(11);
-        securityState.setPadding(dp(12), dp(2), dp(12), dp(4));
+        securityState.setPadding(dp(12), dp(7), dp(12), dp(7));
         root.addView(securityState);
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -540,11 +552,15 @@ public final class BrowserActivity extends Activity {
     private Button button(String label, boolean primary) {
         Button b = new Button(this);
         b.setText(label);
-        b.setTextSize(11);
+        b.setTextSize(10);
+        b.setTypeface(null, android.graphics.Typeface.BOLD);
+        b.setLetterSpacing(0.015f);
         b.setAllCaps(false);
         b.setTextColor(Color.WHITE);
         b.setPadding(dp(4), 0, dp(4), 0);
-        b.setBackground(round(primary ? Color.rgb(0, 133, 151) : Color.rgb(26, 48, 64), dp(12)));
+        b.setBackground(round(primary ? Color.rgb(0, 137, 157) : Color.rgb(19, 39, 54), dp(13)));
+        b.setElevation(dp(primary ? 3 : 1));
+        b.setMinimumHeight(dp(36));
         return b;
     }
 
