@@ -93,6 +93,11 @@ test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
   assert.doesNotMatch(workflow, /MIDAD_INGEST_KEY|SUPABASE_SERVICE_ROLE_KEY/);
 });
 
+test("ephemeral public worker is disabled unless the repository opt-in variable is explicitly true", () => {
+  assert.match(workflow, /vars\.MIDAD_BROWSER_EPHEMERAL_ENABLED\s*==\s*'true'/);
+  assert.match(workflow, /github\.event_name != 'workflow_run'/);
+});
+
 test("read-only runner records final completion with leased evidence", () => {
   assert.match(runner, /async def run\(self,job,cancel=None,lease=None\)/);
   assert.match(runner, /"evidence_captured",[\s\S]*?"COMPLETED"/);
