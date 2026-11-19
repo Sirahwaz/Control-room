@@ -1,9 +1,12 @@
 """Offline tests for command submission and the long-running queue consumer."""
 import asyncio
+import base64
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
-from operator_worker import OperatorWorker, resolve_owner_user_id
+from operator_worker import OperatorWorker, build_session_pool, resolve_owner_user_id
 from submit_operator_command import submit_hint
 
 PROFILE = {
@@ -87,6 +90,29 @@ class FakePool:
         return self.session
     async def close_all(self):
         self.sessions.clear()
+
+class SessionPoolConfigurationTests(unittest.TestCase):
+    def test_missing_encryption_key_keeps_session_memory_only(self):
+        config = SimpleNamespace(allowed_hosts=frozenset({"example.com"}))
+        pool = build_session_pool(config, "00000000-0000-4000-8000-000000000001", environ={})
+        self.assertIsNone(pool.session_store)
+        self.assertEqual(pool.owner_id, "")
+
+    def test_encryption_key_enables_owner_bound_encrypted_storage(self):
+        config = SimpleNamespace(allowed_hosts=frozenset({"example.com"}))
+        key = base64.b64encode(bytes(range(32))).decode("ascii")
+        owner = "00000000-0000-4000-8000-000000000001"
+        with tempfile.TemporaryDirectory() as root:
+            pool = build_session_pool(config, owner, environ={
+                "MIDAD_SESSION_ENCRYPTION_KEY": key,
+                "MIDAD_SESSION_STORE_ROOT": root,
+                "MIDAD_SESSION_KEY_ID": "test-v1",
+            })
+            self.assertIsNotNone(pool.session_store)
+            self.assertEqual(pool.owner_id, owner)
+            self.assertEqual(pool.session_store.root, Path(root))
+            self.assertEqual(pool.session_store._key_id, "test-v1")
+
 
 class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
