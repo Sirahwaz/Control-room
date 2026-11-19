@@ -269,6 +269,8 @@ class OperatorWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["code"], "OPERATOR_LEASE_OWNER_MISMATCH")
         self.assertFalse(self.pool.sessions)
         self.assertFalse(any(action == "record_command_result" for action, _ in self.gateway.calls))
+        recovered = await self.worker.process_job(self.claimed(job))
+        self.assertEqual(recovered["status"], "INSPECTED")
 
     async def test_process_job_releases_claim_after_result_is_recorded(self):
         job = self.claimed({
