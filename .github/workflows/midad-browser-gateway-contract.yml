@@ -44,6 +44,7 @@ on:
       - "ai-room.html"
       - "supabase/migrations/20261119210004_midad_browser_readonly_claims_v1.sql"
       - "supabase/migrations/20261119214000_midad_browser_readonly_claim_hardening_v1.sql"
+      - "supabase/migrations/20261119215000_midad_public_readonly_platform_registry_v1.sql"
       - "supabase/migrations/20261119213000_midad_browser_public_evidence_excerpt_v1.sql"
       - "supabase/tests/midad_browser_readonly_claims_v1.sql"
       - "tests/browser-gateway-source-parity.test.mjs"
