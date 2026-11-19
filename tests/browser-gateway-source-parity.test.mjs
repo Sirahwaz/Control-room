@@ -11,13 +11,13 @@ const snapshotPath = path.join(root, "supabase/functions/midad_browser_agent_gat
 
 test("Browser Gateway source snapshot identifies the reconciled deployed version", () => {
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
-  assert.match(snapshot, /Last reconciled:\*\*? 2026-11-19/);
-  assert.ok(snapshot.includes("Observed deployment:** ACTIVE, version **21**"));
+  assert.match(snapshot, /Last reconciled:\*\*? 2026-11-20/);
+  assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **22**"));
   assert.match(snapshot, /Migration `20261119205535_midad_browser_worker_leases_v1` is applied/);
   assert.match(snapshot, /NOT YET DEPLOYED/);
 });
 
-test("repository source contains the deployed v21 owner-bound and lease surfaces", () => {
+test("repository source contains the deployed v22 owner-bound and lease surfaces", () => {
   const source = fs.readFileSync(indexPath, "utf8");
   const ledger = fs.readFileSync(ledgerPath, "utf8");
   for (const marker of [
@@ -35,6 +35,9 @@ test("repository source contains the deployed v21 owner-bound and lease surfaces
     "validateOperatorLease",
     "user_bridge",
     "get_operator_result",
+    "github_oidc_proxy",
+    "handleGithubOidcProxy",
+    "verifyGithubActionsOidc",
   ]) {
     assert.ok(source.includes(marker), `gateway source missing expected marker: ${marker}`);
   }
