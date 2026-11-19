@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   public-readonly-worker:
-    if: github.ref == 'refs/heads/main' && vars.MIDAD_BROWSER_EPHEMERAL_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
