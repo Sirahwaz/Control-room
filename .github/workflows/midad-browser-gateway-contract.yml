@@ -6,7 +6,7 @@ on:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "tests/browser-gateway-source-parity.test.mjs"
       - "tests/browser-gateway-auth.test.mjs"
-      - "supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql"
+      - "supabase/migrations/20261119205535_midad_browser_worker_leases_v1.sql"
       - "supabase/tests/midad_browser_worker_leases_v1.sql"
       - "tests/browser-gateway-lease-contract.test.mjs"
       - "supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql"
@@ -19,7 +19,7 @@ on:
       - "tests/browser-gateway-source-parity.test.mjs"
       - "supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql"
       - "supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql"
-      - "supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql"
+      - "supabase/migrations/20261119205535_midad_browser_worker_leases_v1.sql"
       - "supabase/tests/midad_browser_worker_leases_v1.sql"
       - "tests/browser-gateway-lease-contract.test.mjs"
       - "supabase/tests/midad_browser_evidence_ledger_v1.sql"
@@ -74,8 +74,8 @@ jobs:
         run: |
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022080000_midad_browser_evidence_ledger_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022100000_midad_browser_smoke_auth_v1.sql
-          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261109030000_midad_browser_worker_leases_v1.sql
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261117110000_midad_control_room_owner_bound_sessions.sql
+          psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261119205535_midad_browser_worker_leases_v1.sql
       - name: Verify owner-bound session migration and preserve legacy sessions
         run: |
           psql "$MIDAD_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'

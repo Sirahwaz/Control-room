@@ -1,7 +1,7 @@
 -- MIDAD Browser atomic operator-worker leases v1.
 -- Additive only: existing browser jobs and state semantics remain unchanged.
 -- This migration is source-controlled and tested in isolated PostgreSQL CI.
--- It is NOT deployed to the connected Supabase project by this change.
+-- Applied to production as migration version 20261119205535 on 2026-11-19.
 
 ALTER TABLE public.midad_browser_jobs
   ADD COLUMN IF NOT EXISTS lease_owner text,
