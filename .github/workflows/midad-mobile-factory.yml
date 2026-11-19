@@ -35,7 +35,7 @@ jobs:
     name: Verify selected product UI feedback before APK build
     uses: ./.github/workflows/agentation-e2e.yml
     with:
-      product_key: ${{ inputs.product_key || 'midad-mobile' }}
+      product_key: ${{ inputs.product_key || 'auto' }}
 
   build-product:
     needs: agentation-ui-feedback
