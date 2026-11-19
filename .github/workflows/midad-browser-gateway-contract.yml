@@ -5,6 +5,7 @@ on:
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "supabase/functions/midad_browser_github_worker/**"
+      - "supabase/config.toml"
       - ".github/workflows/midad-browser-ephemeral-worker.yml"
       - "tests/browser-gateway-oidc-readonly-contract.test.mjs"
       - "ai-room.html"
@@ -26,6 +27,7 @@ on:
     paths:
       - "supabase/functions/midad_browser_agent_gateway/**"
       - "supabase/functions/midad_browser_github_worker/**"
+      - "supabase/config.toml"
       - ".github/workflows/midad-browser-ephemeral-worker.yml"
       - "tests/browser-gateway-oidc-readonly-contract.test.mjs"
       - "ai-room.html"
