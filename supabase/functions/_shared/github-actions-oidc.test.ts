@@ -11,7 +11,7 @@ const EXPECTED = {
   repositoryOwner: "Sirahwaz",
   ref: "refs/heads/main",
   workflowRef: "Sirahwaz/Control-room/.github/workflows/midad-browser-ephemeral-worker.yml@refs/heads/main",
-  allowedEvents: ["schedule", "workflow_dispatch"],
+  allowedEvents: ["schedule", "workflow_dispatch", "workflow_run"],
 };
 
 function b64url(bytes: Uint8Array): string {
@@ -72,6 +72,13 @@ Deno.test("accepts a correctly signed GitHub Actions token for the exact reposit
   if (claims.repository !== EXPECTED.repository || claims.event_name !== "schedule") {
     throw new Error("verified claims mismatch");
   }
+});
+
+Deno.test("accepts a workflow_run token only for the exact main workflow", async () => {
+  resetGithubJwksCacheForTests();
+  const f = await fixture({ event_name: "workflow_run" });
+  const claims = await verifyGithubActionsOidc(f.token, EXPECTED, { fetcher: f.fetcher, nowMs: NOW });
+  if (claims.event_name !== "workflow_run") throw new Error("workflow_run claim mismatch");
 });
 
 Deno.test("rejects wrong repository, ref, workflow, audience and event", async () => {
