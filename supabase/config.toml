@@ -1,3 +1,5 @@
+project_id = "froegigfmpmvtecztfbf"
+
 # Function-specific auth boundary: this handler verifies GitHub Actions OIDC
 # signatures, issuer, audience, repository, workflow, ref, event and runner itself.
 # Supabase gateway JWT validation must be disabled only for this function.
