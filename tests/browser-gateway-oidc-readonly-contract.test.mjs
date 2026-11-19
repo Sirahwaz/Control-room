@@ -75,6 +75,7 @@ test("ephemeral workflow uses GitHub OIDC, not static MIDAD secrets", () => {
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /push:[\s\S]*?branches: \[main\]/);
   assert.match(workflow, /ephemeral_readonly_worker\.py/);
   assert.doesNotMatch(workflow, /MIDAD_INGEST_KEY|SUPABASE_SERVICE_ROLE_KEY/);
 });
