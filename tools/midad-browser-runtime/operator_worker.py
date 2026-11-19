@@ -185,7 +185,7 @@ class OperatorWorker:
             lease_renewal = await self.gateway.call(
                 "renew_operator_lease",
                 job_id=job_id,
-                lease_seconds=180,
+                lease_seconds=300,
                 **self._lease_payload(job),
             )
             if not isinstance(lease_renewal, dict) or lease_renewal.get("renewed") is not True:
@@ -305,7 +305,7 @@ class OperatorWorker:
             self._last_heartbeat = now
         response = await self.gateway.call(
             "claim_operator_jobs", owner_user_id=self.owner_user_id,
-            worker_id=self.worker_id, lease_seconds=180, limit=5,
+            worker_id=self.worker_id, lease_seconds=300, limit=1,
         )
         jobs = response.get("jobs", []) if isinstance(response, dict) else []
         results = []
