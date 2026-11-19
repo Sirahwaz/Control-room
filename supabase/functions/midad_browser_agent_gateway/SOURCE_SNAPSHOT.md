@@ -1,63 +1,58 @@
 # MIDAD Browser Agent Gateway — production source snapshot
 
-**Last reconciled:** 2026-11-19  
+**Last reconciled:** 2026-11-20  
 **Canonical production object:** Supabase Edge Function `midad_browser_agent_gateway`  
-**Observed deployment:** ACTIVE, version **21**
+**Observed production deployment:** ACTIVE, version **22**, `verify_jwt=false`
 
-## Production source parity — VERIFIED on 2026-11-19
+## Production verification — 2026-11-20
 
-A read-only fetch of the live Supabase function was compared byte-for-byte with the repository source:
+- The Control Room gateway is active at version 22.
+- The existing owner-bound browser session path remains in place.
+- The gateway's custom authentication remains server-side; no service-role or ingest secret is exposed to the browser.
+- Database transaction mode was observed as read-write and database size was approximately 1.35 GB during pre-deployment checks.
+- The three browser worker migrations were applied successfully. The migration runner recorded versions `20261119214545`, `20261119214551`, and `20261119214558`.
+- The read-only claim and idempotency indexes now require the exact identity tuple: `agent_key=midad_public_research`, `platform_key=public_read_only`, and `input_data.mode=public_read_only`.
+- RPC grants were verified: `anon` and `authenticated` cannot claim; `service_role` can.
+- Evidence ledger now accepts a sanitized title (maximum 500 characters) and public excerpt (maximum 2,500 characters), with the original state-transition and privilege rules preserved.
+- No production read-only job was created during migration verification.
 
-- `index.ts`
-- `origin-policy.ts`
-- `auth.mjs`
-- `ledger.ts`
-- `lease.ts`
-- shared `midad-owner-session.mjs`
-
-All six files matched `main` exactly at the time of deployment verification.
-
-## Production database — VERIFIED
-
-Migration `20261119205535_midad_browser_worker_leases_v1` is applied.
-
-- `midad_browser_jobs` contains the four lease fields: owner, SHA-256 token digest, expiry and claim timestamp.
-- Atomic operator claim, lease validation, renewal and release RPCs exist.
-- `service_role` can execute the claim RPC; `anon` and `authenticated` cannot.
-- A live zero-job claim smoke returned zero without mutating a job.
-- No production browser job was created for this verification.
-
-## Active production capabilities
+## Production gateway v22 capabilities
 
 - Owner-bound Control Room browser sessions.
-- Telegram-independent access-key recovery path.
-- Atomic operator-job claims using PostgreSQL `FOR UPDATE SKIP LOCKED`.
-- Lease-bound operator result and event writes.
-- Bounded lease renewal/release and recovery of expired `RUNNING` jobs.
-- Gateway authentication remains server-side; no service-role or ingest secret is exposed to the browser.
+- Telegram-independent access-key recovery.
+- Atomic operator-job claims and lease-bound operator writes.
+- Owner-scoped public read-only job submission.
+- Atomic public read-only claims, restricted to explicitly marked public research jobs.
+- Bounded public evidence retrieval through the evidence ledger.
+- Separate provider status for persistent operator workers and ephemeral public read-only workers.
 
-## Pending in this branch — NOT YET DEPLOYED
+## Pending source change — NOT YET DEPLOYED
 
-This branch adds a separate GitHub Actions OIDC proxy and a scheduled public read-only worker. Until its PR is merged, the readonly claim migration is applied, and the new Edge Function is deployed, these capabilities are **not active in production**:
+The merged repository now contains a GitHub Actions OIDC proxy route inside the existing `midad_browser_agent_gateway` function. This was deliberately integrated into the existing function because the Supabase project reached its Edge Function count limit; no existing function was deleted or replaced to create capacity.
 
-- `midad_browser_claim_readonly_jobs_v1`
-- `claim_readonly_jobs` gateway action
-- `midad_browser_github_worker` OIDC proxy
-- GitHub-hosted ephemeral Chromium queue consumer
-- bounded public-page text excerpts in the evidence ledger
+The current production version 22 does **not** yet contain this OIDC route. The next deployment must update the existing gateway to version 23, preserving `verify_jwt=false` and the current owner-session behavior.
 
-The OIDC worker is deliberately restricted to public read-only jobs. It cannot claim operator jobs, submit forms, use account credentials, bypass CAPTCHA/KYC/2FA, or perform financial actions.
+The OIDC route is designed to:
+- Verify GitHub's RS256 signature against the official JWKS.
+- Require the exact repository, owner, main ref, workflow path, allowed event, audience, subject and GitHub-hosted runner environment.
+- Derive the worker ID and owner server-side.
+- Expose only heartbeat, public read-only claim, evidence event, lease renewal and lease release.
+- Keep operator jobs, private accounts, credentials, financial actions and destructive actions outside the public worker path.
+
+The scheduled workflow remains disabled until repository variable `MIDAD_BROWSER_EPHEMERAL_ENABLED=true` is explicitly set after deployment and end-to-end verification.
 
 ## Runtime and deployment limits
 
-- The persistent `operator_worker.py` is not currently running on a host. Gateway v21 being healthy does not imply a live worker.
-- The operator worker can restore authenticated storage state only when its host has a persistent session directory and a valid `MIDAD_SESSION_ENCRYPTION_KEY`. Without that key it remains memory-only.
-- The proposed GitHub Actions worker is ephemeral: it can process public read-only jobs but does not preserve live tabs or authenticated sessions between runs.
-- Current production browser-job count was zero at the last verification.
-- The browser gateway smoke runner remains disabled; do not reactivate it for routine testing.
+- The persistent `operator_worker.py` is not currently running on a host. Gateway health does not imply a live persistent worker.
+- Persistent authenticated sessions still require a persistent host, an account registry and an encrypted session key.
+- The GitHub Actions worker is ephemeral and public-read-only. It does not preserve authenticated tabs or cookies between runs.
+- No new Edge Function was deployed because the project is at its function-count limit. The existing gateway is the approved integration point.
 
 ## Deployment guardrails
 
-- Never deploy a repository mirror automatically.
-- Before enabling a new worker path: apply its additive migration, deploy the exact reviewed Edge Function source, verify source parity, verify service-role-only RPC grants, and run an authenticated end-to-end job with non-sensitive public content.
-- No private account credentials, payment actions, wallet signatures, withdrawals, or destructive operations are part of the public read-only worker path.
+- Never delete or overwrite unrelated Edge Functions to create function capacity.
+- Apply additive migrations before deploying the corresponding gateway source.
+- Preserve the existing gateway's `verify_jwt=false` setting because it performs its own session and OIDC authentication.
+- Verify source parity and run one non-sensitive public-page job before enabling the scheduled workflow.
+- Do not enable the schedule until the repository variable is explicitly set.
+- No private account credentials, wallet signatures, withdrawals, payment execution or destructive operations are part of the public read-only worker path.
