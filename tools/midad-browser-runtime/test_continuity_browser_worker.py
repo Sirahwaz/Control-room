@@ -433,5 +433,16 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(call[0] == "fail" and call[2] == "VAULT_LEASE_LOST_DURING_BROWSER_TASK" for call in client.calls))
 
 
+    async def test_legacy_operator_adapter_accepts_continuity_lease_renewal(self):
+        result = await _ResultSink().call(
+            "renew_operator_lease",
+            job_id="task-browser-001",
+            worker_id=self.config.node_id,
+            owner_user_id=self.owner,
+            lease_token="a" * 64,
+        )
+        self.assertIs(result.get("renewed"), True)
+
+
 if __name__ == "__main__":
     unittest.main()
