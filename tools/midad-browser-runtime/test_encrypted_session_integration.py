@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from encrypted_session_store import EncryptedSessionStore
-from persistent_session import BrowserSessionError, PlatformBrowserSession
+from persistent_session import BrowserSessionError, PersistentSessionPool, PlatformBrowserSession
 
 
 class FakeLocator:
