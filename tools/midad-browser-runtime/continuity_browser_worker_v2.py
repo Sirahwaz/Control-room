@@ -578,7 +578,8 @@ class ContinuityBrowserWorker:
             if reason in {"SENSITIVE_TASK_PAYLOAD_REJECTED", "BROWSER_TASK_PAYLOAD_INVALID",
                           "ACTION_NOT_ALLOWED_IN_BROWSER_V2", "OPERATOR_HINT_INVALID",
                           "OPERATOR_HINT_POLICY_REJECTED", "OPERATOR_COMMAND_INVALID",
-                          "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED"}:
+                          "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED", "BROWSER_PROFILE_ID_REQUIRED",
+                          "BROWSER_PROFILE_ID_MISMATCH"}:
                 await self.client.fail(task["task_id"], task["lease_token"], reason=reason, retryable=False)
                 return {"task_id": task["task_id"], "status": "BLOCKED", "code": reason}
             raise
