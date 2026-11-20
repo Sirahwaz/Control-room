@@ -20,6 +20,7 @@ from continuity_browser_worker_v2 import (
     build_action_checkpoint,
     validate_action_checkpoint,
     action_checkpoint_resume_decision,
+    _ResultSink,
 )
 
 CAPABILITIES = frozenset({
@@ -296,6 +297,9 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("page body", str(stored))
         self.assertEqual(stored["session_storage"], "encrypted_at_rest")
         self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["worker_id"], self.config.node_id)
+        self.assertEqual(operator.jobs[0]["owner_user_id"], self.owner)
+        self.assertEqual(operator.jobs[0]["lease_token"], "a" * 64)
 
     async def test_human_approval_action_is_not_dispatched_to_operator(self):
         client = FakeLedgerClient({"profile_id": "example-account", "operator_command": {"action": "click", "account_id": "example-account"}})
