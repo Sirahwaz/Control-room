@@ -522,13 +522,15 @@ test('browser action checkpoint cannot change identity or regress after success'
       idempotencyKey: actionKey('browser-action-monotonic', 'profile-a', 'action-1', 'inspect'),
       operation: 'inspect', status: 'running',
     };
-    assert.equal((await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+    const runningSaved = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
       task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(running),
-    }, nodeHeaders('node-a', token)))).status, 200);
+    }, nodeHeaders('node-a', token))));
+    assert.equal(runningSaved.status, 200);
     const succeeded = { ...running, status: 'succeeded', result: { status: 'INSPECTED' } };
-    assert.equal((await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+    const succeededSaved = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
       task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(succeeded),
-    }, nodeHeaders('node-a', token)))).status, 200);
+    }, nodeHeaders('node-a', token))));
+    assert.equal(succeededSaved.status, 200);
     const regressed = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
       task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(running),
     }, nodeHeaders('node-a', token))));
