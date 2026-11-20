@@ -860,7 +860,8 @@ export class MidadContinuityLedger {
           before.idempotencyKey !== after.idempotencyKey || before.operation !== after.operation) {
         return response(409, { ok: false, error: 'ACTION_CHECKPOINT_IDENTITY_CHANGED' });
       }
-      if (before.status === 'succeeded' && after.status !== 'succeeded') {
+      if (before.status !== 'running' &&
+          (after.status !== before.status || canonical(after.result ?? null) !== canonical(before.result ?? null))) {
         return response(409, { ok: false, error: 'ACTION_CHECKPOINT_REGRESSION' });
       }
     }
