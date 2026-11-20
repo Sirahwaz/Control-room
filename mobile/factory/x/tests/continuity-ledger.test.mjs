@@ -497,6 +497,20 @@ test('browser action checkpoint rejects a mismatched idempotency key and secret 
     }, nodeHeaders('node-a', token))));
     assert.equal(rejected.status, 400);
     assert.equal(rejected.body.error, 'SENSITIVE_FIELDS_NOT_ALLOWED');
+    const signedUrl = {
+      ...base,
+      idempotencyKey: actionKey('browser-action-invalid', 'profile-a', 'action-1', 'inspect'),
+      result: { status: 'INSPECTED', url: 'https://example.com/?access_token=not-safe' },
+    };
+    const urlRejected = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-invalid', lease_token: acquired.body.task.lease_token,
+      checkpoint: {
+        taskId: 'browser-action-invalid', profileId: 'profile-a',
+        state: 'running', updatedAt: NOW, evidenceRefs: [], action: signedUrl,
+      },
+    }, nodeHeaders('node-a', token))));
+    assert.equal(urlRejected.status, 422);
+    assert.equal(urlRejected.body.error, 'ACTION_CHECKPOINT_RESULT_INVALID');
   } finally {
     storage.close();
   }
