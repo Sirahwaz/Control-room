@@ -596,5 +596,29 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         ))
 
 
+    async def test_invalid_multi_action_plan_is_quarantined_without_claim_leak(self):
+        client = FakeLedgerClient({
+            "profile_id": "example-account",
+            "action_plan": [
+                {"action_id": "unsafe", "operator_command": {
+                    "action": "submit_form", "account_id": "example-account",
+                }},
+            ],
+        })
+        operator = FakeOperator({"status": "MUST_NOT_RUN"})
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator, session_pool=FakeSessionPool()
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["code"], "HUMAN_APPROVAL_REQUIRED")
+        self.assertEqual(operator.jobs, [])
+        self.assertTrue(any(
+            call[0] == "fail" and call[2] == "HUMAN_APPROVAL_REQUIRED" and call[3] is False
+            for call in client.calls
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
