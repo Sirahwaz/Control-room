@@ -34,3 +34,22 @@ test('Cloudflare deploy requires, validates and installs the complete Vault keyr
     'the active Vault key version must be installed as a Worker secret',
   );
 });
+
+
+test('Cloudflare production deployment cannot run automatically on push or pull request', () => {
+  assert.doesNotMatch(
+    workflow,
+    /^  push:\n[\s\S]*?(?=^  pull_request:)/m,
+    'production deployment must not be triggered by a push to main',
+  );
+  assert.match(
+    workflow,
+    /deploy:\n\s+if: github\.event_name == 'workflow_dispatch' && inputs\.operation == 'deploy'/,
+    'production deployment must require an explicit manual deploy dispatch',
+  );
+  assert.doesNotMatch(
+    workflow,
+    /github\.event_name == 'push'/,
+    'a merge must never bypass the manual deployment confirmation gate',
+  );
+});
