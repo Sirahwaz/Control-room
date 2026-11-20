@@ -13,6 +13,7 @@ on:
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
       - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
       - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
+      - "mobile/factory/x/tests/continuity-deploy-workflow.test.mjs"
   workflow_dispatch:
     inputs:
       operation:
