@@ -368,7 +368,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             )
         result = await worker.poll_once()
         self.assertEqual(result["status"], "BLOCKED")
-        self.assertEqual(result["code"], "HUMAN_APPROVAL_REQUIRED")
+        self.assertEqual(result["code"], "BROWSER_ACTION_PLAN_OPERATION_NOT_ALLOWED")
         self.assertEqual(operator.jobs, [])
         self.assertTrue(any(call[0] == "fail" for call in client.calls))
         self.assertFalse(any(call[0] == "complete" for call in client.calls))
@@ -601,7 +601,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             "profile_id": "example-account",
             "action_plan": [
                 {"action_id": "unsafe", "operator_command": {
-                    "action": "submit_form", "account_id": "example-account",
+                    "action": "transfer", "account_id": "example-account",
                 }},
             ],
         })
@@ -615,7 +615,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["code"], "HUMAN_APPROVAL_REQUIRED")
         self.assertEqual(operator.jobs, [])
         self.assertTrue(any(
-            call[0] == "fail" and call[2] == "HUMAN_APPROVAL_REQUIRED" and call[3] is False
+            call[0] == "fail" and call[2] == "BROWSER_ACTION_PLAN_OPERATION_NOT_ALLOWED" and call[3] is False
             for call in client.calls
         ))
 
