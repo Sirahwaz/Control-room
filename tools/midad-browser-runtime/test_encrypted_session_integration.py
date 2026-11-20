@@ -196,5 +196,39 @@ class EncryptedSessionIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.last_status, "STOPPED")
 
 
+    async def test_new_worker_pool_restores_persisted_session_without_resolving_credentials(self):
+        # Worker A exits gracefully after persisting its authenticated browser context.
+        first_session, first_browser = self.session()
+        first_session.context = FakeContext(self.state)
+        first_session.browser = first_browser
+        first_session.playwright = FakePlaywright(first_browser)
+        first_session.authenticated = True
+        await first_session.close()
+        self.assertEqual(self.store.load(self.owner, self.account, self.host), self.state)
+
+        class ForbiddenSecretProvider:
+            def resolve(self, *_args):
+                raise AssertionError("RESTORE_MUST_NOT_RESOLVE_LOGIN_CREDENTIALS")
+
+        # Worker B has a new pool and browser process; a valid session marker
+        # confirms restoration, so the login secret provider must never be used.
+        restored_browser = FakeBrowser(self.success_selector)
+        pool = PersistentSessionPool(
+            allowed_hosts=self.allowed_hosts,
+            secret_provider_factory=lambda _profile: ForbiddenSecretProvider(),
+            playwright_factory=lambda: FakeManager(restored_browser),
+            session_store=self.store,
+            owner_id=self.owner,
+        )
+        restored = await pool.ensure(self.profile)
+
+        self.assertTrue(restored.authenticated)
+        self.assertTrue(restored.restored_from_encrypted_store)
+        self.assertEqual(restored.last_status, "AUTHENTICATED_ENCRYPTED_AT_REST")
+        self.assertEqual(restored_browser.context_options["storage_state"], self.state)
+        self.assertEqual(self.store.load(self.owner, self.account, self.host), self.state)
+        await pool.close_all()
+
+
 if __name__ == "__main__":
     unittest.main()
