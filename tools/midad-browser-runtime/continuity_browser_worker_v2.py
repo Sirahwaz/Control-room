@@ -440,7 +440,9 @@ class ContinuityWorkerConfig:
 class _ResultSink:
     """Discards the legacy Gateway side-effects while reusing its command executor."""
 
-    async def call(self, _action: str, **_payload):
+    async def call(self, action: str, **_payload):
+        if action == "renew_operator_lease":
+            return {"renewed": True}
         return {"ok": True}
 
     async def record_event(self, **_payload):
@@ -635,6 +637,9 @@ class ContinuityBrowserWorker:
         job = {
             "id": task_id,
             "state": "PREPARING",
+            "worker_id": getattr(self.operator, "worker_id", self.config.node_id),
+            "owner_user_id": self.config.owner_id,
+            "lease_token": lease,
             "input_data": command_payload,
         }
         done = asyncio.Event()
