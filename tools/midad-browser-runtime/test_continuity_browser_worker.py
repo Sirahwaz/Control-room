@@ -27,9 +27,10 @@ CAPABILITIES = frozenset({
 
 
 class FakeLedgerClient:
-    def __init__(self, payload, owner="00000000-0000-4000-8000-000000000001"):
+    def __init__(self, payload, owner="00000000-0000-4000-8000-000000000001", checkpoint=None):
         self.payload = payload
         self.owner = owner
+        self.checkpoint = checkpoint
         self.calls = []
 
     async def claim(self, lease_ttl_seconds=90):
@@ -39,6 +40,7 @@ class FakeLedgerClient:
             "owner_id": self.owner,
             "workload": "BROWSER_SESSION",
             "payload": self.payload,
+            "checkpoint": self.checkpoint,
             "attempt": 1,
             "lease_token": "a" * 64,
         }}
@@ -157,6 +159,12 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             "attempt": 1, "lease_token": "a" * 64,
         }}
         self.assertEqual(validate_claimed_task(claim, self.owner)["task_id"], "task-1")
+        checkpoint = {
+            "taskId": "task-1", "profileId": "example-account", "state": "paused",
+            "updatedAt": 1730000000000, "evidenceRefs": ["evidence:step-1"],
+        }
+        claim["task"]["checkpoint"] = checkpoint
+        self.assertEqual(validate_claimed_task(claim, self.owner)["checkpoint"], checkpoint)
         claim["task"]["owner_id"] = "another-owner"
         with self.assertRaisesRegex(ContinuityWorkerError, "TASK_OWNER_MISMATCH"):
             validate_claimed_task(claim, self.owner)
@@ -234,6 +242,30 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertNotIn("opaque-secret-token", str(result))
         self.assertNotIn("reset", result.get("url", ""))
+
+    async def test_claimed_browser_checkpoint_is_quarantined_without_replaying_operator_actions(self):
+        checkpoint = {
+            "taskId": "task-browser-001", "profileId": "example-account", "state": "running",
+            "updatedAt": 1730000000000, "evidenceRefs": [],
+        }
+        client = FakeLedgerClient(
+            {"profile_id": "example-account", "operator_hint": "inspect example"},
+            checkpoint=checkpoint,
+        )
+        operator = FakeOperator({"status": "SHOULD_NOT_RUN"})
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator, session_pool=FakeSessionPool()
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["code"], "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION")
+        self.assertEqual(operator.jobs, [])
+        self.assertTrue(any(
+            call[0] == "fail" and call[2] == "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION" and call[3] is False
+            for call in client.calls
+        ))
+        self.assertFalse(any(call[0] == "checkpoint" for call in client.calls))
 
     async def test_read_only_browser_task_completes_with_digest_not_page_text(self):
         client = FakeLedgerClient({"profile_id": "example-account", "operator_hint": "inspect example"})
