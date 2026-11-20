@@ -77,7 +77,7 @@ def build_action_checkpoint(task_id: str, profile_id: str, action_id: str,
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", profile_id or "")
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", action_id or "")
         or operation not in {"status", "inspect", "wait_for_selector", "navigate", "start_session", "stop_session", "click", "fill", "submit_form", "operator_hint"}
-        or status not in {"running", "succeeded", "failed", "reconciliation_required"}
+        or status not in {"pending", "running", "succeeded", "failed", "reconciliation_required"}
         or isinstance(updated_at, bool) or not isinstance(updated_at, int) or updated_at < 0
     ):
         raise ContinuityWorkerError("ACTION_CHECKPOINT_INVALID")
