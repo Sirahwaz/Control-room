@@ -7,6 +7,7 @@ import signal
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from continuity_browser_worker_v2 import (
@@ -98,9 +99,30 @@ class FakeOperator:
         return {"job_id": job["id"], **self.result}
 
 
+class FakeBrowserSession:
+    last_status = "READY"
+    authenticated = False
+    session_storage = "memory_only"
+
+    async def execute(self, command):
+        return {
+            "status": "INSPECTED",
+            "action": command["action"],
+            "url": "https://example.com/dashboard",
+            "title": "Dashboard",
+        }
+
+
 class FakeSessionPool:
     def __init__(self):
         self.closed = False
+        self.sessions = {}
+        self.session_store = None
+
+    async def ensure(self, profile):
+        session = FakeBrowserSession()
+        self.sessions[profile["account_id"]] = session
+        return session
 
     async def close_all(self):
         self.closed = True
@@ -432,6 +454,27 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(runtime.ended, 1)
         self.assertTrue(any(call[0] == "fail" and call[2] == "VAULT_LEASE_LOST_DURING_BROWSER_TASK" for call in client.calls))
 
+
+
+    async def test_real_operator_worker_executes_through_continuity_lease_adapter(self):
+        client = FakeLedgerClient({
+            "profile_id": "example-account",
+            "operator_hint": "inspect example",
+        })
+        pool = FakeSessionPool()
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config,
+                client=client,
+                operator=None,
+                session_pool=pool,
+                proxy_runtime=SimpleNamespace(central_mode=False),
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["status"], "INSPECTED")
+        self.assertEqual(result["ledger_state"], "COMPLETED")
+        self.assertTrue(any(call[0] == "complete" for call in client.calls))
+        self.assertTrue(pool.sessions)
 
     async def test_legacy_operator_adapter_accepts_continuity_lease_renewal(self):
         result = await _ResultSink().call(
