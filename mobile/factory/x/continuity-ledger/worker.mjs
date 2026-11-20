@@ -60,6 +60,44 @@ function requiredCapabilities(task) {
   }[task.workload];
   return [...new Set([...workload, ...task.required_capabilities])];
 }
+function validateBrowserCheckpoint(task, value) {
+  if (task.workload !== 'BROWSER_SESSION') return { ok: true, checkpoint: value };
+  if (!isRecord(value)) return { ok: false, code: 'CHECKPOINT_INVALID' };
+  const payload = JSON.parse(task.payload_json || '{}');
+  const expectedProfileId = payload.profile_id;
+  const allowedKeys = new Set(['taskId', 'profileId', 'state', 'updatedAt', 'evidenceRefs']);
+  if (Object.keys(value).some(key => !allowedKeys.has(key))) {
+    return { ok: false, code: 'CHECKPOINT_FIELDS_INVALID' };
+  }
+  if (!validId(expectedProfileId) || value.taskId !== task.task_id || value.profileId !== expectedProfileId) {
+    return { ok: false, code: 'CHECKPOINT_IDENTITY_MISMATCH' };
+  }
+  if (!['running', 'paused'].includes(value.state)) {
+    return { ok: false, code: 'CHECKPOINT_STATE_INVALID' };
+  }
+  if (typeof value.updatedAt !== 'number' || !Number.isFinite(value.updatedAt) || value.updatedAt < 0) {
+    return { ok: false, code: 'CHECKPOINT_TIMESTAMP_INVALID' };
+  }
+  const refs = value.evidenceRefs ?? [];
+  if (!Array.isArray(refs) || refs.some(ref =>
+    typeof ref !== 'string' ||
+    ref.length > 256 ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(ref) ||
+    /^https?:\/\//i.test(ref)
+  )) {
+    return { ok: false, code: 'CHECKPOINT_EVIDENCE_REFS_INVALID' };
+  }
+  return {
+    ok: true,
+    checkpoint: {
+      taskId: value.taskId,
+      profileId: value.profileId,
+      state: value.state,
+      updatedAt: value.updatedAt,
+      evidenceRefs: refs.slice(0, 20),
+    },
+  };
+}
 function rows(cursor) {
   return cursor && typeof cursor.toArray === 'function' ? cursor.toArray() : [];
 }
@@ -779,13 +817,16 @@ export class MidadContinuityLedger {
     const task = await this.validateLease(node, body);
     if (!task) return response(409, { ok: false, error: 'LEASE_INVALID_OR_EXPIRED' });
     if (!isRecord(body.checkpoint) || JSON.stringify(body.checkpoint).length > 32768) return response(422, { ok: false, error: 'CHECKPOINT_INVALID' });
+    const validation = validateBrowserCheckpoint(task, body.checkpoint);
+    if (!validation.ok) return response(422, { ok: false, error: validation.code });
+    const checkpoint = validation.checkpoint;
     const now = Date.now();
     let saved;
     this.tx(() => {
       saved = this.one(`UPDATE continuity_tasks SET checkpoint_json=?,updated_at_ms=? WHERE task_id=? AND status='RUNNING'
         AND lease_owner=? AND lease_token_hash=? AND lease_expires_at_ms>? RETURNING task_id`,
-        JSON.stringify(body.checkpoint), now, task.task_id, node.node_id, task.lease_token_hash, now);
-      if (saved) this.event(task.task_id, 'CHECKPOINT_SAVED', node.node_id, { checkpoint_keys: Object.keys(body.checkpoint).slice(0, 32) });
+        JSON.stringify(checkpoint), now, task.task_id, node.node_id, task.lease_token_hash, now);
+      if (saved) this.event(task.task_id, 'CHECKPOINT_SAVED', node.node_id, { checkpoint_keys: Object.keys(checkpoint).slice(0, 32) });
     });
     return saved ? response(200, { ok: true, task_id: task.task_id, checkpoint_saved: true }) :
       response(409, { ok: false, error: 'LEASE_INVALID_OR_EXPIRED' });

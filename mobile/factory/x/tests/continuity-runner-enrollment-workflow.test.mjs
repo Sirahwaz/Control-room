@@ -45,10 +45,12 @@ test('bootstrap enqueues only a bounded zero-cost CPU smoke task and dispatches 
   assert.ok(enrollWorkflow.includes("authentication: 'github-actions-oidc'"));
 });
 
-test('Cloudflare Worker deploy runs after a reviewed main merge and validates the OIDC health marker', () => {
-  assert.ok(deployWorkflow.includes('  push:'));
-  assert.ok(deployWorkflow.includes('branches: [main]'));
-  assert.ok(deployWorkflow.includes("if: inputs.operation == 'deploy' || github.event_name == 'push'"));
+test('Cloudflare Worker deploy is manual-only, confirmation-gated and validates the OIDC health marker', () => {
+  assert.equal(deployWorkflow.includes('  push:'), false);
+  assert.ok(deployWorkflow.includes("if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'"));
+  assert.ok(deployWorkflow.includes("if: github.event_name == 'workflow_dispatch' && inputs.operation == 'dry-run'"));
+  assert.ok(deployWorkflow.includes('if [[ \"$GITHUB_EVENT_NAME\" != \"workflow_dispatch\" ]]'));
+  assert.ok(deployWorkflow.includes('if [[ \"$DEPLOY_CONFIRMATION\" != \"DEPLOY\" ]]'));
   assert.ok(deployWorkflow.includes("health.node_auth !== 'github-actions-oidc-v1'"));
   assert.ok(deployWorkflow.includes("health.oidc_subject_policy !== 'legacy-and-immutable-v5-cloudflare-manual-redirect'"));
   assert.ok(deployWorkflow.includes('for attempt in $(seq 1 85)'));
