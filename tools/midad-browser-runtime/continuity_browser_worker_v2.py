@@ -728,6 +728,7 @@ class ContinuityBrowserWorker:
         renewer = asyncio.create_task(self._renew_until_done(task_id, lease, done, lost))
         central_vault = self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False)
         vault_lost_waiter = asyncio.create_task(self.proxy_runtime.wait_for_lease_loss()) if central_vault else None
+        lost_waiter = None
         try:
             while cursor < len(planned):
                 if lost.is_set() or (vault_lost_waiter is not None and vault_lost_waiter.done()):
@@ -784,15 +785,8 @@ class ContinuityBrowserWorker:
                 result = sanitize_browser_result(await execution)
                 status = str(result.get("status", "FAILED")).upper()
                 if status in {"FAILED", "TIMEOUT", "CANCELLED", "HUMAN_GATE"}:
-                    actions[cursor] = build_action_checkpoint(
-                        task_id, profile_id, step["action_id"], step["operation"],
-                        "failed", int(__import__("time").time() * 1000),
-                    )
-                    await self.client.checkpoint(task_id, lease, {
-                        "taskId": task_id, "profileId": profile_id, "state": "running",
-                        "updatedAt": int(__import__("time").time() * 1000),
-                        "evidenceRefs": [], "actions": actions, "action_cursor": cursor,
-                    })
+                    # Keep the durable "running" marker: after an interrupted/failed
+                    # operator call its external effects cannot be inferred safely.
                     reason = "HUMAN_GATE_REQUIRED" if status == "HUMAN_GATE" else "BROWSER_ACTION_REQUIRES_RECONCILIATION"
                     outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
                     return {"task_id": task_id, "status": "BLOCKED", "code": reason, "ledger_state": outcome.get("state")}
@@ -831,7 +825,7 @@ class ContinuityBrowserWorker:
             return {"task_id": task_id, "status": "COMPLETED", "ledger_state": completed.get("state", "COMPLETED")}
         finally:
             done.set()
-            for pending in (renewer, vault_lost_waiter):
+            for pending in (renewer, lost_waiter, vault_lost_waiter):
                 if pending is not None and not pending.done():
                     pending.cancel()
                 if pending is not None:
