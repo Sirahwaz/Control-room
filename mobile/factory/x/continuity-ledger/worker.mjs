@@ -65,7 +65,7 @@ async function validateBrowserCheckpoint(task, value) {
   if (!isRecord(value)) return { ok: false, code: 'CHECKPOINT_INVALID' };
   const payload = JSON.parse(task.payload_json || '{}');
   const expectedProfileId = payload.profile_id;
-  const allowedKeys = new Set(['taskId', 'profileId', 'state', 'updatedAt', 'evidenceRefs', 'action']);
+  const allowedKeys = new Set(['taskId', 'profileId', 'state', 'updatedAt', 'evidenceRefs', 'action', 'actions', 'action_cursor']);
   if (Object.keys(value).some(key => !allowedKeys.has(key))) {
     return { ok: false, code: 'CHECKPOINT_FIELDS_INVALID' };
   }
@@ -94,13 +94,52 @@ async function validateBrowserCheckpoint(task, value) {
     updatedAt: value.updatedAt,
     evidenceRefs: refs.slice(0, 20),
   };
+
+  if (value.actions !== undefined || value.action_cursor !== undefined) {
+    const plan = payload.action_plan;
+    if (value.action !== undefined || !Array.isArray(plan) || plan.length < 1 || plan.length > 8 ||
+        !Array.isArray(value.actions) || value.actions.length !== plan.length ||
+        !Number.isInteger(value.action_cursor) || value.action_cursor < 0 || value.action_cursor > plan.length) {
+      return { ok: false, code: 'ACTION_PLAN_CHECKPOINT_INVALID' };
+    }
+    const normalizedActions = [];
+    for (let index = 0; index < plan.length; index += 1) {
+      const planned = plan[index];
+      const action = value.actions[index];
+      if (!isRecord(planned) || !isRecord(planned.operator_command) ||
+          !isRecord(action) || action.actionId !== planned.action_id ||
+          action.operation !== planned.operator_command.action) {
+        return { ok: false, code: 'ACTION_PLAN_IDENTITY_MISMATCH' };
+      }
+      const checked = await validateBrowserCheckpoint(task, {
+        taskId: value.taskId, profileId: value.profileId, state: value.state,
+        updatedAt: value.updatedAt, evidenceRefs: [], action,
+      });
+      if (!checked.ok) return checked;
+      normalizedActions.push(checked.checkpoint.action);
+    }
+    const completedPrefix = normalizedActions.findIndex(action => action.status !== 'succeeded');
+    const expectedCursor = completedPrefix === -1 ? normalizedActions.length : completedPrefix;
+    if (value.action_cursor !== expectedCursor ||
+        normalizedActions.slice(0, value.action_cursor).some(action => action.status !== 'succeeded') ||
+        normalizedActions.slice(value.action_cursor + (value.action_cursor < normalizedActions.length ? 1 : 0))
+          .some(action => action.status !== 'pending')) {
+      return { ok: false, code: 'ACTION_PLAN_CURSOR_INVALID' };
+    }
+    if (value.action_cursor < normalizedActions.length &&
+        !['pending', 'running'].includes(normalizedActions[value.action_cursor].status)) {
+      return { ok: false, code: 'ACTION_PLAN_CURSOR_INVALID' };
+    }
+    checkpoint.actions = normalizedActions;
+    checkpoint.action_cursor = value.action_cursor;
+  }
   if (value.action !== undefined) {
     const action = value.action;
     const actionKeys = new Set(['actionId', 'idempotencyKey', 'operation', 'status', 'result']);
     if (!isRecord(action) || Object.keys(action).some(key => !actionKeys.has(key)) ||
         !validId(action.actionId) || !/^[a-f0-9]{64}$/.test(action.idempotencyKey || '') ||
         !['status','inspect','wait_for_selector','navigate','start_session','stop_session','click','fill','submit_form','operator_hint'].includes(action.operation) ||
-        !['running','succeeded','failed','reconciliation_required'].includes(action.status)) {
+        !['pending','running','succeeded','failed','reconciliation_required'].includes(action.status)) {
       return { ok: false, code: 'ACTION_CHECKPOINT_INVALID' };
     }
     const expectedKey = await sha256(canonical({
@@ -893,6 +932,28 @@ export class MidadContinuityLedger {
       if (before.status !== 'running' &&
           (after.status !== before.status || canonical(after.result ?? null) !== canonical(before.result ?? null))) {
         return response(409, { ok: false, error: 'ACTION_CHECKPOINT_REGRESSION' });
+      }
+    }
+    if (previous?.actions) {
+      const before = previous.actions, after = checkpoint.actions;
+      if (!Array.isArray(after) || before.length !== after.length ||
+          before.some((action, index) => action.actionId !== after[index]?.actionId ||
+            action.idempotencyKey !== after[index]?.idempotencyKey ||
+            action.operation !== after[index]?.operation)) {
+        return response(409, { ok: false, error: 'ACTION_PLAN_IDENTITY_CHANGED' });
+      }
+      if (checkpoint.action_cursor < (previous.action_cursor || 0)) {
+        return response(409, { ok: false, error: 'ACTION_PLAN_CURSOR_REGRESSION' });
+      }
+      for (let index = 0; index < before.length; index += 1) {
+        const prior = before[index], next = after[index];
+        if (prior.status !== 'running' &&
+            (next.status !== prior.status || canonical(next.result ?? null) !== canonical(prior.result ?? null))) {
+          return response(409, { ok: false, error: 'ACTION_PLAN_STEP_REGRESSION' });
+        }
+        if (index < (previous.action_cursor || 0) && next.status !== 'succeeded') {
+          return response(409, { ok: false, error: 'ACTION_PLAN_CURSOR_REGRESSION' });
+        }
       }
     }
     const now = Date.now();
