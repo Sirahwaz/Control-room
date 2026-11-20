@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { MidadContinuityLedger } from '../continuity-ledger/worker.mjs';
 
@@ -30,7 +31,9 @@ const post = (path, body, headers = {}) => new Request('https://ledger.test' + p
 });
 const admin = () => ({authorization:'Bearer ' + ADMIN});
 const nodeHeaders = (id, token) => ({'x-midad-node-id':id, authorization:'Bearer ' + token});
-const read = async response => ({status:response.status, body:await response.json()});
+const read = async response => ({status:response.status, body:await response.json()});\nconst actionKey = (taskId, profileId, actionId, operation) => createHash('sha256')
+  .update(JSON.stringify({ actionId, operation, profileId, taskId })).digest('hex');
+
 async function enroll(ledger, id='node-a', owner='owner-a', capabilities=['cpu-batch','interactive-browser-execution','persistent-browser-session','encrypted-session-store']) {
   const result = await read(await ledger.fetch(post('/v1/nodes/enroll',{
     node_id:id, owner_id:owner, consent_confirmed:true, capabilities,
@@ -416,6 +419,125 @@ test('browser checkpoint rejects terminal states, invalid timestamps, and raw ev
     assert.equal(storage.db.prepare(
       'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
     ).get('browser-checkpoint-invalid').checkpoint_json, null);
+  } finally {
+    storage.close();
+  }
+});
+\n
+test('browser action checkpoint validates task-bound idempotency and stores safe completed result', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-action-checkpoint', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operator_command: { action: 'inspect', account_id: 'profile-a' } },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-action-checkpoint');
+    const lease = acquired.body.task.lease_token;
+    const action = {
+      actionId: 'action-1',
+      idempotencyKey: actionKey('browser-action-checkpoint', 'profile-a', 'action-1', 'inspect'),
+      operation: 'inspect',
+      status: 'succeeded',
+      result: { status: 'INSPECTED', action: 'inspect', title: 'Dashboard' },
+    };
+    const saved = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-checkpoint', lease_token: lease,
+      checkpoint: {
+        taskId: 'browser-action-checkpoint', profileId: 'profile-a',
+        state: 'running', updatedAt: NOW, evidenceRefs: [], action,
+      },
+    }, nodeHeaders('node-a', token))));
+    assert.equal(saved.status, 200);
+    const persisted = JSON.parse(storage.db.prepare(
+      'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
+    ).get('browser-action-checkpoint').checkpoint_json);
+    assert.deepEqual(persisted.action, action);
+  } finally {
+    storage.close();
+  }
+});
+
+test('browser action checkpoint rejects a mismatched idempotency key and secret result fields', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-action-invalid', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operator_command: { action: 'inspect', account_id: 'profile-a' } },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-action-invalid');
+    const base = {
+      actionId: 'action-1',
+      idempotencyKey: '0'.repeat(64),
+      operation: 'inspect',
+      status: 'succeeded',
+      result: { status: 'INSPECTED' },
+    };
+    const mismatch = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-invalid', lease_token: acquired.body.task.lease_token,
+      checkpoint: {
+        taskId: 'browser-action-invalid', profileId: 'profile-a',
+        state: 'running', updatedAt: NOW, evidenceRefs: [], action: base,
+      },
+    }, nodeHeaders('node-a', token))));
+    assert.equal(mismatch.status, 422);
+    assert.equal(mismatch.body.error, 'ACTION_CHECKPOINT_IDEMPOTENCY_KEY_MISMATCH');
+    const secret = { ...base, idempotencyKey: actionKey('browser-action-invalid', 'profile-a', 'action-1', 'inspect'), result: { access_token: 'never-store' } };
+    const rejected = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-invalid', lease_token: acquired.body.task.lease_token,
+      checkpoint: {
+        taskId: 'browser-action-invalid', profileId: 'profile-a',
+        state: 'running', updatedAt: NOW, evidenceRefs: [], action: secret,
+      },
+    }, nodeHeaders('node-a', token))));
+    assert.equal(rejected.status, 422);
+    assert.equal(rejected.body.error, 'ACTION_CHECKPOINT_RESULT_INVALID');
+  } finally {
+    storage.close();
+  }
+});
+
+test('browser action checkpoint cannot change identity or regress after success', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-action-monotonic', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operator_command: { action: 'inspect', account_id: 'profile-a' } },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-action-monotonic');
+    const lease = acquired.body.task.lease_token;
+    const makeCheckpoint = action => ({
+      taskId: 'browser-action-monotonic', profileId: 'profile-a',
+      state: 'running', updatedAt: NOW, evidenceRefs: [], action,
+    });
+    const running = {
+      actionId: 'action-1',
+      idempotencyKey: actionKey('browser-action-monotonic', 'profile-a', 'action-1', 'inspect'),
+      operation: 'inspect', status: 'running',
+    };
+    assert.equal((await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(running),
+    }, nodeHeaders('node-a', token)))).status, 200);
+    const succeeded = { ...running, status: 'succeeded', result: { status: 'INSPECTED' } };
+    assert.equal((await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(succeeded),
+    }, nodeHeaders('node-a', token)))).status, 200);
+    const regressed = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-monotonic', lease_token: lease, checkpoint: makeCheckpoint(running),
+    }, nodeHeaders('node-a', token))));
+    assert.equal(regressed.status, 409);
+    assert.equal(regressed.body.error, 'ACTION_CHECKPOINT_REGRESSION');
+    const changed = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-monotonic', lease_token: lease,
+      checkpoint: makeCheckpoint({ ...succeeded, actionId: 'action-2' }),
+    }, nodeHeaders('node-a', token))));
+    assert.equal(changed.status, 409);
+    assert.equal(changed.body.error, 'ACTION_CHECKPOINT_IDENTITY_CHANGED');
   } finally {
     storage.close();
   }
