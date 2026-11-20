@@ -31,7 +31,8 @@ const post = (path, body, headers = {}) => new Request('https://ledger.test' + p
 });
 const admin = () => ({authorization:'Bearer ' + ADMIN});
 const nodeHeaders = (id, token) => ({'x-midad-node-id':id, authorization:'Bearer ' + token});
-const read = async response => ({status:response.status, body:await response.json()});\nconst actionKey = (taskId, profileId, actionId, operation) => createHash('sha256')
+const read = async response => ({status:response.status, body:await response.json()});
+const actionKey = (taskId, profileId, actionId, operation) => createHash('sha256')
   .update(JSON.stringify({ actionId, operation, profileId, taskId })).digest('hex');
 
 async function enroll(ledger, id='node-a', owner='owner-a', capabilities=['cpu-batch','interactive-browser-execution','persistent-browser-session','encrypted-session-store']) {
