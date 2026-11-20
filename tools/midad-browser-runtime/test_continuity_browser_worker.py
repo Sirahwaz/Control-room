@@ -44,6 +44,17 @@ class FakeLedgerClient:
         }}
 
     async def checkpoint(self, task_id, lease_token, checkpoint):
+        required = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
+        if set(checkpoint) != required:
+            raise AssertionError("BROWSER_CHECKPOINT_SCHEMA_MISMATCH")
+        if checkpoint["taskId"] != task_id or checkpoint["state"] != "running":
+            raise AssertionError("BROWSER_CHECKPOINT_IDENTITY_OR_STATE_MISMATCH")
+        if not isinstance(checkpoint["profileId"], str) or not checkpoint["profileId"]:
+            raise AssertionError("BROWSER_CHECKPOINT_PROFILE_REQUIRED")
+        if not isinstance(checkpoint["updatedAt"], int) or checkpoint["updatedAt"] <= 0:
+            raise AssertionError("BROWSER_CHECKPOINT_TIMESTAMP_INVALID")
+        if not isinstance(checkpoint["evidenceRefs"], list) or len(checkpoint["evidenceRefs"]) > 20:
+            raise AssertionError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
         self.calls.append(("checkpoint", task_id, checkpoint))
         return {"ok": True}
 
@@ -133,7 +144,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
     def test_claim_is_owner_bound_and_requires_lease_token(self):
         claim = {"ok": True, "task": {
             "task_id": "task-1", "owner_id": self.owner, "workload": "BROWSER_SESSION",
-            "payload": {"operator_hint": "inspect example"},
+            "payload": {"profile_id": "example-account", "operator_hint": "inspect example"},
             "attempt": 1, "lease_token": "a" * 64,
         }}
         self.assertEqual(validate_claimed_task(claim, self.owner)["task_id"], "task-1")
@@ -144,7 +155,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
     def test_non_browser_workload_is_rejected_before_execution(self):
         claim = {"ok": True, "task": {
             "task_id": "task-1", "owner_id": self.owner, "workload": "PYTHON_JOB",
-            "payload": {"operator_hint": "inspect example"},
+            "payload": {"profile_id": "example-account", "operator_hint": "inspect example"},
             "attempt": 1, "lease_token": "a" * 64,
         }}
         with self.assertRaisesRegex(ContinuityWorkerError, "TASK_WORKLOAD_NOT_ALLOWED"):
@@ -152,11 +163,11 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_browser_v2_only_accepts_read_only_operator_actions(self):
         self.assertEqual(validate_browser_payload({"operator_hint": "inspect Example"})["action"], "inspect")
-        self.assertEqual(validate_browser_payload({"operator_command": {"action": "navigate"}})["action"], "navigate")
+        self.assertEqual(validate_browser_payload({"profile_id": "example-account", "operator_command": {"action": "navigate", "account_id": "example-account"}})["action"], "navigate")
         for action in ("click", "fill", "submit_form", "payment", "withdraw", "delete"):
             with self.subTest(action=action):
                 with self.assertRaisesRegex(ContinuityWorkerError, "HUMAN_APPROVAL_REQUIRED|ACTION_NOT_ALLOWED"):
-                    validate_browser_payload({"operator_command": {"action": action}})
+                    validate_browser_payload({"profile_id": "example-account", "operator_command": {"action": action, "account_id": "example-account"}})
 
 
     def test_credential_binding_ids_are_accepted_as_non_secret_task_policy_metadata(self):
@@ -170,14 +181,14 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parsed["value"], "inspect example")
 
     def test_credential_binding_ids_are_bounded_unique_and_identifier_only(self):
-        valid = {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"]}
+        valid = {"profile_id": "example-account", "operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"]}
         self.assertEqual(validate_browser_payload(valid)["credential_binding_ids"], ["proxy-binding-01"])
         invalid_payloads = [
-            {"operator_hint": "inspect example", "credential_binding_ids": ["../secret"]},
-            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01", "proxy-binding-01"]},
-            {"operator_hint": "inspect example", "credential_binding_ids": ["a" * 129]},
-            {"operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"], "password": "no"},
-            {"operator_hint": "inspect example", "operator_command": {"action": "inspect"}},
+            {"profile_id": "example-account", "operator_hint": "inspect example", "credential_binding_ids": ["../secret"]},
+            {"profile_id": "example-account", "operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01", "proxy-binding-01"]},
+            {"profile_id": "example-account", "operator_hint": "inspect example", "credential_binding_ids": ["a" * 129]},
+            {"profile_id": "example-account", "operator_hint": "inspect example", "credential_binding_ids": ["proxy-binding-01"], "password": "no"},
+            {"profile_id": "example-account", "operator_hint": "inspect example", "operator_command": {"action": "inspect"}},
         ]
         for payload in invalid_payloads:
             with self.subTest(payload=payload):
@@ -186,7 +197,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_sensitive_payload_is_rejected(self):
         with self.assertRaisesRegex(ContinuityWorkerError, "SENSITIVE_TASK_PAYLOAD_REJECTED"):
-            validate_browser_payload({"operator_hint": "inspect example password=hunter2"})
+            validate_browser_payload({"profile_id": "example-account", "operator_hint": "inspect example password=hunter2"})
 
     def test_result_contains_metadata_and_digest_but_not_page_text(self):
         page_text = "page body must not be uploaded"
@@ -215,7 +226,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("reset", result.get("url", ""))
 
     async def test_read_only_browser_task_completes_with_digest_not_page_text(self):
-        client = FakeLedgerClient({"operator_hint": "inspect example"})
+        client = FakeLedgerClient({"profile_id": "example-account", "operator_hint": "inspect example"})
         operator = FakeOperator({
             "status": "INSPECTED", "action": "inspect",
             "account_id": "example-account", "platform_key": "example",
@@ -236,10 +247,10 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("text_preview", stored)
         self.assertNotIn("page body", str(stored))
         self.assertEqual(stored["session_storage"], "encrypted_at_rest")
-        self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["input_data"], {"profile_id": "example-account", "operator_hint": "inspect example"})
 
     async def test_human_approval_action_is_not_dispatched_to_operator(self):
-        client = FakeLedgerClient({"operator_command": {"action": "click", "account_id": "example-account"}})
+        client = FakeLedgerClient({"profile_id": "example-account", "operator_command": {"action": "click", "account_id": "example-account"}})
         operator = FakeOperator({"status": "SHOULD_NOT_RUN"})
         with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
             worker = ContinuityBrowserWorker(
@@ -253,7 +264,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(any(call[0] == "complete" for call in client.calls))
 
     async def test_owner_mismatch_is_rejected_before_browser_execution(self):
-        client = FakeLedgerClient({"operator_hint": "inspect example"}, owner="another-owner")
+        client = FakeLedgerClient({"profile_id": "example-account", "operator_hint": "inspect example"}, owner="another-owner")
         operator = FakeOperator({"status": "SHOULD_NOT_RUN"})
         with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
             worker = ContinuityBrowserWorker(
@@ -313,7 +324,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             "lease_token": "a" * 64,
             "credential_binding_ids": bindings,
         }])
-        self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["input_data"], {"profile_id": "example-account", "operator_hint": "inspect example"})
         checkpoint = next(call for call in client.calls if call[0] == "checkpoint")[2]
         self.assertNotIn("credential_binding_ids", str(checkpoint))
         self.assertNotIn("a" * 64, str(checkpoint))
