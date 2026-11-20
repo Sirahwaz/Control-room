@@ -58,7 +58,7 @@ test("history and bookmarks remain local and bounded", () => {
 test("closing a tab stores only a sanitized restorable URL and exposes one-step restore", () => {
   assert.match(source, /LAST_CLOSED_TAB_KEY/);
   assert.match(source, /restoreLastClosedTab\(/);
-  assert.match(source, /sanitizeRestorableUrl\(closingUrl\\)/);
-  assert.match(source, /setItems\(actions[\s\\S]*استعادة آخر تبويب مغلق/);
-  assert.match(source, /remove\(LAST_CLOSED_TAB_KEY\\)/);
+  assert.match(source, /sanitizeRestorableUrl\(closingUrl\)/);
+  assert.match(source, /setItems\(actions[\s\S]*استعادة آخر تبويب مغلق/);
+  assert.match(source, /remove\(LAST_CLOSED_TAB_KEY\)/);
 });
