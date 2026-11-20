@@ -424,7 +424,8 @@ test('browser checkpoint rejects terminal states, invalid timestamps, and raw ev
     storage.close();
   }
 });
-\n
+
+
 test('browser action checkpoint validates task-bound idempotency and stores safe completed result', async () => {
   const { storage, ledger } = setup();
   try {
