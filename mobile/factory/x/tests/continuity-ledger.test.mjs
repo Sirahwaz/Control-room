@@ -495,8 +495,8 @@ test('browser action checkpoint rejects a mismatched idempotency key and secret 
         state: 'running', updatedAt: NOW, evidenceRefs: [], action: secret,
       },
     }, nodeHeaders('node-a', token))));
-    assert.equal(rejected.status, 422);
-    assert.equal(rejected.body.error, 'ACTION_CHECKPOINT_RESULT_INVALID');
+    assert.equal(rejected.status, 400);
+    assert.equal(rejected.body.error, 'SENSITIVE_FIELDS_NOT_ALLOWED');
   } finally {
     storage.close();
   }
@@ -538,7 +538,11 @@ test('browser action checkpoint cannot change identity or regress after success'
     assert.equal(regressed.body.error, 'ACTION_CHECKPOINT_REGRESSION');
     const changed = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
       task_id: 'browser-action-monotonic', lease_token: lease,
-      checkpoint: makeCheckpoint({ ...succeeded, actionId: 'action-2' }),
+      checkpoint: makeCheckpoint({
+        ...succeeded,
+        actionId: 'action-2',
+        idempotencyKey: actionKey('browser-action-monotonic', 'profile-a', 'action-2', 'inspect'),
+      }),
     }, nodeHeaders('node-a', token))));
     assert.equal(changed.status, 409);
     assert.equal(changed.body.error, 'ACTION_CHECKPOINT_IDENTITY_CHANGED');
