@@ -117,6 +117,36 @@ async function validateBrowserCheckpoint(task, value) {
           containsSensitive(result) || JSON.stringify(result).length > 12000) {
         return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
       }
+      for (const key of ['status','action','account_id','platform_key','host','session_storage','title','code','reason']) {
+        if (result[key] !== undefined && (typeof result[key] !== 'string' ||
+            result[key].length > (key === 'title' ? 200 : key === 'code' || key === 'reason' ? 300 : 120))) {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
+      if (result.authenticated !== undefined && typeof result.authenticated !== 'boolean') {
+        return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+      }
+      for (const key of ['http_status','text_chars','value_length']) {
+        if (result[key] !== undefined && (!Number.isInteger(result[key]) || result[key] < 0 || result[key] > 30000)) {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
+      if (result.text_sha256 !== undefined && !/^[a-f0-9]{64}$/.test(result.text_sha256)) {
+        return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+      }
+      if (result.url !== undefined) {
+        try {
+          const parsed = new URL(result.url);
+          if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password ||
+              parsed.search || parsed.hash || parsed.port && parsed.port !== '443' ||
+              /(?:token|secret|session|auth|reset|verify|code|key|password|otp|signature)/i.test(decodeURIComponent(parsed.pathname)) ||
+              result.url !== parsed.origin + parsed.pathname) {
+            return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+          }
+        } catch {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
     } else if (action.result !== undefined) {
       return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_STATE_INVALID' };
     }
