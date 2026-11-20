@@ -77,7 +77,7 @@ def build_action_checkpoint(task_id: str, profile_id: str, action_id: str,
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", profile_id or "")
         or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", action_id or "")
         or operation not in {"status", "inspect", "wait_for_selector", "navigate", "start_session", "stop_session", "click", "fill", "submit_form", "operator_hint"}
-        or status not in {"running", "succeeded", "failed", "reconciliation_required"}
+        or status not in {"pending", "running", "succeeded", "failed", "reconciliation_required"}
         or isinstance(updated_at, bool) or not isinstance(updated_at, int) or updated_at < 0
     ):
         raise ContinuityWorkerError("ACTION_CHECKPOINT_INVALID")
@@ -301,7 +301,11 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
         if not isinstance(checkpoint, dict):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_INVALID")
         allowed_checkpoint_keys = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
-        if set(checkpoint) not in (allowed_checkpoint_keys, allowed_checkpoint_keys | {"action"}):
+        if set(checkpoint) not in (
+            allowed_checkpoint_keys,
+            allowed_checkpoint_keys | {"action"},
+            allowed_checkpoint_keys | {"actions", "action_cursor"},
+        ):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_FIELDS_INVALID")
         if checkpoint.get("taskId") != task_id or checkpoint.get("profileId") != payload.get("profile_id"):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_IDENTITY_MISMATCH")
@@ -342,6 +346,36 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
             if normalized_action["operation"] != expected_operation:
                 raise ContinuityWorkerError("ACTION_CHECKPOINT_OPERATION_MISMATCH")
             normalized_checkpoint["action"] = normalized_action
+        if "actions" in checkpoint or "action_cursor" in checkpoint:
+            if "action" in checkpoint:
+                raise ContinuityWorkerError("ACTION_PLAN_CHECKPOINT_INVALID")
+            validated_plan = validate_browser_action_plan(payload)
+            raw_actions = checkpoint.get("actions")
+            cursor = checkpoint.get("action_cursor")
+            if not isinstance(raw_actions, list) or len(raw_actions) != len(validated_plan["actions"]):
+                raise ContinuityWorkerError("ACTION_PLAN_CHECKPOINT_INVALID")
+            if isinstance(cursor, bool) or not isinstance(cursor, int) or not 0 <= cursor <= len(raw_actions):
+                raise ContinuityWorkerError("ACTION_PLAN_CURSOR_INVALID")
+            normalized_actions = []
+            for index, raw_action in enumerate(raw_actions):
+                action = validate_action_checkpoint(raw_action, task_id, payload.get("profile_id"))
+                planned = validated_plan["actions"][index]
+                if action["actionId"] != planned["action_id"] or action["operation"] != planned["operation"]:
+                    raise ContinuityWorkerError("ACTION_PLAN_IDENTITY_MISMATCH")
+                if action["operation"] not in {"status", "inspect", "navigate", "wait_for_selector"}:
+                    raise ContinuityWorkerError("ACTION_PLAN_OPERATION_NOT_ALLOWED")
+                normalized_actions.append(action)
+            if any(action["status"] != "succeeded" for action in normalized_actions[:cursor]):
+                raise ContinuityWorkerError("ACTION_PLAN_CURSOR_INVALID")
+            if cursor < len(normalized_actions):
+                if normalized_actions[cursor]["status"] not in {"pending", "running"}:
+                    raise ContinuityWorkerError("ACTION_PLAN_CURSOR_INVALID")
+                if any(action["status"] != "pending" for action in normalized_actions[cursor + 1:]):
+                    raise ContinuityWorkerError("ACTION_PLAN_CURSOR_INVALID")
+            elif any(action["status"] != "succeeded" for action in normalized_actions):
+                raise ContinuityWorkerError("ACTION_PLAN_CURSOR_INVALID")
+            normalized_checkpoint["actions"] = normalized_actions
+            normalized_checkpoint["action_cursor"] = cursor
         checkpoint = normalized_checkpoint
     return {
         "task_id": task_id,
@@ -645,9 +679,172 @@ class ContinuityBrowserWorker:
                 lost.set()
                 return
 
+    async def _execute_action_plan(self, task: dict, plan: dict) -> dict:
+        """Execute a bounded read-only plan with durable per-action checkpoints."""
+        task_id = task["task_id"]
+        lease = task["lease_token"]
+        profile_id = plan["profile_id"]
+        planned = plan["actions"]
+        saved = task.get("checkpoint")
+        if saved is None:
+            actions = [
+                build_action_checkpoint(
+                    task_id, profile_id, step["action_id"], step["operation"],
+                    "pending", int(__import__("time").time() * 1000),
+                )
+                for step in planned
+            ]
+            cursor = 0
+        else:
+            actions = [dict(item) for item in saved["actions"]]
+            cursor = saved["action_cursor"]
+            if cursor < len(actions) and actions[cursor]["status"] == "running":
+                outcome = await self.client.fail(
+                    task_id, lease, reason="ACTION_PLAN_IN_FLIGHT_REQUIRES_RECONCILIATION",
+                    retryable=False,
+                )
+                return {
+                    "task_id": task_id, "status": "BLOCKED",
+                    "code": "ACTION_PLAN_IN_FLIGHT_REQUIRES_RECONCILIATION",
+                    "ledger_state": outcome.get("state"),
+                }
+        if cursor == 0 and actions and actions[0]["status"] == "pending":
+            actions[0] = build_action_checkpoint(
+                task_id, profile_id, planned[0]["action_id"], planned[0]["operation"],
+                "running", int(__import__("time").time() * 1000),
+            )
+            await self.client.checkpoint(task_id, lease, {
+                "taskId": task_id, "profileId": profile_id, "state": "running",
+                "updatedAt": int(__import__("time").time() * 1000),
+                "evidenceRefs": [], "actions": actions, "action_cursor": cursor,
+            })
+        if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
+            self.proxy_runtime.set_task_context({
+                "task_id": task_id, "lease_token": lease,
+                "credential_binding_ids": plan["credential_binding_ids"],
+            })
+        done = asyncio.Event()
+        lost = asyncio.Event()
+        renewer = asyncio.create_task(self._renew_until_done(task_id, lease, done, lost))
+        central_vault = self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False)
+        vault_lost_waiter = asyncio.create_task(self.proxy_runtime.wait_for_lease_loss()) if central_vault else None
+        lost_waiter = None
+        try:
+            while cursor < len(planned):
+                if lost.is_set() or (vault_lost_waiter is not None and vault_lost_waiter.done()):
+                    reason = "VAULT_LEASE_LOST_DURING_BROWSER_TASK" if vault_lost_waiter is not None and vault_lost_waiter.done() else "LEASE_LOST_DURING_BROWSER_TASK"
+                    try:
+                        await self.session_pool.close_all()
+                    except BrowserSessionError:
+                        pass
+                    outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
+                    return {"task_id": task_id, "status": "BLOCKED", "code": reason, "ledger_state": outcome.get("state")}
+                step = planned[cursor]
+                if actions[cursor]["status"] == "pending":
+                    actions[cursor] = build_action_checkpoint(
+                        task_id, profile_id, step["action_id"], step["operation"],
+                        "running", int(__import__("time").time() * 1000),
+                    )
+                    await self.client.checkpoint(task_id, lease, {
+                        "taskId": task_id, "profileId": profile_id, "state": "running",
+                        "updatedAt": int(__import__("time").time() * 1000),
+                        "evidenceRefs": [], "actions": actions, "action_cursor": cursor,
+                    })
+                job = {
+                    "id": task_id,
+                    "state": "PREPARING",
+                    "worker_id": getattr(self.operator, "worker_id", self.config.node_id),
+                    "owner_user_id": self.config.owner_id,
+                    "lease_token": lease,
+                    "input_data": {"operator_command": step["command"]},
+                }
+                execution = asyncio.create_task(self.operator.process_job(job))
+                lost_waiter = asyncio.create_task(lost.wait())
+                waiters = {execution, lost_waiter}
+                if vault_lost_waiter is not None:
+                    waiters.add(vault_lost_waiter)
+                await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+                if lost.is_set() or (vault_lost_waiter is not None and vault_lost_waiter.done()):
+                    execution.cancel()
+                    try:
+                        await execution
+                    except asyncio.CancelledError:
+                        pass
+                    try:
+                        await self.session_pool.close_all()
+                    except BrowserSessionError:
+                        pass
+                    reason = "VAULT_LEASE_LOST_DURING_BROWSER_TASK" if vault_lost_waiter is not None and vault_lost_waiter.done() else "LEASE_LOST_DURING_BROWSER_TASK"
+                    outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
+                    return {"task_id": task_id, "status": "BLOCKED", "code": reason, "ledger_state": outcome.get("state")}
+                lost_waiter.cancel()
+                try:
+                    await lost_waiter
+                except asyncio.CancelledError:
+                    pass
+                result = sanitize_browser_result(await execution)
+                status = str(result.get("status", "FAILED")).upper()
+                if status in {"FAILED", "TIMEOUT", "CANCELLED", "HUMAN_GATE"}:
+                    # Keep the durable "running" marker: after an interrupted/failed
+                    # operator call its external effects cannot be inferred safely.
+                    reason = "HUMAN_GATE_REQUIRED" if status == "HUMAN_GATE" else "BROWSER_ACTION_REQUIRES_RECONCILIATION"
+                    outcome = await self.client.fail(task_id, lease, reason=reason, retryable=False)
+                    return {"task_id": task_id, "status": "BLOCKED", "code": reason, "ledger_state": outcome.get("state")}
+                actions[cursor] = build_action_checkpoint(
+                    task_id, profile_id, step["action_id"], step["operation"],
+                    "succeeded", int(__import__("time").time() * 1000), result=result,
+                )
+                cursor += 1
+                await self.client.checkpoint(task_id, lease, {
+                    "taskId": task_id, "profileId": profile_id, "state": "running",
+                    "updatedAt": int(__import__("time").time() * 1000),
+                    "evidenceRefs": [], "actions": actions, "action_cursor": cursor,
+                })
+                if cursor < len(planned):
+                    next_step = planned[cursor]
+                    actions[cursor] = build_action_checkpoint(
+                        task_id, profile_id, next_step["action_id"], next_step["operation"],
+                        "running", int(__import__("time").time() * 1000),
+                    )
+                    await self.client.checkpoint(task_id, lease, {
+                        "taskId": task_id, "profileId": profile_id, "state": "running",
+                        "updatedAt": int(__import__("time").time() * 1000),
+                        "evidenceRefs": [], "actions": actions, "action_cursor": cursor,
+                    })
+            if central_vault:
+                try:
+                    await self.session_pool.close_all()
+                except BrowserSessionError:
+                    outcome = await self.client.fail(task_id, lease, reason="VAULT_LEASE_RELEASE_FAILED", retryable=False)
+                    return {"task_id": task_id, "status": "BLOCKED", "code": "VAULT_LEASE_RELEASE_FAILED", "ledger_state": outcome.get("state")}
+            summary = {"status": "COMPLETED", "actions": [
+                {"actionId": item["actionId"], "operation": item["operation"], "result": item.get("result", {})}
+                for item in actions
+            ]}
+            completed = await self.client.complete(task_id, lease, summary)
+            return {"task_id": task_id, "status": "COMPLETED", "ledger_state": completed.get("state", "COMPLETED")}
+        finally:
+            done.set()
+            for pending in (renewer, lost_waiter, vault_lost_waiter):
+                if pending is not None and not pending.done():
+                    pending.cancel()
+                if pending is not None:
+                    try:
+                        await pending
+                    except asyncio.CancelledError:
+                        pass
+            if central_vault:
+                try:
+                    await self.session_pool.close_all()
+                finally:
+                    await self.proxy_runtime.end_task()
+
     async def _execute_claimed(self, task: dict) -> dict:
         task_id = task["task_id"]
         lease = task["lease_token"]
+        if isinstance(task.get("payload"), dict) and "action_plan" in task["payload"]:
+            plan = validate_browser_action_plan(task["payload"])
+            return await self._execute_action_plan(task, plan)
         if task.get("checkpoint") is not None:
             saved = task["checkpoint"].get("action") if isinstance(task["checkpoint"], dict) else None
             decision = action_checkpoint_resume_decision(saved) if saved is not None else {
@@ -806,11 +1003,14 @@ class ContinuityBrowserWorker:
             if reason == "HUMAN_APPROVAL_REQUIRED":
                 await self.client.fail(task["task_id"], task["lease_token"], reason=reason, retryable=False)
                 return {"task_id": task["task_id"], "status": "BLOCKED", "code": reason}
-            if reason in {"SENSITIVE_TASK_PAYLOAD_REJECTED", "BROWSER_TASK_PAYLOAD_INVALID",
-                          "ACTION_NOT_ALLOWED_IN_BROWSER_V2", "OPERATOR_HINT_INVALID",
-                          "OPERATOR_HINT_POLICY_REJECTED", "OPERATOR_COMMAND_INVALID",
-                          "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED", "BROWSER_PROFILE_ID_REQUIRED",
-                          "BROWSER_PROFILE_ID_MISMATCH"}:
+            if (
+                reason in {"SENSITIVE_TASK_PAYLOAD_REJECTED", "BROWSER_TASK_PAYLOAD_INVALID",
+                           "ACTION_NOT_ALLOWED_IN_BROWSER_V2", "OPERATOR_HINT_INVALID",
+                           "OPERATOR_HINT_POLICY_REJECTED", "OPERATOR_COMMAND_INVALID",
+                           "OPERATOR_COMMAND_FIELDS_NOT_ALLOWED", "BROWSER_PROFILE_ID_REQUIRED",
+                           "BROWSER_PROFILE_ID_MISMATCH", "CREDENTIAL_BINDING_IDS_INVALID"}
+                or reason.startswith(("BROWSER_ACTION_PLAN_", "ACTION_PLAN_", "ACTION_CHECKPOINT_"))
+            ):
                 await self.client.fail(task["task_id"], task["lease_token"], reason=reason, retryable=False)
                 return {"task_id": task["task_id"], "status": "BLOCKED", "code": reason}
             raise
