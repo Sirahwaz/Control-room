@@ -162,6 +162,39 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
         raise ContinuityWorkerError("TASK_ATTEMPT_INVALID")
     if not isinstance(payload, dict):
         raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
+    checkpoint = task.get("checkpoint")
+    if checkpoint is not None:
+        if not isinstance(checkpoint, dict):
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_INVALID")
+        if set(checkpoint) != {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}:
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_FIELDS_INVALID")
+        if checkpoint.get("taskId") != task_id or checkpoint.get("profileId") != payload.get("profile_id"):
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_IDENTITY_MISMATCH")
+        if checkpoint.get("state") not in {"running", "paused"}:
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_STATE_INVALID")
+        updated_at = checkpoint.get("updatedAt")
+        if isinstance(updated_at, bool) or not isinstance(updated_at, (int, float)) or updated_at < 0:
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_TIMESTAMP_INVALID")
+        evidence_refs = checkpoint.get("evidenceRefs")
+        if (
+            not isinstance(evidence_refs, list)
+            or len(evidence_refs) > 20
+            or any(
+                not isinstance(ref, str)
+                or len(ref) > 256
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}", ref)
+                or ref.lower().startswith(("http://", "https://"))
+                for ref in evidence_refs
+            )
+        ):
+            raise ContinuityWorkerError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
+        checkpoint = {
+            "taskId": task_id,
+            "profileId": payload.get("profile_id"),
+            "state": checkpoint["state"],
+            "updatedAt": updated_at,
+            "evidenceRefs": list(evidence_refs),
+        }
     return {
         "task_id": task_id,
         "owner_id": claimed_owner,
@@ -169,6 +202,7 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
         "lease_token": lease,
         "attempt": attempt,
         "payload": payload,
+        "checkpoint": checkpoint,
     }
 
 
@@ -464,6 +498,18 @@ class ContinuityBrowserWorker:
     async def _execute_claimed(self, task: dict) -> dict:
         task_id = task["task_id"]
         lease = task["lease_token"]
+        if task.get("checkpoint") is not None:
+            outcome = await self.client.fail(
+                task_id, lease,
+                reason="BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION",
+                retryable=False,
+            )
+            return {
+                "task_id": task_id,
+                "status": "BLOCKED",
+                "code": "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION",
+                "ledger_state": outcome.get("state"),
+            }
         payload = validate_browser_payload(task["payload"])
         if payload["mode"] == "hint":
             resolved_command = build_operator_request(payload["value"], self.registry.list_profiles())
