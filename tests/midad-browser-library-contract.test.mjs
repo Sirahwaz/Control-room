@@ -59,6 +59,6 @@ test("closing a tab stores only a sanitized restorable URL and exposes one-step 
   assert.match(source, /LAST_CLOSED_TAB_KEY/);
   assert.match(source, /restoreLastClosedTab\(/);
   assert.match(source, /sanitizeRestorableUrl\(webView\.getUrl\(\)\)/);
-  assert.match(source, /setItems\(actions[\s\S]*استعادة آخر تبويب مغلق/);
+  assert.match(source, /String\[\] actions = \{[\s\S]*استعادة آخر تبويب مغلق[\s\S]*\.setItems\(actions,/);
   assert.match(source, /remove\(LAST_CLOSED_TAB_KEY\)/);
 });
