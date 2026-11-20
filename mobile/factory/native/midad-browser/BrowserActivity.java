@@ -1,6 +1,8 @@
 package ai.midad.browser;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.database.Cursor;
 import android.app.AlertDialog;
 import android.app.role.RoleManager;
 import android.content.Intent;
@@ -8,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -18,6 +21,7 @@ import android.content.SharedPreferences;
 import android.webkit.SafeBrowsingResponse;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
+import android.webkit.URLUtil;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -41,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 
 public final class BrowserActivity extends Activity {
@@ -51,6 +56,11 @@ public final class BrowserActivity extends Activity {
     private static final String TAB_PREFS = "midad_browser_tabs_v1";
     private static final String TAB_URLS_KEY = "restorable_urls";
     private static final String TAB_INDEX_KEY = "active_index";
+    private static final String LIBRARY_PREFS = "midad_browser_library_v1";
+    private static final String HISTORY_PREFS_KEY = "history_v1";
+    private static final String BOOKMARKS_PREFS_KEY = "bookmarks_v1";
+    private static final int MAX_HISTORY_ITEMS = 100;
+    private static final int MAX_BOOKMARK_ITEMS = 100;
     private final List<WebView> tabs = new ArrayList<>();
     private int activeTabIndex = 0;
     private WebView webView;
@@ -58,6 +68,7 @@ public final class BrowserActivity extends Activity {
     private LinearLayout webViewContainer;
     private TextView tabCount;
     private SharedPreferences tabPrefs;
+    private SharedPreferences libraryPrefs;
     private WebViewAssetLoader assetLoader;
     private EditText address;
     private ProgressBar progress;
@@ -68,6 +79,7 @@ public final class BrowserActivity extends Activity {
         super.onCreate(savedInstanceState);
         buildBrowserUi();
         tabPrefs = getSharedPreferences(TAB_PREFS, MODE_PRIVATE);
+        libraryPrefs = getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE);
         restoreTabs();
         handleIncomingIntent(getIntent());
     }
@@ -161,6 +173,7 @@ public final class BrowserActivity extends Activity {
         addControl(tabsContainer, "تبويب +", v -> createTab(null));
         addControl(tabsContainer, "التبويبات", v -> showTabPicker());
         addControl(tabsContainer, "إغلاق", v -> closeCurrentTab());
+        addControl(tabsContainer, "القائمة", v -> showBrowserMenu());
         root.addView(tabsContainer, tabsParams);
 
         securityState = new TextView(this);
@@ -255,6 +268,9 @@ public final class BrowserActivity extends Activity {
                     address.setText(url);
                     progress.setProgress(100);
                 }
+                if (view.getUrl() != null && view.getUrl().equals(url)) {
+                    recordHistory(view, url);
+                }
                 if (url != null && url.startsWith(MIDAD_HOME)) {
                     android.util.Log.i("MIDAD_BROWSER", "LOCAL_HOME_LOADED");
                 } else if (url != null && url.startsWith("https://")) {
@@ -316,6 +332,8 @@ public final class BrowserActivity extends Activity {
                 }
             }
         });
+        target.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
+            confirmDownload(url, userAgent, contentDisposition, mimeType));
     }
 
     private boolean routeNavigation(Uri uri) {
@@ -478,6 +496,290 @@ public final class BrowserActivity extends Activity {
             int savedIndex = tabPrefs.getInt(TAB_INDEX_KEY, 0);
             switchToTab(Math.max(0, Math.min(savedIndex, tabs.size() - 1)));
         }
+    }
+
+
+    private boolean isHttpUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.trim().isEmpty()) return false;
+        try {
+            Uri uri = Uri.parse(rawUrl);
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
+            return ("https".equals(scheme) || "http".equals(scheme)) &&
+                uri.getHost() != null && uri.getUserInfo() == null;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private JSONArray readLibraryArray(String key) {
+        try {
+            return new JSONArray(libraryPrefs.getString(key, "[]"));
+        } catch (JSONException ignored) {
+            return new JSONArray();
+        }
+    }
+
+    private void recordHistory(WebView page, String url) {
+        if (libraryPrefs == null || !isHttpUrl(url)) return;
+        JSONArray oldItems = readLibraryArray(HISTORY_PREFS_KEY);
+        JSONArray nextItems = new JSONArray();
+        try {
+            JSONObject entry = new JSONObject();
+            String title = page.getTitle();
+            entry.put("title", title == null || title.trim().isEmpty()
+                ? Uri.parse(url).getHost() : title.trim());
+            entry.put("url", url);
+            entry.put("visitedAt", System.currentTimeMillis());
+            nextItems.put(entry);
+            for (int i = 0; i < oldItems.length() && nextItems.length() < MAX_HISTORY_ITEMS; i++) {
+                JSONObject previous = oldItems.optJSONObject(i);
+                if (previous != null && !url.equals(previous.optString("url"))) {
+                    nextItems.put(previous);
+                }
+            }
+            libraryPrefs.edit().putString(HISTORY_PREFS_KEY, nextItems.toString()).apply();
+        } catch (JSONException ignored) {
+            android.util.Log.w("MIDAD_BROWSER", "HISTORY_ENTRY_REJECTED");
+        }
+    }
+
+    private void saveBookmark() {
+        if (webView == null || !isHttpUrl(webView.getUrl())) {
+            Toast.makeText(this, "لا يوجد عنوان HTTP(S) صالح لحفظه", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String url = webView.getUrl();
+        JSONArray oldItems = readLibraryArray(BOOKMARKS_PREFS_KEY);
+        JSONArray nextItems = new JSONArray();
+        try {
+            JSONObject entry = new JSONObject();
+            String title = webView.getTitle();
+            entry.put("title", title == null || title.trim().isEmpty()
+                ? Uri.parse(url).getHost() : title.trim());
+            entry.put("url", url);
+            entry.put("savedAt", System.currentTimeMillis());
+            nextItems.put(entry);
+            for (int i = 0; i < oldItems.length() && nextItems.length() < MAX_BOOKMARK_ITEMS; i++) {
+                JSONObject previous = oldItems.optJSONObject(i);
+                if (previous != null && !url.equals(previous.optString("url"))) {
+                    nextItems.put(previous);
+                }
+            }
+            libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, nextItems.toString()).apply();
+            Toast.makeText(this, "تم حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
+        } catch (JSONException ignored) {
+            Toast.makeText(this, "تعذر حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void removeBookmark(String url) {
+        JSONArray oldItems = readLibraryArray(BOOKMARKS_PREFS_KEY);
+        JSONArray nextItems = new JSONArray();
+        for (int i = 0; i < oldItems.length(); i++) {
+            JSONObject item = oldItems.optJSONObject(i);
+            if (item != null && !url.equals(item.optString("url"))) nextItems.put(item);
+        }
+        libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, nextItems.toString()).apply();
+    }
+
+    private void showBookmarks() {
+        JSONArray items = readLibraryArray(BOOKMARKS_PREFS_KEY);
+        if (items.length() == 0) {
+            Toast.makeText(this, "لا توجد إشارات مرجعية بعد", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[items.length()];
+        String[] urls = new String[items.length()];
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            labels[i] = item == null ? "عنصر غير صالح" : item.optString("title", item.optString("url"));
+            urls[i] = item == null ? "" : item.optString("url");
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("الإشارات المرجعية")
+            .setItems(labels, (dialog, which) -> new AlertDialog.Builder(this)
+                .setTitle(labels[which])
+                .setItems(new String[]{"فتح", "حذف"}, (actionDialog, action) -> {
+                    if (action == 0 && isHttpUrl(urls[which])) webView.loadUrl(urls[which]);
+                    else if (action == 1) {
+                        removeBookmark(urls[which]);
+                        Toast.makeText(this, "تم حذف الإشارة", Toast.LENGTH_SHORT).show();
+                    }
+                }).setNegativeButton("إلغاء", null).show())
+            .setNeutralButton("مسح الكل", (dialog, which) -> {
+                libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, "[]").apply();
+                Toast.makeText(this, "تم مسح الإشارات المرجعية", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("إغلاق", null).show();
+    }
+
+    private void showHistory() {
+        JSONArray items = readLibraryArray(HISTORY_PREFS_KEY);
+        if (items.length() == 0) {
+            Toast.makeText(this, "السجل فارغ", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[items.length()];
+        String[] urls = new String[items.length()];
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            labels[i] = item == null ? "عنصر غير صالح" : item.optString("title", item.optString("url"));
+            urls[i] = item == null ? "" : item.optString("url");
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("سجل التصفح")
+            .setItems(labels, (dialog, which) -> {
+                if (isHttpUrl(urls[which])) webView.loadUrl(urls[which]);
+            })
+            .setNeutralButton("مسح السجل", (dialog, which) -> {
+                libraryPrefs.edit().putString(HISTORY_PREFS_KEY, "[]").apply();
+                Toast.makeText(this, "تم مسح سجل التصفح", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("إغلاق", null).show();
+    }
+
+    private void showBrowserMenu() {
+        String[] actions = {
+            "إضافة إشارة مرجعية", "الإشارات المرجعية", "السجل",
+            "التنزيلات", "بحث في الصفحة", "مشاركة الرابط"
+        };
+        new AlertDialog.Builder(this)
+            .setTitle("قائمة MIDAD Browser")
+            .setItems(actions, (dialog, which) -> {
+                switch (which) {
+                    case 0: saveBookmark(); break;
+                    case 1: showBookmarks(); break;
+                    case 2: showHistory(); break;
+                    case 3: showDownloads(); break;
+                    case 4: findInPage(); break;
+                    case 5: shareCurrentPage(); break;
+                    default: break;
+                }
+            })
+            .setNegativeButton("إغلاق", null).show();
+    }
+
+    private void findInPage() {
+        EditText query = new EditText(this);
+        query.setSingleLine(true);
+        query.setHint("ابحث داخل الصفحة");
+        new AlertDialog.Builder(this)
+            .setTitle("بحث في الصفحة")
+            .setView(query)
+            .setPositiveButton("بحث", (dialog, which) -> {
+                String value = query.getText().toString().trim();
+                if (!value.isEmpty() && webView != null) webView.findAllAsync(value);
+            })
+            .setNeutralButton("إلغاء التحديد", (dialog, which) -> {
+                if (webView != null) webView.clearMatches();
+            })
+            .setNegativeButton("إغلاق", null).show();
+    }
+
+    private void shareCurrentPage() {
+        if (webView == null || !isHttpUrl(webView.getUrl())) return;
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("text/plain");
+        share.putExtra(Intent.EXTRA_TEXT, webView.getUrl());
+        share.putExtra(Intent.EXTRA_SUBJECT, webView.getTitle());
+        startActivity(Intent.createChooser(share, "مشاركة الصفحة"));
+    }
+
+    private void confirmDownload(String rawUrl, String userAgent, String contentDisposition, String mimeType) {
+        if (!isHttpUrl(rawUrl)) {
+            Toast.makeText(this, "تم حظر تنزيل بعنوان غير مدعوم", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String fileName = URLUtil.guessFileName(rawUrl, contentDisposition, mimeType);
+        fileName = fileName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        if (fileName.isEmpty() || ".".equals(fileName) || "..".equals(fileName)) fileName = "midad-download";
+        final String safeName = fileName.length() > 120 ? fileName.substring(0, 120) : fileName;
+        final String downloadUrl = rawUrl;
+        final String downloadAgent = userAgent;
+        final String downloadMime = mimeType;
+        new AlertDialog.Builder(this)
+            .setTitle("تنزيل ملف؟")
+            .setMessage(safeName + "\nسيُحفظ داخل مساحة تنزيلات MIDAD الخاصة بالتطبيق.")
+            .setPositiveButton("تنزيل", (dialog, which) -> {
+                try {
+                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    if (manager == null) throw new IllegalStateException("download_manager_unavailable");
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(downloadUrl));
+                    request.setTitle(safeName);
+                    request.setDescription("MIDAD Browser");
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, safeName);
+                    request.setAllowedOverMetered(true);
+                    request.setAllowedOverRoaming(false);
+                    if (downloadMime != null && !downloadMime.trim().isEmpty()) request.setMimeType(downloadMime);
+                    if (downloadAgent != null && !downloadAgent.trim().isEmpty()) {
+                        request.addRequestHeader("User-Agent", downloadAgent);
+                    }
+                    manager.enqueue(request);
+                    Toast.makeText(this, "بدأ التنزيل: " + safeName, Toast.LENGTH_LONG).show();
+                } catch (Exception error) {
+                    Toast.makeText(this, "تعذر بدء التنزيل", Toast.LENGTH_LONG).show();
+                    android.util.Log.e("MIDAD_BROWSER", "DOWNLOAD_ENQUEUE_FAILED", error);
+                }
+            })
+            .setNegativeButton("إلغاء", null).show();
+    }
+
+    private void showDownloads() {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) {
+            Toast.makeText(this, "مدير التنزيلات غير متاح", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Cursor cursor = null;
+        ArrayList<Long> ids = new ArrayList<>();
+        ArrayList<String> labels = new ArrayList<>();
+        try {
+            cursor = manager.query(new DownloadManager.Query());
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    long id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID));
+                    String title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE));
+                    int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                    long soFar = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                    long total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                    String state = status == DownloadManager.STATUS_SUCCESSFUL ? "مكتمل"
+                        : status == DownloadManager.STATUS_FAILED ? "فشل"
+                        : status == DownloadManager.STATUS_PAUSED ? "متوقف مؤقتاً" : "قيد التنزيل";
+                    labels.add((title == null ? "ملف" : title) + " · " + state +
+                        (total > 0 ? " · " + (soFar * 100 / total) + "%" : ""));
+                    ids.add(id);
+                }
+            }
+        } catch (Exception error) {
+            android.util.Log.e("MIDAD_BROWSER", "DOWNLOAD_QUERY_FAILED", error);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        if (ids.isEmpty()) {
+            Toast.makeText(this, "لا توجد تنزيلات بعد", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("التنزيلات")
+            .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                long id = ids.get(which);
+                Uri fileUri = manager.getUriForDownloadedFile(id);
+                if (fileUri == null) {
+                    Toast.makeText(this, "الملف لم يكتمل تنزيله بعد", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                String type = manager.getMimeTypeForDownloadedFile(id);
+                Intent open = new Intent(Intent.ACTION_VIEW);
+                open.setDataAndType(fileUri, type == null ? "*/*" : type);
+                open.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try {
+                    startActivity(open);
+                } catch (Exception ignored) {
+                    Toast.makeText(this, "لا يوجد تطبيق لفتح هذا الملف", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("إغلاق", null).show();
     }
 
     private void flushCookies() {
