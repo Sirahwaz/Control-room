@@ -263,9 +263,17 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
             "evidenceRefs": list(evidence_refs),
         }
         if "action" in checkpoint:
-            normalized_checkpoint["action"] = validate_action_checkpoint(
+            normalized_action = validate_action_checkpoint(
                 checkpoint["action"], task_id, payload.get("profile_id")
             )
+            expected_operation = (
+                payload.get("operator_command", {}).get("action")
+                if isinstance(payload.get("operator_command"), dict)
+                else "operator_hint"
+            )
+            if normalized_action["operation"] != expected_operation:
+                raise ContinuityWorkerError("ACTION_CHECKPOINT_OPERATION_MISMATCH")
+            normalized_checkpoint["action"] = normalized_action
         checkpoint = normalized_checkpoint
     return {
         "task_id": task_id,
@@ -572,7 +580,9 @@ class ContinuityBrowserWorker:
         lease = task["lease_token"]
         if task.get("checkpoint") is not None:
             saved = task["checkpoint"].get("action") if isinstance(task["checkpoint"], dict) else None
-            decision = action_checkpoint_resume_decision(saved)
+            decision = action_checkpoint_resume_decision(saved) if saved is not None else {
+                "allowed": False, "code": "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION"
+            }
             if decision["allowed"]:
                 completed = await self.client.complete(task_id, lease, decision["result"])
                 return {
