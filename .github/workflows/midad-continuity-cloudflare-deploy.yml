@@ -1,20 +1,6 @@
 name: MIDAD Continuity — Cloudflare Deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "mobile/factory/x/continuity-ledger/**"
-      - "mobile/factory/x/ephemeral-runner.mjs"
-      - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
-      - ".github/workflows/midad-mncf-ephemeral-runner.yml"
-      - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
-      - "mobile/factory/x/tests/continuity-ledger.test.mjs"
-      - "mobile/factory/x/tests/continuity-wake.test.mjs"
-      - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
-      - "mobile/factory/x/tests/browser-run-runtime.test.mjs"
-      - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
-      - "mobile/factory/x/tests/continuity-deploy-workflow.test.mjs"
   pull_request:
     branches: [main]
     paths:
@@ -73,7 +59,7 @@ jobs:
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-pr-dry-run"
 
   dry-run:
-    if: inputs.operation == 'dry-run'
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'dry-run'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -90,7 +76,7 @@ jobs:
         run: npx --yes wrangler@4.102.0 deploy --dry-run --outdir "$RUNNER_TEMP/midad-continuity-ledger-dry-run"
 
   deploy:
-    if: inputs.operation == 'deploy' || github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     environment: cloudflare-production
     timeout-minutes: 20
@@ -117,15 +103,15 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "::error::Deployment is allowed only from refs/heads/main after PR review and merge."
+            echo "::error::Deployment is allowed only from a manual workflow dispatch on refs/heads/main."
             exit 1
           fi
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$DEPLOY_CONFIRMATION" != "DEPLOY" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+            echo "::error::Production deployment requires a manual workflow dispatch."
+            exit 1
+          fi
+          if [[ "$DEPLOY_CONFIRMATION" != "DEPLOY" ]]; then
             echo "::error::Type DEPLOY in the confirmation input to authorize publication."
-            exit 1
-          fi
-          if [[ "$GITHUB_EVENT_NAME" != "push" && "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
-            echo "::error::Unsupported deployment event."
             exit 1
           fi
           if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ||
