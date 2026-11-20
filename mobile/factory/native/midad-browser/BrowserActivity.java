@@ -57,6 +57,8 @@ public final class BrowserActivity extends Activity {
     private static final String TAB_URLS_KEY = "restorable_urls";
     private static final String TAB_INDEX_KEY = "active_index";
     private static final String LAST_CLOSED_TAB_KEY = "last_closed_url";
+    private static final String PINNED_TAB_INDEXES_KEY = "pinned_tab_indexes_v1";
+    private final List<Boolean> pinnedTabs = new ArrayList<>();
     private static final String LIBRARY_PREFS = "midad_browser_library_v1";
     private static final String HISTORY_PREFS_KEY = "history_v1";
     private static final String BOOKMARKS_PREFS_KEY = "bookmarks_v1";
@@ -396,6 +398,7 @@ public final class BrowserActivity extends Activity {
         WebView next = new WebView(this);
         configureWebView(next);
         tabs.add(next);
+        pinnedTabs.add(false);
         webViewContainer.addView(next, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
         switchToTab(tabs.size() - 1);
@@ -418,6 +421,10 @@ public final class BrowserActivity extends Activity {
 
     private void closeCurrentTab() {
         if (tabs.isEmpty() || webView == null) return;
+        if (activeTabIndex < pinnedTabs.size() && pinnedTabs.get(activeTabIndex)) {
+            Toast.makeText(this, "فك تثبيت التبويب قبل إغلاقه", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String closingUrl = sanitizeRestorableUrl(webView.getUrl());
         tabPrefs.edit().putString(LAST_CLOSED_TAB_KEY, closingUrl).apply();
         if (tabs.size() == 1) {
@@ -426,6 +433,7 @@ public final class BrowserActivity extends Activity {
             return;
         }
         WebView closing = tabs.remove(activeTabIndex);
+        pinnedTabs.remove(activeTabIndex);
         webViewContainer.removeView(closing);
         closing.stopLoading();
         closing.destroy();
@@ -452,16 +460,31 @@ public final class BrowserActivity extends Activity {
 
     private void showTabPicker() {
         if (tabs.isEmpty()) return;
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < tabs.size(); i++) if (pinnedTabs.get(i)) order.add(i);
+        for (int i = 0; i < tabs.size(); i++) if (!pinnedTabs.get(i)) order.add(i);
         String[] labels = new String[tabs.size()];
-        for (int i = 0; i < tabs.size(); i++) {
+        for (int j = 0; j < order.size(); j++) {
+            int i = order.get(j);
             String url = tabs.get(i).getUrl();
-            labels[i] = (i + 1) + ". " + (url == null ? "صفحة جديدة" : url);
+            String host = url == null ? "صفحة جديدة" : Uri.parse(url).getHost();
+            labels[j] = (pinnedTabs.get(i) ? "📌 " : "") + (j + 1) + ". " + (host == null ? "صفحة" : host);
         }
         new AlertDialog.Builder(this)
             .setTitle("تبويبات MIDAD")
-            .setItems(labels, (dialog, which) -> switchToTab(which))
+            .setItems(labels, (dialog, which) -> switchToTab(order.get(which)))
             .setNegativeButton("إغلاق", null)
             .show();
+    }
+
+    private void togglePinCurrentTab() {
+        if (webView == null || !isHttpUrl(webView.getUrl())) {
+            Toast.makeText(this, "يمكن تثبيت صفحات HTTP/HTTPS فقط", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        pinnedTabs.set(activeTabIndex, !pinnedTabs.get(activeTabIndex));
+        saveTabs();
+        Toast.makeText(this, pinnedTabs.get(activeTabIndex) ? "تم تثبيت التبويب" : "تم فك التثبيت", Toast.LENGTH_SHORT).show();
     }
 
     private void updateTabCount() {
@@ -487,8 +510,11 @@ public final class BrowserActivity extends Activity {
     private void saveTabs() {
         if (tabPrefs == null || tabs.isEmpty()) return;
         JSONArray urls = new JSONArray();
+        JSONArray pinned = new JSONArray();
         for (WebView tab : tabs) urls.put(sanitizeRestorableUrl(tab.getUrl()));
+        for (int i = 0; i < pinnedTabs.size(); i++) if (pinnedTabs.get(i)) pinned.put(i);
         tabPrefs.edit().putString(TAB_URLS_KEY, urls.toString())
+            .putString(PINNED_TAB_INDEXES_KEY, pinned.toString())
             .putInt(TAB_INDEX_KEY, Math.min(activeTabIndex, tabs.size() - 1)).apply();
     }
 
@@ -505,6 +531,7 @@ public final class BrowserActivity extends Activity {
             WebView restored = new WebView(this);
             configureWebView(restored);
             tabs.add(restored);
+            pinnedTabs.add(false);
             webViewContainer.addView(restored, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
             restored.loadUrl(url);
@@ -512,6 +539,12 @@ public final class BrowserActivity extends Activity {
         if (tabs.isEmpty()) {
             createTab(MIDAD_HOME);
         } else {
+            JSONArray pinned = new JSONArray();
+            try { pinned = new JSONArray(tabPrefs.getString(PINNED_TAB_INDEXES_KEY, "[]")); } catch (JSONException ignored) {}
+            for (int i = 0; i < pinned.length(); i++) {
+                int index = pinned.optInt(i, -1);
+                if (index >= 0 && index < pinnedTabs.size()) pinnedTabs.set(index, true);
+            }
             int savedIndex = tabPrefs.getInt(TAB_INDEX_KEY, 0);
             switchToTab(Math.max(0, Math.min(savedIndex, tabs.size() - 1)));
         }
@@ -659,6 +692,7 @@ public final class BrowserActivity extends Activity {
 
     private void showBrowserMenu() {
         String[] actions = {
+            pinnedTabs.get(activeTabIndex) ? "فك تثبيت التبويب" : "تثبيت التبويب",
             "استعادة آخر تبويب مغلق", "إضافة إشارة مرجعية", "الإشارات المرجعية", "السجل",
             "التنزيلات", "بحث في الصفحة", "مشاركة الرابط"
         };
@@ -666,13 +700,14 @@ public final class BrowserActivity extends Activity {
             .setTitle("قائمة MIDAD Browser")
             .setItems(actions, (dialog, which) -> {
                 switch (which) {
-                    case 0: restoreLastClosedTab(); break;
-                    case 1: saveBookmark(); break;
-                    case 2: showBookmarks(); break;
-                    case 3: showHistory(); break;
-                    case 4: showDownloads(); break;
-                    case 5: findInPage(); break;
-                    case 6: shareCurrentPage(); break;
+                    case 0: togglePinCurrentTab(); break;
+                    case 1: restoreLastClosedTab(); break;
+                    case 2: saveBookmark(); break;
+                    case 3: showBookmarks(); break;
+                    case 4: showHistory(); break;
+                    case 5: showDownloads(); break;
+                    case 6: findInPage(); break;
+                    case 7: shareCurrentPage(); break;
                     default: break;
                 }
             })
