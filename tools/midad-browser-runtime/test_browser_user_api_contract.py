@@ -12,7 +12,9 @@ class BrowserUserApiContractTests(unittest.TestCase):
     def test_browser_user_and_mcp_bridges_require_server_verified_sessions(self):
         self.assertIn('const userBridge = action === "user_bridge"', self.source)
         self.assertIn('const mcpBridge = body.jsonrpc === "2.0" && typeof body.method === "string"', self.source)
-        self.assertIn('if (!authorized(req) && !userBridge && !mcpBridge)', self.source)
+        self.assertRegex(self.source, r'if\s*\(!authorized\(req\)\s*&&\s*!userBridge\s*&&\s*!mcpBridge\s*&&\s*!githubOidcProxy\)')
+        self.assertIn('const githubOidcProxy = action === "github_oidc_proxy"', self.source)
+        self.assertIn('verifyGithubActionsOidc(token, GITHUB_OIDC_EXPECTED)', self.source)
         self.assertIn('const sessionToken = browserKey || bearer', self.source)
         self.assertIn('const auth = await resolveBrowserUserOwner(sb, sessionToken)', self.source)
         self.assertIn('browser_user_origin_not_allowed', self.source)
