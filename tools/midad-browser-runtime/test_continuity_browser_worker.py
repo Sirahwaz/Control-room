@@ -7,6 +7,7 @@ import signal
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from continuity_browser_worker_v2 import (
@@ -17,6 +18,10 @@ from continuity_browser_worker_v2 import (
     register_sigterm_handler,
     validate_browser_payload,
     validate_claimed_task,
+    build_action_checkpoint,
+    validate_action_checkpoint,
+    action_checkpoint_resume_decision,
+    _ResultSink,
 )
 
 CAPABILITIES = frozenset({
@@ -47,7 +52,7 @@ class FakeLedgerClient:
 
     async def checkpoint(self, task_id, lease_token, checkpoint):
         required = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
-        if set(checkpoint) != required:
+        if set(checkpoint) not in (required, required | {"action"}):
             raise AssertionError("BROWSER_CHECKPOINT_SCHEMA_MISMATCH")
         if checkpoint["taskId"] != task_id or checkpoint["state"] != "running":
             raise AssertionError("BROWSER_CHECKPOINT_IDENTITY_OR_STATE_MISMATCH")
@@ -57,6 +62,9 @@ class FakeLedgerClient:
             raise AssertionError("BROWSER_CHECKPOINT_TIMESTAMP_INVALID")
         if not isinstance(checkpoint["evidenceRefs"], list) or len(checkpoint["evidenceRefs"]) > 20:
             raise AssertionError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
+        if "action" in checkpoint and not isinstance(checkpoint["action"], dict):
+            raise AssertionError("ACTION_CHECKPOINT_INVALID")
+        self.claim_checkpoint = checkpoint
         self.calls.append(("checkpoint", task_id, checkpoint))
         return {"ok": True}
 
@@ -91,9 +99,30 @@ class FakeOperator:
         return {"job_id": job["id"], **self.result}
 
 
+class FakeBrowserSession:
+    last_status = "READY"
+    authenticated = False
+    session_storage = "memory_only"
+
+    async def execute(self, command):
+        return {
+            "status": "INSPECTED",
+            "action": command["action"],
+            "url": "https://example.com/dashboard",
+            "title": "Dashboard",
+        }
+
+
 class FakeSessionPool:
     def __init__(self):
         self.closed = False
+        self.sessions = {}
+        self.session_store = None
+
+    async def ensure(self, profile):
+        session = FakeBrowserSession()
+        self.sessions[profile["account_id"]] = session
+        return session
 
     async def close_all(self):
         self.closed = True
@@ -290,6 +319,9 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("page body", str(stored))
         self.assertEqual(stored["session_storage"], "encrypted_at_rest")
         self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["worker_id"], self.config.node_id)
+        self.assertEqual(operator.jobs[0]["owner_user_id"], self.owner)
+        self.assertEqual(operator.jobs[0]["lease_token"], "a" * 64)
 
     async def test_human_approval_action_is_not_dispatched_to_operator(self):
         client = FakeLedgerClient({"profile_id": "example-account", "operator_command": {"action": "click", "account_id": "example-account"}})
@@ -421,6 +453,38 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(pool.closed)
         self.assertEqual(runtime.ended, 1)
         self.assertTrue(any(call[0] == "fail" and call[2] == "VAULT_LEASE_LOST_DURING_BROWSER_TASK" for call in client.calls))
+
+
+
+    async def test_real_operator_worker_executes_through_continuity_lease_adapter(self):
+        client = FakeLedgerClient({
+            "profile_id": "example-account",
+            "operator_hint": "inspect example",
+        })
+        pool = FakeSessionPool()
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config,
+                client=client,
+                operator=None,
+                session_pool=pool,
+                proxy_runtime=SimpleNamespace(central_mode=False),
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["status"], "INSPECTED")
+        self.assertEqual(result["ledger_state"], "COMPLETED")
+        self.assertTrue(any(call[0] == "complete" for call in client.calls))
+        self.assertTrue(pool.sessions)
+
+    async def test_legacy_operator_adapter_accepts_continuity_lease_renewal(self):
+        result = await _ResultSink().call(
+            "renew_operator_lease",
+            job_id="task-browser-001",
+            worker_id=self.config.node_id,
+            owner_user_id=self.owner,
+            lease_token="a" * 64,
+        )
+        self.assertIs(result.get("renewed"), True)
 
 
 if __name__ == "__main__":

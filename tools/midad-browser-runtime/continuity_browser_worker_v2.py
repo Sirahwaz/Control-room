@@ -67,6 +67,72 @@ def _contains_sensitive(value: Any, depth: int = 0) -> bool:
     return False
 
 
+def build_action_checkpoint(task_id: str, profile_id: str, action_id: str,
+                            operation: str, status: str, updated_at: int,
+                            result: dict | None = None) -> dict:
+    """Build a secret-free, task-bound action checkpoint with a stable idempotency key."""
+    identity = {"taskId": task_id, "profileId": profile_id, "actionId": action_id, "operation": operation}
+    if (
+        not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", task_id or "")
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", profile_id or "")
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", action_id or "")
+        or operation not in {"status", "inspect", "wait_for_selector", "navigate", "start_session", "stop_session", "click", "fill", "submit_form", "operator_hint"}
+        or status not in {"running", "succeeded", "failed", "reconciliation_required"}
+        or isinstance(updated_at, bool) or not isinstance(updated_at, int) or updated_at < 0
+    ):
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_INVALID")
+    safe_result = result if result is not None else None
+    if safe_result is not None and (
+        not isinstance(safe_result, dict) or _contains_sensitive(safe_result)
+        or len(json.dumps(safe_result, separators=(",", ":"))) > 12000
+    ):
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_RESULT_INVALID_OR_SENSITIVE")
+    if status == "succeeded" and safe_result is None:
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_RESULT_REQUIRED")
+    if status != "succeeded" and safe_result is not None:
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_RESULT_STATE_INVALID")
+    key = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    return {
+        "actionId": action_id,
+        "idempotencyKey": key,
+        "operation": operation,
+        "status": status,
+        **({"result": safe_result} if safe_result is not None else {}),
+    }
+
+
+def validate_action_checkpoint(action: Any, task_id: str, profile_id: str) -> dict:
+    if not isinstance(action, dict):
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_INVALID")
+    required = {"actionId", "idempotencyKey", "operation", "status"}
+    if set(action) not in (required, required | {"result"}):
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_FIELDS_INVALID")
+    normalized = build_action_checkpoint(
+        task_id, profile_id, action.get("actionId"), action.get("operation"),
+        action.get("status"), action.get("updatedAt", 0) if "updatedAt" in action else 0,
+        action.get("result"),
+    )
+    if not re.fullmatch(r"[a-f0-9]{64}", str(action.get("idempotencyKey") or "")):
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_IDEMPOTENCY_KEY_INVALID")
+    if normalized["idempotencyKey"] != action["idempotencyKey"]:
+        raise ContinuityWorkerError("ACTION_CHECKPOINT_IDENTITY_MISMATCH")
+    return normalized
+
+
+def action_checkpoint_resume_decision(action: Any) -> dict:
+    if not isinstance(action, dict):
+        return {"allowed": False, "code": "ACTION_CHECKPOINT_MISSING"}
+    if action.get("operation") == "operator_hint":
+        return {"allowed": False, "code": "UNTRUSTED_OPERATOR_HINT_NOT_RESUMABLE"}
+    if action.get("operation") not in {"status", "inspect", "wait_for_selector"}:
+        return {"allowed": False, "code": "ACTION_NOT_AUTO_RESUMABLE"}
+    if action.get("status") != "succeeded":
+        return {"allowed": False, "code": "ACTION_IN_PROGRESS_REQUIRES_RECONCILIATION"}
+    if not isinstance(action.get("result"), dict):
+        return {"allowed": False, "code": "ACTION_CHECKPOINT_RESULT_REQUIRED"}
+    return {"allowed": True, "code": "RESUME_FROM_COMPLETED_ACTION", "result": action["result"]}
+
+
 def validate_browser_payload(payload: Any) -> dict:
     if not isinstance(payload, dict) or set(payload) - {"profile_id", "operator_hint", "operator_command", "credential_binding_ids"}:
         raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
@@ -166,7 +232,8 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
     if checkpoint is not None:
         if not isinstance(checkpoint, dict):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_INVALID")
-        if set(checkpoint) != {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}:
+        allowed_checkpoint_keys = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
+        if set(checkpoint) not in (allowed_checkpoint_keys, allowed_checkpoint_keys | {"action"}):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_FIELDS_INVALID")
         if checkpoint.get("taskId") != task_id or checkpoint.get("profileId") != payload.get("profile_id"):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_IDENTITY_MISMATCH")
@@ -188,13 +255,26 @@ def validate_claimed_task(claim: Any, owner_id: str) -> dict:
             )
         ):
             raise ContinuityWorkerError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
-        checkpoint = {
+        normalized_checkpoint = {
             "taskId": task_id,
             "profileId": payload.get("profile_id"),
             "state": checkpoint["state"],
             "updatedAt": updated_at,
             "evidenceRefs": list(evidence_refs),
         }
+        if "action" in checkpoint:
+            normalized_action = validate_action_checkpoint(
+                checkpoint["action"], task_id, payload.get("profile_id")
+            )
+            expected_operation = (
+                payload.get("operator_command", {}).get("action")
+                if isinstance(payload.get("operator_command"), dict)
+                else "operator_hint"
+            )
+            if normalized_action["operation"] != expected_operation:
+                raise ContinuityWorkerError("ACTION_CHECKPOINT_OPERATION_MISMATCH")
+            normalized_checkpoint["action"] = normalized_action
+        checkpoint = normalized_checkpoint
     return {
         "task_id": task_id,
         "owner_id": claimed_owner,
@@ -360,7 +440,9 @@ class ContinuityWorkerConfig:
 class _ResultSink:
     """Discards the legacy Gateway side-effects while reusing its command executor."""
 
-    async def call(self, _action: str, **_payload):
+    async def call(self, action: str, **_payload):
+        if action == "renew_operator_lease":
+            return {"renewed": True}
         return {"ok": True}
 
     async def record_event(self, **_payload):
@@ -499,15 +581,27 @@ class ContinuityBrowserWorker:
         task_id = task["task_id"]
         lease = task["lease_token"]
         if task.get("checkpoint") is not None:
+            saved = task["checkpoint"].get("action") if isinstance(task["checkpoint"], dict) else None
+            decision = action_checkpoint_resume_decision(saved) if saved is not None else {
+                "allowed": False, "code": "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION"
+            }
+            if decision["allowed"]:
+                completed = await self.client.complete(task_id, lease, decision["result"])
+                return {
+                    "task_id": task_id,
+                    "status": "RESUMED",
+                    "code": decision["code"],
+                    "ledger_state": completed.get("state", "COMPLETED"),
+                }
             outcome = await self.client.fail(
                 task_id, lease,
-                reason="BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION",
+                reason=decision["code"] or "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION",
                 retryable=False,
             )
             return {
                 "task_id": task_id,
                 "status": "BLOCKED",
-                "code": "BROWSER_CHECKPOINT_REQUIRES_RECONCILIATION",
+                "code": decision["code"],
                 "ledger_state": outcome.get("state"),
             }
         payload = validate_browser_payload(task["payload"])
@@ -520,12 +614,19 @@ class ContinuityBrowserWorker:
         if resolved_command.get("account_id") != payload["profile_id"]:
             raise ContinuityWorkerError("BROWSER_PROFILE_ID_MISMATCH")
         import time
+        operation = resolved_command.get("action") if payload["mode"] == "command" else "operator_hint"
+        action_id = resolved_command.get("action_id") or "action-1"
+        action_checkpoint = build_action_checkpoint(
+            task_id, payload["profile_id"], action_id, operation, "running",
+            int(time.time() * 1000),
+        )
         await self.client.checkpoint(task_id, lease, {
             "taskId": task_id,
             "profileId": payload["profile_id"],
             "state": "running",
             "updatedAt": int(time.time() * 1000),
             "evidenceRefs": [],
+            "action": action_checkpoint,
         })
         if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
             self.proxy_runtime.set_task_context({
@@ -536,6 +637,9 @@ class ContinuityBrowserWorker:
         job = {
             "id": task_id,
             "state": "PREPARING",
+            "worker_id": getattr(self.operator, "worker_id", self.config.node_id),
+            "owner_user_id": self.config.owner_id,
+            "lease_token": lease,
             "input_data": command_payload,
         }
         done = asyncio.Event()
@@ -569,6 +673,19 @@ class ContinuityBrowserWorker:
             raw_result = await execution
             result = sanitize_browser_result(raw_result)
             status = str(result.get("status", "FAILED")).upper()
+            if operation in {"status", "inspect", "wait_for_selector"} and status not in {"FAILED", "TIMEOUT", "CANCELLED", "HUMAN_GATE"}:
+                action_checkpoint = build_action_checkpoint(
+                    task_id, payload["profile_id"], action_id, operation, "succeeded",
+                    int(time.time() * 1000), result=result,
+                )
+                await self.client.checkpoint(task_id, lease, {
+                    "taskId": task_id,
+                    "profileId": payload["profile_id"],
+                    "state": "running",
+                    "updatedAt": int(time.time() * 1000),
+                    "evidenceRefs": [],
+                    "action": action_checkpoint,
+                })
             if central_vault:
                 # Persist the browser state encrypted, close the context, and release its
                 # short-lived proxy-auth lease before the task is acknowledged.

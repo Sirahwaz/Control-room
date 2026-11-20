@@ -60,12 +60,12 @@ function requiredCapabilities(task) {
   }[task.workload];
   return [...new Set([...workload, ...task.required_capabilities])];
 }
-function validateBrowserCheckpoint(task, value) {
+async function validateBrowserCheckpoint(task, value) {
   if (task.workload !== 'BROWSER_SESSION') return { ok: true, checkpoint: value };
   if (!isRecord(value)) return { ok: false, code: 'CHECKPOINT_INVALID' };
   const payload = JSON.parse(task.payload_json || '{}');
   const expectedProfileId = payload.profile_id;
-  const allowedKeys = new Set(['taskId', 'profileId', 'state', 'updatedAt', 'evidenceRefs']);
+  const allowedKeys = new Set(['taskId', 'profileId', 'state', 'updatedAt', 'evidenceRefs', 'action']);
   if (Object.keys(value).some(key => !allowedKeys.has(key))) {
     return { ok: false, code: 'CHECKPOINT_FIELDS_INVALID' };
   }
@@ -87,16 +87,78 @@ function validateBrowserCheckpoint(task, value) {
   )) {
     return { ok: false, code: 'CHECKPOINT_EVIDENCE_REFS_INVALID' };
   }
-  return {
-    ok: true,
-    checkpoint: {
-      taskId: value.taskId,
-      profileId: value.profileId,
-      state: value.state,
-      updatedAt: value.updatedAt,
-      evidenceRefs: refs.slice(0, 20),
-    },
+  const checkpoint = {
+    taskId: value.taskId,
+    profileId: value.profileId,
+    state: value.state,
+    updatedAt: value.updatedAt,
+    evidenceRefs: refs.slice(0, 20),
   };
+  if (value.action !== undefined) {
+    const action = value.action;
+    const actionKeys = new Set(['actionId', 'idempotencyKey', 'operation', 'status', 'result']);
+    if (!isRecord(action) || Object.keys(action).some(key => !actionKeys.has(key)) ||
+        !validId(action.actionId) || !/^[a-f0-9]{64}$/.test(action.idempotencyKey || '') ||
+        !['status','inspect','wait_for_selector','navigate','start_session','stop_session','click','fill','submit_form','operator_hint'].includes(action.operation) ||
+        !['running','succeeded','failed','reconciliation_required'].includes(action.status)) {
+      return { ok: false, code: 'ACTION_CHECKPOINT_INVALID' };
+    }
+    const expectedKey = await sha256(canonical({
+      taskId: task.task_id, profileId: expectedProfileId,
+      actionId: action.actionId, operation: action.operation,
+    }));
+    if (action.idempotencyKey !== expectedKey) {
+      return { ok: false, code: 'ACTION_CHECKPOINT_IDEMPOTENCY_KEY_MISMATCH' };
+    }
+    if (action.status === 'succeeded') {
+      const result = action.result;
+      const safeResultKeys = new Set(['status','action','account_id','platform_key','host','session_storage','authenticated','http_status','text_chars','value_length','url','title','text_sha256','code','reason']);
+      if (!isRecord(result) || Object.keys(result).some(key => !safeResultKeys.has(key)) ||
+          containsSensitive(result) || JSON.stringify(result).length > 12000) {
+        return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+      }
+      for (const key of ['status','action','account_id','platform_key','host','session_storage','title','code','reason']) {
+        if (result[key] !== undefined && (typeof result[key] !== 'string' ||
+            result[key].length > (key === 'title' ? 200 : key === 'code' || key === 'reason' ? 300 : 120))) {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
+      if (result.authenticated !== undefined && typeof result.authenticated !== 'boolean') {
+        return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+      }
+      for (const key of ['http_status','text_chars','value_length']) {
+        if (result[key] !== undefined && (!Number.isInteger(result[key]) || result[key] < 0 || result[key] > 30000)) {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
+      if (result.text_sha256 !== undefined && !/^[a-f0-9]{64}$/.test(result.text_sha256)) {
+        return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+      }
+      if (result.url !== undefined) {
+        try {
+          const parsed = new URL(result.url);
+          if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password ||
+              parsed.search || parsed.hash || parsed.port && parsed.port !== '443' ||
+              /(?:token|secret|session|auth|reset|verify|code|key|password|otp|signature)/i.test(decodeURIComponent(parsed.pathname)) ||
+              result.url !== parsed.origin + parsed.pathname) {
+            return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+          }
+        } catch {
+          return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_INVALID' };
+        }
+      }
+    } else if (action.result !== undefined) {
+      return { ok: false, code: 'ACTION_CHECKPOINT_RESULT_STATE_INVALID' };
+    }
+    checkpoint.action = {
+      actionId: action.actionId,
+      idempotencyKey: action.idempotencyKey,
+      operation: action.operation,
+      status: action.status,
+      ...(action.result !== undefined ? { result: action.result } : {}),
+    };
+  }
+  return { ok: true, checkpoint };
 }
 function rows(cursor) {
   return cursor && typeof cursor.toArray === 'function' ? cursor.toArray() : [];
@@ -818,9 +880,21 @@ export class MidadContinuityLedger {
     const task = await this.validateLease(node, body);
     if (!task) return response(409, { ok: false, error: 'LEASE_INVALID_OR_EXPIRED' });
     if (!isRecord(body.checkpoint) || JSON.stringify(body.checkpoint).length > 32768) return response(422, { ok: false, error: 'CHECKPOINT_INVALID' });
-    const validation = validateBrowserCheckpoint(task, body.checkpoint);
+    const validation = await validateBrowserCheckpoint(task, body.checkpoint);
     if (!validation.ok) return response(422, { ok: false, error: validation.code });
     const checkpoint = validation.checkpoint;
+    const previous = task.checkpoint_json ? JSON.parse(task.checkpoint_json) : null;
+    if (previous?.action) {
+      const before = previous.action, after = checkpoint.action;
+      if (!after || before.actionId !== after.actionId ||
+          before.idempotencyKey !== after.idempotencyKey || before.operation !== after.operation) {
+        return response(409, { ok: false, error: 'ACTION_CHECKPOINT_IDENTITY_CHANGED' });
+      }
+      if (before.status !== 'running' &&
+          (after.status !== before.status || canonical(after.result ?? null) !== canonical(before.result ?? null))) {
+        return response(409, { ok: false, error: 'ACTION_CHECKPOINT_REGRESSION' });
+      }
+    }
     const now = Date.now();
     let saved;
     this.tx(() => {
