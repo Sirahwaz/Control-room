@@ -17,6 +17,9 @@ from continuity_browser_worker_v2 import (
     register_sigterm_handler,
     validate_browser_payload,
     validate_claimed_task,
+    build_action_checkpoint,
+    validate_action_checkpoint,
+    action_checkpoint_resume_decision,
 )
 
 CAPABILITIES = frozenset({
