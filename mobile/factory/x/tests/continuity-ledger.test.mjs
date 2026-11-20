@@ -295,3 +295,97 @@ test('claim rejects unsupported workload filters before scanning the queue', asy
     storage.close();
   }
 });
+
+
+test('browser checkpoint binds task and profile, bounds evidence references, and persists only safe metadata', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-checkpoint', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operation: 'inspect' },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-checkpoint');
+    const lease = acquired.body.task.lease_token;
+    const checkpoint = {
+      taskId: 'browser-checkpoint',
+      profileId: 'profile-a',
+      state: 'running',
+      updatedAt: NOW,
+      evidenceRefs: Array.from({ length: 25 }, (_, index) => 'evidence:' + index),
+    };
+    const saved = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-checkpoint', lease_token: lease, checkpoint,
+    }, nodeHeaders('node-a', token))));
+    assert.equal(saved.status, 200);
+    const persisted = JSON.parse(storage.db.prepare(
+      'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
+    ).get('browser-checkpoint').checkpoint_json);
+    assert.equal(persisted.taskId, 'browser-checkpoint');
+    assert.equal(persisted.profileId, 'profile-a');
+    assert.equal(persisted.evidenceRefs.length, 20);
+    assert.equal(Object.keys(persisted).sort().join(','), 'evidenceRefs,profileId,state,taskId,updatedAt');
+  } finally {
+    storage.close();
+  }
+});
+
+test('browser checkpoint rejects a task or profile identity mismatch', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-checkpoint-mismatch', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operation: 'inspect' },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-checkpoint-mismatch');
+    const lease = acquired.body.task.lease_token;
+    const result = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-checkpoint-mismatch', lease_token: lease,
+      checkpoint: {
+        taskId: 'browser-checkpoint-mismatch', profileId: 'profile-b',
+        state: 'running', updatedAt: NOW, evidenceRefs: [],
+      },
+    }, nodeHeaders('node-a', token))));
+    assert.equal(result.status, 422);
+    assert.equal(result.body.error, 'CHECKPOINT_IDENTITY_MISMATCH');
+    assert.equal(storage.db.prepare(
+      'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
+    ).get('browser-checkpoint-mismatch').checkpoint_json, null);
+  } finally {
+    storage.close();
+  }
+});
+
+test('browser checkpoint rejects terminal states, invalid timestamps, and raw evidence URLs', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-checkpoint-invalid', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', operation: 'inspect' },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-checkpoint-invalid');
+    const lease = acquired.body.task.lease_token;
+    const base = { taskId: 'browser-checkpoint-invalid', profileId: 'profile-a', updatedAt: NOW, evidenceRefs: [] };
+    for (const checkpoint of [
+      { ...base, state: 'completed' },
+      { ...base, state: 'failed' },
+      { ...base, state: 'running', updatedAt: 'not-a-timestamp' },
+      { ...base, state: 'paused', evidenceRefs: ['https://example.com/private/path'] },
+    ]) {
+      const result = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+        task_id: 'browser-checkpoint-invalid', lease_token: lease, checkpoint,
+      }, nodeHeaders('node-a', token))));
+      assert.equal(result.status, 422);
+    }
+    assert.equal(storage.db.prepare(
+      'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
+    ).get('browser-checkpoint-invalid').checkpoint_json, null);
+  } finally {
+    storage.close();
+  }
+});
