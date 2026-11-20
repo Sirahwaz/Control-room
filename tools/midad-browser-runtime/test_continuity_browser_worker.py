@@ -559,5 +559,42 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         )
 
 
+    async def test_multi_action_running_checkpoint_is_quarantined_without_replay(self):
+        payload = {
+            "profile_id": "example-account",
+            "action_plan": [
+                {"action_id": "step-1", "operator_command": {"action": "status", "account_id": "example-account"}},
+                {"action_id": "step-2", "operator_command": {"action": "inspect", "account_id": "example-account"}},
+            ],
+        }
+        running = build_action_checkpoint(
+            "task-browser-001", "example-account", "step-1", "status",
+            "running", 1730000000000,
+        )
+        pending = build_action_checkpoint(
+            "task-browser-001", "example-account", "step-2", "inspect",
+            "pending", 1730000000000,
+        )
+        checkpoint = {
+            "taskId": "task-browser-001", "profileId": "example-account",
+            "state": "running", "updatedAt": 1730000000000,
+            "evidenceRefs": [], "actions": [running, pending], "action_cursor": 0,
+        }
+        client = FakeLedgerClient(payload, checkpoint=checkpoint)
+        operator = FakeOperator({"status": "MUST_NOT_REPLAY"})
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator, session_pool=FakeSessionPool()
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(result["code"], "ACTION_PLAN_IN_FLIGHT_REQUIRES_RECONCILIATION")
+        self.assertEqual(operator.jobs, [])
+        self.assertTrue(any(
+            call[0] == "fail" and call[2] == "ACTION_PLAN_IN_FLIGHT_REQUIRES_RECONCILIATION"
+            and call[3] is False for call in client.calls
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
