@@ -9,6 +9,8 @@ on:
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
       - ".github/workflows/midad-mncf-ephemeral-runner.yml"
       - ".github/workflows/midad-mncf-enroll-cpu-runner.yml"
+      - "mobile/factory/x/tests/continuity-ledger.test.mjs"
+      - "mobile/factory/x/tests/continuity-wake.test.mjs"
       - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
       - "mobile/factory/x/tests/browser-run-runtime.test.mjs"
       - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
@@ -17,6 +19,8 @@ on:
     paths:
       - "mobile/factory/x/continuity-ledger/**"
       - "mobile/factory/x/ephemeral-runner.mjs"
+      - "mobile/factory/x/tests/continuity-ledger.test.mjs"
+      - "mobile/factory/x/tests/continuity-wake.test.mjs"
       - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
       - "mobile/factory/x/tests/browser-run-runtime.test.mjs"
       - ".github/workflows/midad-continuity-cloudflare-deploy.yml"
