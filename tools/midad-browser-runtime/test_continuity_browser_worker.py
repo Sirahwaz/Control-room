@@ -334,7 +334,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             "lease_token": "a" * 64,
             "credential_binding_ids": bindings,
         }])
-        self.assertEqual(operator.jobs[0]["input_data"], {"profile_id": "example-account", "operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
         checkpoint = next(call for call in client.calls if call[0] == "checkpoint")[2]
         self.assertNotIn("credential_binding_ids", str(checkpoint))
         self.assertNotIn("a" * 64, str(checkpoint))
