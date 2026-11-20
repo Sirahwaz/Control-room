@@ -60,7 +60,7 @@ function requiredCapabilities(task) {
   }[task.workload];
   return [...new Set([...workload, ...task.required_capabilities])];
 }
-function validateBrowserCheckpoint(task, value) {
+async function validateBrowserCheckpoint(task, value) {
   if (task.workload !== 'BROWSER_SESSION') return { ok: true, checkpoint: value };
   if (!isRecord(value)) return { ok: false, code: 'CHECKPOINT_INVALID' };
   const payload = JSON.parse(task.payload_json || '{}');
@@ -103,9 +103,13 @@ function validateBrowserCheckpoint(task, value) {
         !['running','succeeded','failed','reconciliation_required'].includes(action.status)) {
       return { ok: false, code: 'ACTION_CHECKPOINT_INVALID' };
     }
-    const identity = JSON.stringify([task.task_id, expectedProfileId, action.actionId, action.operation]);
-    const expectedKeyPromise = sha256(identity);
-    // The key is validated again by the worker; the ledger binds it to stable task/action identity here.
+    const expectedKey = await sha256(canonical({
+      taskId: task.task_id, profileId: expectedProfileId,
+      actionId: action.actionId, operation: action.operation,
+    }));
+    if (action.idempotencyKey !== expectedKey) {
+      return { ok: false, code: 'ACTION_CHECKPOINT_IDEMPOTENCY_KEY_MISMATCH' };
+    }
     if (action.status === 'succeeded') {
       const result = action.result;
       const safeResultKeys = new Set(['status','action','account_id','platform_key','host','session_storage','authenticated','http_status','text_chars','value_length','url','title','text_sha256','code','reason']);
@@ -846,7 +850,7 @@ export class MidadContinuityLedger {
     const task = await this.validateLease(node, body);
     if (!task) return response(409, { ok: false, error: 'LEASE_INVALID_OR_EXPIRED' });
     if (!isRecord(body.checkpoint) || JSON.stringify(body.checkpoint).length > 32768) return response(422, { ok: false, error: 'CHECKPOINT_INVALID' });
-    const validation = validateBrowserCheckpoint(task, body.checkpoint);
+    const validation = await validateBrowserCheckpoint(task, body.checkpoint);
     if (!validation.ok) return response(422, { ok: false, error: validation.code });
     const checkpoint = validation.checkpoint;
     const previous = task.checkpoint_json ? JSON.parse(task.checkpoint_json) : null;
