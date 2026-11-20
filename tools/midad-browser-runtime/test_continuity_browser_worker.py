@@ -107,6 +107,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         profile = {
             "account_id": "example-account",
             "host": "example.com",
+            "platform_key": "example",
             "username": "operator@example.invalid",
             "password_secret_ref": "MIDAD_TEST_BROWSER_PASSWORD",
         }
