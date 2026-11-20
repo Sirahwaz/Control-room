@@ -14,6 +14,7 @@ on:
       - "mobile/factory/x/tests/continuity-github-oidc.test.mjs"
       - "mobile/factory/x/tests/browser-run-runtime.test.mjs"
       - "mobile/factory/x/tests/continuity-runner-enrollment-workflow.test.mjs"
+      - "mobile/factory/x/tests/continuity-deploy-workflow.test.mjs"
   pull_request:
     branches: [main]
     paths:
