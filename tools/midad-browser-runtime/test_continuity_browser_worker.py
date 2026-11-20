@@ -53,7 +53,7 @@ class FakeLedgerClient:
 
     async def checkpoint(self, task_id, lease_token, checkpoint):
         required = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
-        if set(checkpoint) not in (required, required | {"action"}):
+        if set(checkpoint) not in (required, required | {"action"}, required | {"actions", "action_cursor"}):
             raise AssertionError("BROWSER_CHECKPOINT_SCHEMA_MISMATCH")
         if checkpoint["taskId"] != task_id or checkpoint["state"] != "running":
             raise AssertionError("BROWSER_CHECKPOINT_IDENTITY_OR_STATE_MISMATCH")
@@ -65,6 +65,8 @@ class FakeLedgerClient:
             raise AssertionError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
         if "action" in checkpoint and not isinstance(checkpoint["action"], dict):
             raise AssertionError("ACTION_CHECKPOINT_INVALID")
+        if "actions" in checkpoint and (not isinstance(checkpoint["actions"], list) or not isinstance(checkpoint.get("action_cursor"), int)):
+            raise AssertionError("ACTION_PLAN_CHECKPOINT_INVALID")
         self.claim_checkpoint = checkpoint
         self.calls.append(("checkpoint", task_id, checkpoint))
         return {"ok": True}
@@ -519,6 +521,42 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             lease_token="a" * 64,
         )
         self.assertIs(result.get("renewed"), True)
+
+
+    async def test_multi_action_plan_executes_in_order_and_persists_each_completed_step(self):
+        client = FakeLedgerClient({
+            "profile_id": "example-account",
+            "action_plan": [
+                {"action_id": "step-1", "operator_command": {
+                    "action": "status", "account_id": "example-account",
+                }},
+                {"action_id": "step-2", "operator_command": {
+                    "action": "inspect", "account_id": "example-account",
+                }},
+            ],
+        })
+        operator = FakeOperator({"status": "INSPECTED", "title": "Dashboard"})
+        with patch.dict(os.environ, {"MIDAD_TEST_BROWSER_PASSWORD": "test-only-secret"}):
+            worker = ContinuityBrowserWorker(
+                self.config, client=client, operator=operator, session_pool=FakeSessionPool()
+            )
+        result = await worker.poll_once()
+        self.assertEqual(result["ledger_state"], "COMPLETED")
+        self.assertEqual(len(operator.jobs), 2)
+        self.assertEqual(
+            [job["input_data"]["operator_command"]["action"] for job in operator.jobs],
+            ["status", "inspect"],
+        )
+        plan_checkpoints = [
+            call[2] for call in client.calls
+            if call[0] == "checkpoint" and "actions" in call[2]
+        ]
+        self.assertEqual(len(plan_checkpoints), 4)
+        self.assertEqual([cp["action_cursor"] for cp in plan_checkpoints], [0, 1, 1, 2])
+        self.assertEqual(
+            [item["status"] for item in plan_checkpoints[-1]["actions"]],
+            ["succeeded", "succeeded"],
+        )
 
 
 if __name__ == "__main__":
