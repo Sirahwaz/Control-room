@@ -17,6 +17,7 @@ from continuity_browser_worker_v2 import (
     sanitize_browser_result,
     register_sigterm_handler,
     validate_browser_payload,
+    validate_browser_action_plan,
     validate_claimed_task,
     build_action_checkpoint,
     validate_action_checkpoint,
@@ -215,6 +216,39 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ContinuityWorkerError, "HUMAN_APPROVAL_REQUIRED|ACTION_NOT_ALLOWED"):
                     validate_browser_payload({"profile_id": "example-account", "operator_command": {"action": action, "account_id": "example-account"}})
 
+
+    def test_multi_action_plan_accepts_bounded_typed_read_only_commands(self):
+        payload = {
+            "profile_id": "example-account",
+            "action_plan": [
+                {"action_id": "step-status", "operator_command": {"action": "status", "account_id": "example-account"}},
+                {"action_id": "step-inspect", "operator_command": {"action": "inspect", "account_id": "example-account"}},
+                {"action_id": "step-wait", "operator_command": {"action": "wait_for_selector", "account_id": "example-account", "selector": "#ready"}},
+            ],
+        }
+        plan = validate_browser_action_plan(payload)
+        self.assertEqual(plan["mode"], "plan")
+        self.assertEqual([step["action_id"] for step in plan["actions"]], ["step-status", "step-inspect", "step-wait"])
+
+    def test_multi_action_plan_rejects_duplicate_ids_unsafe_actions_and_untyped_hints(self):
+        duplicate = {"profile_id": "example-account", "action_plan": [
+            {"action_id": "same", "operator_command": {"action": "status", "account_id": "example-account"}},
+            {"action_id": "same", "operator_command": {"action": "inspect", "account_id": "example-account"}},
+        ]}
+        unsafe = {"profile_id": "example-account", "action_plan": [
+            {"action_id": "submit", "operator_command": {"action": "submit_form", "account_id": "example-account"}},
+        ]}
+        untyped = {"profile_id": "example-account", "action_plan": [
+            {"action_id": "hint", "operator_hint": "inspect my account"},
+        ]}
+        oversized = {"profile_id": "example-account", "action_plan": [
+            {"action_id": f"step-{i}", "operator_command": {"action": "status", "account_id": "example-account"}}
+            for i in range(9)
+        ]}
+        for payload in (duplicate, unsafe, untyped, oversized):
+            with self.subTest(payload=payload):
+                with self.assertRaises(ContinuityWorkerError):
+                    validate_browser_action_plan(payload)
 
     def test_credential_binding_ids_are_accepted_as_non_secret_task_policy_metadata(self):
         payload = {
