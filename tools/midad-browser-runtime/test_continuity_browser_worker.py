@@ -50,7 +50,7 @@ class FakeLedgerClient:
 
     async def checkpoint(self, task_id, lease_token, checkpoint):
         required = {"taskId", "profileId", "state", "updatedAt", "evidenceRefs"}
-        if set(checkpoint) != required:
+        if set(checkpoint) not in (required, required | {"action"}):
             raise AssertionError("BROWSER_CHECKPOINT_SCHEMA_MISMATCH")
         if checkpoint["taskId"] != task_id or checkpoint["state"] != "running":
             raise AssertionError("BROWSER_CHECKPOINT_IDENTITY_OR_STATE_MISMATCH")
@@ -60,6 +60,9 @@ class FakeLedgerClient:
             raise AssertionError("BROWSER_CHECKPOINT_TIMESTAMP_INVALID")
         if not isinstance(checkpoint["evidenceRefs"], list) or len(checkpoint["evidenceRefs"]) > 20:
             raise AssertionError("BROWSER_CHECKPOINT_EVIDENCE_INVALID")
+        if "action" in checkpoint and not isinstance(checkpoint["action"], dict):
+            raise AssertionError("ACTION_CHECKPOINT_INVALID")
+        self.claim_checkpoint = checkpoint
         self.calls.append(("checkpoint", task_id, checkpoint))
         return {"ok": True}
 
