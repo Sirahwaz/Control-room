@@ -355,6 +355,7 @@ class ContinuityBrowserWorker:
         if os.name != "nt" and (registry_path.stat().st_mode & 0o077):
             raise ContinuityWorkerError("ACCOUNT_REGISTRY_PERMISSIONS_INVALID")
         registry = AccountRegistry(str(registry_path), set(config.allowed_hosts))
+        self.registry = registry
         profiles = registry.list_profiles()
         if not profiles:
             raise ContinuityWorkerError("NO_APPROVED_BROWSER_ACCOUNT_PROFILES")
@@ -465,7 +466,7 @@ class ContinuityBrowserWorker:
         lease = task["lease_token"]
         payload = validate_browser_payload(task["payload"])
         if payload["mode"] == "hint":
-            resolved_command = build_operator_request(payload["value"], self.operator._profiles())
+            resolved_command = build_operator_request(payload["value"], self.registry.list_profiles())
             command_payload = {"operator_hint": payload["value"]}
         else:
             resolved_command = payload["value"]
