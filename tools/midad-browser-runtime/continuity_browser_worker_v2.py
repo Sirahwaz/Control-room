@@ -23,7 +23,7 @@ from typing import Any
 from account_registry import AccountRegistry
 from continuity_ledger_client import ContinuityLedgerClient, ContinuityLedgerError
 from encrypted_session_store import EncryptedSessionStore
-from operator_command_router import SAFE_ACTIONS, infer_hint_action
+from operator_command_router import SAFE_ACTIONS, build_operator_request, infer_hint_action
 from operator_worker import OperatorWorker
 from persistent_session import BrowserSessionError, PersistentSessionPool
 from proxy_policy import ProxyRuntime
@@ -68,10 +68,13 @@ def _contains_sensitive(value: Any, depth: int = 0) -> bool:
 
 
 def validate_browser_payload(payload: Any) -> dict:
-    if not isinstance(payload, dict) or set(payload) - {"operator_hint", "operator_command", "credential_binding_ids"}:
+    if not isinstance(payload, dict) or set(payload) - {"profile_id", "operator_hint", "operator_command", "credential_binding_ids"}:
         raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
     if _contains_sensitive(payload):
         raise ContinuityWorkerError("SENSITIVE_TASK_PAYLOAD_REJECTED")
+    profile_id = payload.get("profile_id")
+    if not isinstance(profile_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", profile_id):
+        raise ContinuityWorkerError("BROWSER_PROFILE_ID_REQUIRED")
     binding_ids = payload.get("credential_binding_ids", [])
     if (
         not isinstance(binding_ids, list)
@@ -101,6 +104,7 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("ACTION_NOT_ALLOWED_IN_BROWSER_V2")
         return {
             "mode": "hint", "value": hint.strip(), "action": action,
+            "profile_id": profile_id,
             "credential_binding_ids": list(binding_ids),
         }
     if "operator_command" in payload:
@@ -114,6 +118,8 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("ACTION_NOT_ALLOWED_IN_BROWSER_V2")
         if "value" in command:
             raise ContinuityWorkerError("HUMAN_APPROVAL_REQUIRED")
+        if command.get("account_id") != profile_id:
+            raise ContinuityWorkerError("BROWSER_PROFILE_ID_MISMATCH")
         if set(command) - {
             "version", "action", "platform_key", "account_id", "target_url",
             "selector", "action_approved", "request_text",
@@ -124,6 +130,7 @@ def validate_browser_payload(payload: Any) -> dict:
             raise ContinuityWorkerError("OPERATOR_COMMAND_TEXT_INVALID")
         return {
             "mode": "command", "value": command, "action": action,
+            "profile_id": profile_id,
             "credential_binding_ids": list(binding_ids),
         }
     raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
@@ -457,16 +464,21 @@ class ContinuityBrowserWorker:
         task_id = task["task_id"]
         lease = task["lease_token"]
         payload = validate_browser_payload(task["payload"])
-        command_payload = (
-            {"operator_hint": payload["value"]}
-            if payload["mode"] == "hint"
-            else {"operator_command": payload["value"]}
-        )
+        if payload["mode"] == "hint":
+            resolved_command = build_operator_request(payload["value"], self.operator._profiles())
+            command_payload = {"operator_hint": payload["value"]}
+        else:
+            resolved_command = payload["value"]
+            command_payload = {"operator_command": payload["value"]}
+        if resolved_command.get("account_id") != payload["profile_id"]:
+            raise ContinuityWorkerError("BROWSER_PROFILE_ID_MISMATCH")
+        import time
         await self.client.checkpoint(task_id, lease, {
-            "stage": "claimed",
-            "attempt": task["attempt"],
-            "worker_version": "midad-operator-worker-v2.0.0",
-            "action": payload["action"],
+            "taskId": task_id,
+            "profileId": payload["profile_id"],
+            "state": "running",
+            "updatedAt": int(time.time() * 1000),
+            "evidenceRefs": [],
         })
         if self.proxy_runtime is not None and getattr(self.proxy_runtime, "central_mode", False):
             self.proxy_runtime.set_task_context({
