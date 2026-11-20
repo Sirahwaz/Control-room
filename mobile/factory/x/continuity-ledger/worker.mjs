@@ -787,6 +787,7 @@ export class MidadContinuityLedger {
     return response(200, { ok: true, task: {
       task_id: claimed.task_id, owner_id: claimed.owner_id,
       workload: claimed.workload, payload: JSON.parse(claimed.payload_json),
+      checkpoint: claimed.checkpoint_json ? JSON.parse(claimed.checkpoint_json) : null,
       attempt: claimed.attempt, lease_expires_at: new Date(claimed.lease_expires_at_ms).toISOString(), lease_token: token,
     } });
   }
