@@ -202,6 +202,74 @@ def validate_browser_payload(payload: Any) -> dict:
     raise ContinuityWorkerError("BROWSER_TASK_PAYLOAD_INVALID")
 
 
+def validate_browser_action_plan(payload: Any) -> dict:
+    """Validate a bounded sequence of explicit, read-only operator commands.
+
+    Natural-language hints and actions with external side effects are never
+    accepted in a resumable plan.
+    """
+    if not isinstance(payload, dict) or set(payload) - {
+        "profile_id", "action_plan", "credential_binding_ids"
+    }:
+        raise ContinuityWorkerError("BROWSER_ACTION_PLAN_INVALID")
+    if _contains_sensitive(payload):
+        raise ContinuityWorkerError("SENSITIVE_TASK_PAYLOAD_REJECTED")
+    profile_id = payload.get("profile_id")
+    if not isinstance(profile_id, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", profile_id
+    ):
+        raise ContinuityWorkerError("BROWSER_PROFILE_ID_REQUIRED")
+    raw_plan = payload.get("action_plan")
+    if not isinstance(raw_plan, list) or not 1 <= len(raw_plan) <= 8:
+        raise ContinuityWorkerError("BROWSER_ACTION_PLAN_SIZE_INVALID")
+    binding_ids = payload.get("credential_binding_ids", [])
+    if (
+        not isinstance(binding_ids, list) or len(binding_ids) > 8
+        or len(binding_ids) != len(set(binding_ids))
+        or any(not isinstance(value, str) or not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", value
+        ) for value in binding_ids)
+    ):
+        raise ContinuityWorkerError("CREDENTIAL_BINDING_IDS_INVALID")
+    allowed = {"status", "inspect", "navigate", "wait_for_selector"}
+    actions = []
+    seen_ids = set()
+    for item in raw_plan:
+        if not isinstance(item, dict) or set(item) != {"action_id", "operator_command"}:
+            raise ContinuityWorkerError("BROWSER_ACTION_PLAN_STEP_INVALID")
+        action_id = item.get("action_id")
+        if not isinstance(action_id, str) or not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", action_id
+        ) or action_id in seen_ids:
+            raise ContinuityWorkerError("BROWSER_ACTION_PLAN_ID_INVALID")
+        seen_ids.add(action_id)
+        command = item.get("operator_command")
+        if not isinstance(command, dict):
+            raise ContinuityWorkerError("BROWSER_ACTION_PLAN_COMMAND_REQUIRED")
+        operation = str(command.get("action") or "").strip().lower()
+        if operation not in allowed:
+            raise ContinuityWorkerError(
+                "HUMAN_APPROVAL_REQUIRED" if operation in _INTERACTIVE_ACTIONS
+                else "BROWSER_ACTION_PLAN_OPERATION_NOT_ALLOWED"
+            )
+        validated = validate_browser_payload({
+            "profile_id": profile_id,
+            "operator_command": command,
+            "credential_binding_ids": list(binding_ids),
+        })
+        actions.append({
+            "action_id": action_id,
+            "operation": validated["action"],
+            "command": validated["value"],
+        })
+    return {
+        "mode": "plan",
+        "profile_id": profile_id,
+        "credential_binding_ids": list(binding_ids),
+        "actions": actions,
+    }
+
+
 def validate_claimed_task(claim: Any, owner_id: str) -> dict:
     if not isinstance(claim, dict) or claim.get("ok") is not True:
         raise ContinuityWorkerError("LEDGER_CLAIM_RESPONSE_INVALID")
