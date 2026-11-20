@@ -76,6 +76,14 @@ class FakeOperator:
         self.result = result
         self.jobs = []
 
+    def _profiles(self):
+        return [{
+            "account_id": "example-account",
+            "host": "example.com",
+            "platform_key": "example",
+            "password_secret_ref": "MIDAD_TEST_BROWSER_PASSWORD",
+        }]
+
     async def process_job(self, job):
         self.jobs.append(job)
         return {"job_id": job["id"], **self.result}
@@ -162,7 +170,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
             validate_claimed_task(claim, self.owner)
 
     def test_browser_v2_only_accepts_read_only_operator_actions(self):
-        self.assertEqual(validate_browser_payload({"operator_hint": "inspect Example"})["action"], "inspect")
+        self.assertEqual(validate_browser_payload({"profile_id": "example-account", "operator_hint": "inspect Example"})["action"], "inspect")
         self.assertEqual(validate_browser_payload({"profile_id": "example-account", "operator_command": {"action": "navigate", "account_id": "example-account"}})["action"], "navigate")
         for action in ("click", "fill", "submit_form", "payment", "withdraw", "delete"):
             with self.subTest(action=action):
@@ -172,6 +180,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_credential_binding_ids_are_accepted_as_non_secret_task_policy_metadata(self):
         payload = {
+            "profile_id": "example-account",
             "operator_hint": "inspect example",
             "credential_binding_ids": ["proxy-binding-01"],
         }
@@ -247,7 +256,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("text_preview", stored)
         self.assertNotIn("page body", str(stored))
         self.assertEqual(stored["session_storage"], "encrypted_at_rest")
-        self.assertEqual(operator.jobs[0]["input_data"], {"profile_id": "example-account", "operator_hint": "inspect example"})
+        self.assertEqual(operator.jobs[0]["input_data"], {"operator_hint": "inspect example"})
 
     async def test_human_approval_action_is_not_dispatched_to_operator(self):
         client = FakeLedgerClient({"profile_id": "example-account", "operator_command": {"action": "click", "account_id": "example-account"}})
@@ -295,6 +304,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
 
         bindings = ["proxy-binding-01"]
         client = FakeLedgerClient({
+            "profile_id": "example-account",
             "operator_hint": "inspect example",
             "credential_binding_ids": bindings,
         })
@@ -360,6 +370,7 @@ class ContinuityBrowserWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                     raise
 
         client = FakeLedgerClient({
+            "profile_id": "example-account",
             "operator_hint": "inspect example",
             "credential_binding_ids": ["proxy-binding-01"],
         })
