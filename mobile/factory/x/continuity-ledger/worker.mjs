@@ -121,7 +121,13 @@ async function validateBrowserCheckpoint(task, value) {
     const completedPrefix = normalizedActions.findIndex(action => action.status !== 'succeeded');
     const expectedCursor = completedPrefix === -1 ? normalizedActions.length : completedPrefix;
     if (value.action_cursor !== expectedCursor ||
-        normalizedActions.slice(value.action_cursor).some(action => action.status === 'succeeded')) {
+        normalizedActions.slice(0, value.action_cursor).some(action => action.status !== 'succeeded') ||
+        normalizedActions.slice(value.action_cursor + (value.action_cursor < normalizedActions.length ? 1 : 0))
+          .some(action => action.status !== 'pending')) {
+      return { ok: false, code: 'ACTION_PLAN_CURSOR_INVALID' };
+    }
+    if (value.action_cursor < normalizedActions.length &&
+        !['pending', 'running'].includes(normalizedActions[value.action_cursor].status)) {
       return { ok: false, code: 'ACTION_PLAN_CURSOR_INVALID' };
     }
     checkpoint.actions = normalizedActions;
@@ -133,7 +139,7 @@ async function validateBrowserCheckpoint(task, value) {
     if (!isRecord(action) || Object.keys(action).some(key => !actionKeys.has(key)) ||
         !validId(action.actionId) || !/^[a-f0-9]{64}$/.test(action.idempotencyKey || '') ||
         !['status','inspect','wait_for_selector','navigate','start_session','stop_session','click','fill','submit_form','operator_hint'].includes(action.operation) ||
-        !['running','succeeded','failed','reconciliation_required'].includes(action.status)) {
+        !['pending','running','succeeded','failed','reconciliation_required'].includes(action.status)) {
       return { ok: false, code: 'ACTION_CHECKPOINT_INVALID' };
     }
     const expectedKey = await sha256(canonical({
