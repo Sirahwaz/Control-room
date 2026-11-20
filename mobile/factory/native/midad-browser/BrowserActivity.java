@@ -56,6 +56,7 @@ public final class BrowserActivity extends Activity {
     private static final String TAB_PREFS = "midad_browser_tabs_v1";
     private static final String TAB_URLS_KEY = "restorable_urls";
     private static final String TAB_INDEX_KEY = "active_index";
+    private static final String LAST_CLOSED_TAB_KEY = "last_closed_url";
     private static final String LIBRARY_PREFS = "midad_browser_library_v1";
     private static final String HISTORY_PREFS_KEY = "history_v1";
     private static final String BOOKMARKS_PREFS_KEY = "bookmarks_v1";
@@ -416,7 +417,9 @@ public final class BrowserActivity extends Activity {
     }
 
     private void closeCurrentTab() {
-        if (tabs.isEmpty()) return;
+        if (tabs.isEmpty() || webView == null) return;
+        String closingUrl = sanitizeRestorableUrl(webView.getUrl());
+        tabPrefs.edit().putString(LAST_CLOSED_TAB_KEY, closingUrl).apply();
         if (tabs.size() == 1) {
             webView.loadUrl(MIDAD_HOME);
             saveTabs();
@@ -429,6 +432,22 @@ public final class BrowserActivity extends Activity {
         if (activeTabIndex >= tabs.size()) activeTabIndex = tabs.size() - 1;
         switchToTab(activeTabIndex);
         saveTabs();
+    }
+
+    private void restoreLastClosedTab() {
+        if (tabPrefs == null) return;
+        String savedUrl = tabPrefs.getString(LAST_CLOSED_TAB_KEY, "");
+        if (!isHttpUrl(savedUrl)) {
+            Toast.makeText(this, "لا يوجد تبويب مغلق للاستعادة", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (tabs.size() >= MAX_TABS) {
+            Toast.makeText(this, "أغلق تبويباً أولاً لإتاحة مساحة", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String safeUrl = sanitizeRestorableUrl(savedUrl);
+        createTab(safeUrl);
+        tabPrefs.edit().remove(LAST_CLOSED_TAB_KEY).apply();
     }
 
     private void showTabPicker() {
@@ -640,19 +659,20 @@ public final class BrowserActivity extends Activity {
 
     private void showBrowserMenu() {
         String[] actions = {
-            "إضافة إشارة مرجعية", "الإشارات المرجعية", "السجل",
+            "استعادة آخر تبويب مغلق", "إضافة إشارة مرجعية", "الإشارات المرجعية", "السجل",
             "التنزيلات", "بحث في الصفحة", "مشاركة الرابط"
         };
         new AlertDialog.Builder(this)
             .setTitle("قائمة MIDAD Browser")
             .setItems(actions, (dialog, which) -> {
                 switch (which) {
-                    case 0: saveBookmark(); break;
-                    case 1: showBookmarks(); break;
-                    case 2: showHistory(); break;
-                    case 3: showDownloads(); break;
-                    case 4: findInPage(); break;
-                    case 5: shareCurrentPage(); break;
+                    case 0: restoreLastClosedTab(); break;
+                    case 1: saveBookmark(); break;
+                    case 2: showBookmarks(); break;
+                    case 3: showHistory(); break;
+                    case 4: showDownloads(); break;
+                    case 5: findInPage(); break;
+                    case 6: shareCurrentPage(); break;
                     default: break;
                 }
             })
