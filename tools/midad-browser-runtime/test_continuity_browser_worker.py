@@ -30,7 +30,7 @@ class FakeLedgerClient:
     def __init__(self, payload, owner="00000000-0000-4000-8000-000000000001", checkpoint=None):
         self.payload = payload
         self.owner = owner
-        self.checkpoint = checkpoint
+        self.claim_checkpoint = checkpoint
         self.calls = []
 
     async def claim(self, lease_ttl_seconds=90):
@@ -40,7 +40,7 @@ class FakeLedgerClient:
             "owner_id": self.owner,
             "workload": "BROWSER_SESSION",
             "payload": self.payload,
-            "checkpoint": self.checkpoint,
+            "checkpoint": self.claim_checkpoint,
             "attempt": 1,
             "lease_token": "a" * 64,
         }}
