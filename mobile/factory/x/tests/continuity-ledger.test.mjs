@@ -297,6 +297,37 @@ test('claim rejects unsupported workload filters before scanning the queue', asy
 });
 
 
+
+test('reclaimed idempotent task receives its persisted checkpoint with a fresh lease', async () => {
+  const { storage, ledger } = setup();
+  let now = NOW;
+  Date.now = () => now;
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('checkpoint-reclaim'));
+    const first = await claim(ledger, 'node-a', token, 15, 'checkpoint-reclaim');
+    const checkpoint = { stage: 'read-only-inspection', cursor: 7 };
+    const saved = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'checkpoint-reclaim',
+      lease_token: first.body.task.lease_token,
+      checkpoint,
+    }, nodeHeaders('node-a', token))));
+    assert.equal(saved.status, 200);
+
+    now += 16000;
+    await heartbeat(ledger, 'node-a', token);
+    const reclaimed = await claim(ledger, 'node-a', token, 90, 'checkpoint-reclaim');
+    assert.equal(reclaimed.status, 200);
+    assert.equal(reclaimed.body.task.attempt, 2);
+    assert.notEqual(reclaimed.body.task.lease_token, first.body.task.lease_token);
+    assert.deepEqual(reclaimed.body.task.checkpoint, checkpoint);
+  } finally {
+    Date.now = originalNow;
+    storage.close();
+  }
+});
+
 test('browser checkpoint binds task and profile, bounds evidence references, and persists only safe metadata', async () => {
   const { storage, ledger } = setup();
   try {
