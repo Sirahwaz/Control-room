@@ -564,3 +564,59 @@ test('browser action checkpoint cannot change identity or regress after success'
     storage.close();
   }
 });
+
+
+test('browser multi-action checkpoint persists an ordered cursor and rejects regression', async () => {
+  const { storage, ledger } = setup();
+  try {
+    const token = await enroll(ledger);
+    await heartbeat(ledger, 'node-a', token);
+    await enqueue(ledger, task('browser-action-plan', {
+      workload: 'BROWSER_SESSION',
+      payload: { profile_id: 'profile-a', action_plan: [
+        { action_id: 'step-1', operator_command: { action: 'inspect', account_id: 'profile-a' } },
+        { action_id: 'step-2', operator_command: { action: 'status', account_id: 'profile-a' } },
+      ] },
+    }));
+    const acquired = await claim(ledger, 'node-a', token, 90, 'browser-action-plan');
+    const lease = acquired.body.task.lease_token;
+    const first = {
+      actionId: 'step-1',
+      idempotencyKey: actionKey('browser-action-plan', 'profile-a', 'step-1', 'inspect'),
+      operation: 'inspect', status: 'succeeded', result: { status: 'INSPECTED' },
+    };
+    const second = {
+      actionId: 'step-2',
+      idempotencyKey: actionKey('browser-action-plan', 'profile-a', 'step-2', 'status'),
+      operation: 'status', status: 'running',
+    };
+    const makeCheckpoint = (actions, action_cursor) => ({
+      taskId: 'browser-action-plan', profileId: 'profile-a',
+      state: 'running', updatedAt: NOW, evidenceRefs: [], actions, action_cursor,
+    });
+    const savedFirst = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-plan', lease_token: lease,
+      checkpoint: makeCheckpoint([first, second], 1),
+    }, nodeHeaders('node-a', token))));
+    assert.equal(savedFirst.status, 200);
+    const completedSecond = { ...second, status: 'succeeded', result: { status: 'READY' } };
+    const savedSecond = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-plan', lease_token: lease,
+      checkpoint: makeCheckpoint([first, completedSecond], 2),
+    }, nodeHeaders('node-a', token))));
+    assert.equal(savedSecond.status, 200);
+    const regressed = await read(await ledger.fetch(post('/v1/tasks/checkpoint', {
+      task_id: 'browser-action-plan', lease_token: lease,
+      checkpoint: makeCheckpoint([first, second], 1),
+    }, nodeHeaders('node-a', token))));
+    assert.equal(regressed.status, 409);
+    assert.equal(regressed.body.error, 'ACTION_PLAN_CURSOR_REGRESSION');
+    const persisted = JSON.parse(storage.db.prepare(
+      'SELECT checkpoint_json FROM continuity_tasks WHERE task_id=?',
+    ).get('browser-action-plan').checkpoint_json);
+    assert.equal(persisted.action_cursor, 2);
+    assert.deepEqual(persisted.actions.map(action => action.actionId), ['step-1', 'step-2']);
+  } finally {
+    storage.close();
+  }
+});
