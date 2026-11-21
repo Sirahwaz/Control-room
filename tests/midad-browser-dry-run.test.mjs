@@ -58,3 +58,42 @@ test("dry run validates task bounds and unsupported commands before producing a 
   assert.equal(invalid.ok, false);
   assert.equal(invalid.error, "command_unsupported");
 });
+
+
+test("execution controller defaults to DRY_RUN and blocks live execution until explicit mode selection", async () => {
+  const dryRun = createBrowserDryRun({ now: () => 1000 });
+  let liveRuns = 0;
+  const controller = createBrowserExecutionController({
+    dryRun,
+    liveRuntime: { run: async () => { liveRuns += 1; return { ok: true, state: "completed" }; } },
+  });
+  const input = task([step("step-0001", "getDomSnapshot", { maxChars: 1000 })]);
+
+  assert.equal(controller.getMode(), "dry_run");
+  assert.equal(controller.plan(input).ok, true);
+  const blocked = await controller.run(input);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.state, "blocked");
+  assert.equal(blocked.error, "live_mode_not_explicitly_enabled");
+  assert.equal(liveRuns, 0);
+});
+
+test("execution controller permits LOCAL_NATIVE only after explicit mode selection and can return to DRY_RUN", async () => {
+  const dryRun = createBrowserDryRun({ now: () => 1000 });
+  let liveRuns = 0;
+  const controller = createBrowserExecutionController({
+    dryRun,
+    liveRuntime: { run: async () => { liveRuns += 1; return { ok: true, state: "completed" }; } },
+  });
+  const input = task([step("step-0001", "getDomSnapshot", { maxChars: 1000 })]);
+
+  assert.equal(controller.setMode("local_native"), true);
+  assert.equal(controller.getMode(), "local_native");
+  assert.deepEqual(await controller.run(input), { ok: true, state: "completed" });
+  assert.equal(liveRuns, 1);
+  assert.equal(controller.setMode("dry_run"), true);
+  assert.equal(controller.getMode(), "dry_run");
+  assert.equal((await controller.run(input)).error, "live_mode_not_explicitly_enabled");
+  assert.equal(controller.setMode("cloud_browser"), false);
+  assert.equal(liveRuns, 1);
+});
