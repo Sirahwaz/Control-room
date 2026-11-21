@@ -97,3 +97,28 @@ test("execution controller permits LOCAL_NATIVE only after explicit mode selecti
   assert.equal(controller.setMode("cloud_browser"), false);
   assert.equal(liveRuns, 1);
 });
+
+
+test("execution controller preserves runtime lifecycle APIs behind the LOCAL_NATIVE gate", () => {
+  const calls = [];
+  const controller = createBrowserExecutionController({
+    dryRun: createBrowserDryRun(),
+    liveRuntime: {
+      run: async () => ({ ok: true }),
+      pause: () => { calls.push("pause"); return true; },
+      resume: () => { calls.push("resume"); return true; },
+      cancel: () => { calls.push("cancel"); return true; },
+      getState: () => ({ state: "running" }),
+    },
+  });
+  assert.equal(controller.pause(), false);
+  assert.deepEqual(controller.getState(), {
+    state: "blocked", mode: "dry_run", error: "live_mode_not_explicitly_enabled",
+  });
+  assert.equal(controller.setMode("local_native"), true);
+  assert.equal(controller.pause(), true);
+  assert.equal(controller.resume(), true);
+  assert.equal(controller.cancel(), true);
+  assert.deepEqual(controller.getState(), { state: "running" });
+  assert.deepEqual(calls, ["pause", "resume", "cancel"]);
+});
