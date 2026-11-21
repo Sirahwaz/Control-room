@@ -14,6 +14,11 @@ test("MIDAD Browser product manifest points to the dedicated Browser Mesh home a
   assert.deepEqual(manifest.web_assets, [
     "mobile/web/midad-browser-mesh.css",
     "mobile/web/midad-browser-mesh.js",
+    "mobile/factory/native/midad-browser/browser-command-contract.mjs",
+    "mobile/factory/native/midad-browser/agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-bridge.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs",
   ]);
   assert.equal(manifest.features.local_first, true);
   assert.equal(manifest.features.server_side_secrets_only, true);

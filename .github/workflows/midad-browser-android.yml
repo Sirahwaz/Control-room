@@ -65,7 +65,7 @@ jobs:
           node-version: "24"
 
       - name: Browser Mesh and offline-home contract tests
-        run: node --test tests/midad-owner-session-schema-contract.test.mjs mobile/factory/native/midad-browser/pairing-contract.test.mjs tests/midad-browser-offline-home-contract.test.mjs tests/midad-browser-mesh-ui-contract.test.mjs tests/midad-browser-native-tabs-contract.test.mjs tests/midad-browser-library-contract.test.mjs mobile/factory/native/midad-browser/browser-command-contract.test.mjs mobile/factory/native/midad-browser/multi-browser-bridge.test.mjs mobile/factory/native/midad-browser/extensions/package.test.mjs mobile/factory/native/midad-browser/plugin-runtime-contract.test.mjs mobile/factory/native/midad-browser/pinned-tabs-contract.test.mjs mobile/factory/native/midad-browser/agent-runtime.test.mjs tests/midad-browser-local-vault-contract.test.mjs
+        run: node --test tests/midad-owner-session-schema-contract.test.mjs mobile/factory/native/midad-browser/pairing-contract.test.mjs tests/midad-browser-offline-home-contract.test.mjs tests/midad-browser-mesh-ui-contract.test.mjs tests/midad-browser-native-tabs-contract.test.mjs tests/midad-browser-library-contract.test.mjs mobile/factory/native/midad-browser/browser-command-contract.test.mjs mobile/factory/native/midad-browser/multi-browser-bridge.test.mjs mobile/factory/native/midad-browser/extensions/package.test.mjs mobile/factory/native/midad-browser/plugin-runtime-contract.test.mjs mobile/factory/native/midad-browser/pinned-tabs-contract.test.mjs mobile/factory/native/midad-browser/agent-runtime.test.mjs mobile/factory/native/midad-browser/native-agent-bridge.test.mjs mobile/factory/native/midad-browser/native-agent-bridge-contract.test.mjs tests/midad-browser-local-vault-contract.test.mjs
 
       - name: Test Gradle Maven Central mirror injection
         run: python3 mobile/factory/native/midad-browser/test_gradle_repo_mirror.py
@@ -158,7 +158,12 @@ jobs:
         run: node mobile/factory/quality-gate.mjs midad-browser
 
       - name: JavaScript syntax audit
-        run: node --check mobile/web/midad-browser-mesh.js
+        run: |
+          set -euo pipefail
+          node --check mobile/web/midad-browser-mesh.js
+          node --check mobile/factory/native/midad-browser/native-agent-bridge.mjs
+          node --check mobile/factory/native/midad-browser/native-agent-runtime.mjs
+          node --check mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs
       - name: Validate browser companion extension sources
         run: |
           set -euo pipefail
@@ -177,6 +182,9 @@ jobs:
           grep -q 'ROLE_BROWSER' mobile/factory/native/midad-browser/BrowserActivity.java
           grep -q 'handler.cancel()' mobile/factory/native/midad-browser/BrowserActivity.java
           grep -q 'MIXED_CONTENT_NEVER_ALLOW' mobile/factory/native/midad-browser/BrowserActivity.java
+          grep -q 'WebViewCompat.addWebMessageListener' mobile/factory/native/midad-browser/BrowserAgentBridge.java
+          grep -q 'AGENT_BRIDGE_ATTACHED' mobile/factory/native/midad-browser/BrowserAgentBridge.java
+          grep -q 'requireHumanApproval' mobile/factory/native/midad-browser/BrowserAgentBridge.java
           grep -q 'android.intent.action.VIEW' mobile/android/app/src/main/AndroidManifest.xml
           grep -q 'android.intent.category.BROWSABLE' mobile/android/app/src/main/AndroidManifest.xml
 

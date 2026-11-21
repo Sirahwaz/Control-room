@@ -59,3 +59,20 @@ body{background:radial-gradient(ellipse at 88% -12%,rgba(var(--accent-rgb),.13),
 .footer{opacity:.86}
 @media(max-width:600px){.app-shell{padding-inline:12px}.topbar{margin-inline:-12px;padding-inline:12px}.tabs{top:60px}.tab{padding:10px 12px}.hero{border-radius:22px;padding:18px 15px}.hero-tag{white-space:nowrap}.section-heading{align-items:flex-start}.runtime-card{border-radius:16px}.runtime-card:hover{transform:none}.panel{border-radius:17px}}
 @media(hover:none){.runtime-card:hover{transform:none}}
+
+
+/* Native Agent Bridge: local diagnostics stay on-device and remain readable. */
+.native-agent-panel { margin-top: 1.25rem; }
+.native-agent-panel .panel-heading p { color: var(--muted, #91a6b5); margin-top: .35rem; }
+.native-agent-output {
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border: 1px solid rgba(115, 229, 251, .18);
+  border-radius: 12px;
+  background: rgba(3, 11, 19, .72);
+  color: #bdebf5;
+  font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
