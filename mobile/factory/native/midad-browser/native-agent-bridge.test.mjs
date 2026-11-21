@@ -6,10 +6,8 @@ import {
 } from "./native-agent-bridge.mjs";
 
 class FakeNativeObject {
-  listeners = new Set();
-  addEventListener(type, listener) { if (type === "message") this.listeners.add(listener); }
-  removeEventListener(type, listener) { if (type === "message") this.listeners.delete(listener); }
-  dispatch(data) { for (const listener of this.listeners) listener({ data }); }
+  onmessage = null;
+  dispatch(data) { this.onmessage?.({ data }); }
 }
 
 test("native bridge correlates typed requests with injected WebMessageListener replies", async () => {
@@ -30,7 +28,7 @@ test("native bridge correlates typed requests with injected WebMessageListener r
   assert.equal(posted.v, 1);
   assert.equal(posted.command.type, "getDomSnapshot");
   bridge.close();
-  assert.equal(nativeObject.listeners.size, 0);
+  assert.equal(nativeObject.onmessage, null);
 });
 
 test("native bridge rejects failed native commands with stable error codes", async () => {
