@@ -103,3 +103,9 @@ This product is intentionally independent from midad-human-bridge; both can coex
 The Mobile Factory build workflow runs a visual-feedback smoke test against the selected product's actual WebView entry before producing an APK. It verifies that a browser annotation reaches the Agentation MCP tool. No Agentation vendor API key is required for this local/CI workflow; the test server binds to loopback and uses ephemeral in-memory storage.
 
 The official toolbar is desktop-only and React-based, so Factory runs it in an isolated React preview around the product's same-origin WebView UI. It is not added to the release APK. Native Android Views/Compose/XML still need Android-native emulator and accessibility testing.
+
+## Full Control Room station bundle
+
+The Android Hub keeps its lightweight native entry surface while packaging the canonical Control Room and sibling station pages under `www/site/`. The Android workflow copies tracked root-level station entrypoints and static assets, then preserves nested `revenue/` and `assets/` paths so relative references remain valid. The bundle gate checks the Control Room entrypoint, core station pages, and Revenue Forge checkout scripts before the native build proceeds.
+
+This packaging step does not duplicate backend logic or claim that offline/native interactions replace the live MIDAD services; station operations still use their existing service boundaries.
