@@ -44,7 +44,8 @@ public final class BrowserAgentBridge {
     private static final Set<String> COMMAND_TYPES = setOf(
         "getTabs", "switchTab", "navigate", "getDomSnapshot", "captureScreenshot",
         "click", "type", "select", "scroll", "pressKey", "waitFor",
-        "getBrowserRunAccessKey", "saveBrowserRunAccessKey", "clearBrowserRunAccessKey"
+        "getBrowserRunAccessKey", "saveBrowserRunAccessKey", "clearBrowserRunAccessKey",
+        "authenticateBrowserRun"
     );
 
     private static Set<String> setOf(String... values) {
@@ -67,6 +68,7 @@ public final class BrowserAgentBridge {
         String getBrowserRunAccessKey();
         boolean saveBrowserRunAccessKey(String value);
         boolean clearBrowserRunAccessKey();
+        JSONObject authenticateBrowserRun(String suppliedKey);
     }
 
     private final Activity activity;
@@ -156,6 +158,18 @@ public final class BrowserAgentBridge {
             boolean cleared = host.clearBrowserRunAccessKey();
             reply(reply, requestId, cleared, cleared ? jsonObject("cleared", true) : null,
                 cleared ? null : "browser_run_access_key_clear_failed");
+            return;
+        }
+        if (type.equals("authenticateBrowserRun")) {
+            String suppliedKey = command.optString("accessKey", "");
+            new Thread(() -> {
+                JSONObject result = host.authenticateBrowserRun(suppliedKey);
+                String token = result == null ? "" : result.optString("token", "");
+                boolean ok = token.length() >= 32;
+                reply(reply, requestId, ok, ok ? result : null,
+                    ok ? null : (result == null ? "browser_run_auth_failed" :
+                        result.optString("error", "browser_run_auth_failed")));
+            }, "midad-browser-run-auth").start();
             return;
         }
         if (type.equals("getTabs")) {
