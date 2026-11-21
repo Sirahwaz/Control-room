@@ -10,7 +10,8 @@ test("Browser Mesh exposes a password-only access-key field without requiring Te
   assert.match(html, /id="browserRunAccessKey"[^>]*type="password"|type="password"[^>]*id="browserRunAccessKey"/);
   assert.match(js, /type:\s*"authenticateBrowserRun"/);
   assert.match(js, /accessKey,/);
-  assert.match(js, /getBrowserRunAccessKey/);
+  assert.match(js, /browserRunNativeRequest/);
+  assert.doesNotMatch(js, /getBrowserRunAccessKey/);
   assert.doesNotMatch(js, /افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية/);
   assert.doesNotMatch(js, /telegram_init_data/);
 });
@@ -18,7 +19,7 @@ test("Browser Mesh exposes a password-only access-key field without requiring Te
 test("Browser Run access key is encrypted by the existing Android Keystore vault", async () => {
   const activity = await read("mobile/factory/native/midad-browser/BrowserActivity.java");
   const bridge = await read("mobile/factory/native/midad-browser/BrowserAgentBridge.java");
-  assert.match(activity, /saveBrowserRunAccessKey\(/);
+  assert.match(activity, /persistBrowserRunAccessKey\(/);
   assert.match(activity, /readBrowserRunAccessKey\(/);
   assert.match(activity, /authenticateBrowserRunWithKey\(/);
   assert.match(activity, /HttpURLConnection/);
