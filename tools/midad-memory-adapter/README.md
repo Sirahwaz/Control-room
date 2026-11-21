@@ -134,3 +134,14 @@ agent. The migration leaves legacy run rows NULL by design, so they are rejected
 factory run-creation producer must populate `agent_key` from its trusted execution context
 before any memory request can be authorized; that producer wiring remains pending.
 The Python server caps concurrent request workers (default 8, maximum 32).
+
+
+## Upstream Memora authentication prerequisite
+
+The pinned Memora API enforces bearer authentication only when the Memora host is
+configured with `MEMORA_API_TOKENS_FILE`. Sending an Authorization header from this
+adapter is **not proof** that the upstream host enforces it. Before any pilot, configure
+that file on the Memora host, provision high-entropy server-only tokens, and run negative
+tests proving requests without a token and with an invalid token receive 401/403. Confirm
+the valid owner token succeeds. Never place token values in this repository, browser
+configuration, GitHub workflow logs, or client requests.
