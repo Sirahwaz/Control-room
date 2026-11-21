@@ -402,3 +402,55 @@ export function createBrowserDryRun({ now = () => Date.now() } = {}) {
     },
   });
 }
+
+
+/**
+ * Execution policy for Browser Mesh. DRY_RUN is the default and live execution
+ * is unavailable until the caller explicitly selects LOCAL_NATIVE.
+ */
+export function createBrowserExecutionController({ dryRun, liveRuntime } = {}) {
+  if (!dryRun || typeof dryRun.plan !== "function") {
+    throw new TypeError("dry_run_planner_required");
+  }
+  let mode = "dry_run";
+  return Object.freeze({
+    getMode() {
+      return mode;
+    },
+    setMode(nextMode) {
+      if (nextMode === "dry_run") {
+        mode = "dry_run";
+        return true;
+      }
+      if (nextMode === "local_native" && liveRuntime && typeof liveRuntime.run === "function") {
+        mode = "local_native";
+        return true;
+      }
+      return false;
+    },
+    plan(input) {
+      return dryRun.plan(input);
+    },
+    async run(input) {
+      if (mode !== "local_native") {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "live_mode_not_explicitly_enabled",
+          evidence: [],
+        };
+      }
+      if (!liveRuntime || typeof liveRuntime.run !== "function") {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "local_native_runtime_unavailable",
+          evidence: [],
+        };
+      }
+      return liveRuntime.run(input);
+    },
+  });
+}
