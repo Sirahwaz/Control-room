@@ -672,6 +672,8 @@ public final class BrowserActivity extends Activity {
         try {
             return new JSONArray(plaintext);
         } catch (JSONException ignored) {
+            unreadableVaultKeys.add(key);
+            android.util.Log.e("MIDAD_BROWSER", "VAULT_DATA_PRESERVED_INVALID_PAYLOAD");
             return new JSONArray();
         }
     }
