@@ -159,7 +159,7 @@
         $$('#stations .card').forEach(card => { card.style.display = ids.has(card.dataset.id) ? 'flex' : 'none'; });
         if (!state.recent.length) showToast('لا يوجد سجل حديث بعد');
       } else if (kind === 'system') {
-        showToast('MIDAD Mobile v0.3 • Native Shell • Safe Local Storage');
+        showToast('MIDAD Mobile • Local-first Control Hub');
       }
     });
   });
@@ -170,13 +170,65 @@
   $$('[data-scroll]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.scroll;
-      if (target === 'home') $('#home')?.scrollIntoView({behavior:'smooth', block:'start'});
-      else if (target === 'stations') { restoreStations(); $('#stations')?.scrollIntoView({behavior:'smooth', block:'start'}); }
-      else $('#future')?.scrollIntoView({behavior:'smooth', block:'start'});
+      const section = document.getElementById(target);
+      if (target === 'stations') restoreStations();
+      section?.scrollIntoView({behavior:'smooth', block:'start'});
       $$('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
       haptic();
     });
   });
+  $$('[data-area][data-target]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      $$('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
+      const target = btn.dataset.target;
+      if (/^https:\/\//i.test(target)) openExternal(target);
+      else location.href = target;
+      haptic();
+    });
+  });
+
+  const SETTINGS_KEY = 'midad-mobile-settings';
+  const defaults = { theme:'system', fontFamily:'system', fontScale:100 };
+  const readSettings = () => {
+    try {
+      const value = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+      return value && typeof value === 'object' ? {...defaults, ...value} : {...defaults};
+    } catch (_) { return {...defaults}; }
+  };
+  const settings = readSettings();
+  const themeSelect = $('#themeSelect');
+  const fontFamilySelect = $('#fontFamilySelect');
+  const fontScale = $('#fontScale');
+  const fontScaleValue = $('#fontScaleValue');
+  const applySettings = () => {
+    const theme = settings.theme === 'system'
+      ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+      : settings.theme;
+    document.body.dataset.theme = theme;
+    document.body.dataset.font = settings.fontFamily;
+    document.documentElement.style.setProperty('--font-scale', String(settings.fontScale / 100));
+    if (themeSelect) themeSelect.value = settings.theme;
+    if (fontFamilySelect) fontFamilySelect.value = settings.fontFamily;
+    if (fontScale) fontScale.value = String(settings.fontScale);
+    if (fontScaleValue) fontScaleValue.value = settings.fontScale + '%';
+  };
+  const persistSettings = () => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); showToast('تم حفظ إعدادات المظهر على هذا الجهاز'); }
+    catch (_) { showToast('تعذر حفظ الإعدادات محليًا'); }
+    applySettings();
+  };
+  themeSelect?.addEventListener('change', () => { settings.theme = themeSelect.value; persistSettings(); });
+  fontFamilySelect?.addEventListener('change', () => { settings.fontFamily = fontFamilySelect.value; persistSettings(); });
+  fontScale?.addEventListener('input', () => {
+    settings.fontScale = Math.max(85, Math.min(125, Number(fontScale.value) || 100));
+    applySettings();
+  });
+  $('#appearanceSave')?.addEventListener('click', persistSettings);
+  window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', () => {
+    if (settings.theme === 'system') applySettings();
+  });
+  $('#extensionDetails')?.addEventListener('click', () => { location.href = './midad-browser-mesh.html'; });
+  applySettings();
 
   const app = nativePlugin('App');
   if (app?.addListener) {

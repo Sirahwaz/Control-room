@@ -3,9 +3,9 @@
   "schema_version": 1,
   "product_key": "midad-mobile-next",
   "display_name": "MIDAD Mobile",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "app_id": "ai.midad.mobile.next",
-  "artifact_name": "MIDAD-Mobile-v0.5.0",
+  "artifact_name": "MIDAD-Mobile-v0.5.1",
   "web_entry": "mobile/web/index.html",
   "product_mode": "midad-hub",
   "release_channel": "internal",
@@ -18,7 +18,14 @@
     "server_side_secrets_only": true,
     "live_financial_execution": false,
     "mission_capsules": true,
-    "hybrid_neural_planner": true
+    "hybrid_neural_planner": true,
+    "human_bridge": true,
+    "agentic_browser": true,
+    "safe_autofill": true,
+    "secure_pairing": true,
+    "extension_fabric": true,
+    "trust_boundary_ui": true,
+    "evidence_capture": true
   },
   "surfaces": [
     "control-room",
@@ -27,7 +34,11 @@
     "revenue-forge",
     "aimidad",
     "ahwaz-ai",
-    "midad-keys"
+    "midad-keys",
+    "browser-mesh",
+    "human-bridge",
+    "mobile-settings",
+    "appearance-settings"
   ],
   "target_markets": [
     "global_remote_crypto",
@@ -141,6 +152,12 @@
   "web_assets": [
     "mobile/web/mobile-hub.css",
     "mobile/web/mobile-hub.js",
-    "mobile/web/morph-engine.js"
+    "mobile/web/morph-engine.js",
+    "mobile/web/midad-browser-mesh.css",
+    "mobile/web/midad-browser-mesh.js",
+    "mobile/web/human-bridge.css",
+    "mobile/web/human-bridge.js",
+    "mobile/web/midad-browser-mesh.html",
+    "mobile/web/human-bridge.html"
   ]
 }

@@ -93,6 +93,18 @@ jobs:
               product="midad-meme-trader"
             elif echo "$changed" | grep -Fxq 'mobile/factory/products/signalscan-ai.json' || echo "$changed" | grep -Eq '^mobile/web/signalscan/'; then
               product="signalscan-ai"
+            elif echo "$changed" | grep -Fxq 'mobile/factory/products/midad-mobile-next.json' \
+              || echo "$changed" | grep -Fxq 'mobile/web/index.html' \
+              || echo "$changed" | grep -Fxq 'mobile/web/mobile-hub.js' \
+              || echo "$changed" | grep -Fxq 'mobile/web/mobile-hub.css' \
+              || echo "$changed" | grep -Fxq 'mobile/web/morph-engine.js' \
+              || echo "$changed" | grep -Fxq 'mobile/web/midad-browser-mesh.html' \
+              || echo "$changed" | grep -Fxq 'mobile/web/midad-browser-mesh.js' \
+              || echo "$changed" | grep -Fxq 'mobile/web/midad-browser-mesh.css' \
+              || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.html' \
+              || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.js' \
+              || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.css'; then
+              product="midad-mobile-next"
             fi
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release_mode }}" = "release" ] && [ "$product" != "midad-mobile-next" ]; then
