@@ -247,39 +247,15 @@
   async function browserRunObtainSession(force = false) {
     if (browserRunState.token && !force) return browserRunState.token;
     const input = $("#browserRunAccessKey");
-    let accessKey = input?.value?.trim() || "";
-    const enteredKey = Boolean(accessKey);
-    if (!accessKey) {
-      const stored = await browserRunNativeRequest({ type: "getBrowserRunAccessKey" });
-      if (stored?.available !== true) {
-        const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-        const initData = telegram?.initData || "";
-        if (!initData) throw new Error("أدخل مفتاح وصول MIDAD للربط دون Telegram.");
-        const response = await fetch(BROWSER_RUN_CONTROL_API, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
-        browserRunState.token = data.token;
-        return browserRunState.token;
-      }
-      // Native bridge returns only availability; it never exports the saved key to JavaScript.
-      throw new Error("NATIVE_KEYSTORE_AUTH_REQUIRED");
-    }
-    const response = await fetch(BROWSER_RUN_CONTROL_API, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ access_key: accessKey, client: "midad-control-room" }),
+    const accessKey = input?.value?.trim() || "";
+    const data = await browserRunNativeRequest({
+      type: "authenticateBrowserRun",
+      accessKey,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
-    if (enteredKey) {
-      await browserRunNativeRequest({ type: "saveBrowserRunAccessKey", accessKey });
-      if (input) input.value = "";
+    if (!data?.token || typeof data.token !== "string") {
+      throw new Error(data?.error || "MIDAD_LOGIN_REQUIRED");
     }
-    accessKey = "";
+    if (input && accessKey) input.value = "";
     browserRunState.token = data.token;
     return browserRunState.token;
   }
