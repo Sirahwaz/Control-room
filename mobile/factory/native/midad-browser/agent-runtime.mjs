@@ -452,5 +452,25 @@ export function createBrowserExecutionController({ dryRun, liveRuntime } = {}) {
       }
       return liveRuntime.run(input);
     },
+    pause() {
+      return mode === "local_native" && typeof liveRuntime?.pause === "function"
+        ? liveRuntime.pause()
+        : false;
+    },
+    resume() {
+      return mode === "local_native" && typeof liveRuntime?.resume === "function"
+        ? liveRuntime.resume()
+        : false;
+    },
+    cancel() {
+      return mode === "local_native" && typeof liveRuntime?.cancel === "function"
+        ? liveRuntime.cancel()
+        : false;
+    },
+    getState() {
+      return mode === "local_native" && typeof liveRuntime?.getState === "function"
+        ? liveRuntime.getState()
+        : { state: "blocked", mode, error: "live_mode_not_explicitly_enabled" };
+    },
   });
 }
