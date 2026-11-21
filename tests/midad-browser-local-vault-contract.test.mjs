@@ -75,3 +75,11 @@ test("Android app disables cloud backup for Keystore-bound local browser data", 
   );
   assert.match(prepare, /allowBackup.*false/);
 });
+
+test("invalid authenticated payloads are protected from destructive replacement", () => {
+  const start = source.indexOf("private JSONArray readLibraryArray(String key)");
+  const end = source.indexOf("private boolean writeLibraryArray", start);
+  const method = source.slice(start, end);
+  assert.match(method, /catch \(JSONException ignored\)[\s\S]*unreadableVaultKeys\.add\(key\)/);
+  assert.match(method, /VAULT_DATA_PRESERVED_INVALID_PAYLOAD/);
+});
