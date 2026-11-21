@@ -172,9 +172,13 @@ public final class BrowserAgentBridge {
                 return;
             case "switchTab":
                 int next = command.optInt("targetTabId", -1);
-                boolean switched = next >= 0 && next < host.getTabCount() && next < MAX_TABS && host.switchToTab(next);
+                WebView nextTab = next >= 0 && next < host.getTabCount() && next < MAX_TABS
+                    ? host.getTab(next) : null;
+                String nextOrigin = nextTab == null ? null : originOf(nextTab.getUrl());
+                boolean switched = nextTab != null && nextOrigin != null &&
+                    allowedOrigins.contains(nextOrigin) && host.switchToTab(next);
                 reply(reply, requestId, switched, switched ? jsonObject("activeTabId", next) : null,
-                    switched ? null : "target_tab_invalid");
+                    switched ? null : "target_tab_invalid_or_origin_not_allowed");
                 return;
             case "navigate":
                 String url = command.optString("url", "");
