@@ -436,8 +436,7 @@ export function createBrowserExecutionController({ dryRun, liveRuntime, onClose 
     close() {
       if (closed) return false;
       closed = true;
-      if (typeof onClose !== "function") return false;
-      onClose();
+      if (typeof onClose === "function") onClose();
       return true;
     },
     async run(input) {
