@@ -32,7 +32,6 @@ jobs:
       MEMORA_PILOT_SHA: 442ca1b4ef494c256917ecd052dedb872710e84a
       MEMORA_EMBEDDING_MODEL: tfidf
       MEMORA_TRANSPORT: stdio
-      MEMORA_DB_PATH: ${{ runner.temp }}/memora-pilot.db
       OPENAI_API_KEY: ""
       MEMORA_API_TOKENS_FILE: ""
     steps:
@@ -64,6 +63,8 @@ jobs:
 
       - name: Run bounded pilot acceptance tests
         working-directory: ${{ runner.temp }}/memora
+        env:
+          MEMORA_DB_PATH: ${{ runner.temp }}/memora-pilot.db
         run: |
           pytest -q \
             tests/test_api_v1.py \
