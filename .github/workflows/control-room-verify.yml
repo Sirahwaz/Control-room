@@ -99,6 +99,8 @@ jobs:
         run: node --test tests/mobile-factory-version-contract.test.mjs
       - name: Mobile Hub settings and navigation regression tests
         run: node --check mobile/web/mobile-hub.js && node --test tests/midad-mobile-real-settings.test.mjs
+      - name: Mobile Next manifest and asset bundle contract
+        run: node --test mobile/factory/midad-mobile-next-contract.test.mjs
       - name: Bot Fabric surface
         run: node -e "const fs=require('fs'); const j=fs.readFileSync('midad-cockpit.js','utf8'); for(const x of ['botsView','botAction','data-bot-action','bots']) if(!j.includes(x)) throw new Error('Missing '+x); console.log('BOT_FABRIC_OK');"
 
