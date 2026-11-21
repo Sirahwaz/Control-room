@@ -390,12 +390,8 @@
     $("#browserRunClose").addEventListener("click", browserRunClose);
     $("#browserRunDisconnect").addEventListener("click", browserRunDisconnect);
     browserRunButtons();
-    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (telegram?.initData) browserRunConnect();
-    else {
-      browserRunStateLabel("AUTH REQUIRED", "OPEN TELEGRAM MINI APP");
-      browserRunFeedback("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية دون مفتاح يدوي.", true);
-    }
+    browserRunStateLabel("NOT CONNECTED", "OWNER ACCESS KEY REQUIRED");
+    browserRunFeedback("أدخل مفتاح وصول MIDAD الموجود لديك ثم اضغط ربط الجلسة. لا حاجة إلى Telegram أو OTP.");
   }
 
   function bindEvents() {
