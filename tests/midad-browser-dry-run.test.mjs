@@ -140,3 +140,18 @@ test("public native runtime does not expose bridge or driver handles that bypass
   assert.equal(typeof agent.dryRun.plan, "function");
   assert.equal(typeof agent.runtime.run, "function");
 });
+
+test("native runtime exposes a safe close path that releases its private bridge handler", () => {
+  const nativeObject = { postMessage() {}, onmessage: null };
+  const agent = createNativeBrowserAgentRuntime({
+    nativeObject,
+    allowedOrigins: [ORIGIN],
+  });
+
+  const installedHandler = nativeObject.onmessage;
+  assert.equal(typeof installedHandler, "function");
+  assert.equal(typeof agent.execution.close, "function");
+  agent.execution.close();
+  assert.equal(nativeObject.onmessage, null);
+  assert.notEqual(nativeObject.onmessage, installedHandler);
+});
