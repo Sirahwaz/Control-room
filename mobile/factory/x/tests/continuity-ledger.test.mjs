@@ -95,6 +95,46 @@ test('no node can claim before an authenticated fresh heartbeat', async () => {
   const result=await claim(ledger,'node-a',token); assert.equal(result.body.task,null);
   storage.close();
 });
+test('concurrent claims for one task grant exactly one live lease across owner nodes', async () => {
+  const {storage,ledger}=setup();
+  const tokenA=await enroll(ledger,'node-a','owner-a');
+  const tokenB=await enroll(ledger,'node-b','owner-a');
+  await heartbeat(ledger,'node-a',tokenA);
+  await heartbeat(ledger,'node-b',tokenB);
+  await enqueue(ledger,task('contended-task'));
+
+  const [claimA,claimB]=await Promise.all([
+    claim(ledger,'node-a',tokenA,90,'contended-task'),
+    claim(ledger,'node-b',tokenB,90,'contended-task'),
+  ]);
+
+  const winners=[claimA,claimB].filter(result => result.body.task !== null);
+  assert.equal(winners.length,1,'only one node may acquire the task');
+  assert.equal(claimA.status,200);
+  assert.equal(claimB.status,200);
+  const acquired=winners[0].body.task;
+  assert.equal(acquired.task_id,'contended-task');
+  assert.equal(acquired.attempt,1);
+
+  const row=storage.db.prepare(
+    'SELECT status,attempt,lease_owner,lease_token_hash,lease_expires_at_ms FROM continuity_tasks WHERE task_id=?',
+  ).get('contended-task');
+  assert.equal(row.status,'RUNNING');
+  assert.equal(row.attempt,1);
+  assert.equal(row.lease_owner, acquired === claimA.body.task ? 'node-a' : 'node-b');
+  assert.ok(row.lease_token_hash);
+  assert.ok(row.lease_expires_at_ms > Date.now());
+
+  const loserId=acquired === claimA.body.task ? 'node-b' : 'node-a';
+  const loserToken=loserId === 'node-a' ? tokenA : tokenB;
+  const rejected=await read(await ledger.fetch(post('/v1/tasks/complete',{
+    task_id:'contended-task',lease_token:acquired.lease_token,result:{unexpected:true},
+  },nodeHeaders(loserId,loserToken))));
+  assert.equal(rejected.status,409);
+  assert.equal(storage.db.prepare('SELECT status FROM continuity_tasks WHERE task_id=?').get('contended-task').status,'RUNNING');
+  storage.close();
+});
+
 test('claim, renew, checkpoint and complete require the same live lease token', async () => {
   const {storage,ledger}=setup(); const token=await enroll(ledger);
   assert.equal((await heartbeat(ledger,'node-a',token)).status,200); await enqueue(ledger,task());
