@@ -207,8 +207,6 @@ def build_runtime():
 
 def main():
     gateway, service_key, enabled = build_runtime()
-    if gateway is None:
-        raise RuntimeError("Memory adapter is disabled; refusing to start an active service")
     bind = os.environ.get("MIDAD_MEMORY_ADAPTER_BIND", "127.0.0.1")
     port = int(os.environ.get("PORT", "8080"))
     server = ThreadingHTTPServer((bind, port), build_handler(gateway, service_key, enabled))
