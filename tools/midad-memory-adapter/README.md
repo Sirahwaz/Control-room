@@ -84,8 +84,8 @@ Example shape (illustrative names only; do not commit token values):
 
 ```python
 owner_routes = {
-    "tenant-a": {
-        "store": "tenant_a",
+    "midad-owner:123e4567-e89b-42d3-a456-426614174000": {
+        "store": "owner_123e4567",
         "token_env": "MIDAD_MEMORA_API_TOKEN_TENANT_A",
     },
 }
@@ -122,7 +122,8 @@ The Python service requires `MIDAD_MEMORY_ADAPTER_SERVICE_KEY` (32+ random chara
 When enabled, it additionally requires:
 - `MIDAD_MEMORA_API_URL` — HTTPS Memora API origin;
 - `MIDAD_MEMORA_OWNER_ROUTES_JSON` — server-owned JSON mapping of
-  `midad-owner:<uuid>` to `store` and `token_env` names (never token values);
+  the exact `midad-owner:<owner_user_id UUID>` scope emitted by the Edge Gateway to
+  a unique `store` and `token_env` name (never token values);
 - `MIDAD_MEMORY_LEDGER_PATH` — absolute durable SQLite path;
 - `MIDAD_MEMORY_ADAPTER_ENABLED=true` — explicit opt-in.
 
