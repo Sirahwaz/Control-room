@@ -233,7 +233,7 @@
     $("#browserRunLiveViewFrame").removeAttribute("src");
     $("#browserRunOpenLiveView").hidden = true;
     $("#browserRunOpenLiveView").removeAttribute("href");
-    browserRunStateLabel(browserRunState.token ? "CONNECTED" : "NOT CONNECTED", "IDLE · NO SESSION");
+    browserRunStateLabel(browserRunState.token ? "OWNER AUTHENTICATED" : "NOT CONNECTED", "IDLE · NO SESSION");
   }
   async function browserRunNativeRequest(command) {
     if (!window.midadNative || typeof window.midadNative.postMessage !== "function") {
@@ -333,7 +333,7 @@
     browserRunState.busy = true; browserRunButtons();
     try {
       await browserRunObtainSession();
-      browserRunStateLabel("CONNECTED", "OWNER SESSION VERIFIED");
+      browserRunStateLabel("OWNER AUTHENTICATED", "IDLE · NO SESSION");
       browserRunFeedback("تم التحقق من جلسة Control Room؛ يتم فحص جلسات Browser Run الحالية.");
       await browserRunCheckStatus();
       browserRunFeedback(browserRunState.sessionId
