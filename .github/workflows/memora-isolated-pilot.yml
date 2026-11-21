@@ -7,12 +7,14 @@ on:
       - ".github/workflows/memora-isolated-pilot.yml"
       - "docs/architecture/MEMORA_UPSTREAM_SECURITY_REVIEW_2026-11-21.md"
       - "docs/architecture/MEMORA_PILOT_RUNBOOK.md"
+      - "docs/architecture/MIDAD_MEMORY_ADAPTER_CONTRACT_V1.md"
   workflow_dispatch:
   pull_request:
     paths:
       - ".github/workflows/memora-isolated-pilot.yml"
       - "docs/architecture/MEMORA_UPSTREAM_SECURITY_REVIEW_2026-11-21.md"
       - "docs/architecture/MEMORA_PILOT_RUNBOOK.md"
+      - "docs/architecture/MIDAD_MEMORY_ADAPTER_CONTRACT_V1.md"
 
 permissions:
   contents: read
