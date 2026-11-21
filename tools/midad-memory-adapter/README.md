@@ -22,8 +22,16 @@ or production Memora deployment.
 ## Explicitly not implemented / not authorized
 
 - No production MIDAD auth/policy resolver is wired into this package.
-- No Memora MCP transport/backend is wired yet. The only included backend is a disposable
-  in-memory test backend; it is not durable and must never be used for production.
+- A pinned Memora API v1 HTTP backend is implemented in `memora_api_backend.py`.
+- A private service-to-service HTTP entrypoint is implemented in `server.py`; it requires
+  a 32+ character server key, HTTPS ingress, an absolute durable SQLite ledger path,
+  explicit owner-to-store routes, and server-only Memora bearer-token environment bindings.
+- A Supabase Edge Gateway is implemented at `supabase/functions/midad_memory_gateway`.
+  It resolves the existing owner-bound Control Room session, verifies ownership of a
+  `midad_factory_projects` project, checks an explicit service-managed agent grant,
+  verifies a RUNNING `midad_factory_runs` row, writes metadata-only audit events, then
+  forwards a server-resolved principal to the private adapter service.
+- The in-memory backend remains test-only; it is never selected as a runtime fallback.
 - `update`, `absorb`, `digest`, `graph`, `export`, and `restore` return
   `CAPABILITY_UNAVAILABLE`.
 - No production endpoint, database, credentials, user data, paid host, or feature-flag
@@ -41,13 +49,22 @@ The CI workflow runs this suite on an isolated GitHub-hosted runner. Passing the
 tests validates the adapter boundary only; it does not prove Memora backend compatibility,
 cross-process transactionality, production authentication, or deployment readiness.
 
-## Next integration gate
+## Current integration gates
 
-Implement a dedicated Memora MCP backend using the pinned upstream revision
-`agentic-box/memora@442ca1b4ef494c256917ecd052dedb872710e84a`. Before wiring production
-MIDAD identity, prove backend idempotency, scope filtering before ranking, two-owner /
-two-project isolation, and restore integrity against disposable SQLite data. Keep the
-feature flag off until those gates and a separate security review pass.
+1. Apply migration `20261121150000_midad_memory_agent_grants_v1.sql` only after the
+   Supabase write path is healthy; it creates empty service-only grants and audit tables.
+2. Provision a single synthetic owner/project/agent grant through an approved admin path.
+   No grants are seeded automatically and no client can write grants.
+3. Deploy the Edge Gateway and private Python service only after configuring separate
+   service credentials, a private HTTPS ingress, Memora URL, server-owned owner/store
+   routes, per-store bearer token environment bindings, and a durable ledger path.
+4. Verify the target Memora store's declared project and transactional-write capability.
+   Create remains blocked unless Memora reports `writes: transactional`.
+5. Run the owner/project/agent/run isolation tests against disposable SQLite-backed stores.
+6. Keep both Edge and Python feature flags false until an explicitly approved synthetic pilot.
+
+No production endpoint, credential, route mapping, migration application, data migration,
+deployment, or feature-flag activation has been performed.
 
 ## Memora API backend
 
@@ -97,3 +114,17 @@ MIDAD's identity provider. No real auth resolver, HTTP route, Telegram bot route
 or mobile client is wired by this package. The gateway tests prove fail-closed
 behavior for missing, unverified, or failing resolvers. A trusted production
 resolver must be selected and independently reviewed before any internal pilot.
+
+
+## Private service configuration
+
+The Python service requires `MIDAD_MEMORY_ADAPTER_SERVICE_KEY` (32+ random characters).
+When enabled, it additionally requires:
+- `MIDAD_MEMORA_API_URL` — HTTPS Memora API origin;
+- `MIDAD_MEMORA_OWNER_ROUTES_JSON` — server-owned JSON mapping of
+  `midad-owner:<uuid>` to `store` and `token_env` names (never token values);
+- `MIDAD_MEMORY_LEDGER_PATH` — absolute durable SQLite path;
+- `MIDAD_MEMORY_ADAPTER_ENABLED=true` — explicit opt-in.
+
+The service binds to loopback by default. Any non-loopback deployment must use private
+network ingress and TLS termination. Do not expose the Python service directly to browsers.
