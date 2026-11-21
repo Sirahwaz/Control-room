@@ -8,7 +8,7 @@ class ResolverTests(unittest.TestCase):
  def test_verified_binding(self):
   calls=[]
   p=MidadPrincipalResolver(lambda c:self.binding,lambda *a:calls.append(a) or self.policy)({"session":"verified"})
-  self.assertEqual(p.owner_scope,"owner-1");self.assertEqual(p.allowed_projects,frozenset({"p1"}));self.assertEqual(calls,[("owner-1","agent-1","run-1")])
+  self.assertEqual(p.owner_scope,"owner-1");self.assertEqual(p.allowed_projects,frozenset({"p1"}));self.assertEqual(calls,[("owner-1","user-1","agent-1","run-1")])
  def test_unverified_session(self):
   with self.assertRaises(AdapterError):MidadPrincipalResolver(lambda c:{"verified":False},lambda *a:self.policy)(None)
  def test_unverified_policy(self):
