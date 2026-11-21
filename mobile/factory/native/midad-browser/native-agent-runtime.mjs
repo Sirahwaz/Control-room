@@ -32,16 +32,13 @@ export function createNativeBrowserAgentRuntime({
   return Object.freeze({ runtime, bridge, driver });
 }
 
-if (typeof window !== "undefined" && window.midadNative) {
-  try {
-    const nativeAgent = createNativeBrowserAgentRuntime({
-      allowedOrigins: [window.location.origin],
-    });
-    window.MIDADBrowserAgent = nativeAgent;
-    window.dispatchEvent(new CustomEvent("midad:browser-agent-ready"));
-  } catch (error) {
-    window.dispatchEvent(new CustomEvent("midad:browser-agent-error", {
-      detail: { code: error?.message || "native_agent_init_failed" },
-    }));
-  }
+if (typeof window !== "undefined") {
+  window.MIDADBrowserAgent = Object.freeze({
+    createRuntime: (options = {}) => createNativeBrowserAgentRuntime({
+      ...options,
+      nativeObject: window.midadNative,
+      eventTarget: window,
+    }),
+  });
+  window.dispatchEvent(new CustomEvent("midad:browser-agent-factory-ready"));
 }
