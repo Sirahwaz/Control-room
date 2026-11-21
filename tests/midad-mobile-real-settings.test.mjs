@@ -21,7 +21,7 @@ test("Mobile Hub exposes a five-area navigation and an honest extensions center"
   for (const area of ["cockpit", "money", "tasks", "ai", "more"]) {
     assert.match(html, new RegExp('data-area="' + area + '"'));
   }
-  assert.match(html, /Extensions Center/);
+  assert.match(html, /EXTENSIONS CENTER/);
   assert.match(html, /desktop companion/i);
-  assert.match(js, /extensionCenter/);
+  assert.match(js, /extensionDetails/);
 });
