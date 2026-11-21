@@ -12,10 +12,12 @@ const snapshotPath = path.join(root, "supabase/functions/midad_browser_agent_gat
 test("Browser Gateway source snapshot identifies the reconciled deployed version", () => {
   const snapshot = fs.readFileSync(snapshotPath, "utf8");
   assert.match(snapshot, /Last reconciled:\*\*? 2026-11-20/);
-  assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **23**"));
-  assert.match(snapshot, /four browser worker migrations were applied/i);
-  assert.match(snapshot, /20261119215821/);
-  assert.match(snapshot, /GitHub Actions public read-only worker — ENABLED/);
+  assert.ok(snapshot.includes("Observed production deployment:** ACTIVE, version **24**"));
+  assert.match(snapshot, /three browser worker migrations were applied/i);
+  for (const migration of ["20261119214545", "20261119214551", "20261119214558"]) {
+    assert.ok(snapshot.includes(migration), `missing reconciled migration version: ${migration}`);
+  }
+  assert.match(snapshot, /worker therefore remains opt-in and is not considered end-to-end validated/i);
 });
 
 test("repository source contains the deployed v23 owner-bound, lease and OIDC surfaces", () => {
