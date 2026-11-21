@@ -128,3 +128,9 @@ When enabled, it additionally requires:
 
 The service binds to loopback by default. Any non-loopback deployment must use private
 network ingress and TLS termination. Do not expose the Python service directly to browsers.
+
+The gateway additionally requires `midad_factory_runs.agent_key` to match the granted
+agent. The migration leaves legacy run rows NULL by design, so they are rejected. The
+factory run-creation producer must populate `agent_key` from its trusted execution context
+before any memory request can be authorized; that producer wiring remains pending.
+The Python server caps concurrent request workers (default 8, maximum 32).
