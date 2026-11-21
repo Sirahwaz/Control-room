@@ -102,7 +102,7 @@ class MemoryAdapterTests(unittest.TestCase):
         }, "intent-1")
         first = self.adapter.execute(principal(), request)
         second = self.adapter.execute(principal(), MemoryRequest("r2", "create", "project-a", {
-            "memory_type": "fact", "source_ref": "test://1", "content": "stable"
+            "memory_type": "fact", "source_ref": "test://1", "content": "stable", "sensitivity": "internal", "retention_class": "standard", "confidence": 0.8, "verification_state": "PENDING"
         }, "intent-1"))
         self.assertEqual(first["data"]["record_id"], second["data"]["record_id"])
         self.assertEqual(len(self.backend.records), 1)
