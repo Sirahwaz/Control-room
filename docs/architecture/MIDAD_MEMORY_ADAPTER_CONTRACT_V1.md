@@ -183,3 +183,63 @@ bindings. Neither has been connected to a live host.
 4. Verify the target store's health, contract version, declared projects, and transactional-write capability.
 5. Run two-owner/two-project isolation and idempotency tests against disposable Memora SQLite data.
 6. Only then request explicit approval for a synthetic internal pilot. Production remains separately gated.
+
+## 10. Authenticated gateway implementation status (2026-11-21)
+
+| Layer | State | Evidence / remaining gate |
+|---|---|---|
+| Existing owner-bound Control Room session | IMPLEMENTED / PENDING DEPLOYMENT | Reuses `control_room_sessions` and `validateOwnerSessionBinding`; legacy/unbound sessions fail closed |
+| Project authorization | IMPLEMENTED / PENDING DEPLOYMENT | Edge Gateway checks `midad_factory_projects.project_key + owner_user_id` |
+| Agent operation grants | IMPLEMENTED / PENDING DEPLOYMENT | New empty `midad_memory_agent_grants` table; service-role only; no grants seeded |
+| Execution-run binding | IMPLEMENTED / PENDING PRODUCER WIRING | Requires a `RUNNING` `midad_factory_runs` row with matching project and `agent_key`; legacy NULL runs fail closed |
+| Metadata-only audit | IMPLEMENTED / PENDING DEPLOYMENT | New `midad_memory_gateway_audit` records request, owner, project, agent, run, operation, outcome and record IDs; no content or credentials |
+| Private adapter service | IMPLEMENTED / PENDING HOST | Python HTTP entrypoint accepts only the Edge Gateway service bearer and rejects oversized/invalid envelopes |
+| Memora API v1 | IMPLEMENTED / CONDITIONAL | Writes remain blocked unless store health explicitly reports `writes: transactional` |
+| Live credentials, route mappings, deployment | NOT CONFIGURED | No endpoint, service key, Memora token, route mapping, or host supplied/configured |
+| Feature activation | BLOCKED | Edge and Python feature flags remain default-off |
+
+The Edge Gateway accepts only exact allowed browser origins, validates a hashed Control Room
+session token against its explicit owner binding, checks project ownership, checks a
+service-managed agent grant for the requested operation, and requires a live run bound to
+the same project. It forwards a server-resolved principal to the private Python service;
+client-supplied owner/store/capability fields are rejected.
+
+The grant migration creates no grants. It must not be applied until the Supabase write path
+is healthy. The private Python service must not be exposed directly to a browser or bot;
+deploy it behind private HTTPS ingress and configure its service key only in server-side
+secret stores.
+
+### Synthetic pilot gate
+
+1. Restore/verify Supabase migration execution capability.
+2. Apply the grant/audit schema migration; verify RLS and service-role-only grants.
+3. Provision exactly one synthetic owner/project/agent grant through a reviewed admin path.
+4. Deploy the private Python service with a durable ledger path and a private HTTPS endpoint.
+5. Configure one synthetic Memora owner/store mapping and server-only bearer token.
+6. Verify health, declared project, and transactional-write support.
+7. Run cross-owner, cross-project, revoked-grant, stale-session, wrong-run, replay, and audit tests.
+8. Keep production data and all financial workflows out of this pilot.
+
+No deployment, migration execution, grant provisioning, secret creation, or feature-flag
+activation is authorized or claimed by this implementation PR.
+
+The gateway requires `midad_factory_runs.agent_key` to match the active agent grant.
+The migration adds this nullable column without rewriting historical runs. The existing
+factory run producer must set it from trusted execution context; until that producer is
+updated, legacy and newly created rows without an agent key cannot use memory. This is
+an explicit integration blocker, not a reason to weaken the run check.
+
+
+### Upstream Memora API authentication gate
+
+The pinned upstream API only enforces bearer authentication when its host is configured
+with `MEMORA_API_TOKENS_FILE`. A client sending a bearer header does not prove that the
+server validates it. A synthetic pilot is blocked until the Memora host has this gate
+configured and negative tests prove that missing and invalid tokens are rejected while
+the configured token is accepted. Token values must remain server-only and outside Git.
+
+The upstream token file stores SHA-256 token digests mapped to allowed store names, not
+raw token values. Provision each owner's token digest for exactly one distinct store and
+keep the token file owner-only (the pinned upstream loader rejects group/other-readable
+permissions). A token that can address multiple owner stores defeats the intended
+per-owner boundary and is not accepted for the synthetic pilot.

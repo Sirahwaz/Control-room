@@ -47,6 +47,7 @@ class MemoraApiBackend:
             raise AdapterError("VALIDATION_ERROR", "Invalid Memora API base URL")
         self.base_url = base_url.rstrip("/")
         self.owner_routes = {}
+        configured_stores = set()
         for owner, route in owner_routes.items():
             store = route.get("store", "")
             token_env = route.get("token_env", "")
@@ -54,6 +55,9 @@ class MemoraApiBackend:
                 raise AdapterError("VALIDATION_ERROR", "Invalid server-side owner/store route")
             if not isinstance(token_env, str) or not _TOKEN_ENV_RE.fullmatch(token_env):
                 raise AdapterError("VALIDATION_ERROR", "Invalid server-side token environment binding")
+            if store in configured_stores:
+                raise AdapterError("VALIDATION_ERROR", "Each owner scope must map to a distinct Memora store")
+            configured_stores.add(store)
             self.owner_routes[owner] = {"store": store, "token_env": token_env}
         self.opener = opener or urllib.request.build_opener(_NoRedirect())
 
@@ -124,7 +128,7 @@ class MemoraApiBackend:
         projects = health.get("projects")
         if not isinstance(projects, list):
             raise AdapterError("CAPABILITY_UNAVAILABLE", "Memora project capabilities are unproven")
-        if projects and project_id not in projects:
+        if not projects or project_id not in projects:
             raise AdapterError("FORBIDDEN", "Project is not enabled in the mapped Memora store")
 
     def create(self, record: dict[str, Any], idempotency_key: str) -> str:
@@ -181,6 +185,9 @@ class MemoraApiBackend:
         for item in result["results"]:
             if not isinstance(item, dict) or not isinstance(item.get("id"), int):
                 raise AdapterError("INTEGRITY_FAILURE", "Memora returned a malformed search result")
+            tags = item.get("tags")
+            if not isinstance(tags, list) or project_id not in tags:
+                raise AdapterError("INTEGRITY_FAILURE", "Memora returned a result outside the requested project")
             rows.append({
                 "record_id": str(item["id"]),
                 "owner_scope": owner_scope,
