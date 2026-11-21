@@ -108,6 +108,11 @@
   },
   "web_assets": [
     "mobile/web/midad-browser-mesh.css",
-    "mobile/web/midad-browser-mesh.js"
+    "mobile/web/midad-browser-mesh.js",
+    "mobile/factory/native/midad-browser/browser-command-contract.mjs",
+    "mobile/factory/native/midad-browser/agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-bridge.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs"
   ]
 }
