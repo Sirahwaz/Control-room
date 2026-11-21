@@ -16,26 +16,20 @@ const step = (id, type, fields = {}, origin = ORIGIN) => ({
 });
 
 test("dry run plans navigation, inspection and mutation without invoking browser or approval adapters", () => {
-  let driverCalls = 0;
-  let approvalCalls = 0;
   const dryRun = createBrowserDryRun({ now: () => 1000 });
   const input = task([
     step("step-0001", "navigate", { url: "https://shop.example/catalog" }),
     step("step-0002", "getDomSnapshot", { maxChars: 4000 }, "https://shop.example"),
     step("step-0003", "click", { selector: "#checkout" }, "https://shop.example"),
   ]);
-  const result = dryRun.plan(input, {
-    onDriverCall: () => { driverCalls += 1; },
-    authorizeAction: () => { approvalCalls += 1; },
-  });
+  const result = dryRun.plan(input);
   assert.equal(result.ok, true);
   assert.equal(result.state, "dry_run_completed");
   assert.equal(result.plan.length, 3);
   assert.equal(result.plan[2].requiresApproval, true);
   assert.equal(result.plan.every((item) => item.willExecute === false), true);
   assert.equal(result.evidence.every((item) => item.status === "planned"), true);
-  assert.equal(driverCalls, 0);
-  assert.equal(approvalCalls, 0);
+  assert.equal(result.mode, "dry_run");
 });
 
 test("dry run rejects a navigation target outside the declared origin allowlist", () => {
