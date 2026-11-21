@@ -1,7 +1,7 @@
 name: MIDAD Memory Adapter Tests
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "tools/midad-memory-adapter/**"
       - ".github/workflows/midad-memory-adapter-tests.yml"
