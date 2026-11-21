@@ -4,7 +4,7 @@
   const BOOKMARKS = "nativeBrowserBookmarks";
   const $ = (id) => document.getElementById(id);
   const state = { tabs: [], activeId: null, listenerReady: false };
-  const plugin = () => window.Capacitor?.Plugins?.CapgoInAppBrowser || window.Capacitor?.Plugins?.InAppBrowser || null;
+  const plugin = () => window.MIDADInAppBrowser || window.Capacitor?.Plugins?.CapgoInAppBrowser || window.Capacitor?.Plugins?.InAppBrowser || null;
 
   function read(key, fallback) {
     try { const value = JSON.parse(localStorage.getItem(key) || "null"); return value ?? fallback; }
