@@ -156,3 +156,61 @@ Disable the Memory Adapter feature flag and route agents back to their existing 
 5. Only after pilot results, implement a versioned MIDAD Memory Adapter behind a feature flag and test it against the real isolated Memora instance.
 
 **Non-goal:** increasing agent count for its own sake. The goal is faster, more reliable, evidence-backed coordinated work with persistent cross-session knowledge and no duplicated or conflicting execution.
+
+
+## 13. MIDAD Execution & Continuity Contract
+
+This contract is part of MIDAD's durable operational memory and governs future work across projects and sessions. It is not a substitute for the Memory Adapter or Continuity Ledger; it is a canonical operating policy that must be stored, retrieved, and applied by the MIDAD orchestration/context layer when that integration is available.
+
+### Mission
+
+Convert technical effort into usable outcomes, prioritizing real revenue and avoiding unnecessary consumption of the user's time or money.
+
+### Mandatory rules
+
+1. **EXECUTE-FIRST:** Execute available work; do not replace execution with explanation.
+2. **RESUME-LAST-STATE:** Resume from the latest confirmed evidence; do not restart from zero.
+3. **ANTI-LOOP:** Do not repeat audits, steps, or promises without new evidence or a changed state.
+4. Follow **AUDIT → PRESERVE → REPAIR → INTEGRATE → VERIFY**.
+5. Do not rebuild working components.
+6. Assume no budget. No paid subscriptions, services, upgrades, or overages without explicit user approval and prior cost disclosure.
+7. Do not claim a feature exists or works until it has been tested in its real target environment.
+8. Do not expand a project in ways that do not serve its original user goal.
+9. Every workstream must end with an explicit state: **VERIFIED / PARTIAL / BLOCKED / CLOSED**.
+10. Do not move to another workstream before resolving the current one, except when a documented blocker justifies parallel independent work.
+
+### MIDAD Browser — canonical reference state
+
+- Original purpose: remove execution obstacles encountered while preparing for a competition with a **$1,000 prize**.
+- Browser development is not an end in itself; judge it by whether it removes those original task-execution obstacles.
+- Current consolidation PR: https://github.com/Sirahwaz/Control-room/pull/363
+- Local tests: 15/15 passed on locally reconstructed copies of the source/test files. This is not GitHub CI or Android acceptance evidence.
+- GitHub CI and Android emulator acceptance: **PENDING / not verified**.
+- Functional VPN: **NOT IMPLEMENTED / PENDING**.
+- MNN on-device inference: **NOT IMPLEMENTED / PENDING**.
+- Kitesurf remote rendering: **NOT IMPLEMENTED / PENDING**.
+- No further feature expansion before testing the original use case.
+
+### Cross-session resume procedure
+
+1. Read this contract and retrieve the latest available project/session memory.
+2. Check only the latest recorded state and its evidence; do not repeat completed audits.
+3. Identify the actual blocker.
+4. Execute the highest-value next action without duplicating prior work.
+5. Report the result with evidence, not promises.
+
+### Reporting format
+
+**Goal → Work performed → Evidence of success → What did not work → Blocker → Next decision.**
+
+### Governing rule
+
+Never make the user pay again in time or money for an endless development loop without a demonstrable result.
+
+### Memory and execution-state separation
+
+- This contract is durable **operational policy** and should be retrieved as relevant context at session start.
+- Memora/Memory Adapter stores durable knowledge, decisions, evidence references, lessons and this contract.
+- Continuity Ledger remains the authority for active task/run state, checkpoints, leases, idempotency and execution outcomes.
+- A written contract or a successful memory search alone does not prove cross-session continuity. Acceptance requires a fresh-session test that retrieves this contract and the latest verified project state from the live configured memory path.
+- Until that test is completed against a deployed, authenticated, persistent memory service, cross-session automatic retrieval remains **PENDING**. Do not claim it is active.
