@@ -143,6 +143,11 @@ jobs:
             cp "$asset" "mobile/www/site/$asset"
           done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -E '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
 
+      - name: Bundle native browser plugin
+        if: steps.product.outputs.product_key == 'midad-mobile-next'
+        working-directory: mobile
+        run: npx --yes esbuild@0.25.5 web/midad-browser-native-entry.mjs --bundle --format=iife --platform=browser --outfile=www/midad-browser-native.bundle.js
+
       - name: Trading UI browser runtime smoke
         if: steps.product.outputs.product_key == 'midad-trading'
         working-directory: mobile
