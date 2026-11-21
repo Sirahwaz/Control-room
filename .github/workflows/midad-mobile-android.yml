@@ -160,12 +160,15 @@ jobs:
             cp "$asset" "mobile/www/site/$asset"
           done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
           # Fail the build if any primary Mobile Hub destination or nested checkout asset is absent.
-          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js midad-browser-mesh.html midad-browser-mesh.css midad-browser-mesh.js human-bridge.html human-bridge.css human-bridge.js; do
+          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js; do
             test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
           done
           grep -Fq './midad-control-v2.js' mobile/www/site/index.html
           grep -Fq './midad-browser-mesh.html' mobile/www/index.html
           grep -Fq './human-bridge.html' mobile/www/index.html
+          for required in midad-browser-mesh.html midad-browser-mesh.css midad-browser-mesh.js human-bridge.html human-bridge.css human-bridge.js; do
+            test -s "mobile/www/$required" || { echo "Missing bundled mobile surface: $required"; exit 1; }
+          done
       - name: Install Playwright for Meme Trader runtime smoke
         if: steps.product.outputs.product == 'midad-meme-trader'
         working-directory: mobile
