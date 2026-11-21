@@ -141,7 +141,7 @@ jobs:
             [ -z "$asset" ] && continue
             mkdir -p "mobile/www/site/$(dirname "$asset")"
             cp "$asset" "mobile/www/site/$asset"
-          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)
+          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -E '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
 
       - name: Trading UI browser runtime smoke
         if: steps.product.outputs.product_key == 'midad-trading'
