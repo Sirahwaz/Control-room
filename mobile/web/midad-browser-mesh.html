@@ -259,7 +259,7 @@
           <div>
             <span class="section-kicker">NATIVE AGENT BRIDGE · ANDROIDX WEB MESSAGE</span>
             <h3 id="nativeAgentHeading">وكيل MIDAD المتصل بمحرك WebView</h3>
-            <p>فحص نص الصفحة داخل تبويب محدد. عمليات النقر والإدخال تتطلب موافقة أصلية من Android.</p>
+            <p>محاكاة الخطة لا تتصل بالمتصفح ولا تنفذ أي إجراء. الفحص الفعلي منفصل؛ وعمليات النقر والإدخال تتطلب موافقة Android.</p>
           </div>
           <span class="state-label pending" id="nativeAgentBridgeStatus" role="status" aria-live="polite">INITIALIZING</span>
         </div>
@@ -275,7 +275,8 @@
           </div>
         </div>
         <div class="browser-run-actions">
-          <button class="primary-btn" id="nativeAgentInspect" type="button">فحص الصفحة المحددة</button>
+          <button class="secondary-btn" id="nativeAgentDryRun" type="button">محاكاة الخطة · DRY RUN</button>
+          <button class="primary-btn" id="nativeAgentInspect" type="button">فحص الصفحة المحددة فعلياً</button>
         </div>
         <pre class="native-agent-output" id="nativeAgentOutput" aria-live="polite">بانتظار تهيئة قناة Android الأصلية…</pre>
       </section>
