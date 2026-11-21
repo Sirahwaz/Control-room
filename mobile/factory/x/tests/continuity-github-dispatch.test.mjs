@@ -442,3 +442,76 @@ test('scheduled pull runner claims one owner-scoped CPU task without a dispatch 
   assert.equal(calls.length, 4);
   assert.ok(calls.every(call => call.init.headers.authorization === 'Bearer ' + oidcToken));
 });
+
+
+test('ephemeral runner reports bounded execution failures as retryable and never checkpoints or completes them', async () => {
+  const calls = [];
+  const leaseToken = 'e'.repeat(64);
+  const oidcToken = await signedRunnerOidcToken();
+  const result = await runEphemeralTask({
+    env: {
+      MIDAD_CONTINUITY_LEDGER_URL: 'https://ledger.example.workers.dev',
+      MIDAD_CONTINUITY_OWNER_ID: 'github:116122510',
+      MIDAD_INPUT_OWNER_ID: 'github:116122510',
+      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runner-test',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'r'.repeat(64),
+      MIDAD_TASK_ID: 'task-overflow-0001',
+      MIDAD_EVENT_ID: 'evt-overflow-0001',
+    },
+    fetchImpl: async (url, init = {}) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === 'pipelines.actions.githubusercontent.com') {
+        return new Response(JSON.stringify({ value: oidcToken }), { status: 200 });
+      }
+      if (parsed.hostname === 'token.actions.githubusercontent.com') {
+        return new Response(JSON.stringify({ keys: [runnerOidcJwk] }), { status: 200 });
+      }
+      if (parsed.pathname === '/internal/oidc/preflight') {
+        return new Response(JSON.stringify({
+          ok: true,
+          oidc_verified: true,
+          node_registered: true,
+          node_owner_matches: true,
+          node_consent_confirmed: true,
+          node_not_revoked: true,
+          node_capability_matches: true,
+          owner_claim_matches: true,
+        }), { status: 200 });
+      }
+      const body = JSON.parse(init.body);
+      calls.push({ path: parsed.pathname, body });
+      if (parsed.pathname.endsWith('/heartbeat')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      if (parsed.pathname.endsWith('/claim')) return new Response(JSON.stringify({
+        ok: true,
+        task: {
+          task_id: 'task-overflow-0001',
+          owner_id: 'github:116122510',
+          workload: 'CPU_BATCH',
+          payload: { operation: 'SUM_INTEGERS', input: { values: [Number.MAX_SAFE_INTEGER, 1] } },
+          attempt: 1,
+          lease_token: leaseToken,
+        },
+      }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, state: 'FAILED_RETRYABLE' }), { status: 200 });
+    },
+  });
+
+  assert.deepEqual(result, { status: 'FAILED_RETRYABLE', task_id: 'task-overflow-0001' });
+  const fail = calls.find(call => call.path.endsWith('/v1/tasks/fail'));
+  assert.ok(fail, 'failed bounded work must be reported to the ledger');
+  assert.equal(fail.body.task_id, 'task-overflow-0001');
+  assert.equal(fail.body.lease_token, leaseToken);
+  assert.equal(fail.body.retryable, true);
+  assert.equal(fail.body.reason, 'SUM_OVERFLOW');
+  assert.equal(calls.some(call => call.path.endsWith('/v1/tasks/checkpoint')), false);
+  assert.equal(calls.some(call => call.path.endsWith('/v1/tasks/complete')), false);
+});
+
+test('CPU task enqueue workflow pins idempotency, zero cost, and a single bounded attempt', async () => {
+  const workflow = await readFile(new URL('../../../../.github/workflows/midad-mncf-cpu-sum-task.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /idempotency_key:\s*'mncf-cpu-sum:'\s*\+\s*runId/);
+  assert.match(workflow, /max_cost_usd:\s*0/);
+  assert.match(workflow, /max_attempts:\s*1/);
+  assert.match(workflow, /SUM_INTEGERS/);
+  assert.match(workflow, /workflow_dispatch:/);
+});
