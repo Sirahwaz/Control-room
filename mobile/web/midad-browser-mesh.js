@@ -235,18 +235,51 @@
     $("#browserRunOpenLiveView").removeAttribute("href");
     browserRunStateLabel(browserRunState.token ? "CONNECTED" : "NOT CONNECTED", "IDLE · NO SESSION");
   }
+  async function browserRunNativeRequest(command) {
+    if (!window.midadNative || typeof window.midadNative.postMessage !== "function") {
+      throw new Error("ANDROID_KEYSTORE_BRIDGE_UNAVAILABLE");
+    }
+    const module = await import("./native-agent-bridge.mjs");
+    const bridge = module.createNativeAgentBridge();
+    try { return await bridge.request(command); }
+    finally { bridge.close(); }
+  }
   async function browserRunObtainSession(force = false) {
     if (browserRunState.token && !force) return browserRunState.token;
-    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    const initData = telegram?.initData || "";
-    if (!initData) throw new Error("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية.");
+    const input = $("#browserRunAccessKey");
+    let accessKey = input?.value?.trim() || "";
+    const enteredKey = Boolean(accessKey);
+    if (!accessKey) {
+      const stored = await browserRunNativeRequest({ type: "getBrowserRunAccessKey" });
+      if (stored?.available !== true) {
+        const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+        const initData = telegram?.initData || "";
+        if (!initData) throw new Error("أدخل مفتاح وصول MIDAD للربط دون Telegram.");
+        const response = await fetch(BROWSER_RUN_CONTROL_API, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
+        browserRunState.token = data.token;
+        return browserRunState.token;
+      }
+      // Native bridge returns only availability; it never exports the saved key to JavaScript.
+      throw new Error("NATIVE_KEYSTORE_AUTH_REQUIRED");
+    }
     const response = await fetch(BROWSER_RUN_CONTROL_API, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
+      body: JSON.stringify({ access_key: accessKey, client: "midad-control-room" }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
+    if (enteredKey) {
+      await browserRunNativeRequest({ type: "saveBrowserRunAccessKey", accessKey });
+      if (input) input.value = "";
+    }
+    accessKey = "";
     browserRunState.token = data.token;
     return browserRunState.token;
   }
