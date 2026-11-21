@@ -84,3 +84,27 @@ border:1px solid var(--line);border-radius:14px;background:#0e141d;box-shadow:0 
 .morph-station span{font-size:10px}.morph-station em{font-style:normal;font-size:8px;color:var(--accent)}
 .morph-reset{margin-top:10px;width:100%;height:38px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.02);color:var(--soft);font-size:10px}
 @keyframes morphSweep{to{transform:rotate(360deg)}}@media(max-width:470px){.morph-banner{display:block}.morph-badge{display:inline-block;margin-top:10px}.morph-input-row{flex-direction:column}.morph-input-row button{height:43px}.morph-columns{display:grid;grid-template-columns:1fr}}
+
+
+/* MIDAD Mobile personalization */
+:root{--font-scale:1;--font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{font-family:var(--font-family);font-size:calc(16px * var(--font-scale))}
+body[data-font="arabic"]{--font-family:"Noto Sans Arabic","Noto Naskh Arabic",system-ui,sans-serif}
+body[data-font="serif"]{--font-family:Georgia,"Times New Roman",serif}
+body[data-theme="light"]{--bg:#f3f6fa;--panel:#fff;--panel2:#fff;--line:rgba(25,43,65,.16);--text:#172334;--muted:#526174;--soft:#68788d;--accent:#087f68;--accent2:#315fc1;--danger:#c43d45}
+body[data-theme="light"]{background:linear-gradient(145deg,#edf3fa,#f8fafc);color:var(--text)}
+body[data-theme="light"] .topbar,body[data-theme="light"] .bottom-nav{background:rgba(248,250,252,.94)}
+body[data-theme="light"] .card,body[data-theme="light"] .quick-card,body[data-theme="light"] .settings-card,body[data-theme="light"] .future{background:#fff}
+body[data-theme="light"] .command,body[data-theme="light"] .note{background:#fff}
+.settings-card{display:grid;gap:10px;padding:15px;margin-top:10px;border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--text)}
+.settings-card label{font-size:12px;color:var(--muted);font-weight:650}
+.settings-card select,.settings-card input[type=range]{width:100%;min-height:42px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--panel2);color:var(--text)}
+.settings-card output{float:left;color:var(--accent);font-weight:750}
+.settings-save{min-height:42px}
+.extension-center h3{margin:0;font-size:17px}
+.extension-center p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+.extension-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px;border:1px solid var(--line);border-radius:12px;font-size:11px}
+.extension-status b{font-size:9px;color:var(--accent);letter-spacing:.08em}
+.bottom-nav{grid-template-columns:repeat(5,1fr)}
+.nav-item{min-width:0;padding:7px 3px}
+.nav-item small{font-size:8px}
