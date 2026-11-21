@@ -19,7 +19,7 @@ export function resolveMemoryPrincipal({ ownerUserId, project, grant, run, agent
   }
   if (!run || typeof run.id !== "string" || !RUN_UUID.test(run.id) ||
       run.project_id !== project.id || run.project_key !== project.project_key ||
-      String(run.state || "").toUpperCase() !== "RUNNING") {
+      run.agent_key !== agentKey || String(run.state || "").toUpperCase() !== "RUNNING") {
     return { ok: false, error: "execution_run_invalid" };
   }
   if (!ALLOWED_OPERATIONS.has(operation) || !Array.isArray(grant.capabilities) ||
