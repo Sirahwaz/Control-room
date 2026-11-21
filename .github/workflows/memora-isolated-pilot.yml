@@ -37,6 +37,12 @@ jobs:
       - name: Checkout MIDAD control room
         uses: actions/checkout@v4
 
+      - name: Set up pinned Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.8"
+          cache: pip
+
       - name: Verify pinned upstream source and package contract
         shell: bash
         run: |
@@ -51,7 +57,7 @@ jobs:
       - name: Install isolated test dependencies
         working-directory: ${{ runner.temp }}/memora
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install "pip==25.0.1"
           python -m pip install -e ".[dev]"
 
       - name: Run bounded pilot acceptance tests
