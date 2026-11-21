@@ -1,13 +1,23 @@
 # MIDAD Network Privacy Layer
 
-Policy contract for a future Android VpnService-backed browser network tunnel.
+## Current state: policy contract only — NOT a working VPN
 
-## Planned layers
-- Proxy profile abstraction: HTTP, HTTPS, SOCKS5 (proxy support is not equivalent to a VPN tunnel).
-- Android VpnService tunnel adapter: full-device/app traffic routing only after implementation and permission grant.
-- Kill switch policy: block direct traffic when enabled and tunnel is not verified connected.
-- Connection state machine and error reporting.
-- Private-content policy: prevent forwarding browser-private classifications to remote proxy infrastructure.
-- DNS/leak tests, IPv6 handling, bypass/exclusion rules, and endpoint security are required before claiming leak protection.
+The browser currently has no native tunnel service, proxy transport, packet forwarding, or enforced network kill switch. Do not present the UI/policy state as VPN protection.
 
-This module is policy-only. It does not create a VPN, proxy connection, or tunnel and is not yet integrated into Android UI. A profile requires an actual endpoint; MIDAD does not invent or provide VPN servers.
+## Security contract
+- Proxy profile abstraction accepts HTTP, HTTPS, and SOCKS5 endpoint metadata; a proxy is not a VPN.
+- Direct traffic is blocked by policy while kill switch is enabled and no native tunnel session is attested.
+- The JavaScript policy cannot attest itself as connected. Only the trusted Android adapter identity `ai.midad.browser.vpnservice` may report readiness.
+- A connected attestation must include a session ID, a `tun*` interface name, installed routes, and configured DNS. Disconnect/failure events must match the active session.
+- Proxy credentials are not returned in UI configuration results or status snapshots.
+- Private browser content is classified local and must not be forwarded to a remote proxy.
+- Unsafe URL schemes and malformed endpoint profiles are rejected.
+
+## Required implementation before VPN claims
+1. Android `VpnService` with explicit Android user consent and lifecycle handling.
+2. Real packet forwarding or a documented supported tunnel protocol and authenticated endpoint.
+3. DNS and IPv6 routing/leak tests, reconnect and process-death tests.
+4. Enforced fail-closed behavior at the network layer (not just this JavaScript decision function).
+5. Android UI for setup/status and a signed APK plus emulator/device acceptance evidence.
+
+No endpoint is fabricated or bundled. An actual endpoint/provider is required; costs and data handling must be disclosed before use.
