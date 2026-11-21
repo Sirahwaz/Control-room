@@ -663,14 +663,14 @@
     },
     {
       "from": "control-room-entry",
-      "to": "revenue-checkout",
-      "relationship": "route-redirect",
+      "to": "services-catalog",
+      "relationship": "canonical-checkout-route",
       "impactPropagation": true,
       "evidence": [
         {
           "repository": "control-room",
           "path": "index.html",
-          "note": "Redirects view=revenue to revenue-forge.html while preserving query parameters."
+          "note": "Redirects view=revenue to the canonical services.html checkout surface while preserving query parameters; legacy revenue-forge.html remains directly addressable."
         }
       ]
     },
