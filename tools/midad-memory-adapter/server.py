@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import re
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
@@ -138,7 +139,45 @@ def dispatch_request(
         }
 
 
-def build_handler(gateway: MidadMemoryGateway, service_key: str, enabled: bool):
+
+class BoundedThreadingHTTPServer(ThreadingHTTPServer):
+    """Bound concurrent request workers to avoid unbounded thread creation."""
+
+    daemon_threads = True
+    request_queue_size = 32
+
+    def __init__(self, server_address, handler_class, max_workers: int = 8):
+        if not 1 <= max_workers <= 32:
+            raise ValueError("max_workers must be between 1 and 32")
+        self._worker_slots = threading.BoundedSemaphore(max_workers)
+        super().__init__(server_address, handler_class)
+
+    def process_request(self, request, client_address):
+        if not self._worker_slots.acquire(blocking=False):
+            try:
+                request.sendall(
+                    b"HTTP/1.1 503 Service Unavailable\\r\\n"
+                    b"Connection: close\\r\\nContent-Length: 0\\r\\n\\r\\n"
+                )
+            except OSError:
+                pass
+            finally:
+                request.close()
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self._worker_slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._worker_slots.release()
+
+
+def build_handler(gateway: MidadMemoryGateway | None, service_key: str, enabled: bool):
     class Handler(BaseHTTPRequestHandler):
         server_version = "MIDADMemoryGateway/1"
 
@@ -209,7 +248,15 @@ def main():
     gateway, service_key, enabled = build_runtime()
     bind = os.environ.get("MIDAD_MEMORY_ADAPTER_BIND", "127.0.0.1")
     port = int(os.environ.get("PORT", "8080"))
-    server = ThreadingHTTPServer((bind, port), build_handler(gateway, service_key, enabled))
+    try:
+        max_workers = int(os.environ.get("MIDAD_MEMORY_ADAPTER_MAX_WORKERS", "8"))
+    except ValueError:
+        raise RuntimeError("MIDAD_MEMORY_ADAPTER_MAX_WORKERS must be an integer") from None
+    server = BoundedThreadingHTTPServer(
+        (bind, port),
+        build_handler(gateway, service_key, enabled),
+        max_workers=max_workers,
+    )
     server.serve_forever()
 
 
