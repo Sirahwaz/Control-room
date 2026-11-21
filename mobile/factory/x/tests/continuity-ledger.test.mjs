@@ -192,6 +192,31 @@ test('expired idempotent task is reclaimed with a new lease; old token is invali
     assert.equal(stale.status,409);
   } finally { Date.now=originalNow; storage.close(); }
 });
+test('lease expiry is exclusive at the exact boundary; stale owner is rejected before reclaim', async () => {
+  const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
+  try {
+    const token=await enroll(ledger); await heartbeat(ledger,'node-a',token);
+    await enqueue(ledger,task('lease-boundary'));
+    const first=await claim(ledger,'node-a',token,15,'lease-boundary');
+    assert.equal(first.status,200);
+    const expiresAt=Date.parse(first.body.task.lease_expires_at);
+    assert.equal(expiresAt,now+15000);
+
+    now=expiresAt;
+    const staleComplete=await read(await ledger.fetch(post('/v1/tasks/complete',{
+      task_id:'lease-boundary',lease_token:first.body.task.lease_token,result:{stale:true},
+    },nodeHeaders('node-a',token))));
+    assert.equal(staleComplete.status,409);
+    assert.equal(staleComplete.body.error,'LEASE_INVALID_OR_EXPIRED');
+
+    const reclaimed=await claim(ledger,'node-a',token,90,'lease-boundary');
+    assert.equal(reclaimed.status,200);
+    assert.equal(reclaimed.body.task.attempt,2);
+    assert.notEqual(reclaimed.body.task.lease_token,first.body.task.lease_token);
+    assert.equal(storage.db.prepare('SELECT status FROM continuity_tasks WHERE task_id=?').get('lease-boundary').status,'RUNNING');
+  } finally { Date.now=originalNow; storage.close(); }
+});
+
 test('expired non-idempotent job is quarantined, never blindly replayed', async () => {
   const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
   try {
