@@ -55,6 +55,11 @@ test("the Browser APK workflow packages the manifest-selected Mesh page and decl
   assert.deepEqual(manifest.web_assets, [
     "mobile/web/midad-browser-mesh.css",
     "mobile/web/midad-browser-mesh.js",
+    "mobile/factory/native/midad-browser/browser-command-contract.mjs",
+    "mobile/factory/native/midad-browser/agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-bridge.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime.mjs",
+    "mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs",
   ]);
   assert.ok(workflow.includes(`WEB_ENTRY="$(jq -r '.web_entry' mobile/factory/runtime-product.json)"`));
   assert.ok(workflow.includes("cp \"$WEB_ENTRY\" mobile/www/index.html"));
