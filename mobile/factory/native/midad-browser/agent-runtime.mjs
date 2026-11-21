@@ -402,3 +402,93 @@ export function createBrowserDryRun({ now = () => Date.now() } = {}) {
     },
   });
 }
+
+
+/**
+ * Execution policy for Browser Mesh. DRY_RUN is the default and live execution
+ * is unavailable until the caller explicitly selects LOCAL_NATIVE.
+ */
+export function createBrowserExecutionController({ dryRun, liveRuntime, onClose } = {}) {
+  if (!dryRun || typeof dryRun.plan !== "function") {
+    throw new TypeError("dry_run_planner_required");
+  }
+  let mode = "dry_run";
+  let closed = false;
+  return Object.freeze({
+    getMode() {
+      return mode;
+    },
+    setMode(nextMode) {
+      if (closed) return false;
+      if (nextMode === "dry_run") {
+        mode = "dry_run";
+        return true;
+      }
+      if (nextMode === "local_native" && liveRuntime && typeof liveRuntime.run === "function") {
+        mode = "local_native";
+        return true;
+      }
+      return false;
+    },
+    plan(input) {
+      return dryRun.plan(input);
+    },
+    close() {
+      if (closed) return false;
+      closed = true;
+      if (typeof onClose === "function") onClose();
+      return true;
+    },
+    async run(input) {
+      if (closed) {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "runtime_closed",
+          evidence: [],
+        };
+      }
+      if (mode !== "local_native") {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "live_mode_not_explicitly_enabled",
+          evidence: [],
+        };
+      }
+      if (!liveRuntime || typeof liveRuntime.run !== "function") {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "local_native_runtime_unavailable",
+          evidence: [],
+        };
+      }
+      return liveRuntime.run(input);
+    },
+    pause() {
+      return !closed && mode === "local_native" && typeof liveRuntime?.pause === "function"
+        ? liveRuntime.pause()
+        : false;
+    },
+    resume() {
+      return !closed && mode === "local_native" && typeof liveRuntime?.resume === "function"
+        ? liveRuntime.resume()
+        : false;
+    },
+    cancel() {
+      return !closed && mode === "local_native" && typeof liveRuntime?.cancel === "function"
+        ? liveRuntime.cancel()
+        : false;
+    },
+    getState() {
+      if (closed) return { state: "blocked", mode, error: "runtime_closed" };
+      return mode === "local_native" && typeof liveRuntime?.getState === "function"
+        ? liveRuntime.getState()
+        : { state: "blocked", mode, error: "live_mode_not_explicitly_enabled" };
+    },
+  });
+}
