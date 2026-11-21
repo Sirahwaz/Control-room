@@ -12,7 +12,7 @@ test("Mobile Hub exposes real appearance and typography controls", () => {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
   assert.match(js, /midad-mobile-settings/);
-  assert.match(js, /data-theme/);
+  assert.match(js, /dataset\\.theme/);
   assert.match(js, /fontScale/);
   assert.match(css, /\[data-theme="light"\]/);
   assert.match(css, /--font-scale/);
