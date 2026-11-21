@@ -147,6 +147,8 @@
     "mobile/web/midad-browser-mesh.css",
     "mobile/web/midad-browser-mesh.js",
     "mobile/web/human-bridge.css",
-    "mobile/web/human-bridge.js"
+    "mobile/web/human-bridge.js",
+    "mobile/web/midad-browser-mesh.html",
+    "mobile/web/human-bridge.html"
   ]
 }
