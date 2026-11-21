@@ -1,6 +1,6 @@
 /* Version bump retires stale cache and activates the non-blocking fast-boot login path. */
-const CACHE="midad-control-v23-20261113-outreach-v1";
-const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js?v=20261113-outreach-v1","./trust-wallet-link.html","./reown-wallet-connect.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg","./midad-network-access.html","./midad-network-access.css","./midad-network-access.js"];
+const CACHE="midad-control-v24-20261121-canonical-services-v1";
+const CORE=["./","./index.html","./midad-control-v2.css","./midad-control-v2.js?v=20261113-outreach-v1","./trust-wallet-link.html","./reown-wallet-connect.html","./midad-cockpit.js","./midad-human-bridge-control.js","./midad-fix-v1.css","./midad-fix-v1.js","./iaitrader.html","./iaitrader.css","./iaitrader.js","./meme-scout.html","./manifest.webmanifest","./midad-pwa-icon.svg","./midad-network-access.html","./midad-network-access.css","./midad-network-access.js","./services.html","./services.catalog.mjs"];
 // Runtime caching is restricted to the same static asset paths already used by precache.
 // API routes, personalized responses, and arbitrary navigations are never added to CacheStorage.
 const STATIC_ASSETS=new Set(CORE.map(asset=>{const url=new URL(asset,self.registration.scope);return url.pathname+url.search;}));
