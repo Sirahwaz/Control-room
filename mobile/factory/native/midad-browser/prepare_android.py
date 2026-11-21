@@ -67,6 +67,9 @@ app = root.find("application")
 if app is None:
     raise SystemExit("android_application_missing")
 
+# Keystore-bound browser ciphertext cannot be restored without its device key.
+app.set(A + "allowBackup", "false")
+
 main = None
 for activity in app.findall("activity"):
     if activity.get(A + "name") in (".MainActivity", "ai.midad.browser.MainActivity"):
