@@ -248,7 +248,7 @@ public final class BrowserAgentBridge {
                 break;
             case "type":
                 String text = JSONObject.quote(command.optString("text", ""));
-                script = "(()=>{const e=document.querySelector(" + selector + ");if(!e)return {ok:false,error:'selector_not_found'};if(e.type==='password'||e.disabled||e.readOnly)return {ok:false,error:'target_not_editable'};e.focus();e.value=" + text + ";e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return {ok:true}})()";
+                script = "(()=>{const e=document.querySelector(" + selector + ");if(!e)return {ok:false,error:'selector_not_found'};if(!(e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement)||e.type==='password'||e.type==='hidden'||e.type==='file'||e.disabled||e.readOnly)return {ok:false,error:'target_not_editable'};e.focus();e.value=" + text + ";e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return {ok:true}})()";
                 break;
             case "select":
                 String value = JSONObject.quote(command.optString("value", ""));
@@ -383,7 +383,9 @@ public final class BrowserAgentBridge {
             Uri uri = Uri.parse(value);
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null ||
                 uri.getUserInfo() != null || uri.getPort() != -1 && (uri.getPort() < 1 || uri.getPort() > 65535)) return null;
-            String origin = "https://" + uri.getAuthority();
+            String host = uri.getHost().toLowerCase();
+            int port = uri.getPort();
+            String origin = "https://" + host + (port == -1 || port == 443 ? "" : ":" + port);
             return origin;
         } catch (Exception ignored) {
             return null;
