@@ -29,8 +29,8 @@ test("Native browser rejects unsafe URL schemes and persists only user-selected 
 
 test("Native browser runtime is included in the Mobile Next APK web assets", () => {
   assert.ok(manifest.web_assets.includes("mobile/web/midad-native-browser.js"));
-  assert.match(html, /midad-browser-native\\.bundle\\.js/);
+  assert.match(html, /midad-browser-native\.bundle\.js/);
   assert.match(workflow, /esbuild.*midad-browser-native-entry/);
-  assert.match(workflow, /midad-browser-native\\.bundle\\.js/);
+  assert.match(workflow, /midad-browser-native\.bundle\.js/);
   assert.ok(fs.existsSync(browserBundle), "native browser plugin bundle must be generated before packaging");
 });
