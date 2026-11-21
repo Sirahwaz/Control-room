@@ -95,6 +95,10 @@ jobs:
               product="signalscan-ai"
             fi
           fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release_mode }}" = "release" ] && [ "$product" != "midad-mobile-next" ]; then
+            echo "Permanent releases must use product midad-mobile-next (ai.midad.mobile.next); v0.4.1 keeps its original package identity." >&2
+            exit 1
+          fi
           node mobile/factory/render.mjs "$product" > product.json
           jq -e '.features.server_side_secrets_only == true' mobile/factory/runtime-product.json >/dev/null
           jq -e '.product_key == $p' --arg p "$product" mobile/factory/runtime-product.json >/dev/null
