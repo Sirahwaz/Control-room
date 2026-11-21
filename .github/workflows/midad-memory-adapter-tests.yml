@@ -23,4 +23,4 @@ jobs:
           cache: pip
       - name: Run isolated adapter contract tests
         working-directory: tools/midad-memory-adapter
-        run: python -m unittest -v test_midad_memory_adapter test_memora_api_backend test_gateway
+        run: python -m unittest -v test_midad_memory_adapter test_memora_api_backend test_gateway test_server
