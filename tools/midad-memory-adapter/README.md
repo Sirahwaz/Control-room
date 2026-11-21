@@ -84,3 +84,16 @@ declared project scope; writes additionally require `writes: transactional`.
 If Memora reports `writes: unsupported`, the adapter refuses to absorb. The
 upstream contract explicitly treats that capability as unsupported until a
 transactional backend is proven. This implementation does not override it.
+
+## Trusted MIDAD gateway boundary
+
+`gateway.py` adds a server-side composition point. Every request passes through an
+injected `principal_resolver` before reaching the adapter. The resolver must be wired
+to MIDAD's existing authenticated principal and policy services; caller-supplied
+owner, project, role, and capability fields are not accepted as a substitute.
+
+**Integration status: PENDING.** This repository change does not guess at or replace
+MIDAD's identity provider. No real auth resolver, HTTP route, Telegram bot route,
+or mobile client is wired by this package. The gateway tests prove fail-closed
+behavior for missing, unverified, or failing resolvers. A trusted production
+resolver must be selected and independently reviewed before any internal pilot.
