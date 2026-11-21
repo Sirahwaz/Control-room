@@ -52,7 +52,7 @@ def _principal_from_context(value: Any) -> Principal | None:
         return None
     if not isinstance(capabilities, list) or not capabilities:
         return None
-    if any(cap not in ALLOWED_CAPABILITIES for cap in capabilities):
+    if any(not isinstance(cap, str) or cap not in ALLOWED_CAPABILITIES for cap in capabilities):
         return None
     if value.get("authenticated") is not True:
         return None
@@ -95,7 +95,7 @@ def dispatch_request(
     payload = request_data.get("payload")
     idempotency_key = request_data.get("idempotency_key")
     if (not isinstance(request_id, str) or not UUID_RE.fullmatch(request_id) or
-        operation not in ALLOWED_CAPABILITIES or
+        not isinstance(operation, str) or operation not in ALLOWED_CAPABILITIES or
         not isinstance(project_id, str) or not PROJECT_RE.fullmatch(project_id) or
         not isinstance(payload, dict) or
         (operation == "create" and (not isinstance(idempotency_key, str) or not idempotency_key))):
