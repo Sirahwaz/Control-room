@@ -8,9 +8,11 @@ test("Browser Mesh exposes a password-only access-key field without requiring Te
   const html = await read("mobile/web/midad-browser-mesh.html");
   const js = await read("mobile/web/midad-browser-mesh.js");
   assert.match(html, /id="browserRunAccessKey"[^>]*type="password"|type="password"[^>]*id="browserRunAccessKey"/);
-  assert.match(js, /access_key\s*:\s*accessKey/);
+  assert.match(js, /type:\s*"authenticateBrowserRun"/);
+  assert.match(js, /accessKey,/);
   assert.match(js, /getBrowserRunAccessKey/);
   assert.doesNotMatch(js, /افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية/);
+  assert.doesNotMatch(js, /telegram_init_data/);
 });
 
 test("Browser Run access key is encrypted by the existing Android Keystore vault", async () => {
@@ -18,12 +20,16 @@ test("Browser Run access key is encrypted by the existing Android Keystore vault
   const bridge = await read("mobile/factory/native/midad-browser/BrowserAgentBridge.java");
   assert.match(activity, /saveBrowserRunAccessKey\(/);
   assert.match(activity, /readBrowserRunAccessKey\(/);
+  assert.match(activity, /authenticateBrowserRunWithKey\(/);
+  assert.match(activity, /HttpURLConnection/);
+  assert.match(activity, /payload\.put\("access_key", candidate\)/);
   assert.match(activity, /encryptVaultValue\(/);
   assert.match(activity, /decryptVaultValue\(/);
   assert.match(activity, /BROWSER_RUN_ACCESS_KEY_KEY/);
   assert.match(bridge, /getBrowserRunAccessKey/);
   assert.match(bridge, /saveBrowserRunAccessKey/);
   assert.match(bridge, /clearBrowserRunAccessKey/);
+  assert.match(bridge, /authenticateBrowserRun/);
 });
 
 test("Access key is never persisted in WebView localStorage or packaged JavaScript", async () => {
