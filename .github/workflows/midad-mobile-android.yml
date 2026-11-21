@@ -1,5 +1,12 @@
 name: MIDAD Mobile Android
 on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "Factory product key"
+        required: true
+        default: "midad-mobile"
+        type: string
   pull_request:
     branches: ["main"]
     paths:
@@ -21,13 +28,6 @@ on:
       - "*.svg"
       - "*.webmanifest"
       - ".github/workflows/midad-mobile-android.yml"
-  workflow_dispatch:
-    inputs:
-      product:
-        description: "Factory product key"
-        required: true
-        default: "midad-mobile"
-        type: string
   push:
     branches: ["main"]
     paths:
@@ -42,6 +42,8 @@ on:
       - "viabtc-neuralpp-v1.css"
       - "viabtc-neuralpp-v1.js"
       - "revenue-forge.html"
+      - "revenue/**"
+      - "assets/**"
       - "*.js"
       - "*.css"
       - "*.svg"
@@ -131,6 +133,25 @@ jobs:
             test -f "$asset"
             cp "$asset" mobile/www/
           done < <(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)
+          # The Mobile Hub routes native users into the canonical Control Room
+          # and sibling station pages under ./site/. Bundle tracked root-level
+          # web entrypoints/assets there, preserving their relative filenames.
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            mkdir -p "mobile/www/site"
+            cp "$asset" "mobile/www/site/"
+          done < <(git ls-files '*.html' '*.css' '*.js' '*.svg' '*.webmanifest' '*.png' '*.jpg' '*.webp' '*.ico' '*.woff' '*.woff2' | awk 'index($0, "/") == 0')
+          # Preserve nested relative paths for first-party Revenue Forge and shared assets.
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            mkdir -p "mobile/www/site/$(dirname "$asset")"
+            cp "$asset" "mobile/www/site/$asset"
+          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
+          # Fail the build if any primary Mobile Hub destination or nested checkout asset is absent.
+          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js; do
+            test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
+          done
+          grep -Fq './midad-control-v2.js' mobile/www/site/index.html
       - name: Install Playwright for Meme Trader runtime smoke
         if: steps.product.outputs.product == 'midad-meme-trader'
         working-directory: mobile
@@ -184,13 +205,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          trap 'rm -rf signing; unset SIGNING_PASS' EXIT
+          SIGNING_PASS="$(openssl rand -hex 32)"
+          echo "::add-mask::$SIGNING_PASS"
+          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "$SIGNING_PASS" -keypass "$SIGNING_PASS" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
+          "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass "pass:$SIGNING_PASS" --key-pass "pass:$SIGNING_PASS" --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
           AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -x "$AAPT"
@@ -201,7 +226,6 @@ jobs:
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
-          rm -rf signing
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
       - name: Enable KVM for Android emulator
