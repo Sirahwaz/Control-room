@@ -35,6 +35,7 @@ inspectButton?.addEventListener("click", async () => {
   inspectButton.disabled = true;
   output.textContent = "جارٍ الاتصال بمحرك WebView الأصلي…";
   let discovery;
+  let agent;
   try {
     discovery = createNativeAgentBridge();
     const tabs = await discovery.request({ type: "getTabs" });
@@ -47,18 +48,20 @@ inspectButton?.addEventListener("click", async () => {
       throw new Error("أضف Origin التبويب المحدد إلى قائمة النطاقات المسموحة أولاً: " + origin);
     }
 
-    const agent = createNativeBrowserAgentRuntime({ allowedOrigins });
+    agent = createNativeBrowserAgentRuntime({ allowedOrigins });
+    const taskId = Date.now().toString(36);
+    const stepId = "inspect-" + taskId;
     const task = {
-      id: "native-inspect-" + Date.now().toString(36),
+      id: "native-inspect-" + taskId,
       title: "MIDAD native WebView inspection",
       startOrigin: origin,
       allowedOrigins,
       capabilities: ["browser.inspect"],
       maxRetries: 1,
       steps: [{
-        id: "inspect-" + Date.now().toString(36),
+        id: stepId,
         command: {
-          id: "inspect-" + Date.now().toString(36),
+          id: stepId,
           type: "getDomSnapshot",
           tabId,
           origin,
@@ -66,16 +69,15 @@ inspectButton?.addEventListener("click", async () => {
         },
       }],
     };
-    task.steps[0].command.id = task.steps[0].id;
     const result = await agent.runtime.run(task);
     if (!result.ok) throw new Error(result.error || "native_agent_task_failed");
     output.textContent = JSON.stringify(result.evidence, null, 2);
     setStatus("WEBVIEW DRIVER VERIFIED", "verified");
-    agent.bridge.close();
   } catch (error) {
     output.textContent = error?.message || "تعذر تنفيذ الفحص.";
     setStatus("AGENT TASK BLOCKED", "pending");
   } finally {
+    agent?.bridge.close();
     discovery?.close();
     inspectButton.disabled = false;
   }
