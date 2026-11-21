@@ -7,6 +7,14 @@ on:
         required: true
         default: "midad-mobile"
         type: string
+      release_mode:
+        description: "debug uses an ephemeral key; release requires the permanent GitHub Actions keystore secrets"
+        required: true
+        default: "debug"
+        type: choice
+        options:
+          - debug
+          - release
   pull_request:
     branches: ["main"]
     paths:
@@ -201,33 +209,57 @@ jobs:
       - name: Build unsigned release APK
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
-      - name: Sign release APK for installability
+      - name: Sign APK (permanent release or isolated debug)
+        id: signing
         shell: bash
+        env:
+          RELEASE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_mode || 'debug' }}
+          MIDAD_ANDROID_KEYSTORE_BASE64: ${{ secrets.MIDAD_ANDROID_KEYSTORE_BASE64 }}
+          MIDAD_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEYSTORE_PASSWORD }}
+          MIDAD_ANDROID_KEY_ALIAS: ${{ secrets.MIDAD_ANDROID_KEY_ALIAS }}
+          MIDAD_ANDROID_KEY_PASSWORD: ${{ secrets.MIDAD_ANDROID_KEY_PASSWORD }}
+          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
         run: |
           set -euo pipefail
           umask 077
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
-          test -f "$APK_SRC"
+          test -s "$APK_SRC"
           mkdir -p dist signing
-          trap 'rm -rf signing; unset SIGNING_PASS' EXIT
-          SIGNING_PASS="$(openssl rand -hex 32)"
-          echo "::add-mask::$SIGNING_PASS"
-          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "$SIGNING_PASS" -keypass "$SIGNING_PASS" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          trap 'rm -rf signing; unset MIDAD_ANDROID_KEYSTORE_PASSWORD MIDAD_ANDROID_KEY_PASSWORD' EXIT
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass "pass:$SIGNING_PASS" --key-pass "pass:$SIGNING_PASS" --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
-          "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
+          if [ "$RELEASE_MODE" = "release" ]; then
+            for name in MIDAD_ANDROID_KEYSTORE_BASE64 MIDAD_ANDROID_KEYSTORE_PASSWORD MIDAD_ANDROID_KEY_ALIAS MIDAD_ANDROID_KEY_PASSWORD; do
+              if [ -z "${!name:-}" ]; then echo "Missing required permanent signing secret: $name" >&2; exit 1; fi
+            done
+            printf '%s' "$MIDAD_ANDROID_KEYSTORE_BASE64" | base64 --decode > signing/midad-release.jks
+            test -s signing/midad-release.jks
+            keytool -list -keystore signing/midad-release.jks -storepass "$MIDAD_ANDROID_KEYSTORE_PASSWORD" -alias "$MIDAD_ANDROID_KEY_ALIAS" >/dev/null
+            "$APKSIGNER" sign --ks signing/midad-release.jks --ks-pass "pass:$MIDAD_ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$MIDAD_ANDROID_KEY_PASSWORD" --ks-key-alias "$MIDAD_ANDROID_KEY_ALIAS" --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
+            echo "signing_mode=permanent" >> "$GITHUB_OUTPUT"
+          elif [ "$RELEASE_MODE" = "debug" ]; then
+            SIGNING_PASS="$(openssl rand -hex 32)"
+            echo "::add-mask::$SIGNING_PASS"
+            keytool -genkeypair -v -keystore signing/midad-debug-temporary.jks -storepass "$SIGNING_PASS" -keypass "$SIGNING_PASS" -alias midad-debug -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Debug, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+            "$APKSIGNER" sign --ks signing/midad-debug-temporary.jks --ks-pass "pass:$SIGNING_PASS" --key-pass "pass:$SIGNING_PASS" --ks-key-alias midad-debug --out "dist/${ARTIFACT_NAME}-debug.apk" "$APK_SRC"
+            unset SIGNING_PASS
+            echo "signing_mode=ephemeral-debug" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unsupported release_mode: $RELEASE_MODE" >&2
+            exit 1
+          fi
+          SIGNED_APK="$(find dist -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -s "$SIGNED_APK"
+          "$APKSIGNER" verify --verbose --print-certs "$SIGNED_APK"
           AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -x "$AAPT"
-          BADGING="$("$AAPT" dump badging "dist/${ARTIFACT_NAME}-release.apk")"
+          BADGING="$("$AAPT" dump badging "$SIGNED_APK")"
           echo "$BADGING" | grep -F "package: name='${{ steps.product.outputs.app_id }}'" >/dev/null
           echo "$BADGING" | grep -F "versionName='${{ steps.product.outputs.version }}'" >/dev/null
           echo "ANDROID_PACKAGE_ID_AND_VERSION_VERIFIED"
-          sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
+          sha256sum "$SIGNED_APK" | tee "$SIGNED_APK.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
-        env:
-          ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
       - name: Enable KVM for Android emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -258,7 +290,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > dist/build-report.json <<EOF
-          {"product_key":"${{ steps.product.outputs.product }}","version":"${{ steps.product.outputs.version }}","build_status":"PASSED","factory_quality_gate":"PASSED"}
+          {"product_key":"${{ steps.product.outputs.product }}","version":"${{ steps.product.outputs.version }}","build_status":"PASSED","factory_quality_gate":"PASSED","signing_mode":"${{ steps.signing.outputs.signing_mode }}"}
           EOF
           RUNTIME_SMOKE="PASSED"
           cat > dist/test-report.json <<EOF
@@ -270,7 +302,7 @@ jobs:
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.product.outputs.artifact_name }}-release-${{ steps.product.outputs.release_channel }}
+          name: ${{ steps.product.outputs.artifact_name }}-release-${{ steps.signing.outputs.signing_mode }}
           path: |
             dist/*.apk
             dist/*.sha256
