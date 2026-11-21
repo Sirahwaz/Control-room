@@ -138,7 +138,7 @@ jobs:
             cp "$asset" "mobile/www/site/"
           done < <(git ls-files '*.html' '*.css' '*.js' '*.svg' '*.webmanifest' '*.png' '*.jpg' '*.webp' '*.ico' '*.woff' '*.woff2' | awk 'index($0, "/") == 0')
           # Fail the build if any primary Mobile Hub destination is absent.
-          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html; do
+          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js; do
             test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
           done
           grep -Fq './midad-control-v2.js' mobile/www/site/index.html
