@@ -227,7 +227,7 @@
   window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', () => {
     if (settings.theme === 'system') applySettings();
   });
-  $('#extensionDetails')?.addEventListener('click', () => openExternal('https://github.com/Sirahwaz/Control-room/tree/main/mobile/factory/native/midad-browser/extensions'));
+  $('#extensionDetails')?.addEventListener('click', () => { location.href = './midad-browser-mesh.html'; });
   applySettings();
 
   const app = nativePlugin('App');
