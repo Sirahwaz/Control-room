@@ -12,14 +12,14 @@ test("Mobile Hub exposes real appearance and typography controls", () => {
     assert.match(html, new RegExp('id="' + id + '"'));
   }
   assert.match(js, /midad-mobile-settings/);
-  assert.match(js, /dataset\\.theme/);
+  assert.match(js, /dataset\.theme/);
   assert.match(js, /fontScale/);
   assert.match(css, /\[data-theme="light"\]/);
   assert.match(css, /--font-scale/);
   assert.match(css, /zoom:var\(--font-scale\)/);
 });
 
-test("Mobile Hub exposes a five-area navigation and an honest extensions center", () => {
+test("Mobile Hub exposes all stations, five-area navigation, and bundled browser surfaces", () => {
   for (const area of ["cockpit", "money", "tasks", "ai", "more"]) {
     assert.match(html, new RegExp('data-area="' + area + '"'));
   }
