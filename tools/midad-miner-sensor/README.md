@@ -4,11 +4,13 @@ This is the second evidence plane for Miner Microscope.
 
 ## What it does
 
-The collector reads a read-only Bitmain/CGMiner API on each miner and sends signed telemetry to:
+The telemetry collector reads Bitmain/CGMiner reporting commands on each miner and sends signed observations to:
 
 `midad_miner_telemetry_ingest`
 
-It does **not** issue restart, reboot, pool-change, or other control commands.
+The telemetry-only path issues read commands such as `summary+devs+stats+pools`. It does not change pools, reboot devices, or perform financial actions.
+
+**Important execution boundary:** this package also contains an optional repair-polling adapter. When `MIDAD_REPAIR_KEY` is configured, it can poll `midad_miner_repair_bridge`. Diagnostics remain read-only. A `restart` command is rejected unless the signed bridge response contains a per-action approval ID with status `approved`, the cloud-approval and local-policy markers are both true, and any supplied expiry is valid and still in the future. A second local opt-in, `MIDAD_ALLOW_RESTART=true`, is also required. Both gates default to disabled; never enable the local flag as a general convenience. A new restart action must be explicitly proposed and approved through the MIDAD approval workflow.
 
 The Bitmain cgminer API supports report commands such as `summary`, `devs`, `stats`, and `pools`, with the API commonly exposed on TCP port 4028. citeturn412255search0turn412255search3
 
@@ -38,6 +40,14 @@ The ingest endpoint expects:
 The HMAC key is stored server-side in Supabase Vault under `midad_miner_telemetry_key`. Never commit the real key to GitHub.
 
 On the local node, set `MIDAD_TELEMETRY_KEY` in a protected environment file.
+
+The optional repair bridge uses `MIDAD_REPAIR_KEY` in a protected environment file. Keep `MIDAD_ALLOW_RESTART` unset unless the operator has separately approved enabling this node's restart capability. The global local flag never substitutes for a per-action approval; malformed, missing, rejected, or expired approval evidence is acknowledged as `blocked` without issuing the miner command.
+
+Approval checks are regression-tested with:
+
+```bash
+python -m unittest discover -s . -p 'test_*.py' -v
+```
 
 ## First run
 

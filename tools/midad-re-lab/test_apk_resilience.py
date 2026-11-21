@@ -1,8 +1,16 @@
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from analyze_apk import run_tool, run_jadx, count_decompiled_sources
+from analyze_apk import (
+    run_tool,
+    run_jadx,
+    count_decompiled_sources,
+    parse_android_manifest,
+    MAX_ANDROID_MANIFEST_BYTES,
+)
 
 
 class RunToolResilienceTests(unittest.TestCase):
@@ -102,3 +110,35 @@ class JadxFallbackTests(unittest.TestCase):
             self.assertEqual(result["source_file_count"], 2)
             self.assertTrue((root / "attempts" / "simple_fallback" / "Fallback.java").exists())
             self.assertTrue((root / "attempts" / "standard" / "Standard.java").exists())
+
+
+class AndroidManifestParserSecurityTests(unittest.TestCase):
+    def test_accepts_a_valid_android_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "AndroidManifest.xml"
+            manifest.write_text(
+                '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+                'package="ai.midad.sample"><application /></manifest>',
+                encoding="utf-8",
+            )
+            root = parse_android_manifest(manifest)
+            self.assertEqual(root.attrib["package"], "ai.midad.sample")
+            self.assertIsNotNone(root.find("application"))
+
+    def test_rejects_dtd_and_entity_declarations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "AndroidManifest.xml"
+            manifest.write_text(
+                '<!DOCTYPE manifest [<!ENTITY packageName "ai.midad.evil">]>'
+                '<manifest package="&packageName;" />',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "ANDROID_MANIFEST_XML_REJECTED"):
+                parse_android_manifest(manifest)
+
+    def test_rejects_oversized_manifest_before_parsing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "AndroidManifest.xml"
+            manifest.write_bytes(b" " * (MAX_ANDROID_MANIFEST_BYTES + 1))
+            with self.assertRaisesRegex(ValueError, "ANDROID_MANIFEST_TOO_LARGE"):
+                parse_android_manifest(manifest)

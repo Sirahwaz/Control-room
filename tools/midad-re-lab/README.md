@@ -24,11 +24,14 @@ The lab does **not** replace:
 
 | Component | Current responsibility | Boundary |
 |---|---|---|
-| `analyze_apk.py` | Validate and hash APK input; run APKtool and JADX; inventory manifest, components, permissions, DEX and packaged assets; emit JSON reports | Static analysis; it does not install or launch the APK |
+| `analyze_apk.py` | Validate and hash APK input; run APKtool and JADX; inventory manifest, components, permissions, DEX and packaged assets; parse APK-derived XML with `defusedxml` and a 2 MiB Manifest limit; emit JSON reports | Static analysis; it does not install or launch the APK |
 | `dex_intelligence.py` | Parse DEX entries, summarize classes/methods and bounded string indicators, inventory Smali structure | Static parsing; does not execute app code |
 | `web_bundle_intelligence.py` | Inspect APK-embedded HTML/CSS/JS assets, declared/missing files, local references, Capacitor bridge/plugin metadata, endpoint and API indicators | Archive-only analysis; JavaScript is not executed and this analyzer makes no network requests |
 | `analyze_web.py` | Inspect an authorized public HTTPS site using bounded HTTP and headless browser observation | Same-host and public-address checks; GET/HEAD only; cross-host redirects and disallowed requests are blocked; no login, form submission, CAPTCHA bypass or evasion |
 | `test_*.py` | Policy, resilience, DEX and web-bundle regression tests | Tests use controlled fixtures and mocks; a passing unit suite does not prove a live target was inspected |
+
+**Untrusted APK XML boundary:** APK-derived `AndroidManifest.xml` is parsed with `defusedxml`, with DTD/entity/external entity processing disabled and a 2 MiB size ceiling. The parser rejects malformed, DTD-bearing or oversized manifests with explicit error states. The Mobile Factory helper that parses the repository's own checked-in Manifest is a separate trusted-source path; it is narrowly documented in the source and is not used for arbitrary APK input.
+
 
 ### Existing automation
 
