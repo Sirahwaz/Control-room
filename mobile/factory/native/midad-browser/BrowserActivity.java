@@ -130,9 +130,6 @@ public final class BrowserActivity extends Activity {
                 BrowserActivity.this.switchToTab(index);
                 return true;
             }
-            @Override public String getBrowserRunAccessKey() { return readBrowserRunAccessKey(); }
-            @Override public boolean saveBrowserRunAccessKey(String value) { return persistBrowserRunAccessKey(value); }
-            @Override public boolean clearBrowserRunAccessKey() { return removeBrowserRunAccessKey(); }
             @Override public JSONObject authenticateBrowserRun(String suppliedKey) {
                 return authenticateBrowserRunWithKey(suppliedKey);
             }
@@ -657,10 +654,6 @@ public final class BrowserActivity extends Activity {
             android.util.Log.e("MIDAD_BROWSER", "BROWSER_RUN_CREDENTIAL_SAVE_FAILED", error);
             return false;
         }
-    }
-
-    private boolean removeBrowserRunAccessKey() {
-        return libraryPrefs != null && libraryPrefs.edit().remove(BROWSER_RUN_ACCESS_KEY_KEY).commit();
     }
 
     private JSONObject authenticateBrowserRunWithKey(String suppliedKey) {
