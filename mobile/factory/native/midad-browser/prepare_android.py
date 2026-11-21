@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[4]
 ANDROID = ROOT / "mobile/android"
 JAVA_SRC = Path(__file__).with_name("BrowserActivity.java")
 JAVA_DST = ANDROID / "app/src/main/java/ai/midad/browser/BrowserActivity.java"
+BRIDGE_SRC = Path(__file__).with_name("BrowserAgentBridge.java")
+BRIDGE_DST = ANDROID / "app/src/main/java/ai/midad/browser/BrowserAgentBridge.java"
 MANIFEST = ANDROID / "app/src/main/AndroidManifest.xml"
 APP_GRADLE = ANDROID / "app/build.gradle"
 WEBKIT_DEPENDENCY = 'implementation "androidx.webkit:webkit:1.18.0"'
@@ -17,7 +19,7 @@ ANDROID_NS = "http://schemas.android.com/apk/res/android"
 ET.register_namespace("android", ANDROID_NS)
 A = f"{{{ANDROID_NS}}}"
 
-if not JAVA_SRC.is_file() or not MANIFEST.is_file():
+if not JAVA_SRC.is_file() or not BRIDGE_SRC.is_file() or not MANIFEST.is_file():
     raise SystemExit("browser_android_sources_missing")
 if not APP_GRADLE.is_file():
     raise SystemExit("android_app_gradle_missing")
@@ -60,6 +62,7 @@ print(f"MIDAD_GRADLE_CENTRAL_MIRROR_READY files={mirror_files} entries={mirror_r
 
 JAVA_DST.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(JAVA_SRC, JAVA_DST)
+shutil.copy2(BRIDGE_SRC, BRIDGE_DST)
 
 tree = ET.parse(MANIFEST)
 root = tree.getroot()
