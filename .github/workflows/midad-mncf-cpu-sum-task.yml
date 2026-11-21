@@ -1,0 +1,110 @@
+name: MIDAD MNCF — Zero-Cost CPU Sum Task
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: midad-mncf-cpu-sum-task
+  cancel-in-progress: false
+
+jobs:
+  enqueue-and-dispatch:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: cloudflare-production
+    timeout-minutes: 5
+    steps:
+      - name: Enqueue one bounded SUM_INTEGERS task and dispatch the OIDC CPU runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MIDAD_LEDGER_ADMIN_KEY: ${{ secrets.MIDAD_LEDGER_ADMIN_KEY }}
+          MIDAD_OWNER_ID: github:116122510
+          MIDAD_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const origin = 'https://midad-continuity-ledger.midadbot.workers.dev';
+          const repo = 'Sirahwaz/Control-room';
+          const ownerId = process.env.MIDAD_OWNER_ID;
+          const runId = process.env.MIDAD_RUN_ID;
+          const adminKey = process.env.MIDAD_LEDGER_ADMIN_KEY || '';
+          const ghToken = process.env.GH_TOKEN || '';
+          if (ownerId !== 'github:116122510' || !/^\\d+$/.test(runId)) throw new Error('OWNER_OR_RUN_ID_INVALID');
+          if (adminKey.length < 32 || !ghToken) throw new Error('REQUIRED_AUTH_NOT_AVAILABLE');
+
+          const taskId = 'mncf-cpu-sum-' + runId;
+          const eventId = 'mncf-cpu-sum-event-' + runId;
+          const values = [17, 25, 33, 41, 59];
+          const expectedSum = values.reduce((a, b) => a + b, 0);
+          if (expectedSum !== 175) throw new Error('LOCAL_SUM_FIXTURE_INVALID');
+
+          const response = await fetch(origin + '/v1/tasks/enqueue', {
+            method: 'POST',
+            redirect: 'error',
+            signal: AbortSignal.timeout(15000),
+            headers: {
+              authorization: 'Bearer ' + adminKey,
+              'content-type': 'application/json',
+              accept: 'application/json',
+            },
+            body: JSON.stringify({
+              task_id: taskId,
+              owner_id: ownerId,
+              idempotency_key: 'mncf-cpu-sum:' + runId,
+              payload: { operation: 'SUM_INTEGERS', input: { values } },
+              workload: 'CPU_BATCH',
+              required_capabilities: [],
+              min_cpu_cores: 1,
+              min_memory_mb: 512,
+              units: 1,
+              estimated_seconds_per_unit: 2,
+              max_cost_usd: 0,
+              retry_mode: 'AT_LEAST_ONCE_IDEMPOTENT',
+              max_attempts: 1,
+            }),
+          });
+          let enqueued;
+          try { enqueued = await response.json(); } catch { throw new Error('LEDGER_RESPONSE_INVALID'); }
+          if (!response.ok || enqueued?.ok !== true ||
+              enqueued.task_id !== taskId ||
+              !['QUEUED', 'COMPLETED'].includes(enqueued.state)) {
+            throw new Error('TASK_ENQUEUE_FAILED_' + response.status + '_' + String(enqueued?.error || 'UNKNOWN'));
+          }
+
+          const dispatch = await fetch(
+            'https://api.github.com/repos/' + repo + '/actions/workflows/midad-mncf-ephemeral-runner.yml/dispatches',
+            {
+              method: 'POST',
+              redirect: 'error',
+              signal: AbortSignal.timeout(15000),
+              headers: {
+                authorization: 'Bearer ' + ghToken,
+                accept: 'application/vnd.github+json',
+                'x-github-api-version': '2022-11-28',
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                ref: 'main',
+                inputs: { owner_id: ownerId, task_id: taskId, event_id: eventId },
+              }),
+            },
+          );
+          if (dispatch.status !== 204) throw new Error('RUNNER_DISPATCH_FAILED_' + dispatch.status);
+
+          process.stdout.write(JSON.stringify({
+            status: 'TASK_ENQUEUED_AND_RUNNER_DISPATCHED',
+            task_id: taskId,
+            event_id: eventId,
+            operation: 'SUM_INTEGERS',
+            input_count: values.length,
+            expected_sum: expectedSum,
+            max_cost_usd: 0,
+            idempotency_key: 'mncf-cpu-sum:' + runId,
+            runner_workflow: 'midad-mncf-ephemeral-runner.yml',
+          }) + '\\n');
+          NODE
