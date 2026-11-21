@@ -7,8 +7,8 @@ The browser currently has no native tunnel service, proxy transport, packet forw
 ## Security contract
 - Proxy profile abstraction accepts HTTP, HTTPS, and SOCKS5 endpoint metadata; a proxy is not a VPN.
 - Direct traffic is blocked by policy while kill switch is enabled and no native tunnel session is attested.
-- The JavaScript policy cannot attest itself as connected. Only the trusted Android adapter identity `ai.midad.browser.vpnservice` may report readiness.
-- A connected attestation must include a session ID, a `tun*` interface name, installed routes, and configured DNS. Disconnect/failure events must match the active session.
+- A plain JavaScript source label is not trusted. The policy requires an opaque object-capability retained privately by the native integration; it must never be exposed to WebView content or page JavaScript.
+- A connected attestation must include a session ID, a strict `tun` interface name, installed routes, and configured DNS. Disconnect/failure events must match the active session.
 - Proxy credentials are not returned in UI configuration results or status snapshots.
 - Private browser content is classified local and must not be forwarded to a remote proxy.
 - Unsafe URL schemes and malformed endpoint profiles are rejected.
