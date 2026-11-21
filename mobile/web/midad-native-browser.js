@@ -20,6 +20,7 @@
     const value = String(raw || "").trim();
     if (!value) throw new Error("أدخل عنوان موقع أولاً.");
     const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : "https://" + value;
+    if (/^(?:javascript|data|file|content|intent):/i.test(candidate)) throw new Error("عنوان الموقع يستخدم مخططاً غير مسموح.");
     const url = new URL(candidate);
     if (!["http:", "https:"].includes(url.protocol)) throw new Error("يسمح فقط بعناوين HTTP وHTTPS.");
     if (url.username || url.password) throw new Error("لا تضع بيانات دخول داخل رابط الموقع.");
