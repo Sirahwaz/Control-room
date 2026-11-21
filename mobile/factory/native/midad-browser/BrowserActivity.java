@@ -125,6 +125,9 @@ public final class BrowserActivity extends Activity {
                 BrowserActivity.this.switchToTab(index);
                 return true;
             }
+            @Override public String getBrowserRunAccessKey() { return readBrowserRunAccessKey(); }
+            @Override public boolean saveBrowserRunAccessKey(String value) { return persistBrowserRunAccessKey(value); }
+            @Override public boolean clearBrowserRunAccessKey() { return removeBrowserRunAccessKey(); }
         });
         restoreTabs();
         handleIncomingIntent(getIntent());
@@ -625,6 +628,31 @@ public final class BrowserActivity extends Activity {
             generator.generateKey();
         }
         return (SecretKey) keyStore.getKey(VAULT_ALIAS, null);
+    }
+
+    private static final String BROWSER_RUN_ACCESS_KEY_KEY = "browser_run_access_key_v1";
+
+    private String readBrowserRunAccessKey() {
+        if (libraryPrefs == null) return null;
+        String stored = libraryPrefs.getString(BROWSER_RUN_ACCESS_KEY_KEY, null);
+        return stored != null && stored.startsWith(VAULT_PREFIX) ? decryptVaultValue(stored) : null;
+    }
+
+    private boolean persistBrowserRunAccessKey(String value) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.length() < 16 || normalized.length() > 512 ||
+            normalized.chars().anyMatch(Character::isWhitespace) || libraryPrefs == null) return false;
+        try {
+            String encrypted = encryptVaultValue(normalized);
+            return libraryPrefs.edit().putString(BROWSER_RUN_ACCESS_KEY_KEY, encrypted).commit();
+        } catch (Exception error) {
+            android.util.Log.e("MIDAD_BROWSER", "BROWSER_RUN_CREDENTIAL_SAVE_FAILED", error);
+            return false;
+        }
+    }
+
+    private boolean removeBrowserRunAccessKey() {
+        return libraryPrefs != null && libraryPrefs.edit().remove(BROWSER_RUN_ACCESS_KEY_KEY).commit();
     }
 
     private String encryptVaultValue(String plaintext) throws Exception {
