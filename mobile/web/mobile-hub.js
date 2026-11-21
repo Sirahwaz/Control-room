@@ -167,19 +167,19 @@
   const restoreStations = () => $$('#stations .card').forEach(card => card.style.display = 'flex');
   $('#newNote')?.addEventListener('click', addNote);
 
-  $('[data-scroll]').forEach((btn) => {
+  $$('[data-scroll]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.scroll;
       const section = document.getElementById(target);
       if (target === 'stations') restoreStations();
       section?.scrollIntoView({behavior:'smooth', block:'start'});
-      $('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
+      $$('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
       haptic();
     });
   });
-  $('[data-area][data-target]').forEach((btn) => {
+  $$('[data-area][data-target]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      $('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
+      $$('.nav-item').forEach(x => x.classList.toggle('active', x === btn));
       const target = btn.dataset.target;
       if (/^https:\/\//i.test(target)) openExternal(target);
       else location.href = target;
