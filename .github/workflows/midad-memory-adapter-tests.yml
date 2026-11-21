@@ -1,0 +1,26 @@
+name: MIDAD Memory Adapter Tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/midad-memory-adapter/**"
+      - ".github/workflows/midad-memory-adapter-tests.yml"
+  pull_request:
+    paths:
+      - "tools/midad-memory-adapter/**"
+      - ".github/workflows/midad-memory-adapter-tests.yml"
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.8"
+          cache: pip
+      - name: Run isolated adapter contract tests
+        working-directory: tools/midad-memory-adapter
+        run: python -m unittest -v test_midad_memory_adapter
