@@ -119,6 +119,14 @@ class MemoraApiBackend:
             raise AdapterError("CAPABILITY_UNAVAILABLE", "Memora store has no verified transactional write capability")
         return health
 
+    @staticmethod
+    def _ensure_project(health: dict[str, Any], project_id: str):
+        projects = health.get("projects")
+        if not isinstance(projects, list):
+            raise AdapterError("CAPABILITY_UNAVAILABLE", "Memora project capabilities are unproven")
+        if projects and project_id not in projects:
+            raise AdapterError("FORBIDDEN", "Project is not enabled in the mapped Memora store")
+
     def create(self, record: dict[str, Any], idempotency_key: str) -> str:
         if not _IDEMPOTENCY_RE.fullmatch(idempotency_key):
             raise AdapterError("VALIDATION_ERROR", "Invalid Memora idempotency key")
@@ -129,7 +137,8 @@ class MemoraApiBackend:
         if not isinstance(source_ref, str) or not 1 <= len(source_ref) <= 64:
             raise AdapterError("VALIDATION_ERROR", "Memora source must contain 1..64 characters")
         owner_scope = record["owner_scope"]
-        self.check_health(owner_scope, require_writes=True)
+        health = self.check_health(owner_scope, require_writes=True)
+        self._ensure_project(health, record["project_id"])
         absorb = {
             "idempotency_key": idempotency_key,
             "project": record["project_id"],
@@ -158,7 +167,8 @@ class MemoraApiBackend:
         return str(memory_ids[0]) if memory_ids else f"absorb:{idempotency_key}"
 
     def search(self, owner_scope: str, project_id: str, query: str, limit: int) -> list[dict[str, Any]]:
-        self.check_health(owner_scope, require_writes=False)
+        health = self.check_health(owner_scope, require_writes=False)
+        self._ensure_project(health, project_id)
         result = self._request(owner_scope, "POST", "search", {
             "query": query,
             "top_k": min(limit, 20),
