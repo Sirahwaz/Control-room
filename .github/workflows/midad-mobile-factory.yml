@@ -142,6 +142,14 @@ jobs:
             mkdir -p "mobile/www/site/$(dirname "$asset")"
             cp "$asset" "mobile/www/site/$asset"
           done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -E '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
+          for required in site/index.html site/iaitrader.html site/viabtc.html site/revenue-forge.html site/midad-control-v2.js site/midad-control-v2.css site/revenue/checkout-attribution.js site/revenue/checkout-key.js; do
+            test -s "mobile/www/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
+          done
+          for required in midad-browser-mesh.html midad-browser-mesh.css midad-browser-mesh.js midad-native-browser.js human-bridge.html human-bridge.css human-bridge.js; do
+            test -s "mobile/www/$required" || { echo "Missing bundled mobile surface: $required"; exit 1; }
+          done
+          grep -Fq './midad-browser-mesh.html' mobile/www/index.html
+          grep -Fq './human-bridge.html' mobile/www/index.html
 
       - name: Bundle native browser plugin
         if: steps.product.outputs.product_key == 'midad-mobile-next'
@@ -355,15 +363,6 @@ jobs:
             dist/trading-ui-smoke-report.json
             dist/trading-ui-smoke.png
             dist/learning-report.json
- || true)
-          for required in site/index.html site/iaitrader.html site/viabtc.html site/revenue-forge.html site/midad-control-v2.js site/midad-control-v2.css site/revenue/checkout-attribution.js site/revenue/checkout-key.js; do
-            test -s "mobile/www/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
-          done
-          for required in midad-browser-mesh.html midad-browser-mesh.css midad-browser-mesh.js human-bridge.html human-bridge.css human-bridge.js; do
-            test -s "mobile/www/$required" || { echo "Missing bundled mobile surface: $required"; exit 1; }
-          done
-          grep -Fq './midad-browser-mesh.html' mobile/www/index.html
-          grep -Fq './human-bridge.html' mobile/www/index.html
 
 
       - name: Trading UI browser runtime smoke
