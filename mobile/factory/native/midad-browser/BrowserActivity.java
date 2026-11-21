@@ -18,6 +18,15 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Base64;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import android.webkit.SafeBrowsingResponse;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
@@ -64,6 +73,8 @@ public final class BrowserActivity extends Activity {
     private static final String FONT_FAMILY_KEY = "font_family";
     private static final String LIGHT_THEME_KEY = "light_theme";
     private static final String LIBRARY_PREFS = "midad_browser_library_v1";
+    private static final String VAULT_ALIAS = "midad.browser.local.vault.v1";
+    private static final String VAULT_PREFIX = "midad:v1:";
     private static final String HISTORY_PREFS_KEY = "history_v1";
     private static final String BOOKMARKS_PREFS_KEY = "bookmarks_v1";
     private static final int MAX_HISTORY_ITEMS = 100;
@@ -580,11 +591,87 @@ public final class BrowserActivity extends Activity {
         }
     }
 
-    private JSONArray readLibraryArray(String key) {
+    private SecretKey getVaultKey() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        if (!keyStore.containsAlias(VAULT_ALIAS)) {
+            KeyGenerator generator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+            generator.init(new KeyGenParameterSpec.Builder(
+                VAULT_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setRandomizedEncryptionRequired(true)
+                .build());
+            generator.generateKey();
+        }
+        return (SecretKey) keyStore.getKey(VAULT_ALIAS, null);
+    }
+
+    private String encryptVaultValue(String plaintext) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, getVaultKey());
+        byte[] iv = cipher.getIV();
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+        return VAULT_PREFIX + Base64.encodeToString(iv, Base64.NO_WRAP) + ":" +
+            Base64.encodeToString(ciphertext, Base64.NO_WRAP);
+    }
+
+    private String decryptVaultValue(String envelope) {
         try {
-            return new JSONArray(libraryPrefs.getString(key, "[]"));
+            if (envelope == null || !envelope.startsWith(VAULT_PREFIX)) return null;
+            String[] parts = envelope.split(":", 4);
+            if (parts.length != 4 || !"midad".equals(parts[0]) || !"v1".equals(parts[1])) return null;
+            byte[] iv = Base64.decode(parts[2], Base64.NO_WRAP);
+            byte[] ciphertext = Base64.decode(parts[3], Base64.NO_WRAP);
+            if (iv.length != 12 || ciphertext.length < 16) return null;
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, getVaultKey(), new GCMParameterSpec(128, iv));
+            return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
+        } catch (Exception error) {
+            android.util.Log.e("MIDAD_BROWSER", "VAULT_DECRYPT_FAILED", error);
+            return null;
+        }
+    }
+
+    private JSONArray readLibraryArray(String key) {
+        if (libraryPrefs == null) return new JSONArray();
+        String stored = libraryPrefs.getString(key, null);
+        if (stored == null || stored.trim().isEmpty()) return new JSONArray();
+        String plaintext;
+        if (stored.startsWith(VAULT_PREFIX)) {
+            plaintext = decryptVaultValue(stored);
+        } else if (stored.trim().startsWith("[")) {
+            // One-time migration of the earlier plaintext bookmark/history format.
+            plaintext = stored;
+            try {
+                JSONArray legacy = new JSONArray(plaintext);
+                writeLibraryArray(key, legacy);
+                android.util.Log.i("MIDAD_BROWSER", "VAULT_LEGACY_MIGRATED");
+                return legacy;
+            } catch (JSONException ignored) {
+                return new JSONArray();
+            }
+        } else {
+            return new JSONArray();
+        }
+        if (plaintext == null) return new JSONArray();
+        try {
+            return new JSONArray(plaintext);
         } catch (JSONException ignored) {
             return new JSONArray();
+        }
+    }
+
+    private void writeLibraryArray(String key, JSONArray value) {
+        if (libraryPrefs == null || value == null) return;
+        try {
+            String envelope = encryptVaultValue(value.toString());
+            libraryPrefs.edit().putString(key, envelope).apply();
+        } catch (Exception error) {
+            android.util.Log.e("MIDAD_BROWSER", "VAULT_WRITE_FAILED", error);
+            Toast.makeText(this, "تعذر حفظ بيانات الخزنة المشفرة", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -606,7 +693,7 @@ public final class BrowserActivity extends Activity {
                     nextItems.put(previous);
                 }
             }
-            libraryPrefs.edit().putString(HISTORY_PREFS_KEY, nextItems.toString()).apply();
+            writeLibraryArray(HISTORY_PREFS_KEY, nextItems);
         } catch (JSONException ignored) {
             android.util.Log.w("MIDAD_BROWSER", "HISTORY_ENTRY_REJECTED");
         }
@@ -634,7 +721,7 @@ public final class BrowserActivity extends Activity {
                     nextItems.put(previous);
                 }
             }
-            libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, nextItems.toString()).apply();
+            writeLibraryArray(BOOKMARKS_PREFS_KEY, nextItems);
             Toast.makeText(this, "تم حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
         } catch (JSONException ignored) {
             Toast.makeText(this, "تعذر حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
@@ -648,7 +735,7 @@ public final class BrowserActivity extends Activity {
             JSONObject item = oldItems.optJSONObject(i);
             if (item != null && !url.equals(item.optString("url"))) nextItems.put(item);
         }
-        libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, nextItems.toString()).apply();
+        writeLibraryArray(BOOKMARKS_PREFS_KEY, nextItems);
     }
 
     private void showBookmarks() {
@@ -676,7 +763,7 @@ public final class BrowserActivity extends Activity {
                     }
                 }).setNegativeButton("إلغاء", null).show())
             .setNeutralButton("مسح الكل", (dialog, which) -> {
-                libraryPrefs.edit().putString(BOOKMARKS_PREFS_KEY, "[]").apply();
+                writeLibraryArray(BOOKMARKS_PREFS_KEY, new JSONArray());
                 Toast.makeText(this, "تم مسح الإشارات المرجعية", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("إغلاق", null).show();
@@ -701,7 +788,7 @@ public final class BrowserActivity extends Activity {
                 if (isHttpUrl(urls[which])) webView.loadUrl(urls[which]);
             })
             .setNeutralButton("مسح السجل", (dialog, which) -> {
-                libraryPrefs.edit().putString(HISTORY_PREFS_KEY, "[]").apply();
+                writeLibraryArray(HISTORY_PREFS_KEY, new JSONArray());
                 Toast.makeText(this, "تم مسح سجل التصفح", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("إغلاق", null).show();
