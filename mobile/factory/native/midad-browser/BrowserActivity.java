@@ -61,6 +61,7 @@ public final class BrowserActivity extends Activity {
     private final List<Boolean> pinnedTabs = new ArrayList<>();
     private static final String APPEARANCE_PREFS = "midad_browser_appearance_v1";
     private static final String FONT_ZOOM_KEY = "font_zoom_percent";
+    private static final String FONT_FAMILY_KEY = "font_family";
     private static final String LIGHT_THEME_KEY = "light_theme";
     private static final String LIBRARY_PREFS = "midad_browser_library_v1";
     private static final String HISTORY_PREFS_KEY = "history_v1";
@@ -81,6 +82,7 @@ public final class BrowserActivity extends Activity {
     private SharedPreferences libraryPrefs;
     private SharedPreferences appearancePrefs;
     private int fontZoomPercent = 100;
+    private String fontFamily = "sans-serif";
     private boolean lightTheme = false;
     private WebViewAssetLoader assetLoader;
     private EditText address;
@@ -92,6 +94,7 @@ public final class BrowserActivity extends Activity {
         super.onCreate(savedInstanceState);
         appearancePrefs = getSharedPreferences(APPEARANCE_PREFS, MODE_PRIVATE);
         fontZoomPercent = Math.max(85, Math.min(130, appearancePrefs.getInt(FONT_ZOOM_KEY, 100)));
+        fontFamily = sanitizeFontFamily(appearancePrefs.getString(FONT_FAMILY_KEY, "sans-serif"));
         lightTheme = appearancePrefs.getBoolean(LIGHT_THEME_KEY, false);
         buildBrowserUi();
         tabPrefs = getSharedPreferences(TAB_PREFS, MODE_PRIVATE);
@@ -235,6 +238,7 @@ public final class BrowserActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setTextZoom(fontZoomPercent);
+        applyFontSettings(settings);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
@@ -732,6 +736,7 @@ public final class BrowserActivity extends Activity {
         String[] actions = {
             lightTheme ? "تفعيل المظهر الداكن" : "تفعيل المظهر الفاتح",
             "حجم الخط 85%", "حجم الخط 100%", "حجم الخط 115%", "حجم الخط 130%",
+            "الخط: Sans Serif", "الخط: Serif", "الخط: Monospace",
             "استعادة إعدادات المظهر الافتراضية"
         };
         new AlertDialog.Builder(this)
@@ -747,9 +752,13 @@ public final class BrowserActivity extends Activity {
                     case 2: setFontZoom(100); break;
                     case 3: setFontZoom(115); break;
                     case 4: setFontZoom(130); break;
-                    case 5:
+                    case 5: setFontFamily("sans-serif"); break;
+                    case 6: setFontFamily("serif"); break;
+                    case 7: setFontFamily("monospace"); break;
+                    case 8:
                         lightTheme = false;
                         fontZoomPercent = 100;
+                        fontFamily = "sans-serif";
                         persistAppearance();
                         applyBrowserAppearance();
                         Toast.makeText(this, "تمت استعادة المظهر الافتراضي", Toast.LENGTH_SHORT).show();
@@ -772,8 +781,28 @@ public final class BrowserActivity extends Activity {
         if (appearancePrefs == null) return;
         appearancePrefs.edit()
             .putInt(FONT_ZOOM_KEY, fontZoomPercent)
+            .putString(FONT_FAMILY_KEY, fontFamily)
             .putBoolean(LIGHT_THEME_KEY, lightTheme)
             .apply();
+    }
+
+    private String sanitizeFontFamily(String value) {
+        if ("serif".equals(value) || "monospace".equals(value)) return value;
+        return "sans-serif";
+    }
+
+    private void applyFontSettings(WebSettings settings) {
+        settings.setStandardFontFamily(fontFamily);
+        settings.setSansSerifFontFamily(fontFamily);
+        settings.setSerifFontFamily(fontFamily);
+        settings.setFixedFontFamily(fontFamily);
+    }
+
+    private void setFontFamily(String value) {
+        fontFamily = sanitizeFontFamily(value);
+        for (WebView tab : tabs) applyFontSettings(tab.getSettings());
+        persistAppearance();
+        Toast.makeText(this, "تم تغيير عائلة الخط", Toast.LENGTH_SHORT).show();
     }
 
     private void applyBrowserAppearance() {
