@@ -52,9 +52,9 @@ dryRunButton?.addEventListener("click", () => {
         command: { id: stepId, type: "getDomSnapshot", tabId, origin, maxChars: 8000 },
       }],
     };
-    const planner = window.MIDADBrowserAgent?.createDryRun?.();
-    if (!planner) throw new Error("dry_run_engine_unavailable");
-    const result = planner.plan(task);
+    const controller = window.MIDADBrowserAgent?.createExecutionController?.();
+    if (!controller || controller.getMode() !== "dry_run") throw new Error("dry_run_execution_controller_unavailable");
+    const result = controller.plan(task);
     if (!result.ok) throw new Error(result.error || "dry_run_rejected");
     output.textContent = JSON.stringify(result, null, 2);
     setStatus("DRY RUN VERIFIED · 0 ACTIONS EXECUTED", "verified");
@@ -103,7 +103,8 @@ inspectButton?.addEventListener("click", async () => {
         },
       }],
     };
-    const result = await agent.runtime.run(task);
+    if (!agent.execution?.setMode("local_native")) throw new Error("LOCAL_NATIVE mode was not explicitly enabled");
+    const result = await agent.execution.run(task);
     if (!result.ok) throw new Error(result.error || "native_agent_task_failed");
     output.textContent = JSON.stringify(result.evidence, null, 2);
     setStatus("WEBVIEW DRIVER VERIFIED", "verified");
