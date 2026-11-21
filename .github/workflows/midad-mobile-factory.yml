@@ -226,10 +226,6 @@ jobs:
           test -f "$APK_SRC"
           mkdir -p dist signing
           KEYSTORE="signing/midad-signing.jks"
-          HAS_ANY=0
-          for value in "$MIDAD_ANDROID_KEYSTORE_BASE64" "$MIDAD_ANDROID_KEYSTORE_PASSWORD" "$MIDAD_ANDROID_KEY_ALIAS" "$MIDAD_ANDROID_KEY_PASSWORD"; do
-            if [ -n "$value" ]; then HAS_ANY=1; fi
-          done
           if [ "$RELEASE_CHANNEL" = "debug" ]; then
             store_password="$(openssl rand -hex 32)"
             key_password="$store_password"
