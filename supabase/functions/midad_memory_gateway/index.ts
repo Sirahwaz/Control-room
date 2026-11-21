@@ -18,7 +18,7 @@ const json = (payload: unknown, status = 200, origin: string | null = null) => {
     headers.set("access-control-allow-headers", "content-type,authorization");
     headers.set("access-control-max-age", "86400");
   }
-  return new Response(JSON.stringify(payload), { status, headers });
+  return new Response(status === 204 ? null : JSON.stringify(payload), { status, headers });
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BODY_BYTES = 64 * 1024;
@@ -59,6 +59,34 @@ async function resolveSessionOwner(admin: any, authorization: string) {
   return binding.ownerUserId;
 }
 
+async function readBoundedBody(req: Request): Promise<string | null> {
+  const reader = req.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 async function dispatch(req: Request): Promise<Response> {
   const origin = req.headers.get("origin");
   if (origin && !isAllowedBrowserUserOrigin(origin)) return json({ ok: false, error: "origin_forbidden" }, 403);
@@ -68,10 +96,12 @@ async function dispatch(req: Request): Promise<Response> {
     return json({ ok: false, error: "memory_gateway_disabled" }, 404, origin);
   }
 
-  const raw = await req.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+  const contentLength = Number(req.headers.get("content-length") || "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
     return json({ ok: false, error: "request_too_large" }, 413, origin);
   }
+  const raw = await readBoundedBody(req);
+  if (raw === null) return json({ ok: false, error: "request_too_large" }, 413, origin);
   let body: Record<string, unknown>;
   try {
     body = JSON.parse(raw);
@@ -157,9 +187,9 @@ async function dispatch(req: Request): Promise<Response> {
   } catch {
     return json({ ok: false, error: "memory_backend_not_configured" }, 503, origin);
   }
-  if (parsedAdapterUrl.protocol !== "https:" || parsedAdapterUrl.username ||
-      parsedAdapterUrl.password || parsedAdapterUrl.search || parsedAdapterUrl.hash ||
-      adapterServiceKey.length < 32) {
+  if (parsedAdapterUrl.protocol !== "https:" || parsedAdapterUrl.pathname !== "/" ||
+      parsedAdapterUrl.username || parsedAdapterUrl.password || parsedAdapterUrl.search ||
+      parsedAdapterUrl.hash || adapterServiceKey.length < 32) {
     return json({ ok: false, error: "memory_backend_not_configured" }, 503, origin);
   }
 
