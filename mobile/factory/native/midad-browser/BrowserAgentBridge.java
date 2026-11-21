@@ -134,6 +134,11 @@ public final class BrowserAgentBridge {
             return;
         }
 
+        if (type.equals("getTabs")) {
+            reply(reply, requestId, true, tabSnapshot(), null);
+            return;
+        }
+
         int tabId = command.optInt("tabId", host.getActiveTabIndex());
         if (tabId < 0 || tabId >= Math.min(host.getTabCount(), MAX_TABS)) {
             reply(reply, requestId, false, null, "tab_id_invalid");
@@ -154,6 +159,10 @@ public final class BrowserAgentBridge {
         String commandOrigin = command.optString("origin", "");
         if (currentOrigin == null || !currentOrigin.equals(commandOrigin)) {
             reply(reply, requestId, false, null, "origin_scope_mismatch");
+            return;
+        }
+        if (!allowedOrigins.contains(currentOrigin)) {
+            reply(reply, requestId, false, null, "origin_not_allowed");
             return;
         }
 
