@@ -120,8 +120,11 @@ jobs:
           deno-version: v2.x
       - name: Solana receipt readiness regression tests
         run: deno test supabase/functions/midad_wallet_receipt_monitor/route-policy.test.ts
-      - name: Type-check deployed AI Room functions
-        run: deno check supabase/functions/midad_ai_room_status/index.ts supabase/functions/midad_ai_room_preview/index.ts supabase/functions/midad_agent_fee_wallet/index.ts
+      - name: Type-check deployed AI Room and Memory Gateway functions
+        run: deno check supabase/functions/midad_ai_room_status/index.ts supabase/functions/midad_ai_room_preview/index.ts supabase/functions/midad_agent_fee_wallet/index.ts supabase/functions/midad_memory_gateway/index.ts
+
+      - name: MIDAD Memory principal scope regression tests
+        run: node --test tests/midad-memory-principal.test.mjs
 
       - name: AI Room pipeline diagnostics tests
         run: node --test tests/render-pipeline-diagnostics.test.cjs
