@@ -37,7 +37,8 @@
     "midad-keys",
     "browser-mesh",
     "human-bridge",
-    "mobile-settings"
+    "mobile-settings",
+    "appearance-settings"
   ],
   "target_markets": [
     "global_remote_crypto",
