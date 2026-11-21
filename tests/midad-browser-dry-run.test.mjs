@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createBrowserDryRun } from "../mobile/factory/native/midad-browser/agent-runtime.mjs";
+import { createBrowserDryRun, createBrowserExecutionController } from "../mobile/factory/native/midad-browser/agent-runtime.mjs";
 
 const ORIGIN = "https://example.com";
 const task = (steps) => ({
