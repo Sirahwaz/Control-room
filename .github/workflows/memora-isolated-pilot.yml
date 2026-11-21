@@ -26,7 +26,7 @@ concurrency:
 jobs:
   isolated-pilot:
     name: Pinned upstream security and storage gates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       MEMORA_PILOT_SHA: 442ca1b4ef494c256917ecd052dedb872710e84a
@@ -81,8 +81,8 @@ jobs:
         run: |
           {
             echo "## Memora isolated pilot"
-            echo "- Upstream: `agentic-box/memora`"
-            echo "- Pinned SHA: `$MEMORA_PILOT_SHA`"
+            echo '- Upstream: `agentic-box/memora`'
+            echo '- Pinned SHA: `'"$MEMORA_PILOT_SHA"'`'
             echo "- Synthetic/disposable runtime: GitHub-hosted ephemeral runner"
             echo "- Production credentials/data: not provided"
           } >> "$GITHUB_STEP_SUMMARY"
