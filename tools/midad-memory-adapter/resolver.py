@@ -4,7 +4,7 @@ from typing import Any, Callable
 from midad_memory_adapter import AdapterError, Principal
 
 class MidadPrincipalResolver:
-    def __init__(self, validate_session: Callable[[Any], dict | None], load_authorized_projects: Callable[[str,str,str], dict | None]):
+    def __init__(self, validate_session: Callable[[Any], dict | None], load_authorized_projects: Callable[[str,str,str,str], dict | None]):
         self._validate_session=validate_session
         self._load_projects=load_authorized_projects
     def __call__(self, auth_context: Any) -> Principal:
@@ -16,7 +16,7 @@ class MidadPrincipalResolver:
             if not all(isinstance(x,str) and x.strip() for x in values):
                 raise AdapterError("UNAUTHENTICATED","Verified owner and agent binding required")
             owner_scope,principal_id,agent_id,run_id=values
-            policy=self._load_projects(owner_scope,agent_id,run_id)
+            policy=self._load_projects(owner_scope,principal_id,agent_id,run_id)
             if not isinstance(policy,dict) or policy.get("verified") is not True:
                 raise AdapterError("FORBIDDEN","Verified project policy required")
             projects,capabilities=policy.get("allowed_projects"),policy.get("capabilities")
