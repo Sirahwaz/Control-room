@@ -12,7 +12,7 @@ test("Browser Mesh exposes a password-only access-key field without requiring Te
   assert.match(js, /accessKey,/);
   assert.match(js, /browserRunNativeRequest/);
   assert.doesNotMatch(js, /getBrowserRunAccessKey/);
-  assert.doesNotMatch(js, /افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية/);
+  assert.doesNotMatch(html, /افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية/);
   assert.doesNotMatch(js, /telegram_init_data/);
 });
 
