@@ -1,7 +1,7 @@
 name: MIDAD Memory Adapter Tests
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "tools/midad-memory-adapter/**"
       - ".github/workflows/midad-memory-adapter-tests.yml"
@@ -23,4 +23,4 @@ jobs:
           cache: pip
       - name: Run isolated adapter contract tests
         working-directory: tools/midad-memory-adapter
-        run: python -m unittest -v test_midad_memory_adapter
+        run: python -m unittest -v test_midad_memory_adapter test_memora_api_backend

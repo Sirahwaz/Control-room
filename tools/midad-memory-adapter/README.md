@@ -48,3 +48,39 @@ Implement a dedicated Memora MCP backend using the pinned upstream revision
 MIDAD identity, prove backend idempotency, scope filtering before ranking, two-owner /
 two-project isolation, and restore integrity against disposable SQLite data. Keep the
 feature flag off until those gates and a separate security review pass.
+
+## Memora API backend
+
+`memora_api_backend.py` implements the pinned upstream plain-HTTP API v1 contract
+(`agentic-box/memora@442ca1b4ef494c256917ecd052dedb872710e84a`), not an MCP session.
+It uses only Python's standard library, HTTPS, bounded timeouts/responses, bearer
+authentication, and disables HTTP redirects.
+
+The trusted server composition layer must construct `MemoraApiBackend` with:
+- `base_url`: private HTTPS Memora API origin (HTTP only for loopback tests);
+- `owner_routes`: server-owned mapping from authenticated MIDAD owner scope to
+  a Memora store and a token *environment variable name*;
+- `environ`: server environment containing the token values (never send tokens
+  in requests from agents or clients).
+
+Example shape (illustrative names only; do not commit token values):
+
+```python
+owner_routes = {
+    "tenant-a": {
+        "store": "tenant_a",
+        "token_env": "MIDAD_MEMORA_API_TOKEN_TENANT_A",
+    },
+}
+backend = MemoraApiBackend(
+    base_url="https://memora.internal",
+    owner_routes=owner_routes,
+)
+adapter = MemoryAdapter(backend, idempotency_db_path="/secure/runtime/memory-intents.sqlite3")
+```
+
+The backend requires a healthy Memora v1 store. Reads require the store's
+declared project scope; writes additionally require `writes: transactional`.
+If Memora reports `writes: unsupported`, the adapter refuses to absorb. The
+upstream contract explicitly treats that capability as unsupported until a
+transactional backend is proven. This implementation does not override it.
