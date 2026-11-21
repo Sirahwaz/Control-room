@@ -30,7 +30,7 @@ export function createNativeBrowserAgentRuntime({
   });
   const dryRun = createBrowserDryRun();
   const execution = createBrowserExecutionController({ dryRun, liveRuntime: runtime });
-  return Object.freeze({ runtime, bridge, driver, dryRun, execution });
+  // Never expose the raw runtime: every public run() must pass through the DRY_RUN gate.\n  return Object.freeze({ runtime: execution, bridge, driver, dryRun, execution });
 }
 
 if (typeof window !== "undefined") {
