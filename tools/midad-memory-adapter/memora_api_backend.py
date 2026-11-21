@@ -156,7 +156,7 @@ class MemoraApiBackend:
                 "source_ref": source_ref,
                 "created_by_agent": record["created_by_agent"],
                 "run_id": record["run_id"],
-                "schema_version": record["schema_version"],
+                "schema_version": record.get("schema_version", 1),
                 "untrusted_content": True,
             },
         }
