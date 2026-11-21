@@ -159,7 +159,7 @@ async function dispatch(req: Request): Promise<Response> {
       .eq("active", true)
       .maybeSingle(),
     admin.from("midad_factory_runs")
-      .select("id,project_id,project_key,state")
+      .select("id,project_id,project_key,agent_key,state")
       .eq("id", runId)
       .eq("project_id", project.id)
       .eq("project_key", project.project_key)
@@ -228,7 +228,7 @@ async function dispatch(req: Request): Promise<Response> {
           idempotency_key: idempotencyKey,
         },
       }),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(25000),
     });
   } catch {
     await admin.from("midad_memory_gateway_audit").update({
