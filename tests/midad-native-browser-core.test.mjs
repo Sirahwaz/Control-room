@@ -5,6 +5,7 @@ import fs from "node:fs";
 const html = fs.readFileSync(new URL("../mobile/web/midad-browser-mesh.html", import.meta.url), "utf8");
 const runtime = fs.readFileSync(new URL("../mobile/web/midad-native-browser.js", import.meta.url), "utf8");
 const manifest = JSON.parse(fs.readFileSync(new URL("../mobile/factory/products/midad-mobile-next.json", import.meta.url), "utf8"));
+const workflow = fs.readFileSync(new URL("../.github/workflows/midad-mobile-factory.yml", import.meta.url), "utf8");
 
 test("Browser Mesh exposes an actual native WebView browser surface", () => {
   for (const id of ["nativeBrowserAddress", "nativeBrowserOpen", "nativeBrowserBack", "nativeBrowserReload", "nativeBrowserNewTab", "nativeBrowserTabs", "nativeBrowserStatus"]) {
@@ -27,4 +28,7 @@ test("Native browser rejects unsafe URL schemes and persists only user-selected 
 
 test("Native browser runtime is included in the Mobile Next APK web assets", () => {
   assert.ok(manifest.web_assets.includes("mobile/web/midad-native-browser.js"));
+  assert.match(html, /midad-browser-native\\.bundle\\.js/);
+  assert.match(workflow, /esbuild.*midad-browser-native-entry/);
+  assert.match(workflow, /midad-browser-native\\.bundle\\.js/);
 });
