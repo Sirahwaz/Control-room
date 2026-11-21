@@ -26,10 +26,8 @@ test("Browser Run access key is encrypted by the existing Android Keystore vault
   assert.match(activity, /encryptVaultValue\(/);
   assert.match(activity, /decryptVaultValue\(/);
   assert.match(activity, /BROWSER_RUN_ACCESS_KEY_KEY/);
-  assert.match(bridge, /getBrowserRunAccessKey/);
-  assert.match(bridge, /saveBrowserRunAccessKey/);
-  assert.match(bridge, /clearBrowserRunAccessKey/);
   assert.match(bridge, /authenticateBrowserRun/);
+  assert.doesNotMatch(bridge, /getBrowserRunAccessKey|saveBrowserRunAccessKey|clearBrowserRunAccessKey/);
 });
 
 test("Access key is never persisted in WebView localStorage or packaged JavaScript", async () => {
