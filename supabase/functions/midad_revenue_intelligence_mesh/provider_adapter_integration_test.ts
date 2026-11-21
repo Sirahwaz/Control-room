@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { extractQualificationEvidence } from "./revenue_adapter_qualification.ts";
+import { canVerifyTaskmarketEscrowOnBase, resolveTaskmarketPaymentRail } from "./taskmarket_network.ts";
 import {
   basedAgentsQualificationEvidence,
   bountyBookQualificationEvidence,
@@ -11,7 +12,39 @@ import {
   bountyBookFixture,
   superteamFixture,
   taskmarketFixture,
+  taskmarketTempoFixture,
 } from "./provider_adapter_fixtures.ts";
+
+Deno.test("Taskmarket maps Base and Tempo mainnet chain IDs to their exact payment rails", () => {
+  assertEquals(resolveTaskmarketPaymentRail(taskmarketFixture.chainId), {
+    chainId: 8453,
+    network: "Base",
+    asset: "USDC",
+    testnet: false,
+  });
+  assertEquals(resolveTaskmarketPaymentRail(taskmarketTempoFixture.chainId), {
+    chainId: 4217,
+    network: "Tempo",
+    asset: "OUSD",
+    testnet: false,
+  });
+});
+
+Deno.test("Taskmarket testnets are identified and excluded from production escrow verification", () => {
+  assertEquals(resolveTaskmarketPaymentRail(84532)?.testnet, true);
+  assertEquals(resolveTaskmarketPaymentRail(42431)?.testnet, true);
+  assertEquals(canVerifyTaskmarketEscrowOnBase(84532), false);
+  assertEquals(canVerifyTaskmarketEscrowOnBase(4217), false);
+  assertEquals(canVerifyTaskmarketEscrowOnBase(42431), false);
+});
+
+Deno.test("Taskmarket unknown and malformed chain IDs fail closed", () => {
+  assertEquals(resolveTaskmarketPaymentRail(1), null);
+  assertEquals(resolveTaskmarketPaymentRail(""), null);
+  assertEquals(resolveTaskmarketPaymentRail(null), null);
+  assertEquals(resolveTaskmarketPaymentRail("4217.0"), null);
+  assertEquals(canVerifyTaskmarketEscrowOnBase(4217), false);
+});
 
 Deno.test("Taskmarket public task submissionCount is not the worker's free-submission count", () => {
   assertEquals(taskmarketOfficialFeeEvidence(taskmarketFixture), {});
@@ -19,14 +52,15 @@ Deno.test("Taskmarket public task submissionCount is not the worker's free-submi
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 2 }).submissionFee, 0);
 });
 
-Deno.test("Taskmarket fixture: sixth and later bounty/benchmark submissions incur 0.001 USDC", () => {
+Deno.test("Taskmarket fixture: sixth and later bounty/benchmark submissions incur 0.001 of the task payment token", () => {
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "bounty", workerSubmissionCount: 5 }).submissionFee, 0.001);
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "benchmark", workerSubmissionCount: 8 }).submissionFee, 0.001);
 });
 
-Deno.test("Taskmarket pitch and auction actions carry the documented 0.001 USDC action fee", () => {
+Deno.test("Taskmarket pitch and auction actions carry the documented 0.001 payment-token fee", () => {
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "pitch" }).submissionFee, 0.001);
   assertEquals(taskmarketOfficialFeeEvidence({ mode: "auction" }).submissionFee, 0.001);
+  assertEquals(taskmarketOfficialFeeEvidence({ mode: "pitch", chainId: 4217 }).submissionFee, 0.001);
 });
 
 Deno.test("BasedAgents task fixture does not infer the user's region, KYC or identity from a listing", () => {
