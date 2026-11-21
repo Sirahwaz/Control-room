@@ -27,7 +27,7 @@ test("bookmark and history reads decrypt values and migrate legacy plaintext onc
 });
 
 test("bookmark and history writes persist only encrypted vault envelopes", () => {
-  assert.match(source, /private void writeLibraryArray\(String key, JSONArray value\)/);
+  assert.match(source, /private boolean writeLibraryArray\\(String key, JSONArray value\\)/);
   assert.match(source, /encryptVaultValue\(value\.toString\(\)\)/);
   assert.doesNotMatch(source, /libraryPrefs\.edit\(\)\.putString\((?:HISTORY_PREFS_KEY|BOOKMARKS_PREFS_KEY),\s*(?:nextItems\.toString\(\)|"\[\]")/);
 });
