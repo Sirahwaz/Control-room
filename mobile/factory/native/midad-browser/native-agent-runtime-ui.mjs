@@ -112,7 +112,7 @@ inspectButton?.addEventListener("click", async () => {
     output.textContent = error?.message || "تعذر تنفيذ الفحص.";
     setStatus("AGENT TASK BLOCKED", "pending");
   } finally {
-    agent?.bridge.close();
+    agent?.execution?.close();
     discovery?.close();
     inspectButton.disabled = false;
   }
