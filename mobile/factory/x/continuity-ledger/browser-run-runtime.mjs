@@ -1,6 +1,5 @@
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const HOST_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/i;
-let nextCdpCommandId = 0;
 
 function publicHostname(hostname) {
   const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
@@ -47,40 +46,10 @@ export function validateBrowserRunTarget(targetUrl, allowedHosts = []) {
   return url.toString();
 }
 
-function sendCdpCommand(socket, method, params = {}, timeoutMs = 10000) {
-  return new Promise((resolve, reject) => {
-    const id = ++nextCdpCommandId;
-    const cleanup = () => {
-      clearTimeout(timeout);
-      socket.removeEventListener('message', onMessage);
-      socket.removeEventListener('close', onClose);
-    };
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('CDP_COMMAND_TIMEOUT:' + method));
-    }, timeoutMs);
-    const onClose = () => {
-      cleanup();
-      reject(new Error('CDP_CONNECTION_CLOSED:' + method));
-    };
-    const onMessage = event => {
-      let message;
-      try { message = JSON.parse(event.data); } catch { return; }
-      if (message?.id !== id) return;
-      cleanup();
-      if (message.error) reject(new Error('CDP_COMMAND_FAILED:' + method));
-      else resolve(message.result ?? {});
-    };
-    socket.addEventListener('message', onMessage);
-    socket.addEventListener('close', onClose);
-    try { socket.send(JSON.stringify({ id, method, params })); }
-    catch (error) { cleanup(); reject(error); }
-  });
-}
 
 function assertBinding(binding) {
   if (!binding || typeof binding.acquire !== 'function' ||
-      typeof binding.connectSession !== 'function' ||
+      typeof binding.script !== 'function' ||
       typeof binding.getLiveView !== 'function' ||
       typeof binding.closeSession !== 'function') {
     throw new Error('BROWSER_RUN_BINDING_MISSING');
@@ -131,7 +100,6 @@ export async function runBrowserRunSmoke({
   const normalizedUrl = validateBrowserRunTarget(targetUrl, allowedHosts);
   const normalizedHosts = normalizeAllowedHosts(allowedHosts);
   let sessionId = null;
-  let socket = null;
   let keepSession = false;
   try {
     const session = await browserBinding.acquire({
@@ -149,27 +117,37 @@ export async function runBrowserRunSmoke({
       : null;
     if (!target) throw new Error('BROWSER_PAGE_TARGET_MISSING');
 
-    const connection = await browserBinding.connectSession(sessionId, { targetId: target.id });
-    if (!connection?.webSocket || typeof connection.webSocket.fetch !== 'function') {
-      throw new Error('BROWSER_WEBSOCKET_FETCHER_MISSING');
-    }
-    const websocketResponse = await connection.webSocket.fetch('https://browser-binding.invalid', {
-      headers: { Upgrade: 'websocket' },
+    // Cloudflare's script runner owns the CDP transport. Reuse the guarded
+    // session instead of opening a Worker WebSocket and sending Page.enable.
+    const scriptCode = `async ({ page }) => {
+      await page.goto(${JSON.stringify(normalizedUrl)}, {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000,
+      });
+      return {
+        title: await page.title(),
+        url: page.url(),
+        text: (await page.locator('body').innerText({ timeout: 5000 })).slice(0, 1400),
+      };
+    }`;
+    const scriptResponse = await browserBinding.script(scriptCode, {
+      sessionId,
+      targetId: target.id,
+      library: 'playwright',
+      timeout: 30000,
     });
-    socket = websocketResponse?.webSocket;
-    if (!socket || typeof socket.accept !== 'function' || typeof socket.send !== 'function') {
-      throw new Error('BROWSER_RUN_WEBSOCKET_MISSING');
+    if (!scriptResponse || typeof scriptResponse.ok !== 'boolean') {
+      throw new Error('BROWSER_SCRIPT_RESPONSE_INVALID');
     }
-    socket.accept();
-    await sendCdpCommand(socket, 'Page.enable');
-    await sendCdpCommand(socket, 'Runtime.enable');
-    await sendCdpCommand(socket, 'Page.navigate', { url: normalizedUrl });
-    const evaluated = await sendCdpCommand(socket, 'Runtime.evaluate', {
-      expression: '({ title: document.title, url: location.href, text: (document.body?.innerText || "").slice(0, 1400) })',
-      returnByValue: true,
-      awaitPromise: true,
-    });
-    const evidence = normalizeEvidence(evaluated?.result?.value, normalizedUrl);
+    const scriptPayload = await scriptResponse.json().catch(() => null);
+    if (!scriptResponse.ok) {
+      throw new Error('BROWSER_SCRIPT_HTTP_' + scriptResponse.status);
+    }
+    if (scriptPayload?.success !== true) {
+      throw new Error('BROWSER_SCRIPT_RESULT_INVALID');
+    }
+
+    const evidence = normalizeEvidence(scriptPayload.result, normalizedUrl);
     if (!hostAllowed(new URL(evidence.url).hostname, normalizedHosts)) {
       throw new Error('BROWSER_REDIRECT_HOST_NOT_ALLOWLISTED');
     }
@@ -190,7 +168,6 @@ export async function runBrowserRunSmoke({
       live_view_url: liveViewUrl,
     };
   } finally {
-    try { socket?.close(); } catch {}
     if (sessionId && !keepSession) {
       try { await browserBinding.closeSession(sessionId); } catch {}
     }
