@@ -155,3 +155,30 @@ test("native runtime exposes a safe close path that releases its private bridge 
   assert.equal(nativeObject.onmessage, null);
   assert.notEqual(nativeObject.onmessage, installedHandler);
 });
+
+
+test("execution controller close is terminal and blocks later live operations", async () => {
+  const calls = [];
+  const controller = createBrowserExecutionController({
+    dryRun: createBrowserDryRun(),
+    liveRuntime: {
+      run: async () => { calls.push("run"); return { ok: true }; },
+      pause: () => { calls.push("pause"); return true; },
+      resume: () => { calls.push("resume"); return true; },
+      cancel: () => { calls.push("cancel"); return true; },
+      getState: () => ({ state: "running" }),
+    },
+  });
+  assert.equal(controller.close(), true);
+  assert.equal(controller.close(), false);
+  assert.equal(controller.setMode("local_native"), false);
+  assert.equal(controller.getMode(), "dry_run");
+  assert.equal((await controller.run({})).error, "runtime_closed");
+  assert.equal(controller.pause(), false);
+  assert.equal(controller.resume(), false);
+  assert.equal(controller.cancel(), false);
+  assert.deepEqual(controller.getState(), {
+    state: "blocked", mode: "dry_run", error: "runtime_closed",
+  });
+  assert.deepEqual(calls, []);
+});
