@@ -5,22 +5,29 @@ on:
     branches: ["main"]
     paths:
       - "mobile/web/omni-agent.*"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - "mobile/web/human-bridge.js"
       - "mobile/factory/**"
       - "mobile/package.json"
+      - "tools/midad-re-lab/**"
       - ".github/workflows/midad-omni-agent-android.yml"
   workflow_dispatch: {}
   push:
     branches: ["main"]
     paths:
       - "mobile/web/omni-agent.*"
+      - "mobile/web/android-lab.mjs"
+      - "mobile/factory/android-lab.test.mjs"
       - "mobile/web/human-bridge.js"
       - "mobile/factory/**"
       - "mobile/package.json"
+      - "tools/midad-re-lab/**"
       - ".github/workflows/midad-omni-agent-android.yml"
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   agentation-ui-feedback:
@@ -33,6 +40,8 @@ jobs:
     needs: agentation-ui-feedback
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    outputs:
+      artifact_name: ${{ steps.product.outputs.artifact_name }}
     steps:
       - name: Checkout MIDAD
         uses: actions/checkout@v7
@@ -81,6 +90,7 @@ jobs:
           cp mobile/web/omni-agent.html mobile/www/index.html
           cp mobile/web/omni-agent.css mobile/www/omni-agent.css
           cp mobile/web/omni-agent.js mobile/www/omni-agent.js
+          cp mobile/web/android-lab.mjs mobile/www/android-lab.mjs
       - name: Add Android platform
         working-directory: mobile
         run: npx cap add android
@@ -105,10 +115,13 @@ jobs:
           PY
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs midad-omni-agent
-
       - name: Static JS syntax audit
         working-directory: mobile
-        run: node --check web/omni-agent.js
+        run: |
+          node --check web/omni-agent.js
+          node --check web/android-lab.mjs
+      - name: Android Lab contract tests
+        run: node --test mobile/factory/android-lab.test.mjs
       - name: Factory contract audit
         run: |
           set -euo pipefail
@@ -170,3 +183,64 @@ jobs:
             dist/product-manifest.json
             dist/test-report.json
             dist/runtime-smoke-report.json
+
+  analyze-omni-agent-release:
+    name: Analyze the APK produced by this exact build
+    needs: build-omni-agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download APK from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-omni-agent.outputs.artifact_name }}-release
+          path: incoming
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_FILE="$(find incoming -type f -name '*.apk' -print -quit)"
+          test -n "$APK_FILE"
+          echo "path=$APK_FILE" >> "$GITHUB_OUTPUT"
+      - name: Install pinned JADX and Apktool
+        run: |
+          python -m pip install --disable-pip-version-check androguard==4.1.4
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          curl -fsSL https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip -o /tmp/jadx.zip
+          unzip -q /tmp/jadx.zip -d /opt/jadx
+          sudo chmod +x /opt/jadx/bin/jadx
+          curl -fsSL https://raw.githubusercontent.com/iBotPeaches/Apktool/v2.11.1/scripts/linux/apktool -o /usr/local/bin/apktool
+          curl -fsSL https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar -o /usr/local/bin/apktool.jar
+          sudo chmod +x /usr/local/bin/apktool
+      - name: Verify APK SHA-256 sidecar
+        env:
+          APK_FILE: ${{ steps.apk.outputs.path }}
+        run: |
+          set -euo pipefail
+          EXPECTED_SHA="$(awk '{print $1}' "$APK_FILE.sha256")"
+          ACTUAL_SHA="$(sha256sum "$APK_FILE" | awk '{print $1}')"
+          test -n "$EXPECTED_SHA"
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+      - name: Static APK analysis
+        env:
+          APK_FILE: ${{ steps.apk.outputs.path }}
+        run: |
+          set -euo pipefail
+          python tools/midad-re-lab/analyze_apk.py --file "$APK_FILE" --product-key midad-omni-agent --jadx /opt/jadx/bin/jadx --apktool /usr/local/bin/apktool.jar --out artifacts/apk
+      - name: Upload static analysis reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-android-static-omni-agent-current
+          path: artifacts/apk/*.json
+          if-no-files-found: error
+          retention-days: 14
