@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createBrowserDryRun, createBrowserExecutionController } from "../mobile/factory/native/midad-browser/agent-runtime.mjs";
+import { createNativeBrowserAgentRuntime } from "../mobile/factory/native/midad-browser/native-agent-runtime.mjs";
 
 const ORIGIN = "https://example.com";
 const task = (steps) => ({
@@ -121,4 +122,21 @@ test("execution controller preserves runtime lifecycle APIs behind the LOCAL_NAT
   assert.equal(controller.cancel(), true);
   assert.deepEqual(controller.getState(), { state: "running" });
   assert.deepEqual(calls, ["pause", "resume", "cancel"]);
+});
+
+
+test("public native runtime does not expose bridge or driver handles that bypass DRY_RUN", () => {
+  const nativeObject = { postMessage() {}, onmessage: null };
+  const agent = createNativeBrowserAgentRuntime({
+    nativeObject,
+    allowedOrigins: [ORIGIN],
+  });
+
+  assert.equal(agent.runtime.getMode(), "dry_run");
+  assert.equal(agent.runtime, agent.execution);
+  assert.equal("bridge" in agent, false);
+  assert.equal("driver" in agent, false);
+  assert.deepEqual(Object.keys(agent).sort(), ["dryRun", "execution", "runtime"]);
+  assert.equal(typeof agent.dryRun.plan, "function");
+  assert.equal(typeof agent.runtime.run, "function");
 });
