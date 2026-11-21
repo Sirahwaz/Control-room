@@ -97,3 +97,8 @@ MIDAD's identity provider. No real auth resolver, HTTP route, Telegram bot route
 or mobile client is wired by this package. The gateway tests prove fail-closed
 behavior for missing, unverified, or failing resolvers. A trusted production
 resolver must be selected and independently reviewed before any internal pilot.
+
+
+## Verified principal policy resolver
+
+`resolver.py` provides a fail-closed composition contract. The host integration must supply a session validator that returns a verified binding, and a policy loader that returns a verified project/capability decision for the resolved owner, agent, and run. This implementation intentionally does not claim either callback is wired to MIDAD production services; it is the tested integration seam. No client claims are used.
