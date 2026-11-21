@@ -1,6 +1,12 @@
 name: Memora Isolated Pilot
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/memora-isolated-pilot.yml"
+      - "docs/architecture/MEMORA_UPSTREAM_SECURITY_REVIEW_2026-11-21.md"
+      - "docs/architecture/MEMORA_PILOT_RUNBOOK.md"
   workflow_dispatch:
   pull_request:
     paths:
