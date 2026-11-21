@@ -51,6 +51,26 @@
       </nav>
 
       <section class="tab-panel active" id="panel-mesh" role="tabpanel" data-panel="mesh">
+      <section class="panel native-browser-panel" aria-labelledby="nativeBrowserHeading">
+        <div class="panel-heading"><div><span class="section-kicker">ANDROID NATIVE WEBVIEW</span><h3 id="nativeBrowserHeading">MIDAD Browser · تصفح مباشر</h3></div><span class="state-label" id="nativeBrowserStatus" role="status" aria-live="polite">CHECKING ENGINE</span></div>
+        <div class="native-browser-address-row">
+          <input id="nativeBrowserAddress" type="url" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="https://example.com" aria-label="Website address">
+          <button class="primary-btn" id="nativeBrowserOpen" type="button">فتح</button>
+        </div>
+        <div class="native-browser-actions">
+          <button class="secondary-btn" id="nativeBrowserBack" type="button">رجوع</button>
+          <button class="secondary-btn" id="nativeBrowserReload" type="button">تحديث</button>
+          <button class="secondary-btn" id="nativeBrowserNewTab" type="button">تبويب جديد</button>
+          <button class="secondary-btn" id="nativeBrowserBookmark" type="button">حفظ المفضلة</button>
+          <button class="secondary-btn danger-btn" id="nativeBrowserClose" type="button">إغلاق التبويب</button>
+        </div>
+        <div class="native-browser-tabs" id="nativeBrowserTabs" aria-label="Open browser tabs"></div>
+        <div class="native-browser-library">
+          <div><b>المفضلة</b><div class="native-browser-links" id="nativeBrowserBookmarkList"></div></div>
+          <div><b>السجل المحلي</b><div class="native-browser-links" id="nativeBrowserHistoryList"></div></div>
+        </div>
+        <p class="native-browser-note">يفتح المحتوى في Android WebView مُدار من التطبيق. الروابط محصورة بـ HTTP/HTTPS؛ بيانات التصفح محفوظة محلياً على الجهاز.</p>
+      </section>
         <div class="section-heading">
           <div><span class="section-kicker">RUNTIME TOPOLOGY</span><h2 data-i18n="runtimeTitle">خريطة التشغيل الموزّع</h2><p data-i18n="runtimeDescription">كل منصة تؤدي دوراً محدداً؛ ولا نفترض جاهزية أي عقدة قبل وصول دليل تشغيل حي.</p></div>
           <span class="section-stamp">MNCF / v1</span>
@@ -256,6 +276,7 @@
       </footer>
     </main>
   </div>
+  <script src="./midad-native-browser.js" defer></script>
   <script src="./midad-browser-mesh.js" defer></script>
 </body>
 </html>
