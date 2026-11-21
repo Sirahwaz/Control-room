@@ -18,7 +18,14 @@
     "server_side_secrets_only": true,
     "live_financial_execution": false,
     "mission_capsules": true,
-    "hybrid_neural_planner": true
+    "hybrid_neural_planner": true,
+    "human_bridge": true,
+    "agentic_browser": true,
+    "safe_autofill": true,
+    "secure_pairing": true,
+    "extension_fabric": true,
+    "trust_boundary_ui": true,
+    "evidence_capture": true
   },
   "surfaces": [
     "control-room",
