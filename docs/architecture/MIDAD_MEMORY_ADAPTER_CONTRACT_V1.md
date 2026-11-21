@@ -191,7 +191,7 @@ bindings. Neither has been connected to a live host.
 | Existing owner-bound Control Room session | IMPLEMENTED / PENDING DEPLOYMENT | Reuses `control_room_sessions` and `validateOwnerSessionBinding`; legacy/unbound sessions fail closed |
 | Project authorization | IMPLEMENTED / PENDING DEPLOYMENT | Edge Gateway checks `midad_factory_projects.project_key + owner_user_id` |
 | Agent operation grants | IMPLEMENTED / PENDING DEPLOYMENT | New empty `midad_memory_agent_grants` table; service-role only; no grants seeded |
-| Execution-run binding | IMPLEMENTED / PENDING DEPLOYMENT | Requires a `RUNNING` `midad_factory_runs` row for the same project |
+| Execution-run binding | IMPLEMENTED / PENDING PRODUCER WIRING | Requires a `RUNNING` `midad_factory_runs` row with matching project and `agent_key`; legacy NULL runs fail closed |
 | Metadata-only audit | IMPLEMENTED / PENDING DEPLOYMENT | New `midad_memory_gateway_audit` records request, owner, project, agent, run, operation, outcome and record IDs; no content or credentials |
 | Private adapter service | IMPLEMENTED / PENDING HOST | Python HTTP entrypoint accepts only the Edge Gateway service bearer and rejects oversized/invalid envelopes |
 | Memora API v1 | IMPLEMENTED / CONDITIONAL | Writes remain blocked unless store health explicitly reports `writes: transactional` |
@@ -222,3 +222,9 @@ secret stores.
 
 No deployment, migration execution, grant provisioning, secret creation, or feature-flag
 activation is authorized or claimed by this implementation PR.
+
+The gateway requires `midad_factory_runs.agent_key` to match the active agent grant.
+The migration adds this nullable column without rewriting historical runs. The existing
+factory run producer must set it from trusted execution context; until that producer is
+updated, legacy and newly created rows without an agent key cannot use memory. This is
+an explicit integration blocker, not a reason to weaken the run check.
