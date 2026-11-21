@@ -238,8 +238,13 @@ jobs:
             done
             printf '%s' "$MIDAD_ANDROID_KEYSTORE_BASE64" | base64 --decode > signing/midad-release.jks
             test -s signing/midad-release.jks
-            keytool -list -keystore signing/midad-release.jks -storepass "$MIDAD_ANDROID_KEYSTORE_PASSWORD" -alias "$MIDAD_ANDROID_KEY_ALIAS" >/dev/null
-            "$APKSIGNER" sign --ks signing/midad-release.jks --ks-pass "pass:$MIDAD_ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$MIDAD_ANDROID_KEY_PASSWORD" --ks-key-alias "$MIDAD_ANDROID_KEY_ALIAS" --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
+            KEYSTORE_INFO="$(keytool -list -keystore signing/midad-release.jks -storepass "$MIDAD_ANDROID_KEYSTORE_PASSWORD" -alias "$MIDAD_ANDROID_KEY_ALIAS" 2>&1)"
+            KEYSTORE_TYPE="$(printf '%s\\n' "$KEYSTORE_INFO" | sed -n 's/^Keystore type: //p' | head -n 1)"
+            case "$KEYSTORE_TYPE" in
+              JKS|PKCS12) ;;
+              *) echo "Unsupported or undetected Android keystore type: $KEYSTORE_TYPE" >&2; exit 1 ;;
+            esac
+            "$APKSIGNER" sign --ks signing/midad-release.jks --ks-type "$KEYSTORE_TYPE" --ks-pass "pass:$MIDAD_ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$MIDAD_ANDROID_KEY_PASSWORD" --ks-key-alias "$MIDAD_ANDROID_KEY_ALIAS" --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
             echo "signing_mode=permanent" >> "$GITHUB_OUTPUT"
           elif [ "$RELEASE_MODE" = "debug" ]; then
             SIGNING_PASS="$(openssl rand -hex 32)"
