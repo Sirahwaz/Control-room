@@ -19,14 +19,13 @@ function parseResponse(value) {
  */
 export function createNativeAgentBridge({
   nativeObject = globalThis.window?.midadNative,
-  eventTarget = globalThis.window,
   timeoutMs = REQUEST_TIMEOUT_MS,
 } = {}) {
   if (!nativeObject || typeof nativeObject.postMessage !== "function") {
     throw new Error("native_browser_bridge_unavailable");
   }
-  if (!eventTarget || typeof eventTarget.addEventListener !== "function") {
-    throw new Error("native_browser_event_target_unavailable");
+  if (typeof nativeObject.addEventListener !== "function") {
+    throw new Error("native_browser_message_listener_unavailable");
   }
   if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60000) {
     throw new Error("native_browser_timeout_invalid");
@@ -45,7 +44,7 @@ export function createNativeAgentBridge({
       code: response.error || "native_browser_command_failed",
     }));
   };
-  eventTarget.addEventListener("message", onMessage);
+  nativeObject.addEventListener("message", onMessage);
 
   const request = (command) => {
     if (!command || typeof command !== "object" || Array.isArray(command) ||
@@ -74,7 +73,7 @@ export function createNativeAgentBridge({
   };
 
   const close = () => {
-    eventTarget.removeEventListener?.("message", onMessage);
+    nativeObject.removeEventListener?.("message", onMessage);
     for (const [requestId, entry] of pending) {
       clearTimeout(entry.timer);
       entry.reject(new Error("native_browser_bridge_closed"));
