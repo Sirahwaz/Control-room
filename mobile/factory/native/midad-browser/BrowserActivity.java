@@ -99,6 +99,7 @@ public final class BrowserActivity extends Activity {
     private String fontFamily = "sans-serif";
     private boolean lightTheme = false;
     private WebViewAssetLoader assetLoader;
+    private BrowserAgentBridge agentBridge;
     private EditText address;
     private ProgressBar progress;
     private TextView securityState;
@@ -113,6 +114,18 @@ public final class BrowserActivity extends Activity {
         buildBrowserUi();
         tabPrefs = getSharedPreferences(TAB_PREFS, MODE_PRIVATE);
         libraryPrefs = getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE);
+        agentBridge = new BrowserAgentBridge(this, new BrowserAgentBridge.Host() {
+            @Override public int getTabCount() { return tabs.size(); }
+            @Override public int getActiveTabIndex() { return activeTabIndex; }
+            @Override public WebView getTab(int index) {
+                return index >= 0 && index < tabs.size() ? tabs.get(index) : null;
+            }
+            @Override public boolean switchToTab(int index) {
+                if (index < 0 || index >= tabs.size()) return false;
+                BrowserActivity.this.switchToTab(index);
+                return true;
+            }
+        });
         restoreTabs();
         handleIncomingIntent(getIntent());
     }
@@ -238,6 +251,7 @@ public final class BrowserActivity extends Activity {
                 .build();
         }
 
+        if (agentBridge != null) agentBridge.attach(target);
         WebSettings settings = target.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
