@@ -91,9 +91,14 @@
         render();
       } catch (_) {}
     });
-    await api.addListener("closeEvent", ({ id }) => {
+    await api.addListener("closeEvent", async ({ id }) => {
       state.tabs = state.tabs.filter((tab) => tab.id !== id);
-      if (state.activeId === id) state.activeId = state.tabs.at(-1)?.id || null;
+      if (state.activeId === id) {
+        state.activeId = state.tabs.at(-1)?.id || null;
+        if (state.activeId) {
+          try { await api.show({ id: state.activeId }); } catch (_) {}
+        }
+      }
       persist(); render();
     });
   }
@@ -158,6 +163,24 @@
     }
     render(); setStatus("تم حفظ الموقع في المفضلة المحلية.");
   }
+  async function restoreTabs(api) {
+    const saved = read(KEY, { tabs: [], activeIndex: 0 });
+    if (!Array.isArray(saved.tabs) || !saved.tabs.length || !api?.openWebView) return;
+    for (const item of saved.tabs.slice(0, 8)) {
+      try {
+        const url = normalizeAddress(item.url);
+        const opened = await api.openWebView({
+          url, hidden: true, toolbarType: "navigation", title: "MIDAD Browser",
+          toolbarColor: "#07131f", showURL: true, closeButtonText: "Close", persistWebViewData: true
+        });
+        if (opened?.id) state.tabs.push({ id: opened.id, url, title: new URL(url).hostname });
+      } catch (_) {}
+    }
+    const selected = Math.min(Math.max(0, Number(saved.activeIndex) || 0), state.tabs.length - 1);
+    state.activeId = state.tabs[selected]?.id || null;
+    if (state.activeId) await api.show({ id: state.activeId });
+    persist(); render();
+  }
   async function init() {
     const api = plugin();
     $("nativeBrowserOpen")?.addEventListener("click", () => openAddress($("nativeBrowserAddress")?.value));
@@ -174,7 +197,11 @@
     $("nativeBrowserBookmark")?.addEventListener("click", bookmarkCurrent);
     $("nativeBrowserAddress")?.addEventListener("keydown", (event) => { if (event.key === "Enter") openAddress(event.currentTarget.value); });
     if (!api?.openWebView) setStatus("هذا الإصدار لا يعرض جسر Native WebView؛ لن يتم فتح متصفح وهمي.", true);
-    else { await bindEvents(api); setStatus("Native browser engine available · ready."); }
+    else {
+      await bindEvents(api);
+      await restoreTabs(api);
+      setStatus(state.tabs.length ? "Restored " + state.tabs.length + " local browser tabs." : "Native browser engine available · ready.");
+    }
     render();
   }
   document.addEventListener("DOMContentLoaded", init, { once: true });
