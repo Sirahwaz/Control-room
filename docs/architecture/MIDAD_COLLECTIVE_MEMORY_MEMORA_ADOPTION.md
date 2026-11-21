@@ -214,3 +214,25 @@ Never make the user pay again in time or money for an endless development loop w
 - Continuity Ledger remains the authority for active task/run state, checkpoints, leases, idempotency and execution outcomes.
 - A written contract or a successful memory search alone does not prove cross-session continuity. Acceptance requires a fresh-session test that retrieves this contract and the latest verified project state from the live configured memory path.
 - Until that test is completed against a deployed, authenticated, persistent memory service, cross-session automatic retrieval remains **PENDING**. Do not claim it is active.
+
+## 10. Operational closeout — 2026-11-21
+
+**Decision: BLOCKED / CLOSED FOR NOW. No production activation.**
+
+The durable execution and continuity contract is merged in section 13. The isolated Memory Gateway implementation was reviewed in PR #358 and its CI gates passed on its reviewed head, but it is not a live cross-session memory service.
+
+Verified blockers at closeout:
+- Live Supabase schema has owner-bound control_room_sessions and midad_factory_projects, but midad_factory_runs has no agent_id/agent_key binding column. The staged authorization registry is not applied.
+- The live Supabase project does not list a deployed midad_memory_gateway Edge Function.
+- No persistent zero-cost Memora host, owner-to-store route, or server-only Memora credential was verified.
+- The adapter's upstream HTTP JSON API reports writes unsupported for the selected phase; a write-capable MCP route and authenticated persistent host are not deployed.
+- Therefore no honest cross-session create/search/retrieve acceptance test can run against a live MIDAD runtime.
+
+Disposition:
+- PR #358 is retained as implementation reference and closed without merge because it conflicts with the newer run-scoped authorization registry and requires re-integration.
+- Keep MIDAD_MEMORY_ADAPTER_ENABLED=false; do not deploy the staged migration or expose Memora publicly.
+- Preserve the merged contract, adapter foundations, authorization registry source, and isolated CI harness. Do not rebuild them.
+- Resume this path only when a persistent zero-cost host and authenticated Memora MCP endpoint are available, and after the execution-to-agent binding is represented and tested.
+- Until then, the contract in GitHub is durable operational policy, but automatic ChatGPT cross-session retrieval remains unverified and is not claimed.
+
+**Exit state:** CLOSED / BLOCKED — no production memory runtime. Reopening requires new infrastructure evidence, not another architecture proposal.
