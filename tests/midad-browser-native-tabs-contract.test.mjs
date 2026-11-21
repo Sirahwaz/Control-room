@@ -69,3 +69,19 @@ test("WebView cookies are flushed when the browser pauses and before WebViews ar
   assert.match(destroy, /flushCookies\(\)/);
   assert.ok(destroy.indexOf("flushCookies()") < destroy.indexOf("tab.destroy()"));
 });
+
+test("native browser exposes persisted theme and font zoom controls across all tabs", () => {
+  assert.match(source, /APPEARANCE_PREFS/);
+  assert.match(source, /fontZoomPercent/);
+  assert.match(source, /setTextZoom\(fontZoomPercent\)/);
+  assert.match(source, /appearancePrefs/);
+  assert.match(source, /showAppearanceSettings\(/);
+  assert.match(source, /applyBrowserAppearance\(/);
+  assert.match(source, /المظهر والخط/);
+  assert.match(source, /setFontZoom\(85\)/);
+  assert.match(source, /setFontZoom\(130\)/);
+  assert.match(source, /FONT_FAMILY_KEY/);
+  assert.match(source, /setStandardFontFamily\(fontFamily\)/);
+  assert.match(source, /setFontFamily\("serif"\)/);
+  assert.match(source, /setFontFamily\("monospace"\)/);
+});
