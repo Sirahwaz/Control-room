@@ -146,7 +146,7 @@ jobs:
             [ -z "$asset" ] && continue
             mkdir -p "mobile/www/site/$(dirname "$asset")"
             cp "$asset" "mobile/www/site/$asset"
-          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
+          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
           # Fail the build if any primary Mobile Hub destination or nested checkout asset is absent.
           for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js; do
             test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
@@ -183,10 +183,10 @@ jobs:
           import os, re
           p=Path("android/app/build.gradle")
           s=p.read_text()
-          if len(re.findall(r'\bversionCode\s+\d+',s)) != 1: raise SystemExit("Expected exactly one versionCode")
-          if len(re.findall(r'\bversionName\s+"[^"]+"',s)) != 1: raise SystemExit("Expected exactly one versionName")
-          s=re.sub(r'\bversionCode\s+\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
-          s=re.sub(r'\bversionName\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
+          if len(re.findall(r'\\bversionCode\\s+\\d+',s)) != 1: raise SystemExit("Expected exactly one versionCode")
+          if len(re.findall(r'\\bversionName\\s+"[^"]+"',s)) != 1: raise SystemExit("Expected exactly one versionName")
+          s=re.sub(r'\\bversionCode\\s+\\d+',f'versionCode {os.environ["VERSION_CODE"]}',s,count=1)
+          s=re.sub(r'\\bversionName\\s+"[^"]+"',f'versionName "{os.environ["VERSION_NAME"]}"',s,count=1)
           p.write_text(s)
           PY
       - name: Factory quality gate
@@ -205,13 +205,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           APK_SRC="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           test -f "$APK_SRC"
           mkdir -p dist signing
-          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "midad-temp-release" -keypass "midad-temp-release" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
+          trap 'rm -rf signing; unset SIGNING_PASS' EXIT
+          SIGNING_PASS="$(openssl rand -hex 32)"
+          echo "::add-mask::$SIGNING_PASS"
+          keytool -genkeypair -v -keystore signing/midad-release-temporary.jks -storepass "$SIGNING_PASS" -keypass "$SIGNING_PASS" -alias midad -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=MIDAD Mobile Factory, OU=MIDAD, O=MIDAD, L=Global, ST=Global, C=XX"
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -x "$APKSIGNER"
-          "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass pass:midad-temp-release --key-pass pass:midad-temp-release --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
+          "$APKSIGNER" sign --ks signing/midad-release-temporary.jks --ks-pass "pass:$SIGNING_PASS" --key-pass "pass:$SIGNING_PASS" --ks-key-alias midad --out "dist/${ARTIFACT_NAME}-release.apk" "$APK_SRC"
           "$APKSIGNER" verify --verbose "dist/${ARTIFACT_NAME}-release.apk"
           AAPT="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -x "$AAPT"
@@ -222,7 +226,6 @@ jobs:
           sha256sum "dist/${ARTIFACT_NAME}-release.apk" | tee "dist/${ARTIFACT_NAME}-release.apk.sha256"
           cp mobile/factory/runtime-product.json dist/product-manifest.json
           cp mobile/factory/runtime-factory.json dist/factory-runtime.json
-          rm -rf signing
         env:
           ARTIFACT_NAME: ${{ steps.product.outputs.artifact_name }}
       - name: Enable KVM for Android emulator
