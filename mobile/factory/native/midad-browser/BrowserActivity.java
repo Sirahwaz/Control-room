@@ -59,19 +59,29 @@ public final class BrowserActivity extends Activity {
     private static final String LAST_CLOSED_TAB_KEY = "last_closed_url";
     private static final String PINNED_TAB_INDEXES_KEY = "pinned_tab_indexes_v1";
     private final List<Boolean> pinnedTabs = new ArrayList<>();
+    private static final String APPEARANCE_PREFS = "midad_browser_appearance_v1";
+    private static final String FONT_ZOOM_KEY = "font_zoom_percent";
+    private static final String LIGHT_THEME_KEY = "light_theme";
     private static final String LIBRARY_PREFS = "midad_browser_library_v1";
     private static final String HISTORY_PREFS_KEY = "history_v1";
     private static final String BOOKMARKS_PREFS_KEY = "bookmarks_v1";
     private static final int MAX_HISTORY_ITEMS = 100;
     private static final int MAX_BOOKMARK_ITEMS = 100;
     private final List<WebView> tabs = new ArrayList<>();
+    private final List<Button> chromeButtons = new ArrayList<>();
     private int activeTabIndex = 0;
     private WebView webView;
+    private LinearLayout rootLayout;
+    private LinearLayout headerLayout;
+    private LinearLayout controlsPanel;
     private LinearLayout tabsContainer;
     private LinearLayout webViewContainer;
     private TextView tabCount;
     private SharedPreferences tabPrefs;
     private SharedPreferences libraryPrefs;
+    private SharedPreferences appearancePrefs;
+    private int fontZoomPercent = 100;
+    private boolean lightTheme = false;
     private WebViewAssetLoader assetLoader;
     private EditText address;
     private ProgressBar progress;
@@ -80,6 +90,9 @@ public final class BrowserActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        appearancePrefs = getSharedPreferences(APPEARANCE_PREFS, MODE_PRIVATE);
+        fontZoomPercent = Math.max(85, Math.min(130, appearancePrefs.getInt(FONT_ZOOM_KEY, 100)));
+        lightTheme = appearancePrefs.getBoolean(LIGHT_THEME_KEY, false);
         buildBrowserUi();
         tabPrefs = getSharedPreferences(TAB_PREFS, MODE_PRIVATE);
         libraryPrefs = getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE);
@@ -95,15 +108,15 @@ public final class BrowserActivity extends Activity {
     }
 
     private void buildBrowserUi() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(5, 13, 22));
-        root.setPadding(dp(8), dp(4), dp(8), dp(6));
+        rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(Color.rgb(5, 13, 22));
+        rootLayout.setPadding(dp(8), dp(4), dp(8), dp(6));
 
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(6), dp(10), dp(6), dp(10));
+        headerLayout = new LinearLayout(this);
+        headerLayout.setOrientation(LinearLayout.HORIZONTAL);
+        headerLayout.setGravity(Gravity.CENTER_VERTICAL);
+        headerLayout.setPadding(dp(6), dp(10), dp(6), dp(10));
 
         TextView brand = new TextView(this);
         brand.setText("MIDAD");
@@ -112,7 +125,7 @@ public final class BrowserActivity extends Activity {
         brand.setLetterSpacing(0.08f);
         brand.setGravity(Gravity.CENTER_VERTICAL);
         brand.setTypeface(null, android.graphics.Typeface.BOLD);
-        header.addView(brand, new LinearLayout.LayoutParams(dp(70), dp(44)));
+        headerLayout.addView(brand, new LinearLayout.LayoutParams(dp(70), dp(44)));
 
         address = new EditText(this);
         address.setSingleLine(true);
@@ -130,10 +143,10 @@ public final class BrowserActivity extends Activity {
         LinearLayout.LayoutParams addressParams =
             new LinearLayout.LayoutParams(0, dp(44), 1f);
         addressParams.setMargins(0, 0, dp(8), 0);
-        header.addView(address, addressParams);
+        headerLayout.addView(address, addressParams);
 
         Button go = button("اذهب", true);
-        header.addView(go, new LinearLayout.LayoutParams(dp(56), dp(44)));
+        headerLayout.addView(go, new LinearLayout.LayoutParams(dp(56), dp(44)));
         go.setOnClickListener(v -> navigateFromAddress());
         address.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO ||
@@ -143,23 +156,23 @@ public final class BrowserActivity extends Activity {
             }
             return false;
         });
-        root.addView(header);
+        rootLayout.addView(headerLayout);
 
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        controls.setGravity(Gravity.CENTER_VERTICAL);
-        controls.setPadding(dp(5), dp(5), dp(5), dp(5));
-        controls.setBackground(round(Color.rgb(10, 25, 37), dp(16)));
+        controlsPanel = new LinearLayout(this);
+        controlsPanel.setOrientation(LinearLayout.HORIZONTAL);
+        controlsPanel.setGravity(Gravity.CENTER_VERTICAL);
+        controlsPanel.setPadding(dp(5), dp(5), dp(5), dp(5));
+        controlsPanel.setBackground(round(Color.rgb(10, 25, 37), dp(16)));
         LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         controlsParams.setMargins(dp(2), dp(2), dp(2), dp(7));
 
-        addControl(controls, "رجوع", v -> { if (webView.canGoBack()) webView.goBack(); });
-        addControl(controls, "تقدم", v -> { if (webView.canGoForward()) webView.goForward(); });
-        addControl(controls, "تحديث", v -> webView.reload());
-        addControl(controls, "MIDAD AI", v -> webView.loadUrl(MIDAD_HOME));
-        addControl(controls, "افتراضي", v -> requestDefaultBrowserRole());
-        root.addView(controls, controlsParams);
+        addControl(controlsPanel, "رجوع", v -> { if (webView.canGoBack()) webView.goBack(); });
+        addControl(controlsPanel, "تقدم", v -> { if (webView.canGoForward()) webView.goForward(); });
+        addControl(controlsPanel, "تحديث", v -> webView.reload());
+        addControl(controlsPanel, "MIDAD AI", v -> webView.loadUrl(MIDAD_HOME));
+        addControl(controlsPanel, "افتراضي", v -> requestDefaultBrowserRole());
+        rootLayout.addView(controlsPanel, controlsParams);
 
         tabsContainer = new LinearLayout(this);
         tabsContainer.setOrientation(LinearLayout.HORIZONTAL);
@@ -177,29 +190,28 @@ public final class BrowserActivity extends Activity {
         addControl(tabsContainer, "التبويبات", v -> showTabPicker());
         addControl(tabsContainer, "إغلاق", v -> closeCurrentTab());
         addControl(tabsContainer, "القائمة", v -> showBrowserMenu());
-        root.addView(tabsContainer, tabsParams);
+        rootLayout.addView(tabsContainer, tabsParams);
 
         securityState = new TextView(this);
         securityState.setText("جاهز · التصفح محمي");
         securityState.setTextColor(Color.rgb(145, 170, 186));
         securityState.setTextSize(11);
         securityState.setPadding(dp(12), dp(7), dp(12), dp(7));
-        root.addView(securityState);
+        rootLayout.addView(securityState);
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
         progress.setProgress(0);
-        root.addView(progress, new LinearLayout.LayoutParams(
+        rootLayout.addView(progress, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(3)));
 
         webViewContainer = new LinearLayout(this);
         webViewContainer.setOrientation(LinearLayout.VERTICAL);
-        root.addView(webViewContainer, new LinearLayout.LayoutParams(
+        rootLayout.addView(webViewContainer, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        setContentView(root);
-        getWindow().setStatusBarColor(Color.rgb(7, 17, 26));
-        getWindow().setNavigationBarColor(Color.rgb(7, 17, 26));
+        setContentView(rootLayout);
+        applyBrowserAppearance();
     }
 
     private void configureWebView(WebView target) {
@@ -222,6 +234,7 @@ public final class BrowserActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(true);
+        settings.setTextZoom(fontZoomPercent);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             settings.setSafeBrowsingEnabled(true);
         }
@@ -694,7 +707,7 @@ public final class BrowserActivity extends Activity {
         String[] actions = {
             pinnedTabs.get(activeTabIndex) ? "فك تثبيت التبويب" : "تثبيت التبويب",
             "استعادة آخر تبويب مغلق", "إضافة إشارة مرجعية", "الإشارات المرجعية", "السجل",
-            "التنزيلات", "بحث في الصفحة", "مشاركة الرابط"
+            "التنزيلات", "بحث في الصفحة", "مشاركة الرابط", "المظهر والخط"
         };
         new AlertDialog.Builder(this)
             .setTitle("قائمة MIDAD Browser")
@@ -708,10 +721,90 @@ public final class BrowserActivity extends Activity {
                     case 5: showDownloads(); break;
                     case 6: findInPage(); break;
                     case 7: shareCurrentPage(); break;
+                    case 8: showAppearanceSettings(); break;
                     default: break;
                 }
             })
             .setNegativeButton("إغلاق", null).show();
+    }
+
+    private void showAppearanceSettings() {
+        String[] actions = {
+            lightTheme ? "تفعيل المظهر الداكن" : "تفعيل المظهر الفاتح",
+            "حجم الخط 85%", "حجم الخط 100%", "حجم الخط 115%", "حجم الخط 130%",
+            "استعادة إعدادات المظهر الافتراضية"
+        };
+        new AlertDialog.Builder(this)
+            .setTitle("المظهر والخط")
+            .setItems(actions, (dialog, which) -> {
+                switch (which) {
+                    case 0:
+                        lightTheme = !lightTheme;
+                        persistAppearance();
+                        applyBrowserAppearance();
+                        break;
+                    case 1: setFontZoom(85); break;
+                    case 2: setFontZoom(100); break;
+                    case 3: setFontZoom(115); break;
+                    case 4: setFontZoom(130); break;
+                    case 5:
+                        lightTheme = false;
+                        fontZoomPercent = 100;
+                        persistAppearance();
+                        applyBrowserAppearance();
+                        Toast.makeText(this, "تمت استعادة المظهر الافتراضي", Toast.LENGTH_SHORT).show();
+                        break;
+                    default: break;
+                }
+            })
+            .setNegativeButton("إغلاق", null)
+            .show();
+    }
+
+    private void setFontZoom(int value) {
+        fontZoomPercent = Math.max(85, Math.min(130, value));
+        for (WebView tab : tabs) tab.getSettings().setTextZoom(fontZoomPercent);
+        persistAppearance();
+        Toast.makeText(this, "حجم نص الصفحات: " + fontZoomPercent + "%", Toast.LENGTH_SHORT).show();
+    }
+
+    private void persistAppearance() {
+        if (appearancePrefs == null) return;
+        appearancePrefs.edit()
+            .putInt(FONT_ZOOM_KEY, fontZoomPercent)
+            .putBoolean(LIGHT_THEME_KEY, lightTheme)
+            .apply();
+    }
+
+    private void applyBrowserAppearance() {
+        int background = lightTheme ? Color.rgb(244, 248, 251) : Color.rgb(5, 13, 22);
+        int surface = lightTheme ? Color.rgb(255, 255, 255) : Color.rgb(10, 25, 37);
+        int field = lightTheme ? Color.rgb(232, 240, 246) : Color.rgb(15, 32, 46);
+        int foreground = lightTheme ? Color.rgb(20, 37, 49) : Color.WHITE;
+        int muted = lightTheme ? Color.rgb(83, 105, 120) : Color.rgb(145, 170, 186);
+        int accent = Color.rgb(0, 137, 157);
+
+        if (rootLayout != null) rootLayout.setBackgroundColor(background);
+        if (headerLayout != null) headerLayout.setBackgroundColor(background);
+        if (controlsPanel != null) controlsPanel.setBackground(round(surface, dp(16)));
+        if (tabsContainer != null) tabsContainer.setBackground(round(surface, dp(16)));
+        if (address != null) {
+            address.setTextColor(foreground);
+            address.setHintTextColor(muted);
+            address.setBackground(round(field, dp(16)));
+        }
+        if (securityState != null) securityState.setTextColor(muted);
+        if (progress != null) progress.setProgressTintList(
+            android.content.res.ColorStateList.valueOf(accent));
+        for (Button control : chromeButtons) {
+            boolean primary = "primary".equals(control.getTag());
+            control.setTextColor(foreground);
+            control.setBackground(round(primary ? accent : field, dp(13)));
+        }
+        if (getWindow() != null) {
+            getWindow().setStatusBarColor(background);
+            getWindow().setNavigationBarColor(background);
+        }
     }
 
     private void findInPage() {
@@ -913,9 +1006,12 @@ public final class BrowserActivity extends Activity {
         b.setTypeface(null, android.graphics.Typeface.BOLD);
         b.setLetterSpacing(0.015f);
         b.setAllCaps(false);
-        b.setTextColor(Color.WHITE);
+        b.setTag(primary ? "primary" : "secondary");
+        b.setTextColor(lightTheme ? Color.rgb(20, 37, 49) : Color.WHITE);
         b.setPadding(dp(4), 0, dp(4), 0);
-        b.setBackground(round(primary ? Color.rgb(0, 137, 157) : Color.rgb(19, 39, 54), dp(13)));
+        b.setBackground(round(primary ? Color.rgb(0, 137, 157) :
+            (lightTheme ? Color.rgb(232, 240, 246) : Color.rgb(19, 39, 54)), dp(13)));
+        chromeButtons.add(b);
         b.setElevation(dp(primary ? 3 : 1));
         b.setMinimumHeight(dp(36));
         return b;
