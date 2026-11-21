@@ -249,6 +249,32 @@
         </div>
       </section>
 
+      <section class="panel native-agent-panel" id="nativeAgentPanel" aria-labelledby="nativeAgentHeading">
+        <div class="panel-heading">
+          <div>
+            <span class="section-kicker">NATIVE AGENT BRIDGE · ANDROIDX WEB MESSAGE</span>
+            <h3 id="nativeAgentHeading">وكيل MIDAD المتصل بمحرك WebView</h3>
+            <p>فحص نص الصفحة داخل تبويب محدد. عمليات النقر والإدخال تتطلب موافقة أصلية من Android.</p>
+          </div>
+          <span class="state-label pending" id="nativeAgentBridgeStatus" role="status" aria-live="polite">INITIALIZING</span>
+        </div>
+        <div class="browser-run-config">
+          <div class="setting-group">
+            <label for="nativeAgentTabId">Target tab index · رقم التبويب</label>
+            <input id="nativeAgentTabId" type="number" min="0" max="7" step="1" value="1">
+          </div>
+          <div class="setting-group">
+            <label for="nativeAgentAllowedOrigins">Allowed HTTPS origins · النطاقات المسموحة</label>
+            <input id="nativeAgentAllowedOrigins" type="text" value="https://example.com" autocapitalize="off" spellcheck="false">
+            <small>اكتب Origin كاملاً لكل نطاق. لا يُسمح للوكيل بالخروج عن هذه القائمة.</small>
+          </div>
+        </div>
+        <div class="browser-run-actions">
+          <button class="primary-btn" id="nativeAgentInspect" type="button">فحص الصفحة المحددة</button>
+        </div>
+        <pre class="native-agent-output" id="nativeAgentOutput" aria-live="polite">بانتظار تهيئة قناة Android الأصلية…</pre>
+      </section>
+
       <footer class="footer">
         <span>MIDAD AI · BROWSER MESH · 0.2.3</span>
         <span data-i18n="footerTrust">واجهة Offline-first · لا أسرار داخل التطبيق · لا ادعاء تشغيل حي</span>
@@ -257,5 +283,6 @@
     </main>
   </div>
   <script src="./midad-browser-mesh.js" defer></script>
+  <script type="module" src="./native-agent-runtime-ui.mjs"></script>
 </body>
 </html>
