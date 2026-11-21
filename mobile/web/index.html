@@ -18,7 +18,7 @@
   <header class="topbar">
     <div class="brand-mark" aria-hidden="true">M</div>
     <div class="brand-copy">
-      <div class="eyebrow">MIDAD / MOBILE v0.3</div>
+      <div class="eyebrow">MIDAD / MOBILE CONTROL HUB</div>
       <h1>المقود الموحد</h1>
     </div>
     <div class="signal"><span class="signal-dot"></span><span id="runtimeState">NATIVE SHELL</span></div>
@@ -70,7 +70,7 @@
           <div class="label">MY SPACE</div>
           <h2>مساحتي</h2>
         </div>
-        <span class="mini-status" id="spaceStatus">LOCAL</span>
+        <span class="mini-status" id="spaceStatus">LOCAL-FIRST</span>
       </div>
       <div class="space-grid">
         <button class="space-card" data-space="favorites"><span>★</span><strong>المفضلة</strong><em id="favoriteCount">0</em></button>
@@ -86,7 +86,7 @@
           <div class="label">STATIONS</div>
           <h2>محطات MIDAD</h2>
         </div>
-        <span class="count">5</span>
+        <span class="count">7</span>
       </div>
 
       <div class="grid" id="stations">
@@ -162,6 +162,28 @@
       </div>
     </section>
 
+
+    <section class="section settings-panel" id="settingsPanel">
+      <div class="section-head">
+        <div><div class="label">PERSONALIZATION / EXTENSIONS</div><h2>الإعدادات والإضافات</h2></div>
+        <span class="mini-status">DEVICE LOCAL</span>
+      </div>
+      <div class="settings-card">
+        <label for="themeSelect">المظهر / Appearance</label>
+        <select id="themeSelect"><option value="system">حسب الجهاز</option><option value="dark">داكن</option><option value="light">فاتح</option></select>
+        <label for="fontFamilySelect">نوع الخط / Font family</label>
+        <select id="fontFamilySelect"><option value="system">System default</option><option value="arabic">Noto Sans Arabic</option><option value="serif">Serif</option></select>
+        <label for="fontScale">حجم الخط / Font size <output id="fontScaleValue">100%</output></label>
+        <input id="fontScale" type="range" min="85" max="125" step="5" value="100">
+        <button class="text-btn settings-save" id="appearanceSave" type="button">حفظ المظهر</button>
+      </div>
+      <div class="settings-card extension-center" id="extensionCenter">
+        <div class="label">EXTENSIONS CENTER</div><h3>إضافات MIDAD Browser Mesh</h3>
+        <p>حزم Chrome وEdge وFirefox موجودة كإضافات Companion للمتصفحات المكتبية. لا يتم ادعاء تثبيتها داخل Android WebView.</p>
+        <div class="extension-status"><span>Chrome / Edge / Firefox</span><b>DESKTOP COMPANION</b></div>
+        <button class="text-btn" id="extensionDetails" type="button">تفاصيل الحزم والتوافق</button>
+      </div>
+    </section>
     <section class="future" id="future">
       <div class="label">MOBILE FACTORY ROADMAP</div>
       <div class="future-grid">
@@ -174,9 +196,11 @@
   </main>
 
   <nav class="bottom-nav">
-    <button class="nav-item active" data-scroll="home"><span>◉</span><small>المقود</small></button>
-    <button class="nav-item" data-scroll="stations"><span>✦</span><small>المحطات</small></button>
-    <button class="nav-item" data-scroll="future"><span>＋</span><small>التوسعة</small></button>
+    <button class="nav-item active" data-area="cockpit" data-scroll="home"><span>◉</span><small>المقود</small></button>
+    <button class="nav-item" data-area="money" data-target="./site/revenue-forge.html"><span>◇</span><small>المال</small></button>
+    <button class="nav-item" data-area="tasks" data-scroll="stations"><span>✓</span><small>المهام</small></button>
+    <button class="nav-item" data-area="ai" data-target="https://t.me/aimidad_bot"><span>✦</span><small>الذكاء</small></button>
+    <button class="nav-item" data-area="more" data-scroll="settingsPanel"><span>⋯</span><small>المزيد</small></button>
   </nav>
 
   <script src="./mobile-hub.js"></script>
