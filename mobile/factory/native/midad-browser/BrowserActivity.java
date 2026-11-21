@@ -52,6 +52,8 @@ import androidx.webkit.WebViewAssetLoader;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,6 +70,7 @@ public final class BrowserActivity extends Activity {
     private static final String LAST_CLOSED_TAB_KEY = "last_closed_url";
     private static final String PINNED_TAB_INDEXES_KEY = "pinned_tab_indexes_v1";
     private final List<Boolean> pinnedTabs = new ArrayList<>();
+    private final Set<String> unreadableVaultKeys = new HashSet<>();
     private static final String APPEARANCE_PREFS = "midad_browser_appearance_v1";
     private static final String FONT_ZOOM_KEY = "font_zoom_percent";
     private static final String FONT_FAMILY_KEY = "font_family";
@@ -591,10 +594,11 @@ public final class BrowserActivity extends Activity {
         }
     }
 
-    private SecretKey getVaultKey() throws Exception {
+    private SecretKey getVaultKey(boolean createIfMissing) throws Exception {
         KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
         keyStore.load(null);
         if (!keyStore.containsAlias(VAULT_ALIAS)) {
+            if (!createIfMissing) return null;
             KeyGenerator generator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
             generator.init(new KeyGenParameterSpec.Builder(
@@ -611,7 +615,7 @@ public final class BrowserActivity extends Activity {
 
     private String encryptVaultValue(String plaintext) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, getVaultKey());
+        cipher.init(Cipher.ENCRYPT_MODE, getVaultKey(true));
         byte[] iv = cipher.getIV();
         byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
         return VAULT_PREFIX + Base64.encodeToString(iv, Base64.NO_WRAP) + ":" +
@@ -627,7 +631,7 @@ public final class BrowserActivity extends Activity {
             byte[] ciphertext = Base64.decode(parts[3], Base64.NO_WRAP);
             if (iv.length != 12 || ciphertext.length < 16) return null;
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, getVaultKey(), new GCMParameterSpec(128, iv));
+            cipher.init(Cipher.DECRYPT_MODE, getVaultKey(false), new GCMParameterSpec(128, iv));
             return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
         } catch (Exception error) {
             android.util.Log.e("MIDAD_BROWSER", "VAULT_DECRYPT_FAILED", error);
@@ -642,12 +646,20 @@ public final class BrowserActivity extends Activity {
         String plaintext;
         if (stored.startsWith(VAULT_PREFIX)) {
             plaintext = decryptVaultValue(stored);
+            if (plaintext == null) {
+                unreadableVaultKeys.add(key);
+                android.util.Log.e("MIDAD_BROWSER", "VAULT_DATA_PRESERVED_KEY_UNAVAILABLE");
+                return new JSONArray();
+            }
         } else if (stored.trim().startsWith("[")) {
             // One-time migration of the earlier plaintext bookmark/history format.
             plaintext = stored;
             try {
                 JSONArray legacy = new JSONArray(plaintext);
-                writeLibraryArray(key, legacy);
+                if (!writeLibraryArray(key, legacy)) {
+                    android.util.Log.w("MIDAD_BROWSER", "VAULT_LEGACY_MIGRATION_PENDING");
+                    return legacy;
+                }
                 android.util.Log.i("MIDAD_BROWSER", "VAULT_LEGACY_MIGRATED");
                 return legacy;
             } catch (JSONException ignored) {
@@ -664,14 +676,17 @@ public final class BrowserActivity extends Activity {
         }
     }
 
-    private void writeLibraryArray(String key, JSONArray value) {
-        if (libraryPrefs == null || value == null) return;
+    private boolean writeLibraryArray(String key, JSONArray value) {
+        if (libraryPrefs == null || value == null || unreadableVaultKeys.contains(key)) return false;
         try {
             String envelope = encryptVaultValue(value.toString());
-            libraryPrefs.edit().putString(key, envelope).apply();
+            boolean persisted = libraryPrefs.edit().putString(key, envelope).commit();
+            if (!persisted) return false;
+            return true;
         } catch (Exception error) {
             android.util.Log.e("MIDAD_BROWSER", "VAULT_WRITE_FAILED", error);
             Toast.makeText(this, "تعذر حفظ بيانات الخزنة المشفرة", Toast.LENGTH_LONG).show();
+            return false;
         }
     }
 
@@ -721,8 +736,11 @@ public final class BrowserActivity extends Activity {
                     nextItems.put(previous);
                 }
             }
-            writeLibraryArray(BOOKMARKS_PREFS_KEY, nextItems);
-            Toast.makeText(this, "تم حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
+            if (writeLibraryArray(BOOKMARKS_PREFS_KEY, nextItems)) {
+                Toast.makeText(this, "تم حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "لم يتم حفظ الإشارة المرجعية؛ بيانات الخزنة محفوظة دون استبدال", Toast.LENGTH_LONG).show();
+            }
         } catch (JSONException ignored) {
             Toast.makeText(this, "تعذر حفظ الإشارة المرجعية", Toast.LENGTH_SHORT).show();
         }
