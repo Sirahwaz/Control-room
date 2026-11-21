@@ -210,6 +210,9 @@ jobs:
       - name: MIDAD Mobile Next bundle contract
         if: steps.product.outputs.product_key == 'midad-mobile-next'
         run: node --test mobile/factory/midad-mobile-next-contract.test.mjs
+      - name: Native browser core acceptance tests
+        if: steps.product.outputs.product_key == 'midad-mobile-next'
+        run: node --test tests/midad-native-browser-core.test.mjs
 
       - name: JavaScript syntax audit
         working-directory: mobile
