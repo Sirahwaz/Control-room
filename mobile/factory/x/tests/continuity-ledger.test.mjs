@@ -217,6 +217,58 @@ test('lease expiry is exclusive at the exact boundary; stale owner is rejected b
   } finally { Date.now=originalNow; storage.close(); }
 });
 
+test('expired lease is reclaimed by exactly one of two eligible workers', async () => {
+  const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
+  try {
+    const a=await enroll(ledger,'node-a','owner-a');
+    const b=await enroll(ledger,'node-b','owner-a');
+    await heartbeat(ledger,'node-a',a);
+    await heartbeat(ledger,'node-b',b);
+    await enqueue(ledger,task('multi-worker-reclaim'));
+    const first=await claim(ledger,'node-a',a,15,'multi-worker-reclaim');
+    assert.equal(first.status,200);
+    now=Date.parse(first.body.task.lease_expires_at);
+    await heartbeat(ledger,'node-a',a);
+    await heartbeat(ledger,'node-b',b);
+
+    const [claimA,claimB]=await Promise.all([
+      claim(ledger,'node-a',a,90,'multi-worker-reclaim'),
+      claim(ledger,'node-b',b,90,'multi-worker-reclaim'),
+    ]);
+    const winners=[claimA,claimB].filter(x=>x.body.task?.task_id==='multi-worker-reclaim');
+    assert.equal(winners.length,1);
+    assert.equal(winners[0].body.task.attempt,2);
+    assert.notEqual(winners[0].body.task.lease_token,first.body.task.lease_token);
+    assert.equal(storage.db.prepare('SELECT status FROM continuity_tasks WHERE task_id=?').get('multi-worker-reclaim').status,'RUNNING');
+
+    const losingNode=claimA.body.task ? 'node-b' : 'node-a';
+    const losingToken=claimA.body.task ? b : a;
+    const staleFinish=await read(await ledger.fetch(post('/v1/tasks/complete',{
+      task_id:'multi-worker-reclaim',lease_token:first.body.task.lease_token,result:{stale:true},
+    },nodeHeaders(losingNode,losingToken))));
+    assert.equal(staleFinish.status,409);
+    assert.equal(storage.db.prepare('SELECT attempt FROM continuity_tasks WHERE task_id=?').get('multi-worker-reclaim').attempt,2);
+  } finally { Date.now=originalNow; storage.close(); }
+});
+
+test('expired task at max attempts fails closed instead of receiving another lease', async () => {
+  const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
+  try {
+    const token=await enroll(ledger); await heartbeat(ledger,'node-a',token);
+    await enqueue(ledger,task('max-attempts',{max_attempts:1}));
+    const first=await claim(ledger,'node-a',token,15,'max-attempts');
+    assert.equal(first.status,200);
+    now=Date.parse(first.body.task.lease_expires_at);
+    await heartbeat(ledger,'node-a',token);
+    const retry=await claim(ledger,'node-a',token,90,'max-attempts');
+    assert.equal(retry.status,200);
+    assert.equal(retry.body.task,null);
+    const row=storage.db.prepare('SELECT status,attempt FROM continuity_tasks WHERE task_id=?').get('max-attempts');
+    assert.equal(row.status,'FAILED');
+    assert.equal(row.attempt,1);
+  } finally { Date.now=originalNow; storage.close(); }
+});
+
 test('expired non-idempotent job is quarantined, never blindly replayed', async () => {
   const {storage,ledger}=setup(); let now=NOW; Date.now=()=>now;
   try {
