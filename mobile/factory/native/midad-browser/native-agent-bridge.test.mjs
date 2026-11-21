@@ -5,26 +5,24 @@ import {
   createNativeBrowserDriver,
 } from "./native-agent-bridge.mjs";
 
-class FakeEventTarget {
+class FakeNativeObject {
   listeners = new Set();
   addEventListener(type, listener) { if (type === "message") this.listeners.add(listener); }
   removeEventListener(type, listener) { if (type === "message") this.listeners.delete(listener); }
   dispatch(data) { for (const listener of this.listeners) listener({ data }); }
 }
 
-test("native bridge correlates typed requests with native WebMessageListener replies", async () => {
-  const events = new FakeEventTarget();
+test("native bridge correlates typed requests with injected WebMessageListener replies", async () => {
+  const nativeObject = new FakeNativeObject();
   let posted;
-  const nativeObject = {
-    postMessage(raw) {
-      posted = JSON.parse(raw);
-      events.dispatch(JSON.stringify({
-        v: 1, requestId: posted.requestId, ok: true,
-        result: { text: "Visible page text" },
-      }));
-    },
+  nativeObject.postMessage = (raw) => {
+    posted = JSON.parse(raw);
+    nativeObject.dispatch(JSON.stringify({
+      v: 1, requestId: posted.requestId, ok: true,
+      result: { text: "Visible page text" },
+    }));
   };
-  const bridge = createNativeAgentBridge({ nativeObject, eventTarget: events });
+  const bridge = createNativeAgentBridge({ nativeObject });
   const result = await bridge.request({
     type: "getDomSnapshot", tabId: 0, origin: "https://example.com",
   });
@@ -32,20 +30,18 @@ test("native bridge correlates typed requests with native WebMessageListener rep
   assert.equal(posted.v, 1);
   assert.equal(posted.command.type, "getDomSnapshot");
   bridge.close();
-  assert.equal(events.listeners.size, 0);
+  assert.equal(nativeObject.listeners.size, 0);
 });
 
 test("native bridge rejects failed native commands with stable error codes", async () => {
-  const events = new FakeEventTarget();
-  const nativeObject = {
-    postMessage(raw) {
-      const request = JSON.parse(raw);
-      events.dispatch(JSON.stringify({
-        v: 1, requestId: request.requestId, ok: false, error: "origin_not_allowed",
-      }));
-    },
+  const nativeObject = new FakeNativeObject();
+  nativeObject.postMessage = (raw) => {
+    const request = JSON.parse(raw);
+    nativeObject.dispatch(JSON.stringify({
+      v: 1, requestId: request.requestId, ok: false, error: "origin_not_allowed",
+    }));
   };
-  const bridge = createNativeAgentBridge({ nativeObject, eventTarget: events });
+  const bridge = createNativeAgentBridge({ nativeObject });
   await assert.rejects(
     bridge.request({ type: "click", selector: "#pay" }),
     (error) => error.code === "origin_not_allowed",
