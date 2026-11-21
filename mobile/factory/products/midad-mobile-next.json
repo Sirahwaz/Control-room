@@ -36,7 +36,8 @@
     "ahwaz-ai",
     "midad-keys",
     "browser-mesh",
-    "human-bridge"
+    "human-bridge",
+    "mobile-settings"
   ],
   "target_markets": [
     "global_remote_crypto",
