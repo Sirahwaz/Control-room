@@ -15,11 +15,10 @@ function approvalId() {
  */
 export function createNativeBrowserAgentRuntime({
   nativeObject = globalThis.window?.midadNative,
-  eventTarget = globalThis.window,
   allowedOrigins,
   timeoutMs,
 } = {}) {
-  const bridge = createNativeAgentBridge({ nativeObject, eventTarget, timeoutMs });
+  const bridge = createNativeAgentBridge({ nativeObject, timeoutMs });
   const driver = createNativeBrowserDriver({ bridge, allowedOrigins });
   const runtime = createBrowserAgentRuntime({
     driver,
@@ -37,7 +36,6 @@ if (typeof window !== "undefined") {
     createRuntime: (options = {}) => createNativeBrowserAgentRuntime({
       ...options,
       nativeObject: window.midadNative,
-      eventTarget: window,
     }),
   });
   window.dispatchEvent(new CustomEvent("midad:browser-agent-factory-ready"));
