@@ -228,3 +228,12 @@ The migration adds this nullable column without rewriting historical runs. The e
 factory run producer must set it from trusted execution context; until that producer is
 updated, legacy and newly created rows without an agent key cannot use memory. This is
 an explicit integration blocker, not a reason to weaken the run check.
+
+
+### Upstream Memora API authentication gate
+
+The pinned upstream API only enforces bearer authentication when its host is configured
+with `MEMORA_API_TOKENS_FILE`. A client sending a bearer header does not prove that the
+server validates it. A synthetic pilot is blocked until the Memora host has this gate
+configured and negative tests prove that missing and invalid tokens are rejected while
+the configured token is accepted. Token values must remain server-only and outside Git.
