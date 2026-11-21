@@ -38,10 +38,25 @@ public final class BrowserAgentBridge {
     private static final int MAX_TABS = 8;
     private static final Pattern REQUEST_ID = Pattern.compile("^[A-Za-z0-9_-]{8,80}$");
     private static final Pattern SELECTOR = Pattern.compile("^[^\\u0000-\\u001f]{1,512}$");
-    private static final Set<String> MUTATING = Set.of("click", "type", "select", "pressKey");
-    private static final Set<String> ALLOWED_KEYS = Set.of(
+    private static final Set<String> ALLOWED_KEYS = setOf(
         "ENTER", "TAB", "ESCAPE", "ARROW_UP", "ARROW_DOWN", "ARROW_LEFT", "ARROW_RIGHT", "SPACE"
     );
+    private static final Set<String> COMMAND_TYPES = setOf(
+        "getTabs", "switchTab", "navigate", "getDomSnapshot", "captureScreenshot",
+        "click", "type", "select", "scroll", "pressKey", "waitFor"
+    );
+
+    private static Set<String> setOf(String... values) {
+        Set<String> result = new HashSet<>();
+        Collections.addAll(result, values);
+        return Collections.unmodifiableSet(result);
+    }
+
+    private static JSONObject jsonObject(String key, Object value) {
+        JSONObject result = new JSONObject();
+        try { result.put(key, value); } catch (JSONException ignored) {}
+        return result;
+    }
 
     public interface Host {
         int getTabCount();
@@ -114,8 +129,7 @@ public final class BrowserAgentBridge {
 
     private void dispatch(JSONObject command, String requestId, JavaScriptReplyProxy reply) {
         String type = command.optString("type", "");
-        if (!Set.of("getTabs", "switchTab", "navigate", "getDomSnapshot", "captureScreenshot",
-            "click", "type", "select", "scroll", "pressKey", "waitFor").contains(type)) {
+        if (!COMMAND_TYPES.contains(type)) {
             reply(reply, requestId, false, null, "command_unsupported");
             return;
         }
@@ -150,7 +164,7 @@ public final class BrowserAgentBridge {
             case "switchTab":
                 int next = command.optInt("targetTabId", -1);
                 boolean switched = next >= 0 && next < host.getTabCount() && next < MAX_TABS && host.switchToTab(next);
-                reply(reply, requestId, switched, switched ? new JSONObject().put("activeTabId", next) : null,
+                reply(reply, requestId, switched, switched ? jsonObject("activeTabId", next) : null,
                     switched ? null : "target_tab_invalid");
                 return;
             case "navigate":
@@ -161,7 +175,7 @@ public final class BrowserAgentBridge {
                     return;
                 }
                 target.loadUrl(url);
-                reply(reply, requestId, true, new JSONObject().put("url", url), null);
+                reply(reply, requestId, true, jsonObject("url", url), null);
                 return;
             case "getDomSnapshot":
                 if (!allowedOrigins.contains(currentOrigin)) {
@@ -189,7 +203,7 @@ public final class BrowserAgentBridge {
                     return;
                 }
                 target.evaluateJavascript("window.scrollBy(" + x + "," + y + ")", ignored ->
-                    reply(reply, requestId, true, new JSONObject().put("scrolled", true), null));
+                    reply(reply, requestId, true, jsonObject("scrolled", true), null));
                 return;
             case "waitFor":
                 waitFor(target, command.optString("selector", ""), command.optInt("timeoutMs", 5000),
@@ -288,7 +302,7 @@ public final class BrowserAgentBridge {
         Runnable[] poll = new Runnable[1];
         poll[0] = () -> target.evaluateJavascript(script, value -> {
             if ("true".equals(value)) {
-                reply(reply, requestId, true, new JSONObject().put("found", true), null);
+                reply(reply, requestId, true, jsonObject("found", true), null);
             } else if (android.os.SystemClock.elapsedRealtime() >= deadline) {
                 reply(reply, requestId, false, null, "wait_timeout");
             } else {
@@ -319,7 +333,7 @@ public final class BrowserAgentBridge {
         try {
             int width = target.getWidth();
             int height = target.getHeight();
-            if (width < 1 || height < 1) return new JSONObject().put("captured", false);
+            if (width < 1 || height < 1) return jsonObject("captured", false);
             float scale = Math.min(1f, Math.min(1200f / width, 1600f / height));
             int outWidth = Math.max(1, Math.round(width * scale));
             int outHeight = Math.max(1, Math.round(height * scale));
@@ -335,7 +349,7 @@ public final class BrowserAgentBridge {
                 .put("mimeType", "image/jpeg")
                 .put("data", android.util.Base64.encodeToString(bytes.toByteArray(), android.util.Base64.NO_WRAP));
         } catch (Exception error) {
-            return new JSONObject().put("captured", false);
+            return jsonObject("captured", false);
         }
     }
 
@@ -357,7 +371,7 @@ public final class BrowserAgentBridge {
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null ||
                 uri.getUserInfo() != null || uri.getPort() != -1 && (uri.getPort() < 1 || uri.getPort() > 65535)) return null;
             String origin = "https://" + uri.getAuthority();
-            return origin.equals(value) ? origin : origin;
+            return origin;
         } catch (Exception ignored) {
             return null;
         }
