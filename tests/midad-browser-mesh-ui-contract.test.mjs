@@ -101,10 +101,10 @@ test("Browser Mesh exposes authenticated interactive Browser Run and Live View c
     "browserRunLiveViewFrame", "browserRunOpenLiveView", "browserRunStatus",
   ]) assert.ok(html.includes('id="' + id + '"'), "Missing Browser Run control: " + id);
   assert.ok(js.includes("https://midad-continuity-ledger.midadbot.workers.dev"));
-  assert.equal(html.includes('id="browserRunAccessKey"'), false);
-  assert.doesNotMatch(js, /browserRunAccessKey|midad_cockpit_key|access_key:/);
-  assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
-  assert.match(js, /OPEN TELEGRAM MINI APP/);
+  assert.match(html, /id="browserRunAccessKey"[^>]*type="password"/);
+  assert.match(js, /type:\s*"authenticateBrowserRun"/);
+  assert.match(js, /browserRunNativeRequest/);
+  assert.doesNotMatch(js, /telegram_init_data|midad_cockpit_key|access_key:|window\.Telegram|OPEN TELEGRAM MINI APP/);
   assert.match(js, /\/v1\/browser\/ui\//);
   assert.match(worker, /midad_browser_agent_gateway/);
   assert.match(worker, /owner_scope_hash/);
@@ -127,12 +127,14 @@ test("Browser Mesh never ships Cloudflare or Supabase admin credentials in its b
 });
 
 
-test("Browser Mesh uses Telegram Mini App auth only and exposes no manual access-key path", () => {
+test("Browser Mesh authenticates through the native owner Access Key bridge without Telegram", () => {
+  const html = read("mobile/web/midad-browser-mesh.html");
   const js = read("mobile/web/midad-browser-mesh.js");
-  assert.match(js, /BROWSER_RUN_CONTROL_API[\s\S]*midad_control_room/);
-  assert.match(js, /telegram_init_data:[\s\S]*client:\s*["']midad-control-room["']/);
-  assert.doesNotMatch(js, /midad_telegram_auth/);
-  assert.doesNotMatch(js, /access_key|midad_cockpit_key|browserRunAccessKey/);
+  assert.match(html, /id="browserRunAccessKey"[^>]*type="password"/);
+  assert.match(js, /type:\s*"authenticateBrowserRun"/);
+  assert.match(js, /browserRunNativeRequest/);
+  assert.doesNotMatch(js, /telegram_init_data|midad_telegram_auth|window\.Telegram|OPEN TELEGRAM MINI APP/);
+  assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^)]*(?:access.?key|token)/i);
 });
 
 

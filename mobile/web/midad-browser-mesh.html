@@ -90,7 +90,12 @@
           <div class="browser-run-auth" id="browserRunAuthPanel">
             <div class="browser-run-copy">
               <b>ربط جلسة MIDAD</b>
-              <p>يتم الربط تلقائياً عبر جلسة Telegram Mini App الموثقة. افتح Browser Mesh من داخل Telegram للوصول الآمن؛ لا توجد مفاتيح وصول يدوية.</p>
+              <p>أدخل مفتاح وصول المالك مرة واحدة. يحفظه Android Keystore مشفراً على الجهاز؛ لا حاجة إلى Telegram أو OTP.</p>
+              <div class="setting-group">
+                <label for="browserRunAccessKey">مفتاح وصول MIDAD · Owner Access Key</label>
+                <input id="browserRunAccessKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="أدخل المفتاح الموجود لديك">
+                <small>لا يُحفظ في Local Storage أو APK. يُرسل للخادم للتحقق ثم يُحفظ داخل خزنة Android المشفرة.</small>
+              </div>
             </div>
             <div class="browser-run-auth-actions">
               <button class="primary-btn" id="browserRunConnect" type="button">ربط الجلسة</button>

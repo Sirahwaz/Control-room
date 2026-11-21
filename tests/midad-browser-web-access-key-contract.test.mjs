@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const read = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
+
+test("Browser Mesh exposes a password-only access-key field without requiring Telegram", async () => {
+  const html = await read("mobile/web/midad-browser-mesh.html");
+  const js = await read("mobile/web/midad-browser-mesh.js");
+  assert.match(html, /id="browserRunAccessKey"[^>]*type="password"|type="password"[^>]*id="browserRunAccessKey"/);
+  assert.match(js, /type:\s*"authenticateBrowserRun"/);
+  assert.match(js, /accessKey,/);
+  assert.match(js, /browserRunNativeRequest/);
+  assert.doesNotMatch(js, /getBrowserRunAccessKey/);
+  assert.doesNotMatch(html, /افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية/);
+  assert.doesNotMatch(js, /telegram_init_data/);
+});
+
+test("Browser Run access key is encrypted by the existing Android Keystore vault", async () => {
+  const activity = await read("mobile/factory/native/midad-browser/BrowserActivity.java");
+  const bridge = await read("mobile/factory/native/midad-browser/BrowserAgentBridge.java");
+  assert.match(activity, /persistBrowserRunAccessKey\(/);
+  assert.match(activity, /readBrowserRunAccessKey\(/);
+  assert.match(activity, /authenticateBrowserRunWithKey\(/);
+  assert.match(activity, /HttpURLConnection/);
+  assert.match(activity, /payload\.put\("access_key", candidate\)/);
+  assert.match(activity, /encryptVaultValue\(/);
+  assert.match(activity, /decryptVaultValue\(/);
+  assert.match(activity, /BROWSER_RUN_ACCESS_KEY_KEY/);
+  assert.match(bridge, /authenticateBrowserRun/);
+  assert.doesNotMatch(bridge, /getBrowserRunAccessKey|saveBrowserRunAccessKey|clearBrowserRunAccessKey/);
+});
+
+test("Access key is never persisted in WebView localStorage or packaged JavaScript", async () => {
+  const js = await read("mobile/web/midad-browser-mesh.js");
+  assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^\n]*browserRunAccessKey/i);
+  assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^\n]*access_key/i);
+});
+
+test("Browser APK workflow runs the owner access-key contract test", async () => {
+  const workflow = await read(".github/workflows/midad-browser-android.yml");
+  assert.match(workflow, /midad-browser-web-access-key-contract\.test\.mjs/);
+});

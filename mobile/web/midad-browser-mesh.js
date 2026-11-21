@@ -235,18 +235,27 @@
     $("#browserRunOpenLiveView").removeAttribute("href");
     browserRunStateLabel(browserRunState.token ? "CONNECTED" : "NOT CONNECTED", "IDLE · NO SESSION");
   }
+  async function browserRunNativeRequest(command) {
+    if (!window.midadNative || typeof window.midadNative.postMessage !== "function") {
+      throw new Error("ANDROID_KEYSTORE_BRIDGE_UNAVAILABLE");
+    }
+    const module = await import("./native-agent-bridge.mjs");
+    const bridge = module.createNativeAgentBridge();
+    try { return await bridge.request(command); }
+    finally { bridge.close(); }
+  }
   async function browserRunObtainSession(force = false) {
     if (browserRunState.token && !force) return browserRunState.token;
-    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    const initData = telegram?.initData || "";
-    if (!initData) throw new Error("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية.");
-    const response = await fetch(BROWSER_RUN_CONTROL_API, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ telegram_init_data: initData, client: "midad-control-room" }),
+    const input = $("#browserRunAccessKey");
+    const accessKey = input?.value?.trim() || "";
+    const data = await browserRunNativeRequest({
+      type: "authenticateBrowserRun",
+      accessKey,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.token) throw new Error(data.error || "MIDAD_LOGIN_REQUIRED");
+    if (!data?.token || typeof data.token !== "string") {
+      throw new Error(data?.error || "MIDAD_LOGIN_REQUIRED");
+    }
+    if (input && accessKey) input.value = "";
     browserRunState.token = data.token;
     return browserRunState.token;
   }
@@ -381,12 +390,8 @@
     $("#browserRunClose").addEventListener("click", browserRunClose);
     $("#browserRunDisconnect").addEventListener("click", browserRunDisconnect);
     browserRunButtons();
-    const telegram = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (telegram?.initData) browserRunConnect();
-    else {
-      browserRunStateLabel("AUTH REQUIRED", "OPEN TELEGRAM MINI APP");
-      browserRunFeedback("افتح MIDAD Browser Mesh من Telegram Mini App للمصادقة التلقائية دون مفتاح يدوي.", true);
-    }
+    browserRunStateLabel("NOT CONNECTED", "OWNER ACCESS KEY REQUIRED");
+    browserRunFeedback("أدخل مفتاح وصول MIDAD الموجود لديك ثم اضغط ربط الجلسة. لا حاجة إلى Telegram أو OTP.");
   }
 
   function bindEvents() {
