@@ -7,7 +7,8 @@ flowchart LR
   ENTRY[Control Room entrypoint]
   UI[Control Room UI bundle]
   PWA[PWA runtime]
-  REV[Revenue checkout surface]
+  REV[Legacy Revenue Forge surface]
+  SERVICES[Canonical services checkout]
   API[Supabase Edge Function source]
   VROUTE[ViaBTC route]
   VASSETS[ViaBTC UI bundles]
@@ -24,7 +25,7 @@ flowchart LR
   ENTRY -->|runtime load| UI
   ENTRY -->|PWA registration| PWA
   PWA -->|pre-cache| UI
-  ENTRY -->|view=revenue route| REV
+  ENTRY -->|view=revenue canonical checkout| SERVICES
   UI -->|API client| API
   VROUTE -->|runtime load| VASSETS
   TESTS -->|regression tests| MNCF
@@ -43,7 +44,8 @@ flowchart LR
 |---|---|---|---|---|
 | Control Room entrypoint | Control Room UI bundle | Runtime load | `index.html` loads the main CSS/JS assets | Yes |
 | Control Room entrypoint | PWA runtime | PWA registration | `index.html` links the manifest/icon and registers the worker | Yes |
-| Control Room entrypoint | Revenue checkout surface | Route redirect | `index.html` redirects `view=revenue` to `revenue-forge.html` | Yes |
+| Control Room entrypoint | Services catalog | Canonical checkout route | `index.html` redirects `view=revenue` to `services.html` while preserving query parameters | Yes |
+| Legacy Revenue Forge | Services catalog | Compatibility boundary | `revenue-forge.html` remains directly addressable for existing links; new Control Room traffic uses `services.html` | No |
 | Control Room UI bundle | Supabase Edge Function source | API client | `midad-control-v2.js` defines the `midad_control_room` endpoint | Yes |
 | ViaBTC route | ViaBTC UI bundles | Runtime load | `viabtc.html` references the `neuralpp-v1` assets | Yes |
 | Repository tests | Neural Compute Fabric | Regression tests | `tests/midad-linux-worker.test.mjs` imports the worker runtime | Yes |
