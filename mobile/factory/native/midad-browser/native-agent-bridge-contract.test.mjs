@@ -31,7 +31,7 @@ test("page mutations require an Android one-time human confirmation", () => {
   assert.match(java, /requireHumanApproval\(/);
   assert.match(java, /setPositiveButton\("السماح مرة واحدة"/);
   assert.match(java, /setNegativeButton\("رفض"/);
-  assert.match(java, /e\\.type==='password'\\|\\|e\\.type==='hidden'/);
+  assert.match(java, /e\.type==='password'\|\|e\.type==='hidden'/);
   assert.match(java, /ALLOWED_KEYS/);
 });
 
