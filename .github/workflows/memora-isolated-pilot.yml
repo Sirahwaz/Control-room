@@ -1,0 +1,73 @@
+name: Memora Isolated Pilot
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/memora-isolated-pilot.yml"
+      - "docs/architecture/MEMORA_UPSTREAM_SECURITY_REVIEW_2026-11-21.md"
+      - "docs/architecture/MEMORA_PILOT_RUNBOOK.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memora-isolated-pilot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-pilot:
+    name: Pinned upstream security and storage gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MEMORA_PILOT_SHA: 442ca1b4ef494c256917ecd052dedb872710e84a
+      MEMORA_EMBEDDING_MODEL: tfidf
+      MEMORA_TRANSPORT: stdio
+      MEMORA_DB_PATH: ${{ runner.temp }}/memora-pilot.db
+      OPENAI_API_KEY: ""
+      MEMORA_API_TOKENS_FILE: ""
+    steps:
+      - name: Checkout MIDAD control room
+        uses: actions/checkout@v4
+
+      - name: Verify pinned upstream source and package contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/agentic-box/memora.git "$RUNNER_TEMP/memora"
+          git -C "$RUNNER_TEMP/memora" fetch --depth=1 origin "$MEMORA_PILOT_SHA"
+          git -C "$RUNNER_TEMP/memora" checkout --detach "$MEMORA_PILOT_SHA"
+          test "$(git -C "$RUNNER_TEMP/memora" rev-parse HEAD)" = "$MEMORA_PILOT_SHA"
+          grep -F 'version = "0.5.7.6"' "$RUNNER_TEMP/memora/pyproject.toml"
+          grep -F '"mcp>=1.27,<1.28"' "$RUNNER_TEMP/memora/pyproject.toml"
+
+      - name: Install isolated test dependencies
+        working-directory: ${{ runner.temp }}/memora
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run bounded pilot acceptance tests
+        working-directory: ${{ runner.temp }}/memora
+        run: |
+          pytest -q \
+            tests/test_api_v1.py \
+            tests/test_api_absorb.py \
+            tests/test_db_routing.py \
+            tests/test_health.py \
+            tests/test_session_leak.py \
+            tests/test_tool_profile.py \
+            tests/test_project_detection.py
+
+      - name: Publish source revision evidence
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Memora isolated pilot"
+            echo "- Upstream: `agentic-box/memora`"
+            echo "- Pinned SHA: `$MEMORA_PILOT_SHA`"
+            echo "- Synthetic/disposable runtime: GitHub-hosted ephemeral runner"
+            echo "- Production credentials/data: not provided"
+          } >> "$GITHUB_STEP_SUMMARY"
