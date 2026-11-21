@@ -130,3 +130,8 @@ jobs:
 
       - name: Checkout order-key idempotency regression tests
         run: node --test tests/checkout-order-key-idempotency.test.mjs
+
+      - name: Micro calendar read-only adapter contract tests
+        run: node --test supabase/functions/midad_micro_calendar_adapter/adapter.test.mjs
+      - name: Micro calendar adapter Edge Function type-check
+        run: deno check supabase/functions/midad_micro_calendar_adapter/index.ts
