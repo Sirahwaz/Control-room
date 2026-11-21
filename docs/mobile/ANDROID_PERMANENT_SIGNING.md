@@ -13,7 +13,7 @@ Create these repository Actions secrets in **Settings → Secrets and variables 
 
 | Secret | Value |
 |---|---|
-| `MIDAD_ANDROID_KEYSTORE_BASE64` | Base64 encoding of the permanent JKS/PKCS12 keystore file |
+| `MIDAD_ANDROID_KEYSTORE_BASE64` | Base64 encoding of the permanent JKS/PKCS12 keystore file; CI detects the stored type and passes it explicitly to `apksigner` |
 | `MIDAD_ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `MIDAD_ANDROID_KEY_ALIAS` | Alias containing the release key |
 | `MIDAD_ANDROID_KEY_PASSWORD` | Private-key password |
