@@ -104,6 +104,16 @@ class MemoraApiBackendTests(unittest.TestCase):
         self.assertEqual(body["facts"], ["safe"])
         self.assertEqual(body["metadata"]["owner_scope"], "owner-a")
 
+
+    def test_project_must_be_declared_by_mapped_memora_store(self):
+        health = dict(self.health, projects=["project-b"])
+        opener = FakeOpener([health])
+        backend = MemoraApiBackend("https://memora.example", self.route,
+                                   environ=self.env, opener=opener)
+        with self.assertRaisesRegex(AdapterError, "FORBIDDEN"):
+            backend.search("owner-a", "project-a", "hello", 5)
+        self.assertEqual(len(opener.requests), 1)
+
     def test_search_passes_project_filter_and_marks_scope_from_server_route(self):
         opener = FakeOpener([self.health, {
             "count": 1, "mode": "hybrid-v1", "embedding_model": "test",
