@@ -27,7 +27,7 @@ test("MIDAD Mobile Next routes Browser Mesh and Human Bridge to bundled HTML ent
   for (const page of ["midad-browser-mesh.html", "human-bridge.html"]) {
     assert.ok(manifest.web_assets.some((asset) => asset.endsWith("/" + page)), "HTML page not declared: " + page);
   }
-  for (const surface of ["browser-mesh", "human-bridge", "mobile-settings"]) {
+  for (const surface of ["browser-mesh", "human-bridge", "mobile-settings", "appearance-settings"]) {
     assert.ok(manifest.surfaces.includes(surface), "surface missing from manifest: " + surface);
   }
 });
