@@ -185,3 +185,10 @@ test("Browser Agent exposes a zero-side-effect DRY_RUN planner separate from liv
   assert.match(html, /class="primary-btn" id="nativeAgentDryRun"[^>]*aria-pressed="true"/);
   assert.match(html, /data-execution-mode="local_native"/);
 });
+
+
+test("the public native runtime API exposes only the execution-gated runtime facade", () => {
+  const runtime = read("mobile/factory/native/midad-browser/native-agent-runtime.mjs");
+  assert.match(runtime, /return Object\.freeze\(\{\s*runtime: execution,/);
+  assert.doesNotMatch(runtime, /return Object\.freeze\(\{\s*runtime,\s*bridge/);
+});
