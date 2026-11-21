@@ -27,13 +27,13 @@ test("bookmark and history reads decrypt values and migrate legacy plaintext onc
 });
 
 test("bookmark and history writes persist only encrypted vault envelopes", () => {
-  assert.match(source, /private boolean writeLibraryArray\\(String key, JSONArray value\\)/);
+  assert.match(source, /private boolean writeLibraryArray\(String key, JSONArray value\)/);
   assert.match(source, /encryptVaultValue\(value\.toString\(\)\)/);
   assert.doesNotMatch(source, /libraryPrefs\.edit\(\)\.putString\((?:HISTORY_PREFS_KEY|BOOKMARKS_PREFS_KEY),\s*(?:nextItems\.toString\(\)|"\[\]")/);
 });
 
 test("vault encryption failure does not silently fall back to plaintext storage", () => {
-  const start = source.indexOf("private void writeLibraryArray(String key, JSONArray value)");
+  const start = source.indexOf("private boolean writeLibraryArray(String key, JSONArray value)");
   const end = source.indexOf("private void recordHistory", start);
   const method = source.slice(start, end);
   assert.match(method, /VAULT_WRITE_FAILED/);
