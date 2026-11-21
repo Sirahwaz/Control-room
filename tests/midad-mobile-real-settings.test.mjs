@@ -14,7 +14,7 @@ test("Mobile Hub exposes real appearance and typography controls", () => {
   assert.match(js, /data-theme/);
   assert.match(js, /fontScale/);
   assert.match(css, /\[data-theme="light"\]/);
-  assert.match(css, /--font-scale/);
+  assert.match(css, /--font-scale/);\n  assert.match(css, /zoom:var\\(--font-scale\\)/);
 });
 
 test("Mobile Hub exposes a five-area navigation and an honest extensions center", () => {
