@@ -331,8 +331,14 @@ public final class BrowserAgentBridge {
                 item.put("id", i);
                 String rawUrl = tab.getUrl() == null ? "" : tab.getUrl();
                 String safeUrl = rawUrl;
-                try { safeUrl = Uri.parse(rawUrl).buildUpon().clearQuery().fragment(null).build().toString(); }
-                catch (Exception ignored) {}
+                try {
+                    Uri parsed = Uri.parse(rawUrl);
+                    String authority = parsed.getHost();
+                    if (authority != null && parsed.getPort() != -1) authority += ":" + parsed.getPort();
+                    if (authority != null) {
+                        safeUrl = parsed.buildUpon().encodedAuthority(authority).clearQuery().fragment(null).build().toString();
+                    }
+                } catch (Exception ignored) {}
                 item.put("url", safeUrl);
                 item.put("title", tab.getTitle() == null ? "" : tab.getTitle());
                 item.put("active", i == host.getActiveTabIndex());
