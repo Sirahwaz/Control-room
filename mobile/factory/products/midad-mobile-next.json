@@ -27,7 +27,9 @@
     "revenue-forge",
     "aimidad",
     "ahwaz-ai",
-    "midad-keys"
+    "midad-keys",
+    "browser-mesh",
+    "human-bridge"
   ],
   "target_markets": [
     "global_remote_crypto",
@@ -141,6 +143,10 @@
   "web_assets": [
     "mobile/web/mobile-hub.css",
     "mobile/web/mobile-hub.js",
-    "mobile/web/morph-engine.js"
+    "mobile/web/morph-engine.js",
+    "mobile/web/midad-browser-mesh.css",
+    "mobile/web/midad-browser-mesh.js",
+    "mobile/web/human-bridge.css",
+    "mobile/web/human-bridge.js"
   ]
 }
