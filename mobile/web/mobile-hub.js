@@ -159,7 +159,7 @@
         $$('#stations .card').forEach(card => { card.style.display = ids.has(card.dataset.id) ? 'flex' : 'none'; });
         if (!state.recent.length) showToast('لا يوجد سجل حديث بعد');
       } else if (kind === 'system') {
-        showToast('MIDAD Mobile v0.3 • Native Shell • Safe Local Storage');
+        showToast('MIDAD Mobile • Local-first Control Hub');
       }
     });
   });
