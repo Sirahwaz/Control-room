@@ -124,7 +124,7 @@ jobs:
         run: deno check supabase/functions/midad_ai_room_status/index.ts supabase/functions/midad_ai_room_preview/index.ts supabase/functions/midad_agent_fee_wallet/index.ts supabase/functions/midad_memory_gateway/index.ts
 
       - name: MIDAD Memory principal scope regression tests
-        run: node --test tests/midad-memory-principal.test.mjs
+        run: node --test tests/midad-memory-principal.test.mjs tests/midad-memory-edge-auth-config.test.mjs
 
       - name: AI Room pipeline diagnostics tests
         run: node --test tests/render-pipeline-diagnostics.test.cjs
