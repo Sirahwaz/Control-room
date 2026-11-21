@@ -408,11 +408,12 @@ export function createBrowserDryRun({ now = () => Date.now() } = {}) {
  * Execution policy for Browser Mesh. DRY_RUN is the default and live execution
  * is unavailable until the caller explicitly selects LOCAL_NATIVE.
  */
-export function createBrowserExecutionController({ dryRun, liveRuntime } = {}) {
+export function createBrowserExecutionController({ dryRun, liveRuntime, onClose } = {}) {
   if (!dryRun || typeof dryRun.plan !== "function") {
     throw new TypeError("dry_run_planner_required");
   }
   let mode = "dry_run";
+  let closed = false;
   return Object.freeze({
     getMode() {
       return mode;
@@ -430,6 +431,13 @@ export function createBrowserExecutionController({ dryRun, liveRuntime } = {}) {
     },
     plan(input) {
       return dryRun.plan(input);
+    },
+    close() {
+      if (closed) return false;
+      closed = true;
+      if (typeof onClose !== "function") return false;
+      onClose();
+      return true;
     },
     async run(input) {
       if (mode !== "local_native") {
