@@ -419,6 +419,7 @@ export function createBrowserExecutionController({ dryRun, liveRuntime, onClose 
       return mode;
     },
     setMode(nextMode) {
+      if (closed) return false;
       if (nextMode === "dry_run") {
         mode = "dry_run";
         return true;
@@ -440,6 +441,15 @@ export function createBrowserExecutionController({ dryRun, liveRuntime, onClose 
       return true;
     },
     async run(input) {
+      if (closed) {
+        return {
+          ok: false,
+          state: "blocked",
+          mode,
+          error: "runtime_closed",
+          evidence: [],
+        };
+      }
       if (mode !== "local_native") {
         return {
           ok: false,
@@ -461,21 +471,22 @@ export function createBrowserExecutionController({ dryRun, liveRuntime, onClose 
       return liveRuntime.run(input);
     },
     pause() {
-      return mode === "local_native" && typeof liveRuntime?.pause === "function"
+      return !closed && mode === "local_native" && typeof liveRuntime?.pause === "function"
         ? liveRuntime.pause()
         : false;
     },
     resume() {
-      return mode === "local_native" && typeof liveRuntime?.resume === "function"
+      return !closed && mode === "local_native" && typeof liveRuntime?.resume === "function"
         ? liveRuntime.resume()
         : false;
     },
     cancel() {
-      return mode === "local_native" && typeof liveRuntime?.cancel === "function"
+      return !closed && mode === "local_native" && typeof liveRuntime?.cancel === "function"
         ? liveRuntime.cancel()
         : false;
     },
     getState() {
+      if (closed) return { state: "blocked", mode, error: "runtime_closed" };
       return mode === "local_native" && typeof liveRuntime?.getState === "function"
         ? liveRuntime.getState()
         : { state: "blocked", mode, error: "live_mode_not_explicitly_enabled" };
