@@ -48,8 +48,9 @@ test("download manager lists and opens only completed downloads through content 
 });
 
 test("history and bookmarks remain local and bounded", () => {
-  assert.match(source, /putString\(HISTORY_PREFS_KEY/);
-  assert.match(source, /putString\(BOOKMARKS_PREFS_KEY/);
+  assert.match(source, /writeLibraryArray\(HISTORY_PREFS_KEY/);
+  assert.match(source, /writeLibraryArray\(BOOKMARKS_PREFS_KEY/);
+  assert.match(source, /encryptVaultValue\(value\.toString\(\)\)/);
   assert.match(source, /MAX_HISTORY_ITEMS/);
   assert.match(source, /MAX_BOOKMARK_ITEMS/);
   assert.doesNotMatch(source, /WRITE_EXTERNAL_STORAGE/);
