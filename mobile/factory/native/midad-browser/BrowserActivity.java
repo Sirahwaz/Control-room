@@ -50,6 +50,11 @@ import android.widget.Toast;
 import androidx.webkit.WebViewAssetLoader;
 
 import java.net.URLEncoder;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
@@ -128,6 +133,9 @@ public final class BrowserActivity extends Activity {
             @Override public String getBrowserRunAccessKey() { return readBrowserRunAccessKey(); }
             @Override public boolean saveBrowserRunAccessKey(String value) { return persistBrowserRunAccessKey(value); }
             @Override public boolean clearBrowserRunAccessKey() { return removeBrowserRunAccessKey(); }
+            @Override public JSONObject authenticateBrowserRun(String suppliedKey) {
+                return authenticateBrowserRunWithKey(suppliedKey);
+            }
         });
         restoreTabs();
         handleIncomingIntent(getIntent());
@@ -653,6 +661,63 @@ public final class BrowserActivity extends Activity {
 
     private boolean removeBrowserRunAccessKey() {
         return libraryPrefs != null && libraryPrefs.edit().remove(BROWSER_RUN_ACCESS_KEY_KEY).commit();
+    }
+
+    private JSONObject authenticateBrowserRunWithKey(String suppliedKey) {
+        String candidate = suppliedKey == null ? "" : suppliedKey.trim();
+        boolean newlySupplied = !candidate.isEmpty();
+        if (candidate.isEmpty()) candidate = readBrowserRunAccessKey();
+        if (candidate == null || candidate.length() < 16 || candidate.length() > 512) {
+            return errorJson("browser_run_access_key_missing");
+        }
+        HttpURLConnection connection = null;
+        try {
+            URL endpoint = new URL("https://froegigfmpmvtecztfbf.supabase.co/functions/v1/midad_control_room");
+            connection = (HttpURLConnection) endpoint.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(12000);
+            connection.setReadTimeout(15000);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("content-type", "application/json");
+            connection.setRequestProperty("accept", "application/json");
+            JSONObject payload = new JSONObject();
+            payload.put("access_key", candidate);
+            payload.put("client", "midad-control-room");
+            byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+            connection.setFixedLengthStreamingMode(body.length);
+            try (java.io.OutputStream output = connection.getOutputStream()) { output.write(body); }
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 400
+                ? connection.getInputStream() : connection.getErrorStream();
+            StringBuilder responseText = new StringBuilder();
+            if (stream != null) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null && responseText.length() < 16000) responseText.append(line);
+                }
+            }
+            JSONObject response = new JSONObject(responseText.toString());
+            String token = response.optString("token", "");
+            if (status < 200 || status >= 300 || token.length() < 32) {
+                String error = response.optString("error", "browser_run_auth_failed");
+                return errorJson(error);
+            }
+            if (newlySupplied && !persistBrowserRunAccessKey(candidate)) {
+                return errorJson("browser_run_access_key_secure_save_failed");
+            }
+            return response;
+        } catch (Exception error) {
+            android.util.Log.w("MIDAD_BROWSER", "BROWSER_RUN_AUTH_REQUEST_FAILED:" + error.getClass().getSimpleName());
+            return errorJson("browser_run_auth_network_error");
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    private JSONObject errorJson(String code) {
+        JSONObject result = new JSONObject();
+        try { result.put("error", code); } catch (JSONException ignored) {}
+        return result;
     }
 
     private String encryptVaultValue(String plaintext) throws Exception {
