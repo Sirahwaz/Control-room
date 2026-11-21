@@ -1,0 +1,26 @@
+name: MIDAD Memory Registry Migration Tests
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "supabase/migrations/20261121150000_midad_memory_authorization_registry_v1.sql"
+      - "tools/midad-memory-adapter/test_registry_migration.py"
+      - ".github/workflows/midad-memory-registry-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/migrations/20261121150000_midad_memory_authorization_registry_v1.sql"
+      - "tools/midad-memory-adapter/test_registry_migration.py"
+      - ".github/workflows/midad-memory-registry-tests.yml"
+permissions:
+  contents: read
+jobs:
+  structural-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.8"
+      - name: Run migration structural regression tests
+        run: python -m unittest -v tools/midad-memory-adapter/test_registry_migration.py
