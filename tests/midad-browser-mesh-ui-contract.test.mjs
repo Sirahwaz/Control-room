@@ -104,7 +104,7 @@ test("Browser Mesh exposes authenticated interactive Browser Run and Live View c
   assert.match(html, /id="browserRunAccessKey"[^>]*type="password"/);
   assert.match(js, /type:\s*"authenticateBrowserRun"/);
   assert.match(js, /browserRunNativeRequest/);
-  assert.doesNotMatch(js, /telegram_init_data|midad_cockpit_key|access_key:/);
+  assert.doesNotMatch(js, /telegram_init_data|midad_cockpit_key|access_key:|window\.Telegram|OPEN TELEGRAM MINI APP/);
   assert.match(js, /\/v1\/browser\/ui\//);
   assert.match(worker, /midad_browser_agent_gateway/);
   assert.match(worker, /owner_scope_hash/);
@@ -133,7 +133,7 @@ test("Browser Mesh authenticates through the native owner Access Key bridge with
   assert.match(html, /id="browserRunAccessKey"[^>]*type="password"/);
   assert.match(js, /type:\s*"authenticateBrowserRun"/);
   assert.match(js, /browserRunNativeRequest/);
-  assert.doesNotMatch(js, /telegram_init_data|midad_telegram_auth/);
+  assert.doesNotMatch(js, /telegram_init_data|midad_telegram_auth|window\.Telegram|OPEN TELEGRAM MINI APP/);
   assert.doesNotMatch(js, /localStorage\.(?:setItem|getItem)\([^)]*(?:access.?key|token)/i);
 });
 
