@@ -1,6 +1,6 @@
 # MIDAD Memory Adapter Contract v1
 
-**Status:** Contract specification only — implementation intentionally gated on Memora pilot acceptance.  
+**Status:** Adapter core, pinned Memora API v1 backend, and trusted gateway boundary implemented in PRs #353–#355; production identity/policy binding and deployment remain pending.  
 **Depends on:** `MIDAD_COLLECTIVE_MEMORY_MEMORA_ADOPTION.md`, `MEMORA_UPSTREAM_SECURITY_REVIEW_2026-11-21.md`, `MEMORA_PILOT_RUNBOOK.md`.  
 **Upstream candidate:** `agentic-box/memora@442ca1b4ef494c256917ecd052dedb872710e84a`.
 
@@ -156,3 +156,30 @@ Memora's own transactional absorb support is not a substitute for the adapter's 
 7. Production promotion requires a verified persistent host, tested backup/restore, monitoring, rollback, and explicit approval.
 
 No production connection, data migration, public endpoint, or paid hosting is authorized by this contract.
+
+## 9. Implementation status (2026-11-21)
+
+| Layer | State | Evidence / remaining gate |
+|---|---|---|
+| Upstream Memora pin and isolated CI pilot | VERIFIED | Pinned SHA `442ca1b4ef494c256917ecd052dedb872710e84a`; seven upstream acceptance tests pass |
+| Adapter boundary | VERIFIED | PR #353; default-off flag, trusted Principal input, owner/project checks, create/search, SQLite intent ledger, redaction checks |
+| Memora API v1 transport | VERIFIED | PR #354; HTTPS-only except loopback tests, server-side owner-to-store routing, bearer token env bindings, health/project checks |
+| MIDAD gateway composition | VERIFIED | PR #355; injected principal resolver, sanitized fail-closed behavior |
+| Production MIDAD principal resolver | PENDING | Must bind to the existing owner-authentication/session system and authoritative project/capability policy; no caller claims |
+| Memora endpoint, owner routes, and credentials | PENDING | No live endpoint, token, or owner/store mapping is configured |
+| Transactional writes | CONDITIONAL | Backend permits absorb only when Memora health explicitly reports `writes: transactional`; otherwise writes fail closed |
+| Production deployment / feature flag | BLOCKED | No deployment or activation authorized; `MIDAD_MEMORY_ADAPTER_ENABLED=false` remains the default |
+
+The implementation is a tested code path, not a live MIDAD↔Memora integration. The current
+Python gateway requires a trusted resolver supplied by the host application. The current
+Memora backend requires server-owned owner/store mappings and server-only token environment
+bindings. Neither has been connected to a live host.
+
+### Next integration gate
+
+1. Bind the gateway resolver to MIDAD's existing authenticated owner session and policy services.
+2. Resolve allowed projects and operation capabilities from a trusted server-side source.
+3. Configure one isolated Memora store per authorized owner scope (or an equivalently proven tenant-isolation boundary).
+4. Verify the target store's health, contract version, declared projects, and transactional-write capability.
+5. Run two-owner/two-project isolation and idempotency tests against disposable Memora SQLite data.
+6. Only then request explicit approval for a synthetic internal pilot. Production remains separately gated.
