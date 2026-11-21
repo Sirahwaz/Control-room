@@ -103,7 +103,9 @@ jobs:
               || echo "$changed" | grep -Fxq 'mobile/web/midad-browser-mesh.css' \
               || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.html' \
               || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.js' \
-              || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.css'; then
+              || echo "$changed" | grep -Fxq 'mobile/web/human-bridge.css' \
+              || echo "$changed" | grep -Fxq 'mobile/web/midad-native-browser.js' \
+              || echo "$changed" | grep -Fxq 'mobile/web/midad-browser-native-entry.mjs'; then
               product="midad-mobile-next"
             fi
           fi
@@ -176,6 +178,10 @@ jobs:
             test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
           done
           grep -Fq './midad-control-v2.js' mobile/www/site/index.html
+      - name: Bundle native browser plugin
+        if: steps.product.outputs.product == 'midad-mobile-next'
+        working-directory: mobile
+        run: npx --yes esbuild@0.25.5 web/midad-browser-native-entry.mjs --bundle --format=iife --platform=browser --outfile=www/midad-browser-native.bundle.js
       - name: Install Playwright for Meme Trader runtime smoke
         if: steps.product.outputs.product == 'midad-meme-trader'
         working-directory: mobile
@@ -215,6 +221,9 @@ jobs:
           PY
       - name: Factory quality gate
         run: node mobile/factory/quality-gate.mjs "${{ steps.product.outputs.product }}"
+      - name: Native browser core acceptance tests
+        if: steps.product.outputs.product == 'midad-mobile-next'
+        run: node --test tests/midad-native-browser-core.test.mjs
       - name: Product JavaScript syntax audit
         shell: bash
         run: |
