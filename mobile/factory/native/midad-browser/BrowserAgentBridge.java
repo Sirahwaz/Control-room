@@ -329,7 +329,11 @@ public final class BrowserAgentBridge {
             JSONObject item = new JSONObject();
             try {
                 item.put("id", i);
-                item.put("url", tab.getUrl() == null ? "" : tab.getUrl());
+                String rawUrl = tab.getUrl() == null ? "" : tab.getUrl();
+                String safeUrl = rawUrl;
+                try { safeUrl = Uri.parse(rawUrl).buildUpon().clearQuery().fragment(null).build().toString(); }
+                catch (Exception ignored) {}
+                item.put("url", safeUrl);
                 item.put("title", tab.getTitle() == null ? "" : tab.getTitle());
                 item.put("active", i == host.getActiveTabIndex());
                 result.put(item);
