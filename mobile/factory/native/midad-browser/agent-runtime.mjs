@@ -299,3 +299,106 @@ export function createBrowserAgentRuntime({
     },
   });
 }
+
+
+const EXPECTED_OUTCOMES = Object.freeze({
+  navigate: "The target URL would be opened within the allowlisted origin scope.",
+  getTabs: "The available browser tabs would be listed without reading credentials.",
+  switchTab: "The selected tab would become active.",
+  getDomSnapshot: "A bounded, sanitized text snapshot would be collected.",
+  captureScreenshot: "A screenshot would be captured for evidence.",
+  click: "The selected element would receive a click after human approval.",
+  type: "Text would be entered only after human approval; values are omitted from this plan.",
+  select: "The requested option would be selected after human approval.",
+  scroll: "The page would scroll by the requested bounded offset.",
+  pressKey: "The allowed key would be sent after human approval.",
+  waitFor: "The selector would be checked within the bounded timeout.",
+});
+
+/**
+ * Validate and describe a browser task without creating a driver, requesting
+ * approval, connecting to a browser, or executing any page operation.
+ */
+export function createBrowserDryRun({ now = () => Date.now() } = {}) {
+  return Object.freeze({
+    plan(input) {
+      const checked = validateTask(input);
+      if (!checked.ok) {
+        return { ok: false, state: "failed", mode: "dry_run", error: checked.error, plan: [], evidence: [] };
+      }
+
+      const task = checked.value;
+      let currentOrigin = task.startOrigin;
+      const plan = [];
+      const evidence = [];
+
+      for (const step of task.steps) {
+        const source = step.command;
+        const command = { ...source };
+        const requiresApproval = MUTATING.has(command.type);
+        const binding = requiresApproval ? createBrowserActionBinding(command) : null;
+        const approvalId = requiresApproval ? "dryrun-approval-" + step.id : null;
+        const executable = requiresApproval ? { ...command, approvalId } : command;
+        const context = {
+          currentOrigin,
+          allowedOrigins: task.allowedOrigins,
+          capabilities: task.capabilities,
+          approvedActions: requiresApproval ? [{
+            approvalId,
+            binding,
+            expiresAt: now() + 60000,
+          }] : [],
+          nowMs: now(),
+        };
+        const validation = validateBrowserCommand(executable, context);
+        if (!validation.ok) {
+          return {
+            ok: false,
+            state: "failed",
+            mode: "dry_run",
+            taskId: task.id,
+            error: validation.error,
+            failedStepId: step.id,
+            plan,
+            evidence,
+          };
+        }
+
+        const item = Object.freeze({
+          stepId: step.id,
+          type: command.type,
+          origin: currentOrigin,
+          capability: validation.capability,
+          requiresApproval,
+          willExecute: false,
+          expectedOutcome: EXPECTED_OUTCOMES[command.type],
+          risk: requiresApproval ? "human_approval_required_in_live_mode" : "read_only_or_navigation",
+        });
+        plan.push(item);
+        evidence.push({
+          stepId: step.id,
+          type: command.type,
+          status: "planned",
+          effect: "none",
+          at: now(),
+        });
+
+        if (command.type === "navigate") currentOrigin = new URL(command.url).origin;
+      }
+
+      return {
+        ok: true,
+        state: "dry_run_completed",
+        mode: "dry_run",
+        taskId: task.id,
+        totalSteps: plan.length,
+        executedSteps: 0,
+        plan,
+        evidence,
+        warnings: plan.some((item) => item.requiresApproval)
+          ? ["Mutating steps are only planned; live execution requires separate human approval."]
+          : [],
+      };
+    },
+  });
+}

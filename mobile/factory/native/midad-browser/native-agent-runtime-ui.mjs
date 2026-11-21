@@ -5,6 +5,7 @@ const status = document.getElementById("nativeAgentBridgeStatus");
 const tabInput = document.getElementById("nativeAgentTabId");
 const originsInput = document.getElementById("nativeAgentAllowedOrigins");
 const inspectButton = document.getElementById("nativeAgentInspect");
+const dryRunButton = document.getElementById("nativeAgentDryRun");
 const output = document.getElementById("nativeAgentOutput");
 
 function setStatus(message, state = "pending") {
@@ -31,6 +32,39 @@ if (!window.midadNative) {
   setStatus("NATIVE BRIDGE READY", "verified");
 }
 
+dryRunButton?.addEventListener("click", () => {
+  dryRunButton.disabled = true;
+  try {
+    const allowedOrigins = parseAllowedOrigins();
+    const tabId = Number(tabInput?.value ?? 0);
+    if (!Number.isInteger(tabId) || tabId < 0 || tabId > 7) throw new Error("رقم التبويب غير صالح.");
+    const origin = allowedOrigins[0];
+    const taskId = "dryrun-" + Date.now().toString(36);
+    const stepId = "inspect-" + Date.now().toString(36);
+    const task = {
+      id: taskId,
+      title: "MIDAD read-only browser inspection",
+      startOrigin: origin,
+      allowedOrigins,
+      capabilities: ["browser.inspect"],
+      steps: [{
+        id: stepId,
+        command: { id: stepId, type: "getDomSnapshot", tabId, origin, maxChars: 8000 },
+      }],
+    };
+    const planner = window.MIDADBrowserAgent?.createDryRun?.();
+    if (!planner) throw new Error("dry_run_engine_unavailable");
+    const result = planner.plan(task);
+    if (!result.ok) throw new Error(result.error || "dry_run_rejected");
+    output.textContent = JSON.stringify(result, null, 2);
+    setStatus("DRY RUN VERIFIED · 0 ACTIONS EXECUTED", "verified");
+  } catch (error) {
+    output.textContent = error?.message || "تعذرت محاكاة الخطة.";
+    setStatus("DRY RUN BLOCKED", "pending");
+  } finally {
+    dryRunButton.disabled = false;
+  }
+});
 inspectButton?.addEventListener("click", async () => {
   inspectButton.disabled = true;
   output.textContent = "جارٍ الاتصال بمحرك WebView الأصلي…";

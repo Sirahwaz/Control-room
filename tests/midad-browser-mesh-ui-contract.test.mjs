@@ -166,3 +166,18 @@ test("Browser Mesh exposes the Chrome, Edge and Firefox extraction and plugin ga
   assert.ok(workflow.includes("extensions/build.mjs"));
   assert.ok(workflow.includes("midad-browser-$target.zip"));
 });
+
+
+test("Browser Agent exposes a zero-side-effect DRY_RUN planner separate from live inspection", () => {
+  const html = read("mobile/web/midad-browser-mesh.html");
+  const ui = read("mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs");
+  const runtime = read("mobile/factory/native/midad-browser/native-agent-runtime.mjs");
+  const engine = read("mobile/factory/native/midad-browser/agent-runtime.mjs");
+  assert.match(html, /id="nativeAgentDryRun"/);
+  assert.match(ui, /createDryRun/);
+  assert.match(ui, /DRY RUN VERIFIED · 0 ACTIONS EXECUTED/);
+  assert.match(runtime, /createDryRun: \(options = \{\}\) => createBrowserDryRun\(options\)/);
+  assert.match(engine, /export function createBrowserDryRun/);
+  assert.match(engine, /willExecute: false/);
+  assert.match(engine, /status: "planned"/);
+});

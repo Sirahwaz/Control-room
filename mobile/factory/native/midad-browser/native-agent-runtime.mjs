@@ -1,4 +1,4 @@
-import { createBrowserAgentRuntime } from "./agent-runtime.mjs";
+import { createBrowserAgentRuntime, createBrowserDryRun } from "./agent-runtime.mjs";
 import {
   createNativeAgentBridge,
   createNativeBrowserDriver,
@@ -28,7 +28,7 @@ export function createNativeBrowserAgentRuntime({
       expiresAt: Date.now() + 60000,
     }),
   });
-  return Object.freeze({ runtime, bridge, driver });
+  return Object.freeze({ runtime, bridge, driver, dryRun: createBrowserDryRun() });
 }
 
 if (typeof window !== "undefined") {
@@ -37,6 +37,7 @@ if (typeof window !== "undefined") {
       ...options,
       nativeObject: window.midadNative,
     }),
+    createDryRun: (options = {}) => createBrowserDryRun(options),
   });
   window.dispatchEvent(new CustomEvent("midad:browser-agent-factory-ready"));
 }
