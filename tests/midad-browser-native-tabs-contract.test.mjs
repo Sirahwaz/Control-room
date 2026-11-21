@@ -80,4 +80,8 @@ test("native browser exposes persisted theme and font zoom controls across all t
   assert.match(source, /المظهر والخط/);
   assert.match(source, /setFontZoom\(85\)/);
   assert.match(source, /setFontZoom\(130\)/);
+  assert.match(source, /FONT_FAMILY_KEY/);
+  assert.match(source, /setStandardFontFamily\(fontFamily\)/);
+  assert.match(source, /setFontFamily\("serif"\)/);
+  assert.match(source, /setFontFamily\("monospace"\)/);
 });
