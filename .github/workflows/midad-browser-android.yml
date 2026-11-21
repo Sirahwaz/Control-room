@@ -11,6 +11,7 @@ on:
       - "tests/midad-owner-session-schema-contract.test.mjs"
       - "supabase/migrations/*control_room_owner_session_binding.sql"
       - "tests/midad-browser-native-tabs-contract.test.mjs"
+      - "tests/midad-browser-local-vault-contract.test.mjs"
       - "tests/midad-browser-library-contract.test.mjs"
       - "mobile/web/midad-browser-mesh.html"
       - "mobile/web/midad-browser-mesh.css"
@@ -64,7 +65,7 @@ jobs:
           node-version: "24"
 
       - name: Browser Mesh and offline-home contract tests
-        run: node --test tests/midad-owner-session-schema-contract.test.mjs mobile/factory/native/midad-browser/pairing-contract.test.mjs tests/midad-browser-offline-home-contract.test.mjs tests/midad-browser-mesh-ui-contract.test.mjs tests/midad-browser-native-tabs-contract.test.mjs tests/midad-browser-library-contract.test.mjs mobile/factory/native/midad-browser/browser-command-contract.test.mjs mobile/factory/native/midad-browser/multi-browser-bridge.test.mjs mobile/factory/native/midad-browser/extensions/package.test.mjs mobile/factory/native/midad-browser/plugin-runtime-contract.test.mjs mobile/factory/native/midad-browser/pinned-tabs-contract.test.mjs
+        run: node --test tests/midad-owner-session-schema-contract.test.mjs mobile/factory/native/midad-browser/pairing-contract.test.mjs tests/midad-browser-offline-home-contract.test.mjs tests/midad-browser-mesh-ui-contract.test.mjs tests/midad-browser-native-tabs-contract.test.mjs tests/midad-browser-library-contract.test.mjs tests/midad-browser-local-vault-contract.test.mjs mobile/factory/native/midad-browser/browser-command-contract.test.mjs mobile/factory/native/midad-browser/multi-browser-bridge.test.mjs mobile/factory/native/midad-browser/extensions/package.test.mjs mobile/factory/native/midad-browser/plugin-runtime-contract.test.mjs mobile/factory/native/midad-browser/pinned-tabs-contract.test.mjs
 
       - name: Test Gradle Maven Central mirror injection
         run: python3 mobile/factory/native/midad-browser/test_gradle_repo_mirror.py
