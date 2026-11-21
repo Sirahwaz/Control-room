@@ -142,7 +142,9 @@ The Python server caps concurrent request workers (default 8, maximum 32).
 The pinned Memora API enforces bearer authentication only when the Memora host is
 configured with `MEMORA_API_TOKENS_FILE`. Sending an Authorization header from this
 adapter is **not proof** that the upstream host enforces it. Before any pilot, configure
-that file on the Memora host, provision high-entropy server-only tokens, and run negative
-tests proving requests without a token and with an invalid token receive 401/403. Confirm
-the valid owner token succeeds. Never place token values in this repository, browser
-configuration, GitHub workflow logs, or client requests.
+that file on the Memora host, provision high-entropy server-only tokens, and map each
+token's SHA-256 digest to exactly one owner store (the upstream file stores hashes, not
+raw tokens, and rejects group/other-readable file permissions). Run negative tests proving
+requests without a token and with an invalid token receive 401/403. Confirm the valid
+owner token succeeds only for its mapped store. Never place token values in this repository,
+browser configuration, GitHub workflow logs, or client requests.
