@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from gateway import MidadMemoryGateway
 from midad_memory_adapter import MemoryAdapter, InMemoryScopedBackend
@@ -94,6 +95,19 @@ class MemoryServerTests(unittest.TestCase):
         status, body = dispatch_request("Bearer " + SERVICE_KEY, b"x" * (64 * 1024 + 1), SERVICE_KEY, self.gateway)
         self.assertEqual(status, 413)
         self.assertEqual(body["error"]["code"], "REQUEST_TOO_LARGE")
+
+
+    def test_service_can_start_dark_with_feature_flag_disabled(self):
+        from server import main
+        with patch.dict(os.environ, {
+            "MIDAD_MEMORY_ADAPTER_ENABLED": "false",
+            "MIDAD_MEMORY_ADAPTER_SERVICE_KEY": SERVICE_KEY,
+            "MIDAD_MEMORY_ADAPTER_BIND": "127.0.0.1",
+            "PORT": "0",
+        }, clear=False), patch("server.ThreadingHTTPServer") as http_server:
+            main()
+            http_server.assert_called_once()
+            http_server.return_value.serve_forever.assert_called_once()
 
 
 if __name__ == "__main__":
