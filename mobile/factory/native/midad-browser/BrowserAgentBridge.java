@@ -43,7 +43,8 @@ public final class BrowserAgentBridge {
     );
     private static final Set<String> COMMAND_TYPES = setOf(
         "getTabs", "switchTab", "navigate", "getDomSnapshot", "captureScreenshot",
-        "click", "type", "select", "scroll", "pressKey", "waitFor"
+        "click", "type", "select", "scroll", "pressKey", "waitFor",
+        "getBrowserRunAccessKey", "saveBrowserRunAccessKey", "clearBrowserRunAccessKey"
     );
 
     private static Set<String> setOf(String... values) {
@@ -63,6 +64,9 @@ public final class BrowserAgentBridge {
         int getActiveTabIndex();
         WebView getTab(int index);
         boolean switchToTab(int index);
+        String getBrowserRunAccessKey();
+        boolean saveBrowserRunAccessKey(String value);
+        boolean clearBrowserRunAccessKey();
     }
 
     private final Activity activity;
@@ -134,6 +138,26 @@ public final class BrowserAgentBridge {
             return;
         }
 
+        if (type.equals("getBrowserRunAccessKey")) {
+            String key = host.getBrowserRunAccessKey();
+            reply(reply, requestId, true, key == null ? jsonObject("available", false) :
+                jsonObject("available", true), null);
+            return;
+        }
+        if (type.equals("saveBrowserRunAccessKey")) {
+            String key = command.optString("accessKey", "");
+            boolean saved = key.length() >= 16 && key.length() <= 512 &&
+                host.saveBrowserRunAccessKey(key);
+            reply(reply, requestId, saved, saved ? jsonObject("saved", true) : null,
+                saved ? null : "browser_run_access_key_save_failed");
+            return;
+        }
+        if (type.equals("clearBrowserRunAccessKey")) {
+            boolean cleared = host.clearBrowserRunAccessKey();
+            reply(reply, requestId, cleared, cleared ? jsonObject("cleared", true) : null,
+                cleared ? null : "browser_run_access_key_clear_failed");
+            return;
+        }
         if (type.equals("getTabs")) {
             reply(reply, requestId, true, tabSnapshot(), null);
             return;
