@@ -104,7 +104,7 @@ class MemoryServerTests(unittest.TestCase):
             "MIDAD_MEMORY_ADAPTER_SERVICE_KEY": SERVICE_KEY,
             "MIDAD_MEMORY_ADAPTER_BIND": "127.0.0.1",
             "PORT": "0",
-        }, clear=False), patch("server.ThreadingHTTPServer") as http_server:
+        }, clear=False), patch("server.BoundedThreadingHTTPServer") as http_server:
             main()
             http_server.assert_called_once()
             http_server.return_value.serve_forever.assert_called_once()
