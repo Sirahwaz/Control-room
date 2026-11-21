@@ -2,6 +2,15 @@
 -- No grants are seeded by this migration; access remains denied until an operator
 -- provisions a specific owner/project/agent grant through a trusted admin path.
 
+ALTER TABLE public.midad_factory_runs
+  ADD COLUMN IF NOT EXISTS agent_key text;
+
+CREATE INDEX IF NOT EXISTS midad_factory_runs_project_agent_state_idx
+  ON public.midad_factory_runs (project_id, agent_key, state);
+
+COMMENT ON COLUMN public.midad_factory_runs.agent_key IS
+  'Explicit execution principal for MIDAD Memory Gateway; NULL legacy runs cannot access memory.';
+
 CREATE TABLE IF NOT EXISTS public.midad_memory_agent_grants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
