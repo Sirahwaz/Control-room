@@ -11,7 +11,8 @@ on:
       - "tests/midad-owner-session-schema-contract.test.mjs"
       - "supabase/migrations/*control_room_owner_session_binding.sql"
       - "tests/midad-browser-native-tabs-contract.test.mjs"
-      - "tests/midad-browser-local-vault-contract.test.mjs tests/midad-browser-dry-run.test.mjs"
+      - "tests/midad-browser-local-vault-contract.test.mjs"
+      - "tests/midad-browser-dry-run.test.mjs"
       - "tests/midad-browser-library-contract.test.mjs"
       - "mobile/web/midad-browser-mesh.html"
       - "mobile/web/midad-browser-mesh.css"
@@ -30,6 +31,7 @@ on:
       - "mobile/factory/product.schema.json"
       - "mobile/factory/native/midad-browser/**"
       - "tests/midad-browser-offline-home-contract.test.mjs"
+      - "tests/midad-browser-dry-run.test.mjs"
       - "tests/midad-browser-native-tabs-contract.test.mjs"
       - "tests/midad-browser-library-contract.test.mjs"
       - "mobile/web/midad-browser-mesh.html"
@@ -162,7 +164,6 @@ jobs:
           set -euo pipefail
           node --check mobile/web/midad-browser-mesh.js
           node --check mobile/factory/native/midad-browser/native-agent-bridge.mjs
-          node --check mobile/factory/native/midad-browser/native-agent-runtime.mjs
           node --check mobile/factory/native/midad-browser/agent-runtime.mjs
           node --check mobile/factory/native/midad-browser/native-agent-runtime.mjs
           node --check mobile/factory/native/midad-browser/native-agent-runtime-ui.mjs
