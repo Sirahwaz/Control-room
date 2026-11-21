@@ -118,7 +118,7 @@
             <button class="secondary-btn" id="browserRunRefresh" type="button" disabled>تجديد Live View</button>
             <button class="secondary-btn danger-btn" id="browserRunClose" type="button" disabled>إغلاق الجلسة</button>
           </div>
-          <p class="browser-run-feedback" id="browserRunFeedback" role="status" aria-live="polite">تتم المصادقة تلقائياً من Telegram Mini App؛ بعد الاتصال يمكنك بدء جلسة Browser Run عند الحاجة.</p>
+          <p class="browser-run-feedback" id="browserRunFeedback" role="status" aria-live="polite">تحقق من مفتاح وصول MIDAD عند الحاجة؛ لا يلزم Telegram أو OTP. جلسة Browser Run السحابية اختيارية.</p>
           <div class="browser-run-session" id="browserRunSessionInfo" hidden></div>
           <div class="live-view-shell" id="browserRunLiveViewShell" hidden>
             <div class="live-view-heading"><b>Live View · متصفح سحابي مباشر</b><span>INTERACTIVE TAB</span></div>
@@ -275,8 +275,8 @@
           </div>
         </div>
         <div class="browser-run-actions">
-          <button class="secondary-btn" id="nativeAgentDryRun" type="button">محاكاة الخطة · DRY RUN</button>
-          <button class="primary-btn" id="nativeAgentInspect" type="button">فحص الصفحة المحددة فعلياً</button>
+          <button class="primary-btn" id="nativeAgentDryRun" type="button" aria-pressed="true" data-execution-mode="dry_run">الوضع الافتراضي · DRY RUN</button>
+          <button class="secondary-btn" id="nativeAgentInspect" type="button" aria-pressed="false" data-execution-mode="local_native">فحص فعلي · LOCAL_NATIVE</button>
         </div>
         <pre class="native-agent-output" id="nativeAgentOutput" aria-live="polite">بانتظار تهيئة قناة Android الأصلية…</pre>
       </section>
