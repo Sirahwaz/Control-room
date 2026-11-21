@@ -146,7 +146,7 @@ jobs:
             [ -z "$asset" ] && continue
             mkdir -p "mobile/www/site/$(dirname "$asset")"
             cp "$asset" "mobile/www/site/$asset"
-          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
+          done < <(git ls-files | grep -E '^(revenue|assets)/' | grep -Ei '\.(html|css|js|svg|webmanifest|png|jpe?g|webp|ico|woff2?)$' || true)
           # Fail the build if any primary Mobile Hub destination or nested checkout asset is absent.
           for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html revenue/checkout-attribution.js revenue/checkout-key.js; do
             test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
