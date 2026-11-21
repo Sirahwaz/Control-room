@@ -23,6 +23,7 @@ test("native bridge exposes typed bounded commands and no arbitrary script endpo
   assert.match(java, /MAX_TABS\s*=\s*8/);
   assert.match(java, /origin_scope_mismatch/);
   assert.match(java, /navigation_origin_not_allowed/);
+  assert.match(java, /allowedOrigins\.contains\(nextOrigin\)/);
   assert.match(java, /MIDAD_BROWSER", "AGENT_BRIDGE_ATTACHED/);
   assert.doesNotMatch(java, /command\.optString\(["']script["']/);
 });
