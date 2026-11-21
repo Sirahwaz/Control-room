@@ -131,5 +131,34 @@ class MemoraApiBackendTests(unittest.TestCase):
         self.assertEqual(rows[0]["content"], "safe result")
 
 
+    def test_empty_project_declaration_denies_all_projects(self):
+        health = dict(self.health, projects=[])
+        backend = MemoraApiBackend("https://memora.example", self.route,
+                                   environ=self.env, opener=FakeOpener([health]))
+        with self.assertRaisesRegex(AdapterError, "FORBIDDEN"):
+            backend.search("owner-a", "project-a", "safe", 5)
+
+    def test_search_rejects_results_without_matching_project_tag(self):
+        opener = FakeOpener([self.health, {
+            "count": 1, "mode": "hybrid-v1", "embedding_model": "test",
+            "results": [{"id": 42, "created_at": None, "tags": ["project-b"],
+                         "preview": "cross-project", "cosine": 0.8, "fused": 0.03, "rank": 1}],
+            "unscored": 0, "took_ms": 2,
+        }])
+        backend = MemoraApiBackend("https://memora.example", self.route,
+                                   environ=self.env, opener=opener)
+        with self.assertRaisesRegex(AdapterError, "INTEGRITY_FAILURE"):
+            backend.search("owner-a", "project-a", "safe", 5)
+
+    def test_rejects_two_owners_mapped_to_the_same_store(self):
+        duplicate_routes = {
+            "owner-a": {"store": "shared_store", "token_env": "MIDAD_MEMORA_API_TOKEN_OWNER_A"},
+            "owner-b": {"store": "shared_store", "token_env": "MIDAD_MEMORA_API_TOKEN_OWNER_B"},
+        }
+        with self.assertRaisesRegex(AdapterError, "VALIDATION_ERROR"):
+            MemoraApiBackend("https://memora.example", duplicate_routes, environ=self.env,
+                             opener=FakeOpener([]))
+
+
 if __name__ == "__main__":
     unittest.main()
