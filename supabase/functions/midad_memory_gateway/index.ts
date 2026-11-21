@@ -259,12 +259,16 @@ async function dispatch(req: Request): Promise<Response> {
     /^[A-Z0-9_:-]{1,80}$/.test((result as any).error.code)
     ? (result as any).error.code
     : (!success ? "UPSTREAM_REJECTED" : null);
-  await admin.from("midad_memory_gateway_audit").update({
+  const { error: auditFinalizeError } = await admin.from("midad_memory_gateway_audit").update({
     outcome: success ? "SUCCEEDED" : "FAILED",
     error_code: safeError,
     record_ids: recordIds,
     completed_at: new Date().toISOString(),
   }).eq("id", audit.id);
+  if (auditFinalizeError) {
+    // The backend may have completed; callers must retry with the same idempotency key.
+    return json({ ok: false, error: "memory_audit_finalize_failed", retryable: true }, 503, origin);
+  }
 
   if (!upstream.ok) return json({ ok: false, error: safeError || "memory_backend_rejected" }, upstream.status >= 500 ? 502 : upstream.status, origin);
   if (!success) return json({ ok: false, error: "memory_backend_invalid_response" }, 502, origin);
