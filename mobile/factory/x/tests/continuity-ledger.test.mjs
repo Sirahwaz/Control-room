@@ -310,28 +310,26 @@ test('browser claim requires enrolled capabilities, browser runtime version and 
 test('Cloudflare Browser Run endpoints require admin authentication and expose only guarded smoke/close operations', async () => {
   const storage = new Storage();
   const calls = [];
-  let accepted = false;
-  let closed = false;
-  const socket = new EventTarget();
-  socket.accept = () => { accepted = true; };
-  socket.send = raw => {
-    const command = JSON.parse(raw);
-    const result = command.method === 'Runtime.evaluate'
-      ? { result: { type: 'object', value: { title: 'Example Domain', url: 'https://example.com/', text: 'Example Domain browser smoke passed' } } }
-      : {};
-    queueMicrotask(() => socket.dispatchEvent(new MessageEvent('message', {
-      data: JSON.stringify({ id: command.id, result }),
-    })));
-  };
-  socket.close = () => { closed = true; };
   const browser = {
     async acquire(options) {
       calls.push(['acquire', options]);
       return { sessionId: 'browser-session-1', targets: [{ id: 'target-1', type: 'page' }] };
     },
-    async connectSession(sessionId, options) {
-      calls.push(['connectSession', sessionId, options]);
-      return { webSocket: { fetch: async () => ({ webSocket: socket }) } };
+    async script(code, options) {
+      calls.push(['script', code, options]);
+      return Response.json({
+        success: true,
+        result: {
+          title: 'Example Domain',
+          url: 'https://example.com/',
+          text: 'Example Domain browser smoke passed',
+        },
+      }, {
+        headers: {
+          'cf-browser-session-id': 'browser-session-1',
+          'cf-browser-target-id': 'target-1',
+        },
+      });
     },
     async getLiveView(sessionId, options) {
       calls.push(['getLiveView', sessionId, options]);
@@ -355,22 +353,29 @@ test('Cloudflare Browser Run endpoints require admin authentication and expose o
   assert.equal(result.body.title, 'Example Domain');
   assert.equal(result.body.url, 'https://example.com/');
   assert.match(result.body.live_view_url, /^https:\/\/live\.browser\.run\//);
-  assert.equal(accepted, true);
-  assert.equal(closed, true);
   assert.deepEqual(calls[0], ['acquire', {
     keepAlive: 60000, targets: true, liveViewUrlExpiresInMs: 60000,
     guardrails: { allowedDomains: ['example.com'] },
   }]);
+  const scriptCall = calls.find(([name]) => name === 'script');
+  assert.ok(scriptCall, 'smoke uses the documented Browser Run script API');
+  assert.match(scriptCall[1], /page\.goto/);
+  assert.deepEqual(scriptCall[2], {
+    sessionId: 'browser-session-1',
+    targetId: 'target-1',
+    library: 'playwright',
+    timeout: 30000,
+  });
+  assert.equal(calls.some(([name]) => name === 'connectSession'), false);
+  assert.equal(calls.some(([name]) => name === 'closeSession'), false,
+    'successful smoke keeps its bounded session available for the owner Live View');
 
   const closedResult = await read(await ledger.fetch(post('/v1/browser/run/close',
     { session_id: 'browser-session-1' }, admin())));
   assert.equal(closedResult.status, 200);
   assert.equal(closedResult.body.status, 'CLOSED');
   assert.equal(calls.some(([name]) => name === 'closeSession'), true);
-
-  storage.close();
 });
-
 
 test('workload-scoped pull claims leave unrelated exhausted tasks untouched', async () => {
   const { storage, ledger } = setup();
