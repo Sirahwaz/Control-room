@@ -237,3 +237,9 @@ with `MEMORA_API_TOKENS_FILE`. A client sending a bearer header does not prove t
 server validates it. A synthetic pilot is blocked until the Memora host has this gate
 configured and negative tests prove that missing and invalid tokens are rejected while
 the configured token is accepted. Token values must remain server-only and outside Git.
+
+The upstream token file stores SHA-256 token digests mapped to allowed store names, not
+raw token values. Provision each owner's token digest for exactly one distinct store and
+keep the token file owner-only (the pinned upstream loader rejects group/other-readable
+permissions). A token that can address multiple owner stores defeats the intended
+per-owner boundary and is not accepted for the synthetic pilot.
