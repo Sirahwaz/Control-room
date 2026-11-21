@@ -34,7 +34,7 @@ jobs:
           const runId = process.env.MIDAD_RUN_ID;
           const adminKey = process.env.MIDAD_LEDGER_ADMIN_KEY || '';
           const ghToken = process.env.GH_TOKEN || '';
-          if (ownerId !== 'github:116122510' || !/^\\d+$/.test(runId)) throw new Error('OWNER_OR_RUN_ID_INVALID');
+          if (ownerId !== 'github:116122510' || !/^\d+$/.test(runId)) throw new Error('OWNER_OR_RUN_ID_INVALID');
           if (adminKey.length < 32 || !ghToken) throw new Error('REQUIRED_AUTH_NOT_AVAILABLE');
 
           const taskId = 'mncf-cpu-sum-' + runId;
@@ -106,5 +106,5 @@ jobs:
             max_cost_usd: 0,
             idempotency_key: 'mncf-cpu-sum:' + runId,
             runner_workflow: 'midad-mncf-ephemeral-runner.yml',
-          }) + '\\n');
+          }) + '\n');
           NODE
