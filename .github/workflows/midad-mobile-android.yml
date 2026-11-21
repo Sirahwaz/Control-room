@@ -110,6 +110,19 @@ jobs:
             test -f "$asset"
             cp "$asset" mobile/www/
           done < <(jq -r '.web_assets[]?' mobile/factory/runtime-product.json)
+          # The Mobile Hub routes native users into the canonical Control Room
+          # and sibling station pages under ./site/. Bundle tracked root-level
+          # web entrypoints/assets there, preserving their relative filenames.
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            mkdir -p "mobile/www/site"
+            cp "$asset" "mobile/www/site/"
+          done < <(git ls-files '*.html' '*.css' '*.js' '*.svg' '*.webmanifest' '*.png' '*.jpg' '*.webp' '*.ico' '*.woff' '*.woff2' | awk 'index($0, "/") == 0')
+          # Fail the build if any primary Mobile Hub destination is absent.
+          for required in index.html midad-control-v2.js midad-control-v2.css iaitrader.html viabtc.html revenue-forge.html; do
+            test -s "mobile/www/site/$required" || { echo "Missing bundled MIDAD station: $required"; exit 1; }
+          done
+          grep -Fq './midad-control-v2.js' mobile/www/site/index.html
       - name: Install Playwright for Meme Trader runtime smoke
         if: steps.product.outputs.product == 'midad-meme-trader'
         working-directory: mobile
