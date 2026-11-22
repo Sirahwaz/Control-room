@@ -160,12 +160,12 @@ export function extractQualificationEvidence(raw: unknown, sourceSlug: string): 
   return out;
 }
 
-const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/concepts/fees-payments";
+const TASKMARKET_FEE_SCHEDULE_URL = "https://docs.taskmarket.dev/networks/fees";
 
 /**
  * Taskmarket's official fee schedule was checked on 2026-10-23.
  * Bounty/benchmark submissions are free for a worker's first five submissions
- * to a task, then 0.001 USDC each. The public task's submissionCount is a
+ * to a task, then 0.001 of that task's payment token (USDC on Base or OUSD on Tempo). The public task's submissionCount is a
  * task-wide total, not the current worker's count; do not use it as a proxy.
  * Unknown modes or missing worker-specific counts remain unverified.
  */
