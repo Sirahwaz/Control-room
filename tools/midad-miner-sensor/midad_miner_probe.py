@@ -16,10 +16,10 @@ import hmac
 import json
 import os
 import socket
-import ssl
 import sys
 import time
 import urllib.request
+from urllib.parse import urlsplit
 from datetime import datetime, timezone
 from typing import Any
 
@@ -184,6 +184,59 @@ def normalize(raw: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
 def sign(secret: str, timestamp: str, body: bytes) -> str:
     return hmac.new(secret.encode(), (timestamp + ".").encode() + body, hashlib.sha256).hexdigest()
 
+ALLOWED_MIDAD_FUNCTIONS = frozenset({
+    "midad_miner_telemetry_ingest",
+    "midad_miner_repair_bridge",
+})
+
+
+def is_valid_midad_endpoint(url: str, expected_function: str) -> bool:
+    """Accept only exact MIDAD Edge Function paths on a Supabase project HTTPS host."""
+    if expected_function not in ALLOWED_MIDAD_FUNCTIONS or not isinstance(url, str):
+        return False
+    try:
+        parsed = urlsplit(url)
+        hostname = parsed.hostname or ""
+        project_ref, separator, domain = hostname.partition(".supabase.co")
+        if not separator or domain or len(project_ref) != 20:
+            return False
+        if not project_ref.isascii() or not project_ref.isalnum() or project_ref.lower() != project_ref:
+            return False
+        if parsed.scheme != "https" or parsed.username is not None or parsed.password is not None:
+            return False
+        if parsed.port not in (None, 443):
+            return False
+        if parsed.netloc not in (hostname, f"{hostname}:443"):
+            return False
+        if parsed.path != f"/functions/v1/{expected_function}":
+            return False
+        if parsed.query or parsed.fragment:
+            return False
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+class _NoMidadRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            "Redirect blocked by MIDAD endpoint policy",
+            headers,
+            fp,
+        )
+
+
+def open_midad_endpoint(req: urllib.request.Request, url: str, expected_function: str, timeout: float = 15) -> dict[str, Any]:
+    """POST only to the approved MIDAD Edge endpoint and never follow redirects."""
+    if not is_valid_midad_endpoint(url, expected_function):
+        raise ValueError("MIDAD_ENDPOINT_REJECTED")
+    opener = urllib.request.build_opener(_NoMidadRedirect())
+    with opener.open(req, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def post_repair(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -> dict[str, Any]:
     body = json.dumps(body_obj, separators=(",", ":"), ensure_ascii=False).encode()
     ts = str(int(time.time()))
@@ -198,8 +251,7 @@ def post_repair(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) -
             "x-midad-signature": sign(secret, ts, body),
         },
     )
-    with urllib.request.urlopen(req, timeout=15) as res:
-        return json.loads(res.read().decode("utf-8"))
+    return open_midad_endpoint(req, url, "midad_miner_repair_bridge", timeout=15)
 
 
 def cgminer_command(host: str, port: int, command: str, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
@@ -222,6 +274,47 @@ def cgminer_command(host: str, port: int, command: str, timeout: float = DEFAULT
     if not raw:
         raise RuntimeError("empty cgminer command response")
     return json.loads(raw)
+
+
+def is_valid_restart_approval(command: Any, now: datetime | None = None) -> bool:
+    """Fail closed unless this exact restart carries a current cloud approval."""
+    if not isinstance(command, dict):
+        return False
+    if str(command.get("operation") or "").strip().lower() != "restart":
+        return False
+    if not str(command.get("action_id") or "").strip():
+        return False
+
+    approval = command.get("approval")
+    safety = command.get("safety")
+    if not isinstance(approval, dict) or not isinstance(safety, dict):
+        return False
+    if not str(approval.get("id") or "").strip():
+        return False
+    if str(approval.get("status") or "").strip().lower() != "approved":
+        return False
+    if safety.get("cloud_approval") is not True:
+        return False
+    if safety.get("local_policy_required") is not True:
+        return False
+
+    expires_at = approval.get("expires_at")
+    if expires_at is not None:
+        if not isinstance(expires_at, str) or not expires_at.strip():
+            return False
+        try:
+            expiry = datetime.fromisoformat(expires_at.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        # An offset-less expiry is ambiguous and must not authorize a restart.
+        if expiry.tzinfo is None or expiry.utcoffset() is None:
+            return False
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None or current.utcoffset() is None:
+            return False
+        if expiry.astimezone(timezone.utc) <= current.astimezone(timezone.utc):
+            return False
+    return True
 
 
 def handle_repairs(cfg: dict[str, Any], repair_url: str, repair_key: str) -> None:
@@ -247,6 +340,16 @@ def handle_repairs(cfg: dict[str, Any], repair_url: str, repair_key: str) -> Non
                     "result": {"operation": "diagnostic", "worker_id": worker_id, "error": str(exc)}
                 })
         elif operation == "restart":
+            if not is_valid_restart_approval(cmd):
+                post_repair(repair_url, repair_key, node_id, {
+                    "mode": "ack", "action_id": action_id, "state": "blocked",
+                    "result": {
+                        "operation": "restart",
+                        "worker_id": worker_id,
+                        "reason": "restart_requires_current_per_action_approval",
+                    },
+                })
+                continue
             if os.environ.get("MIDAD_ALLOW_RESTART", "").strip().lower() not in {"1", "true", "yes"}:
                 post_repair(repair_url, repair_key, node_id, {
                     "mode": "ack", "action_id": action_id, "state": "blocked",
@@ -282,9 +385,7 @@ def post_batch(url: str, secret: str, node_id: str, body_obj: dict[str, Any]) ->
             "x-midad-signature": sign(secret, ts, body),
         },
     )
-    ctx = ssl.create_default_context()
-    with urllib.request.urlopen(req, timeout=15, context=ctx) as res:
-        return json.loads(res.read().decode("utf-8"))
+    return open_midad_endpoint(req, url, "midad_miner_telemetry_ingest", timeout=15)
 
 
 def load_config(path: str) -> dict[str, Any]:

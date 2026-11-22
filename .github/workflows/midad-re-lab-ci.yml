@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pinned DEX parser
-        run: python -m pip install --disable-pip-version-check androguard==4.1.4
+        run: python -m pip install --disable-pip-version-check androguard==4.1.4 defusedxml==0.7.1
       - name: Compile analyzers
         run: python -m py_compile tools/midad-re-lab/analyze_web.py tools/midad-re-lab/analyze_apk.py tools/midad-re-lab/test_apk_resilience.py tools/midad-re-lab/dex_intelligence.py tools/midad-re-lab/test_dex_intelligence.py tools/midad-re-lab/web_bundle_intelligence.py tools/midad-re-lab/test_web_bundle_intelligence.py
       - name: Verify public-target policy
