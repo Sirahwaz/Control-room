@@ -27,7 +27,22 @@ function changedFilesForCurrentCommit() {
 function resolveProductKey(requested) {
   if (requested !== "auto") return requested;
   const changed = changedFilesForCurrentCommit();
-  // Keep this order aligned with .github/workflows/midad-mobile-android.yml.
+  const manifestKeys = [...new Set(changed
+    .map(file => file.match(/^mobile\/factory\/products\/([^/]+)\.json$/)?.[1])
+    .filter(Boolean))];
+
+  if (manifestKeys.length === 1) return manifestKeys[0];
+  if (manifestKeys.length > 1) {
+    const matchingKeys = manifestKeys.filter(key => changed.some(file =>
+      file.startsWith("mobile/web/" + key + "/") ||
+      file === "mobile/web/" + key + ".html" ||
+      file.startsWith("products/" + key + "/")
+    ));
+    if (matchingKeys.length === 1) return matchingKeys[0];
+    throw new Error("Automatic Agentation product selection is ambiguous: " + manifestKeys.join(", "));
+  }
+
+  // Preserve the established fallbacks when a UI-only change does not touch a manifest.
   if (changed.includes("mobile/factory/products/midad-meme-trader.json") ||
       changed.includes("mobile/factory/meme-trader-smoke.mjs") ||
       changed.some(file => file.startsWith("mobile/web/meme-trader/"))) {
