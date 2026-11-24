@@ -20,7 +20,12 @@ Deno.serve(async (req: Request) => {
   const key = Deno.env.get("MIDAD_CORE_SERVICE_ROLE_KEY");
   if (!url || !key) return json({ ok: false, error: "registry_credentials_missing" }, 503);
 
-  const headers = { apikey: key, authorization: `Bearer ${key}` };
+  // PostgREST must be told to resolve the private midad_ops schema, not public.
+  const headers = {
+    apikey: key,
+    authorization: `Bearer ${key}`,
+    "Accept-Profile": "midad_ops",
+  };
   const taskUrl = new URL("/rest/v1/tasks", url);
   taskUrl.searchParams.set("task_key", "eq.midad-core-migration-readiness-daily");
   taskUrl.searchParams.set("select", "id,status,schedule_cron,timezone,updated_at");
