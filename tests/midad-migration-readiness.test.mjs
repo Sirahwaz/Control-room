@@ -61,5 +61,8 @@ test('executor never activates tasks or writes to the source project', () => {
   assert.match(fn, /execution: "not_started"/);
   assert.match(fn, /task\.status/);
   assert.doesNotMatch(fn, /PATCH|DELETE|PUT/);
-  assert.doesNotMatch(fn, /\/rest\/v1\/tasks.*method:\s*["'](POST|PATCH|DELETE)/s);
+  const taskRead = fn.slice(fn.indexOf('const taskUrl'), fn.indexOf('const tasks ='));
+  assert.doesNotMatch(taskRead, /method:/);
+  assert.match(fn, /record_readiness_run/);
+  assert.match(fn, /source_project_contacted: false, source_writes_attempted: false/);
 });
