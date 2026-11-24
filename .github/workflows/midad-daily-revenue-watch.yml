@@ -1,0 +1,94 @@
+name: MIDAD Daily Revenue Watcher
+
+on:
+  schedule:
+    - cron: "13 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: midad-daily-revenue-watch
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    name: Read existing revenue runtime evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Capture recent Revenue Runtime runs
+        id: capture
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/midad-daily-revenue-watch"
+          gh api "repos/${REPOSITORY}/actions/workflows/midad-revenue-runtime.yml/runs?per_page=10" \
+            > "$RUNNER_TEMP/midad-daily-revenue-watch/runtime-runs-source.json"
+
+          jq '{
+            generated_at: (now | todateiso8601),
+            repository: env.REPOSITORY,
+            monitored_workflow: "MIDAD Revenue Runtime",
+            total_count: (.total_count // 0),
+            runs: [
+              .workflow_runs[]? | {
+                run_number,
+                run_id: .id,
+                status,
+                conclusion,
+                event,
+                created_at,
+                updated_at,
+                head_sha,
+                html_url
+              }
+            ]
+          }' "$RUNNER_TEMP/midad-daily-revenue-watch/runtime-runs-source.json" \
+            > "$RUNNER_TEMP/midad-daily-revenue-watch/evidence.json"
+
+          jq -r '
+            "# MIDAD Daily Revenue Watch",
+            "",
+            "- Generated: " + .generated_at,
+            "- Repository: " + .repository,
+            "- Source workflow: " + .monitored_workflow,
+            "- Total matching runs: " + (.total_count | tostring),
+            "",
+            "| Run | Status | Conclusion | Started (UTC) | Evidence |",
+            "|---:|---|---|---|---|",
+            (if (.runs | length) == 0 then
+              "| — | UNKNOWN | No run history returned | — | — |"
+             else
+              .runs[] | "| " + (.run_number | tostring) + " | " + .status + " | " + (.conclusion // "pending") + " | " + .created_at + " | [Open run](" + .html_url + ") |"
+             end),
+            "",
+            "## Interpretation",
+            (if (.runs | length) == 0 then
+              "BLOCKED: GitHub returned no run history. This watcher does not infer revenue or trigger production work."
+             else
+              "This report observes workflow execution only. A successful workflow run is not proof of a qualified opportunity, customer payment, or realized revenue."
+             end),
+            "",
+            "## Safety",
+            "Read-only GitHub Actions metadata. No Supabase calls, opportunity rediscovery, customer outreach, wallet operations, or financial actions."
+          ' "$RUNNER_TEMP/midad-daily-revenue-watch/evidence.json" \
+            > "$RUNNER_TEMP/midad-daily-revenue-watch/report.md"
+
+          cat "$RUNNER_TEMP/midad-daily-revenue-watch/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload daily evidence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: midad-daily-revenue-watch-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/midad-daily-revenue-watch/evidence.json
+            ${{ runner.temp }}/midad-daily-revenue-watch/report.md
+          if-no-files-found: warn
+          retention-days: 14
