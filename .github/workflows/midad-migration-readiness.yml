@@ -1,0 +1,41 @@
+name: MIDAD Migration Readiness Scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 12 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midad-migration-readiness
+  cancel-in-progress: false
+
+jobs:
+  guarded-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate required secret
+        env:
+          MIDAD_SCHEDULER_TOKEN: ${{ secrets.MIDAD_SCHEDULER_TOKEN }}
+        run: |
+          if [[ -z "$MIDAD_SCHEDULER_TOKEN" ]]; then
+            echo "::error::Missing MIDAD_SCHEDULER_TOKEN"
+            exit 1
+          fi
+      - name: Request guarded status
+        env:
+          MIDAD_SCHEDULER_TOKEN: ${{ secrets.MIDAD_SCHEDULER_TOKEN }}
+          MIDAD_EXECUTOR_URL: ${{ secrets.MIDAD_EXECUTOR_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$MIDAD_EXECUTOR_URL"
+          curl --fail-with-body --silent --show-error --connect-timeout 10 --max-time 45 \
+            -X POST "$MIDAD_EXECUTOR_URL" \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer $MIDAD_SCHEDULER_TOKEN" \
+            --data '{"task_key":"midad-core-migration-readiness-daily","mode":"status"}' \
+            -o "$RUNNER_TEMP/midad-scheduler-response.json"
+          jq -c '{ok,state,task_status,execution,reason,error}' "$RUNNER_TEMP/midad-scheduler-response.json"
