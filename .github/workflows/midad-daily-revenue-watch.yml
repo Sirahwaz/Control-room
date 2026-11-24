@@ -19,6 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - name: Checkout watcher contract
+        uses: actions/checkout@v4
+      - name: Validate watcher contract
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run watcher contract tests
+        run: node --test tests/midad-daily-revenue-watch.test.mjs
       - name: Capture recent Revenue Runtime runs
         id: capture
         shell: bash
