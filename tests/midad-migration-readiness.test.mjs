@@ -16,7 +16,7 @@ test('workflow runs repository tests before calling the executor', () => {
   assert.match(workflow, /actions\/checkout@v4/);
   assert.match(workflow, /actions\/setup-node@v4/);
   assert.match(workflow, /node --test tests\/midad-migration-readiness\.test\.mjs/);
-  assert.ok(workflow.indexOf('node --test') < workflow.indexOf('Request guarded status'));
+  assert.ok(workflow.indexOf('node --test') < workflow.indexOf('Request guarded readiness evaluation'));
 });
 
 test('workflow requires external secrets and does not print their values', () => {
