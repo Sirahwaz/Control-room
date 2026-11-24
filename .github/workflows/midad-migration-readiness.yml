@@ -15,8 +15,19 @@ concurrency:
 jobs:
   guarded-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run readiness contract tests
+        run: node --test tests/midad-migration-readiness.test.mjs
+
       - name: Validate required secret
         env:
           MIDAD_SCHEDULER_TOKEN: ${{ secrets.MIDAD_SCHEDULER_TOKEN }}
@@ -25,10 +36,13 @@ jobs:
             echo "::error::Missing MIDAD_SCHEDULER_TOKEN"
             exit 1
           fi
-      - name: Request guarded status
+
+      - name: Request guarded readiness evaluation
         env:
           MIDAD_SCHEDULER_TOKEN: ${{ secrets.MIDAD_SCHEDULER_TOKEN }}
           MIDAD_EXECUTOR_URL: ${{ secrets.MIDAD_EXECUTOR_URL }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
           test -n "$MIDAD_EXECUTOR_URL"
@@ -36,6 +50,6 @@ jobs:
             -X POST "$MIDAD_EXECUTOR_URL" \
             -H "content-type: application/json" \
             -H "authorization: Bearer $MIDAD_SCHEDULER_TOKEN" \
-            --data '{"task_key":"midad-core-migration-readiness-daily","mode":"status"}' \
+            --data "{\"task_key\":\"midad-core-migration-readiness-daily\",\"mode\":\"status\",\"run_id\":\"$GITHUB_RUN_ID\",\"run_attempt\":\"$GITHUB_RUN_ATTEMPT\"}" \
             -o "$RUNNER_TEMP/midad-scheduler-response.json"
-          jq -c '{ok,state,task_status,execution,reason,error}' "$RUNNER_TEMP/midad-scheduler-response.json"
+          jq -c '{ok,state,task_status,execution,overall,blockers,audit_record_id,reason,error}' "$RUNNER_TEMP/midad-scheduler-response.json"
