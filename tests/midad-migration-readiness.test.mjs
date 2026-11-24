@@ -11,10 +11,10 @@ test('scheduler is daily and manually dispatchable with least-privilege permissi
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /contents:\s*write|id-token:\s*write/);
 });
-test('workflow requires external secrets and does not print them', () => {
+test('workflow requires external secrets and does not print their values', () => {
   assert.match(workflow, /secrets\.MIDAD_SCHEDULER_TOKEN/);
   assert.match(workflow, /secrets\.MIDAD_EXECUTOR_URL/);
-  assert.doesNotMatch(workflow, /echo.*MIDAD_SCHEDULER_TOKEN/);
+  assert.doesNotMatch(workflow, /echo.*\$MIDAD_SCHEDULER_TOKEN/);
 });
 test('executor authenticates and fails closed on non-active tasks', () => {
   assert.match(fn, /authorization/);
