@@ -47,7 +47,7 @@ test('readiness checks cover registry, task configuration, and migration blocker
     'backup_restore_validation',
     'cutover_approval'
   ]) assert.ok(fn.includes(checkId), `missing readiness check: ${checkId}`);
-  assert.match(fn, /state: "blocked"/);
+  assert.match(fn, /overall: blockedChecks.length === 0 \? "ready" : "blocked"/);
 });
 
 test('readiness evidence is persisted through a service-role-only RPC with idempotency', () => {
