@@ -42,7 +42,11 @@
     "live_voice_translation": true,
     "voice_reply": true,
     "communication_memory": true,
-    "send_requires_human_gate": true
+    "send_requires_human_gate": true,
+    "android_reverse_engineering_lab": true,
+    "apk_static_intake": true,
+    "dynamic_testing_requires_authorized_target": true,
+    "root_diagnostics_opt_in": true
   },
   "surfaces": [
     "neural-command",
@@ -66,7 +70,10 @@
     "communication-center",
     "live-interpreter",
     "conversation-memory",
-    "multilingual-response"
+    "multilingual-response",
+    "android-reverse-engineering-lab",
+    "apk-static-intake",
+    "evidence-ledger"
   ],
   "target_markets": [
     "global_remote",
@@ -176,6 +183,7 @@
   },
   "web_assets": [
     "mobile/web/omni-agent.css",
-    "mobile/web/omni-agent.js"
+    "mobile/web/omni-agent.js",
+    "mobile/web/android-lab.mjs"
   ]
 }
