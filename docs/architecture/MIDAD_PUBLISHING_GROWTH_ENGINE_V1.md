@@ -29,6 +29,51 @@ Do not rebuild these existing components:
 
 Before implementation, inspect the current database migrations, campaign UI, generated content schema, and deployment workflows. Do not assume the current `campaigns` table or `generate_campaign` response is sufficient for scheduling or delivery.
 
+## 2A. Existing agent ecosystem — integration, not replacement
+
+The repository already contains a broader marketing/customer-facing agent foundation. Publishing must become its distribution and measurement layer, not a replacement for these agents.
+
+### Existing components verified in source
+
+| Existing component | Verified role | Integration contract |
+|---|---|---|
+| `MIDAD Omni Agent` v0.4.1 | Mobile-first agent surface with neural command, browser, automation recipes, media studio, profile fabric and human gates | Keep as the operator and agent workspace; add campaign/publishing views or route into the Publishing API |
+| Omni Communication Agent | Multilingual client-message understanding, language detection, intent/urgency/sentiment, target-language reply drafts, Arabic internal summary, risk flags and lead signal | Connect qualified conversations to CRM/lead lifecycle and campaign audience feedback; retain draft-first sending |
+| `midad_omni_agent_gateway` | Authenticated actions `communication`, `form_plan`, `research`, `gemini_text`, `gemini_image`, `live_token`; uses MIDAD Native first and Gemini fallback | Reuse as specialist gateway; add explicit campaign-agent routes only where existing actions do not fit |
+| `midad_human_bridge` | Device pairing, human tasks, browser jobs, profile snapshot and authorized human checkpoints | Reuse for account setup, OAuth handoff, platform review, consent and approvals |
+| `midad_client_profiles` / `midad_messages` / `leads` | Client profile, communication history and qualified lead capture | Remain canonical customer memory and lead records; do not create a duplicate CRM |
+| `generate_campaign` | Brand-aware campaign generation; outputs positioning, hooks, posts, reels, ads, stories, descriptions, visual prompts, hashtags, calendar, A/B tests and QA | Retain as the campaign generation specialist; normalize its result into the publishing content package |
+| `creative_templates`, `creative_experiments`, `creative_performance` | Creative pattern library and experiment/performance records | Reuse for creative strategy and learning; add publishing-level delivery/metrics linkage |
+| Media Studio / Factory `media-production-agent` | Media job planning and provider routing | Use for image/video/voice production only after cost, quota, rights and explicit spend checks |
+| `midad_platform_accounts` + account factory/browser gateway | Existing marketplace/income-platform onboarding and browser workflow states | Reuse account-factory mechanics for approved social account onboarding only through a separate social-identity model; do not repurpose marketplace account rows |
+
+### Integration boundaries
+
+1. **Account Factory Agent:** discovers platform requirements, prepares profile/brand assets and guides account setup. Registration, email/phone verification, CAPTCHA, MFA, KYC, app review and consent remain owner-controlled human gates. No bulk fake-account creation, identity fabrication or restriction evasion.
+2. **Marketing Strategist Agent:** analyzes product, buyer persona, offer, competitor/public demand evidence, funnel and campaign objective.
+3. **Campaign Orchestrator:** calls the existing `generate_campaign` specialist and preserves its full output schema.
+4. **Localization Agent:** creates language-native variants, not literal translations; preserves product facts, offer terms, cultural context and a shared claim ledger.
+5. **Media Production Agent:** prepares image, carousel, short-video, voice and caption assets through existing provider abstractions; checks current price/quota and rights before any paid generation.
+6. **Publishing Agent:** renders platform-native payloads, validates capabilities and queues only approved variants.
+7. **Community & Customer Communication Agent:** reuses Omni's multilingual communication gateway for incoming inquiries, lead qualification, reply drafts, translation and follow-up recommendations. Sending remains approval-gated unless the owner explicitly enables a compliant bounded policy.
+8. **Growth Analyst Agent:** joins platform analytics with `midad_client_profiles`, `midad_messages`, `leads`, existing Revenue Store attribution and independently verified payment events.
+9. **Campaign Supervisor:** coordinates the agents, tracks run state and evidence, detects stalled jobs and reports blockers; it cannot override policy gates.
+
+### Canonical customer-to-revenue loop
+
+`DISCOVER → POSITION → CREATE → LOCALIZE → PRODUCE → APPROVE → PUBLISH → LISTEN → QUALIFY → DRAFT_REPLY → HUMAN_APPROVE/SEND → OFFER → CHECKOUT → VERIFIED_PAYMENT → LEARN`
+
+Customer messages are not automatically treated as consent to marketing. Keep support conversations, opted-in leads, public comments and outbound marketing audiences separate. Enforce suppression/opt-out and platform-specific messaging windows.
+
+### Existing integration facts and gaps
+
+- The live `integrations` table currently shows one connected provider: `gemini` with role `primary_ai`; this is an AI provider connection, not a social account.
+- Existing marketplace account records are not evidence that X, LinkedIn, Instagram, Facebook, YouTube or TikTok are connected.
+- Source code exposes multilingual communication and campaign generation, but this does not prove any external social publishing adapter is implemented or authorized.
+- Omni's communication gateway already writes communication messages and can persist client profiles and qualified leads; integrate with those records instead of duplicating them.
+- Media planning currently has explicit cost/rights gates; preserve them. No paid media generation is assumed.
+- Do not describe account creation, ad delivery, customer messaging or post publishing as active until live provider capability and end-to-end evidence exist.
+
 ## 3. Target architecture
 
 ```text
