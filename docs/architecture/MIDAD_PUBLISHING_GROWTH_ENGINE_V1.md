@@ -21,6 +21,9 @@ Do not rebuild these existing components:
 - `revenue/distribution-mesh.json`: channel policy, attribution contract and current human gates.
 - `supabase/functions/midad_public_checkout`: public checkout and attribution handoff.
 - `supabase/functions/generate_campaign`: authenticated campaign generation, brand-kit support, orchestration/Gemini fallback and usage accounting.
+- Existing database tables `campaigns`, `brand_kits`, `creative_templates`, `creative_experiments` and `creative_performance` are the current campaign/creative foundation. Live inspection found 9 templates, while campaigns, experiments and performance currently have no rows.
+- `midad_bot_outbox` is an existing Telegram/bot delivery outbox; inspect its dispatcher and constraints before reusing it. Do not silently turn it into a generic social queue.
+- `midad_platform_registry` and `midad_platform_accounts` are currently marketplace/income-platform onboarding records (e.g. Agent Souk, BountyBook, LaborX, Superteam Earn, Taskmarket and uGig), not social OAuth connections. Preserve their current meaning; do not repurpose them for X/Meta/YouTube identities.
 - `supabase/functions/midad_revenue_intelligence_mesh`: opportunity discovery and qualification context.
 - Existing Control Room shell, authentication, Supabase client conventions, secrets and architecture governance.
 
@@ -60,7 +63,7 @@ Control Room / Telegram command surface
 
 ### Runtime responsibilities
 
-- **Supabase Postgres:** canonical campaigns, content assets, platform accounts, scheduled deliveries, idempotency keys, event ledger, metrics snapshots and audit trail.
+- **Supabase Postgres:** extend the existing campaign/creative foundation. Add a separate social publishing provider registry and OAuth connection model; keep marketplace account onboarding isolated. Store scheduled deliveries, idempotency keys, event ledger, metrics snapshots and audit trail.
 - **Supabase Edge Functions:** authenticated command/API boundaries, queue claims, callbacks and bounded provider calls.
 - **Supabase Cron / queue worker:** due-job dispatch, retry scheduling, reconciliation and health checks. Do not make n8n a core dependency.
 - **Control Room:** campaign studio, calendar, approvals, delivery status, analytics and operator intervention.
@@ -159,17 +162,20 @@ A single command can prepare a campaign, render previews, run QA, schedule appro
 
 ## 8. Proposed logical data model
 
-Use new, namespaced tables only after confirming there are no equivalent existing tables:
+Live schema inspection confirmed these existing tables and counts: `campaigns` (0 rows), `brand_kits` (0), `creative_templates` (9), `creative_experiments` (0), `creative_performance` (0), `midad_platform_registry` (9 marketplace entries), `midad_platform_accounts` (5 marketplace account records), `midad_platform_account_events` (155), and `midad_bot_outbox` (2,999 bot delivery records). The five account records are marketplace onboarding states, not social connections.
 
-- `midad_social_accounts`: owner, provider, provider account ID, scopes, capability state, token reference, expiry.
-- `midad_content_campaigns`: objective, audience, offer, source evidence, state, owner.
-- `midad_content_items`: canonical content, language, source lineage, claim ledger, QA report.
-- `midad_content_variants`: platform/account, rendered payload, validation, asset references.
-- `midad_publish_jobs`: scheduled_at, state, idempotency key, attempt count, lease, provider post ID, error class.
+Proposed additive schema, subject to inspecting existing RLS/policies and migrations:
+
+- `midad_publishing_providers`: social provider capability registry, API version, supported formats/actions, limits and review state. Do not reuse the marketplace `midad_platform_registry`.
+- `midad_social_connections`: owner, provider, provider account ID, approved scopes, capability state, secret-vault reference and token expiry metadata. Never store raw tokens in the table.
+- Extend existing `campaigns` and/or link a publishing campaign record to it; do not create a duplicate campaign root.
+- `midad_content_items`: canonical content, language, source lineage, claim ledger and QA report, linked to the existing campaign.
+- `midad_content_variants`: platform/account, rendered payload, validation and asset references.
+- `midad_publish_jobs`: scheduled_at, state, idempotency key, attempt count, lease, provider post ID and error class.
 - `midad_publish_events`: append-only transition and provider response ledger.
-- `midad_content_metrics`: provider, metric, value, period, source and observed_at.
-- `midad_content_attribution`: tracked click/session/lead/order references; minimize personal data.
-- `midad_content_experiments`: hypothesis, variants, sample size, outcomes and decision.
+- `midad_content_metrics`: provider, metric, value, period, source and observed_at; bridge to existing `creative_performance` rather than duplicating its experiment-level measures.
+- `midad_content_attribution`: tracked click/session/lead/order references; minimize personal data and join to existing revenue metadata.
+- Extend `creative_experiments` with explicit content/variant lineage only after confirming current constraints; retain `creative_templates` as the template source of truth.
 
 Security:
 - RLS by owner/account; service-role access only inside Edge Functions.
@@ -213,6 +219,8 @@ All write operations must be idempotent or explicitly reject duplicate requests.
 ### Phase 0 — Audit & contracts
 - Inspect current campaign UI, migrations, RLS, secrets, cron/queue conventions and tests.
 - Map existing campaign generation output to canonical content package.
+- Distinguish marketplace account onboarding from social OAuth connections (confirmed by live schema inspection).
+- Inspect the existing Telegram outbox dispatcher before deciding whether it can support publishing jobs.
 - Confirm platform API access and account eligibility.
 - Produce schema/API contract and test plan.
 
