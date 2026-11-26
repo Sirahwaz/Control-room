@@ -108,8 +108,9 @@ Offline unit tests validate command parsing, host scoping, one-shot POST windows
 The repository also includes a separate scheduled worker for public research tasks. It is intentionally not an operator worker. Its schedule is not production-ready until the read-only claim migration and the OIDC route in the existing midad_browser_agent_gateway are deployed; the proxy fails closed if its backend is unavailable.
 
 - Workflow: `.github/workflows/midad-browser-ephemeral-worker.yml`
-- Schedule: every five minutes, with `workflow_dispatch` available; it also runs once after a successful `MIDAD Browser Gateway — Contract Suite` completion on `main`.
-- Activation: the workflow runs only from `main`. It was enabled after the gateway v23 deployment and byte-for-byte source verification; no repository secret or activation variable is required.
+- Schedule: every five minutes, with `workflow_dispatch` available.
+- Activation: the workflow runs only from `main` and only when the repository variable `MIDAD_BROWSER_EPHEMERAL_ENABLED` is exactly `true`. The variable is not created or enabled by the workflow changes; absent that explicit opt-in, the worker job is skipped. The workflow has no `push` or `workflow_run` trigger.
+- Current status (2026-11-20): the worker remains disabled pending an end-to-end live validation. Passing offline contracts and gateway deployment do not by themselves establish a working live browser session or production readiness.
 - Authentication: GitHub Actions OIDC token with audience `midad-browser-worker`; no static MIDAD ingest key or Supabase service-role key is stored in GitHub.
 - The existing gateway's OIDC proxy route accepts only the exact `Sirahwaz/Control-room` main-branch workflow and the `schedule` / `workflow_dispatch` events.
 - The gateway proxy derives the owner and worker ID server-side. It exposes only heartbeat, read-only job claim, evidence event, lease renew and lease release actions.
@@ -119,6 +120,6 @@ The repository also includes a separate scheduled worker for public research tas
 - The worker performs navigation and evidence capture only. It does not log in, submit forms, enter secrets, bypass CAPTCHA/KYC/2FA, or perform financial/destructive actions.
 - Stored evidence is bounded to a page title, a maximum 2,500-character public text excerpt, HTTP status, byte count, duration, attempt and SHA-256 digest. Full page bodies, cookies and storage state are not stored by this worker.
 
-This is a low-cost replacement path for public read-only browsing and evidence collection. It does **not** replace persistent authenticated sessions or the private operator worker. Those remain a separate deployment path requiring a persistent host, an account registry and an encrypted session key.
+This is a candidate low-cost replacement path for public read-only browsing and evidence collection. It is not yet a verified operational replacement for paid browser services. It does **not** replace persistent authenticated sessions or the private operator worker. Those remain a separate deployment path requiring a persistent host, an account registry and an encrypted session key.
 
 - Supabase function configuration: `supabase/config.toml` preserves `verify_jwt = false` for the existing `midad_browser_agent_gateway`. Its `github_oidc_proxy` route verifies the GitHub OIDC signature/JWKS and claims itself before forwarding a narrowly allowlisted worker action with server-side credentials. No additional Edge Function slot is required.
